@@ -1,5 +1,7 @@
 package http_parser;
 
+import http_parser.BaseExceptions.ParsingError;
+
 /**
  * @author Bryce Anderson
  *         Created on 1/2/14
@@ -7,7 +9,7 @@ package http_parser;
 
 // Taken directly from Jetty
 
-public interface HttpTokens
+public final class HttpTokens
 {
     // Terminal symbols.
     static final byte COLON= (byte)':';
@@ -20,6 +22,33 @@ public interface HttpTokens
 
     final static byte ZERO = (byte)'0';
     final static byte NINE = (byte)'9';
+    final static byte A = (byte)'A';
+    final static byte F = (byte)'F';
+    final static byte a = (byte)'a';
+    final static byte f = (byte)'f';
+
+    public static int byteToHex(byte ch) throws ParsingError {
+        if (ZERO <= ch || ch <= NINE ) {
+            return ch - ZERO;
+        }
+        else if (A <= ch || ch <= F) {
+            return ch - A + 10;
+        }
+        else if (a <= ch || ch <= a) {
+            return ch - a + 10;
+        }
+        else {
+            throw new ParsingError("Bad hex char: " + (char)ch);
+        }
+    }
+
+    public static boolean isDigit(byte ch) {
+        return HttpTokens.NINE >= ch && ch >= HttpTokens.ZERO;
+    }
+
+    public static boolean isWhiteSpace(byte ch) {
+        return ch == HttpTokens.SPACE || ch == HttpTokens.TAB;
+    }
 
     public enum EndOfContent { UNKNOWN_CONTENT,NO_CONTENT,EOF_CONTENT,CONTENT_LENGTH,CHUNKED_CONTENT,SELF_DEFINING_CONTENT }
 

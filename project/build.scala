@@ -10,7 +10,8 @@ object ApplicationBuild extends Build {
     organization := "brycea",
     version := "0.0.1-SNAPSHOT",
     scalaVersion in ThisBuild := "2.10.3",
-    libraryDependencies += scalatest % "test"
+    libraryDependencies += scalatest % "test",
+    libraryDependencies += scalameter
   )
 
   val main = Project("http_parser", 
@@ -35,4 +36,6 @@ object ApplicationBuild extends Build {
    lazy val http4s = ProjectRef(file("../../Documents/GitHub/http4s"), "core")
    
    lazy val scalatest  = "org.scalatest"  %% "scalatest" % "2.0.RC3"
+   lazy val scalameter = "com.github.axel22" % "scalameter_2.10" % "0.4"
+            
 }

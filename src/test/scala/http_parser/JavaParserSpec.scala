@@ -25,7 +25,7 @@ class JavaParserSpec extends WordSpec with Matchers {
 
     def content(item: ByteBuffer): Boolean = ???
 
-    def headerComplete(): Boolean = ???
+    def headerComplete(): Boolean = true
 
     def messageComplete(): Boolean = ???
 
@@ -43,7 +43,7 @@ class JavaParserSpec extends WordSpec with Matchers {
     }
   }
 
-  class Parser extends ParserRoot(handler, 1024, 1024, 1) {
+  class Parser(maxReq: Int = 1034, maxHeader: Int = 1024) extends ParserRoot(handler, maxReq, maxHeader, 1) {
     def parseLine(s: String) = parseRequestLine(ByteBuffer.wrap(s.getBytes))
 
     def state(state: State): Unit = super.setState(state)
@@ -62,6 +62,10 @@ class JavaParserSpec extends WordSpec with Matchers {
                 "User-Agent: HTTPTool/1.0  \r\n" +
                 "Some-Header\r\n" +
                 "\r\n"
+
+  val body    = "hello world"
+
+  val lengthh = s"Content-Length: ${body.length}"
 
   val mock = request + headers
 
@@ -114,6 +118,10 @@ class JavaParserSpec extends WordSpec with Matchers {
       p.state(State.HEADER_IN_NAME)
       a [NeedsInput] should be thrownBy p.parseHeaders(header.slice(0, 20))
       p.parseHeaders(header.substring(20)) should equal (true)
+
+    }
+
+    "Give the body" in {
 
     }
   }
