@@ -1,7 +1,7 @@
 package http_parser
 
 import org.scalatest.{Matchers, WordSpec}
-import http_parser.ParserRoot.State
+import http_parser.RequestParser.State
 import java.nio.ByteBuffer
 import http_parser.HttpTokens.EndOfContent
 import http_parser.BaseExceptions.NeedsInput
@@ -14,7 +14,7 @@ class JavaParserSpec extends WordSpec with Matchers {
 
   implicit def strToBuffer(str: String) = ByteBuffer.wrap(str.getBytes())
 
-  class Parser(maxReq: Int = 1034, maxHeader: Int = 1024) extends ParserRoot(maxReq, maxHeader, 1) {
+  class Parser(maxReq: Int = 1034, maxHeader: Int = 1024) extends RequestParser(maxReq, maxHeader, 1) {
 
     val sb = new StringBuilder
 
@@ -85,7 +85,7 @@ class JavaParserSpec extends WordSpec with Matchers {
     def readUntil0(char: Char, keep: Boolean) = readUntil(char, keep)
   }
 
-  "ParserRoot" should {
+  "RequestParser" should {
     "Parse the request line for HTTP" in {
       val p = new Parser()
       p.parseLine("POST /enlighten/calais.asmx HTTP/1.1\r\n") should equal(true)
@@ -162,13 +162,9 @@ class JavaParserSpec extends WordSpec with Matchers {
       p.parsecontent(b) should equal(true)
       p.getState should equal (State.CONTENT)
 
-      println(p.sb.result())
-
       b.limit(l)
       p.parsecontent(b) should equal (true)
       //p.getState should equal (State.END)
-
-      println(p.sb.result())
 
       p.sb.result() should equal(body)
 
