@@ -12,11 +12,9 @@ import http_parser.HttpTokens.EndOfContent;
  * @author Bryce Anderson
  *         Created on 1/2/14
  */
-public class ParserRoot {
+public abstract class ParserRoot {
 
     public final static Charset ASCII = Charset.forName("US-ASCII");
-
-    public final static ByteBuffer empty = ByteBuffer.allocate(0);
 
     protected static byte[] HTTP10Bytes = "HTTP/1.0".getBytes(ASCII);
     protected static byte[] HTTPS10Bytes = "HTTPS/1.0".getBytes(ASCII);
@@ -26,41 +24,50 @@ public class ParserRoot {
 
     // States
     public enum State {
+        START,
         METHOD,
-        URI,
         SPACE1,
+        URI,
+        SPACE2,
         REQUEST_VERSION,
 //        RESPONSE_VERSION,
 //        STATUS,
-        SPACE2,
 //        REASON,
-//        HEADER,
-        HEADER_IN_NAME,
-        HEADER_SPACE,
-        HEADER_IN_VALUE,
+        HEADER,
         CONTENT,
         END,
     }
 
+    public enum HeaderState {
+        START,
+        HEADER_IN_NAME,
+        HEADER_SPACE,
+        HEADER_IN_VALUE,
+        END
+    }
+
     public enum ChunkState {
+        START,
         CHUNK_SIZE,
         CHUNK_PARAMS,
         CHUNK,
         CHUNK_LF,
         CHUNK_EOFLF,
         CHUNK_TRAILERS,
+        END
     }
 
     private final int requestSizeLimit;
     private final int headerSizeLimit;
-    private final RequestHandler<ByteBuffer> handler;
 
     /* ------------------------------------------------------------------- */
-    private volatile State _state=State.METHOD;
+    private volatile State _state=State.START;
+    private volatile HeaderState _hstate = HeaderState.START;
+
     private String _methodString;
     private String _uriString;
     private boolean _hostRequired;
-    private String _host = null;
+//    private String _host = null;
     private String _headerName;
     private EndOfContent _endOfContent;
     private long _contentLength;
@@ -76,22 +83,118 @@ public class ParserRoot {
 
     /* ------------------------------------------------------------------ */
 
-    public final State getState() { return _state; }
+    /**
+     * This is the method called by parser when the HTTP request line is parsed
+     * @param methodString The method as a string
+     * @param uri The raw bytes of the URI.  These are copied into a ByteBuffer that will not be changed until this parser is reset and reused.
+     * @param majorversion major version
+     * @param minorversion minor version
+     * @return true if handling parsing should return.
+     */
+    public abstract boolean startRequest(String methodString, String uri, String scheme, int majorversion, int minorversion);
 
-    public EndOfContent getContentType() { return _endOfContent; }
+    /** take content from the parser.
+     *
+     * @param buffer The ByteBuffer containing the appropriate data.
+     * @return true if successful and false of there was a problem.
+     * - If the read was successful, it is assumed that the whole Buffer was taken
+     * - If it was unsuccessful, it is assumed that the buffer is unchanged, and may
+     *   be resubmitted
+     */
+    public abstract boolean submitContent(ByteBuffer buffer);
+
+    public abstract boolean headersComplete();
+
+    public abstract void requestComplete();
+
+    /**
+     * This is the method called by parser when a HTTP Header name and value is found
+     * @param name The name of the header
+     * @param value The value of the header
+     * @return True if the parser should return to its caller
+     */
+    public abstract boolean headerComplete(String name, String value);
+
+        /* ------------------------------------------------------------ */
+    /** Called to signal that an EOF was received unexpectedly
+     * during the parsing of a HTTP message
+     */
+    public abstract void earlyEOF();
+
+        /* ------------------------------------------------------------ */
+    /** Called to signal that a bad HTTP message has been received.
+     * @param status The bad status to send
+     * @param reason The textual reason for badness
+     */
+    public abstract void badMessage(int status, String reason);
+
+
+    /* ------------------------------------------------------------------ */
+
+    public final State getState() {
+        return _state;
+    }
+
+    public final boolean inRequestLine() {
+        return _state.ordinal() < State.HEADER.ordinal();
+    }
+
+    public final boolean inHeaders() {
+        return _state.ordinal() >= State.HEADER.ordinal() &&
+               _state.ordinal() < State.CONTENT.ordinal() &&
+               _hstate != HeaderState.START &&
+               _hstate != HeaderState.END;
+    }
+
+    public final boolean inContent() {
+        return _state == State.CONTENT;
+    }
+
+    public final boolean inDefinedContent() {
+        return inContent() &&
+                _endOfContent == EndOfContent.CONTENT_LENGTH;
+    }
+
+    public final boolean inChunked() {
+        return inContent() &&
+                _endOfContent == EndOfContent.CHUNKED_CONTENT;
+    }
+
+    public boolean inChunkedHeaders() {
+        return _state == State.CONTENT &&
+               _hstate != HeaderState.START &&
+               _hstate != HeaderState.END;
+    }
+
+    public EndOfContent getContentType() {
+        return _endOfContent;
+    }
 
     public void reset() {
         clearBuffer();
-        setState(State.METHOD);
+
+        _state = State.START;
+        _hstate = HeaderState.START;
+        _chunkState = ChunkState.START;
+
         setLimit(requestSizeLimit);
 
         _endOfContent = EndOfContent.UNKNOWN_CONTENT;
-        _chunkState = ChunkState.CHUNK_SIZE;
         _contentLength = 0;
         _contentPosition = 0;
         _chunkLength = 0;
         _chunkPosition = 0;
         _hostRequired = true;
+    }
+
+    /* ------------------------------------------------------------------ */
+
+    protected void cleanup() {
+        requestComplete();
+
+        _state = State.END;
+        _hstate = HeaderState.END;
+        _chunkState = ChunkState.END;
     }
 
     /* ------------------------------------------------------------------ */
@@ -214,8 +317,7 @@ public class ParserRoot {
     /* ------------------------------------------------------------------ */
     // the sole Constructor
 
-    public ParserRoot(RequestHandler<ByteBuffer> handler, int maxReqLen, int maxHeaderLength, int initialBufferSize) {
-        this.handler = handler;
+    public ParserRoot(int maxReqLen, int maxHeaderLength, int initialBufferSize) {
         this.requestSizeLimit = maxReqLen;
         this.headerSizeLimit = maxHeaderLength;
 
@@ -268,11 +370,11 @@ public class ParserRoot {
 
     /* ------------------------------------------------------------------ */
 
-    private void error(BaseParseExcept e) throws BaseParseExcept {
+    private boolean error(BaseParseExcept e) throws BaseParseExcept {
 
         if (e instanceof BadRequest) {
             BadRequest badreq = (BadRequest)e;
-            handler.badMessage(badreq.getCode(), badreq.msg());
+            badMessage(badreq.getCode(), badreq.msg());
         }
 
         setState(State.END);
@@ -280,11 +382,11 @@ public class ParserRoot {
     }
 
 
-    private void checkMethod(String method) throws BaseParseExcept {
+//    private void checkMethod(String method) throws BaseParseExcept {
 //        if (method.equalsIgnoreCase("GET")) {
 //            _endOfContent = EndOfContent.NO_CONTENT;
 //        }
-    }
+//    }
 
     protected final void setState(State state) {
         _state = state;
@@ -293,6 +395,9 @@ public class ParserRoot {
     protected final boolean parseRequestLine(ByteBuffer in) throws BaseParseExcept {
         lineLoop: for(byte ch = next(in);; ch = next(in)) {
             switch (_state) {
+                case START:
+                    _state = State.METHOD;
+
                 case METHOD:
                     while(!(ch == HttpTokens.SPACE || ch == HttpTokens.TAB)) {
                         putByte(ch);
@@ -303,7 +408,7 @@ public class ParserRoot {
                     clearBuffer();
 
                     // Determine if this method can have a body
-                    checkMethod(_methodString);
+//                    checkMethod(_methodString);
 
                     setState(State.SPACE1);
                     continue lineLoop;
@@ -367,16 +472,19 @@ public class ParserRoot {
                     clearBuffer();
 
                     // We are through parsing the request line
-                    setState(State.HEADER_IN_NAME);
+                    setState(State.HEADER);
                     setLimit(headerSizeLimit); // Only need one, then it gets set in
-                    return handler.startRequest(_methodString, _uriString, scheme, _majorversion, _minorversion);
+                    return startRequest(_methodString, _uriString, scheme, _majorversion, _minorversion);
             }    // switch
         }        // while loop
     }
 
     protected final boolean parseHeaders(ByteBuffer in) throws BaseParseExcept {
         headerLoop: for(byte ch = next(in);; ch = next(in)) {
-            switch (_state) {
+            switch (_hstate) {
+                case START:
+                    _hstate = HeaderState.HEADER_IN_NAME;
+
                 case HEADER_IN_NAME:
                     while(ch != ':' && ch != HttpTokens.LF) {
                         putByte(ch);
@@ -392,17 +500,14 @@ public class ParserRoot {
                         }
 
                         // Notify the handler we are finished with this batch of headers
-                        if (!handler.headerComplete()) return false;
+                        if (!headersComplete()) return false;
+
+                        _hstate = HeaderState.END;
 
                         // Finished with the whole request
                         if (_chunkState == ChunkState.CHUNK_TRAILERS) {
-                            if (handler.messageComplete()) {
-                                reset();
-                                return true;
-                            }
-                            else {
-                                return false;
-                            }
+                            cleanup();
+                            return true;
                         }
                         else {    // now doing the body
                             setState(State.CONTENT);
@@ -412,16 +517,15 @@ public class ParserRoot {
 
                     if (ch == HttpTokens.LF) {  // Valueless header
                         String name = getString();
-                        setLimit(headerSizeLimit);
                         clearBuffer();
-                        handler.parsedHeader(name, "");
+                        headerComplete(name, "");
 
                         continue headerLoop;    // Still parsing Header name
                     }
 
                     _headerName = getString();
                     clearBuffer();
-                    setState(State.HEADER_SPACE);
+                    _hstate = HeaderState.HEADER_SPACE;
                     break;
 
                 case HEADER_SPACE:
@@ -429,7 +533,7 @@ public class ParserRoot {
                         ch = next(in);
                     }
                     putByte(ch);
-                    setState(State.HEADER_IN_VALUE);
+                    _hstate = HeaderState.HEADER_IN_VALUE;
                     break;
 
 
@@ -448,10 +552,10 @@ public class ParserRoot {
                         // Check for host if it is still needed
                         if (_hostRequired && _headerName.equalsIgnoreCase("Host")) {
                             _hostRequired = false;  // Don't search for the host header anymore
-                            _host = value;
+//                            _host = value;
                         }
 
-                        // Check for content type if its still not determined
+                        // Check for submitContent type if its still not determined
                         if (_endOfContent == EndOfContent.UNKNOWN_CONTENT) {
                                 if (_headerName.equalsIgnoreCase("Transfer-Encoding")) {
                                     if (!value.equalsIgnoreCase("chunked")) {
@@ -464,35 +568,30 @@ public class ParserRoot {
                                         _contentLength = Long.parseLong(value);
                                     }
                                     catch (NumberFormatException t) {
-                                        error(new BadRequest(400, "Invalid Content-Length: " + value));
+                                        error(new BadRequest(400, "Invalid Content-Length: '" + value + "'\n"));
                                     }
 
-                                    _endOfContent = _chunkLength <= 0 ? EndOfContent.NO_CONTENT:EndOfContent.CONTENT_LENGTH;
+                                    _endOfContent = _contentLength <= 0 ?
+                                            EndOfContent.NO_CONTENT:EndOfContent.CONTENT_LENGTH;
                                 }
                         }
                     }
 
                     // Send off the header and see if we wish to continue
-                    if (!handler.parsedHeader(_headerName, value)) {
+                    if (!headerComplete(_headerName, value)) {
                         setState(State.END);
                         return false;
                     }
 
                     setLimit(headerSizeLimit);
-                    setState(State.HEADER_IN_NAME);
+                    _hstate = HeaderState.HEADER_IN_NAME;
                     break;
-
             }   // Switch
         }   // while loop
 
     }
 
     protected final boolean parseContent(ByteBuffer in) throws BaseParseExcept {
-
-        // A zero length ByteBuffer signals EOF
-        if (!in.hasRemaining()) {
-            return handler.messageComplete();
-        }
 
         switch (_endOfContent) {
             case UNKNOWN_CONTENT:
@@ -501,13 +600,8 @@ public class ParserRoot {
 
                 // What about custom verbs which may have a body?
                 if (_methodString != "POST" || _methodString != "PUT") {
-                    if (handler.messageComplete()) {
-                        reset();
-                        return true;
-                    }
-                    else {
-                        return false;
-                    }
+                    cleanup();
+                    return true;
                 }
 
                 // We could also CONSIDER doing a BAD Request here.
@@ -522,198 +616,149 @@ public class ParserRoot {
 
             case SELF_DEFINING_CONTENT:
                 // We have unknown length, so pass it to the handler which will tell us when to stop
-                return handler.content(in);
+                return submitContent(in);
 
             default:
-                error(new ParsingError("not implemented: " + _endOfContent));
-                return false;
+                return error(new ParsingError("not implemented: " + _endOfContent));
         }
     }
 
-    /** Sends the data, and manages the buffer appropriately.
-     *
-     * @param in ByteBuffer to send out
-     * @param maxlength maximum bytes to send
-     * @return how many bytes where sent: negative for failure, positive for success
-     */
+    private boolean submitPartial(ByteBuffer in, int size) {
 
-    // TODO: how to represent a failure for zero bytes read? Should that be considered an error in itself?
-    private int handleContent(final ByteBuffer in, final long maxlength) {
-        final int old_limit = in.limit();
-        final int old_position = in.position();
-
-        final int remaining = old_limit - old_position;
-
-        // if we have too much, set the limit
-        if (remaining > maxlength) {
-            in.limit(old_position + (int)maxlength);
+        // Perhaps we are just right? Might be common.
+        if (size == in.remaining()) {
+            return submitContent(in);
         }
 
-        // send the data and reset the limit
-        final boolean result = handler.content(in);
-        in.limit(old_limit);
+        ByteBuffer b = ByteBuffer.allocate(size);
 
-        return (in.position() - old_position) * (result? 1 : -1);
+        final int old_lim = in.limit();
+        in.limit(in.position() + size);
+        in.mark();
+
+        b.put(in);
+
+        if (submitContent(b)) { // Successful submission
+            in.limit(old_lim);
+            return true;
+        }
+        else {                  // need to reset things
+            in.reset();
+            in.limit(old_lim);
+            return false;
+        }
     }
 
     private boolean nonChunkedContent(ByteBuffer in) throws BaseParseExcept {
 
         final long remaining = _contentLength - _contentPosition;
 
-        final int sent = handleContent(in, remaining);
+        final int buf_size = in.remaining();
 
-        if (sent > 0) { // success
-            _contentPosition += sent;
-
-            if (_contentPosition == _contentLength) {   // content finished
-                if (handler.messageComplete()) {
-                    reset();
-                    return true;
-                }
-                else {
-                    return false;
-                }
-            }
-            else { // More content remaining
+        if (buf_size >= remaining) {
+            if (submitPartial(in, (int)remaining)) {
+                _contentPosition += remaining;
+                cleanup();
                 return true;
             }
+            else {
+                return false;
+            }
         }
-        else {              // error sending content
-            _contentPosition -= sent;
-            return false;
+        else {
+            if (submitContent(in)) {
+                _contentPosition += buf_size;
+                return true;
+            }
+            else {
+                return false;
+            }
         }
     }
 
+
+
     private boolean chunkedContent(ByteBuffer in) throws BaseParseExcept {
         while(true) {
-            switch (_chunkState) {
+            byte ch;
+            sw: switch (_chunkState) {
+                case START:
+                    _chunkState = ChunkState.CHUNK_SIZE;
+
                 case CHUNK_SIZE:
+                   assert _chunkPosition == 0;
 
-                    assert _chunkPosition == 0;
-
-                    for(byte ch = next(in); !HttpTokens.isWhiteSpace(ch) && ch != HttpTokens.LF; ch = next(in)) {
-                        _chunkLength = 16 * _chunkLength + HttpTokens.byteToHex(ch);
+                    while (true) {
+                        ch = next(in);
+                        if (HttpTokens.isWhiteSpace(ch)) {
+                            _chunkState = ChunkState.CHUNK_PARAMS;
+                            break;  // Break out of the while loop, and fall through to params
+                        }
+                        else if (ch == HttpTokens.LF) {
+                            _chunkState = _contentLength == 0? ChunkState.CHUNK_EOFLF : ChunkState.CHUNK;
+                            break sw;
+                        }
+                        else {
+                            _chunkLength = 16 * _chunkLength + HttpTokens.byteToHex(ch);
+                        }
                     }
-                    _chunkState = ChunkState.CHUNK_PARAMS;
-                    break;
 
                 case CHUNK_PARAMS:
                     // Don't store them, for now.
-                    for(byte ch = next(in); ch != HttpTokens.LF; ch = next(in));
+                    for(ch = next(in); ch != HttpTokens.LF; ch = next(in));
 
                     // Check to see if this was the last chunk
                     _chunkState = _chunkLength == 0 ? ChunkState.CHUNK_EOFLF: ChunkState.CHUNK;
                     break;
 
                 case CHUNK:
-                    final int sent = handleContent(in, _chunkLength - _chunkPosition);
+                    final int remaining_chunk_size =  _chunkLength - _chunkPosition;
+                    final int chunk_size = in.remaining();
 
-                    if (sent > 0) {   // Successfully sent
-                        _chunkPosition += sent;
-                        if (_chunkPosition == _chunkLength) {    // Done with chunk
+                    if (remaining_chunk_size <= chunk_size) {
+                        if (submitPartial(in, remaining_chunk_size)) {
+                            _chunkPosition += remaining_chunk_size;
                             _chunkState = ChunkState.CHUNK_LF;
-                            _chunkPosition = _chunkLength = 0;
+                            // fall through
                         }
-                        break;
+                        else {
+                            return false;
+                        }
                     }
-                    else {             // Failed to send
-                        _chunkPosition -= sent;
-                        if (_chunkPosition == _chunkLength) {    // Done with chunk
-                            _chunkState = ChunkState.CHUNK_LF;
-                            _chunkPosition = _chunkLength = 0;
+                    else {
+                        if (submitContent(in)) {
+                            _chunkPosition += chunk_size;
+                            return true;
                         }
-                        return false;
+                        else {
+                            return false;
+                        }
                     }
 
                 case CHUNK_LF:
                 case CHUNK_EOFLF:
-                    byte ch = next(in);
+                    ch = next(in);
                     if (ch != HttpTokens.LF) {
                         error(new BadRequest(400, "Bad chunked encoding"));
                         // Wont reach here
                         return false;
                     }
-                    _chunkState = _chunkState == ChunkState.CHUNK_LF? ChunkState.CHUNK_SIZE : ChunkState.CHUNK_TRAILERS;
-                    break;
+                    if (_chunkState == ChunkState.CHUNK_LF) {
+                        _chunkState = ChunkState.CHUNK_SIZE;
+                        break;
+                    }
+                    else {              // _chunkState == CHUNK_EOFLF
+                    // Its trailer time
+                        assert _hstate == HeaderState.END;
+
+                        _hstate = HeaderState.HEADER_IN_NAME;
+                        _chunkState = ChunkState.CHUNK_TRAILERS;
+                    }
 
                 case CHUNK_TRAILERS:    // more headers
+                    // will determine if we are in Content mode, and set the end state
                     return parseHeaders(in);
-
-                default:
-                    error(new ParsingError("Shouldn't get here."));
-
             }
         }
     }
-
-    /* ------------------------------------------------------------------ */
-    // Interfaces that will be used to interact with the outside world
-
-    /** copied from Eclipse Jetty and modified for my purposes
-     *
-     * @param <T> type of content
-     */
-    public interface HttpHandler<T>
-    {
-
-        /** take content from the parser.
-         *
-         * @param item The ByteBuffer containing the appropriate data.
-         * @return true if successful and false of there was a problem.
-         * If no data was read, that will also be interpreted as a failure, regardless of return value.
-         * Any remaining data in the buffer will be reinterpreted.
-         */
-        public boolean content(T item);
-
-        public boolean headerComplete();
-
-        public boolean messageComplete();
-
-        /**
-         * This is the method called by parser when a HTTP Header name and value is found
-         * @param name The name of the header
-         * @param value The value of the header
-         * @return True if the parser should return to its caller
-         */
-        public boolean parsedHeader(String name, String value);
-
-        /* ------------------------------------------------------------ */
-        /** Called to signal that an EOF was received unexpectedly
-         * during the parsing of a HTTP message
-         */
-        public void earlyEOF();
-
-        /* ------------------------------------------------------------ */
-        /** Called to signal that a bad HTTP message has been received.
-         * @param status The bad status to send
-         * @param reason The textual reason for badness
-         */
-        public void badMessage(int status, String reason);
-
-        /* ------------------------------------------------------------ */
-        /** @return the size in bytes of the per parser header cache
-         */
-        public int getHeaderCacheSize();
-    }
-
-    public interface RequestHandler<T> extends HttpHandler<T>
-    {
-        /**
-         * This is the method called by parser when the HTTP request line is parsed
-         * @param methodString The method as a string
-         * @param uri The raw bytes of the URI.  These are copied into a ByteBuffer that will not be changed until this parser is reset and reused.
-         * @param majorversion major version
-         * @param minorversion minor version
-         * @return true if handling parsing should return.
-         */
-        public abstract boolean startRequest(String methodString, String uri, String scheme, int majorversion, int minorversion);
-
-        /**
-         * This is the method called by the parser after it has parsed the host header (and checked it's format). This is
-         * called after the {@link HttpHandler#parsedHeader(String, String)} methods and before
-         * HttpHandler#headerComplete();
-         */
-        public abstract boolean parsedHeader(String name, String value);
-    }
-
 }

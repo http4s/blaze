@@ -1,7 +1,7 @@
 package http_parser
 
 import org.scalatest.{Matchers, WordSpec}
-import http_parser.ParserRoot.{State, RequestHandler}
+import http_parser.ParserRoot.State
 import java.nio.ByteBuffer
 import http_parser.HttpTokens.EndOfContent
 import http_parser.BaseExceptions.NeedsInput
@@ -12,43 +12,46 @@ import http_parser.BaseExceptions.NeedsInput
  */
 class JavaParserSpec extends WordSpec with Matchers {
 
-  val headers = collection.mutable.ListBuffer.empty[(String, String)]
+  implicit def strToBuffer(str: String) = ByteBuffer.wrap(str.getBytes())
 
-  val handler = new RequestHandler[ByteBuffer] {
+  class Parser(maxReq: Int = 1034, maxHeader: Int = 1024) extends ParserRoot(maxReq, maxHeader, 1) {
+
+    val sb = new StringBuilder
+
+    def parseLine(s: ByteBuffer) = parseRequestLine(s)
+
+    def state(state: State): Unit = super.setState(state)
+
+    def parseheaders(s: ByteBuffer): Boolean = parseHeaders(s)
+
+    def parsecontent(s: ByteBuffer): Boolean = parseContent(s)
+
     def badMessage(status: Int, reason: String) {
-      sys.error(s"Received bad message: $status, $reason")
+      sys.error(s"Bad message: $status, $reason")
     }
 
-    def earlyEOF() {
-      sys.error("Early EOF")
-    }
-
-    def content(item: ByteBuffer): Boolean = ???
-
-    def headerComplete(): Boolean = true
-
-    def messageComplete(): Boolean = ???
-
-    def parsedHeader(name: String, value: String): Boolean = {
-      println(s"Parsed header: '$name', '$value'")
-      headers += ((name, value))
-      true
-    }
-
-    def getHeaderCacheSize: Int = ???
+    def earlyEOF() {}
 
     def startRequest(methodString: String, uri: String, scheme: String, majorversion: Int, minorversion: Int): Boolean = {
       println(s"$methodString, $uri, $scheme/$majorversion.$minorversion")
       true
     }
-  }
 
-  class Parser(maxReq: Int = 1034, maxHeader: Int = 1024) extends ParserRoot(handler, maxReq, maxHeader, 1) {
-    def parseLine(s: String) = parseRequestLine(ByteBuffer.wrap(s.getBytes))
+    def submitContent(buffer: ByteBuffer): Boolean = {
+      while (buffer.hasRemaining) sb.append(buffer.get().toChar)
+      true
+    }
 
-    def state(state: State): Unit = super.setState(state)
+    def headersComplete(): Boolean = true
 
-    def parseHeaders(s: String): Boolean = parseHeaders(ByteBuffer.wrap(s.getBytes))
+    def requestComplete() {
+      println("Request complete.")
+    }
+
+    def headerComplete(name: String, value: String) = {
+      println(s"Found header: '$name': '$value'")
+      true
+    }
   }
 
 
@@ -65,9 +68,9 @@ class JavaParserSpec extends WordSpec with Matchers {
 
   val body    = "hello world"
 
-  val lengthh = s"Content-Length: ${body.length}"
+  val lengthh = s"Content-Length: ${body.length}\r\n"
 
-  val mock = request + headers
+  val mock = request + host + lengthh + header + body
 
   val twoline = request + host
 
@@ -108,21 +111,69 @@ class JavaParserSpec extends WordSpec with Matchers {
 
     "Parse headers" in {
       val p = new Parser()
-      p.state(State.HEADER_IN_NAME)
-      p.parseHeaders(header) should equal (true)
+      p.state(State.HEADER)
+      p.parseheaders(header) should equal (true)
       p.getContentType should equal (EndOfContent.UNKNOWN_CONTENT)
     }
 
     "need input on partial headers" in {
       val p = new Parser()
-      p.state(State.HEADER_IN_NAME)
+      p.state(State.HEADER)
       a [NeedsInput] should be thrownBy p.parseHeaders(header.slice(0, 20))
-      p.parseHeaders(header.substring(20)) should equal (true)
+      p.parseheaders(header.substring(20)) should equal (true)
 
     }
 
-    "Give the body" in {
+    "Give parse a full request" in {
+      val p = new Parser()
+      val b = ByteBuffer.wrap(mock.getBytes())
 
+      p.parseLine(b) should equal(true)
+      p.getState should equal (State.HEADER)
+      
+      p.parseheaders(b) should equal(true)
+      p.getState should equal (State.CONTENT)
+
+      p.sb.result() should equal ("")
+
+      p.parsecontent(b) should equal(true)
+      p.getState should equal (State.END)
+      p.sb.result() should equal(body)
+
+      p.reset()
+      p.getState should equal(State.START)
+    }
+
+    "Give parse a full request with partial input" in {
+      val p = new Parser()
+      val b = ByteBuffer.wrap(mock.getBytes())
+
+      p.parseLine(b) should equal(true)
+      p.getState should equal (State.HEADER)
+
+      p.parseheaders(b) should equal(true)
+      p.getState should equal (State.CONTENT)
+
+      p.sb.result() should equal ("")
+
+      val l = b.limit()
+      b.limit(l - 5)
+
+      p.parsecontent(b) should equal(true)
+      p.getState should equal (State.CONTENT)
+
+      println(p.sb.result())
+
+      b.limit(l)
+      p.parsecontent(b) should equal (true)
+      //p.getState should equal (State.END)
+
+      println(p.sb.result())
+
+      p.sb.result() should equal(body)
+
+      p.reset()
+      p.getState should equal(State.START)
     }
   }
 
