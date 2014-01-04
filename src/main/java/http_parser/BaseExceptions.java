@@ -6,11 +6,9 @@ package http_parser;
  */
 public class BaseExceptions {
 
-    public final static NeedsInput needsInput = new NeedsInput();
+    static abstract class ParserException extends Exception {
 
-    static abstract class BaseParseExcept extends Exception {
-
-        public BaseParseExcept(String msg) {
+        public ParserException(String msg) {
             super(msg);
         }
 
@@ -25,13 +23,7 @@ public class BaseExceptions {
         }
     }
 
-    public static final class Complete extends BaseParseExcept {
-        public Complete() {
-            super("Parsing Complete");
-        }
-    }
-
-    public static final class BadRequest extends BaseParseExcept {
+    public static final class BadRequest extends ParserException {
         private final int code;
 
         public BadRequest(int code, String msg) {
@@ -42,13 +34,13 @@ public class BaseExceptions {
         public int getCode() { return code; }
     }
 
-    public static final class ParsingError extends BaseParseExcept {
+    public static final class ParsingError extends ParserException {
         public ParsingError(String error) {
             super(error);
         }
     }
 
-    public static final class ExternalExeption extends BaseParseExcept {
+    public static final class ExternalExeption extends ParserException {
 
         private final Exception cause;
 
@@ -60,12 +52,6 @@ public class BaseExceptions {
         @Override
         public synchronized Throwable getCause() {
             return cause;    //To change body of overridden methods use File | Settings | File Templates.
-        }
-    }
-
-    public static final class NeedsInput extends BaseParseExcept {
-        public NeedsInput() {
-            super("Input needed");
         }
     }
 }
