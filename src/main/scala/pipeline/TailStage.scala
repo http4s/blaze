@@ -8,17 +8,11 @@ import pipeline.Command.Command
  * @author Bryce Anderson
  *         Created on 1/4/14
  */
-abstract class CapStage[T:ClassTag](name: String,
-              private[pipeline] var _prev: Stage[_, T])
-              extends Stage[T, Nothing](name)(implicitly[ClassTag[T]], null) {
+abstract class TailStage[T:ClassTag](val name: String,
+                                    private[pipeline] var prev: Stage[_, T])
+                        extends Stage[T, Nothing] {
 
-  def prev(s: Stage[_, T]): Unit = _prev = s
-  def prev: Stage[_, T] = _prev
-
-  def next: Stage[Nothing, _] = nextError
-  def next(s: Stage[Nothing, _]): Unit = nextError
-
-  private def nextError: Nothing = {
+  def next: Stage[Nothing, _] = {
     val msg = s"CapStage ${getClass.getName} doesn't have a next stage"
     logger.error(msg)
     sys.error(msg)

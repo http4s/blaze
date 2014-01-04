@@ -10,17 +10,15 @@ import com.typesafe.scalalogging.slf4j.Logging
  *         Created on 1/4/14
  */
 
-abstract class Stage[I: ClassTag, O: ClassTag](val name: String) extends Logging {
+trait Stage[I, O] extends Logging {
 
-  protected val iclass = implicitly[ClassTag[I]].runtimeClass
-  protected val oclass = implicitly[ClassTag[O]].runtimeClass
+  def name: String
 
-  private[pipeline] def next: Stage[O, _]
-  private[pipeline] def next(s: Stage[O, _])
+  private[pipeline] var prev: Stage[_, I]
+  private[pipeline] var next: Stage[O, _]
 
-  private[pipeline] def prev: Stage[_, I]
-  private[pipeline] def prev(s: Stage[_, I])
-
+  protected def iclass: Class[I]
+  protected def oclass: Class[O]
 
   def handleInbound(data: I): Future[Unit]
   def handleOutbound(data: O): Future[Unit]
@@ -40,11 +38,10 @@ abstract class Stage[I: ClassTag, O: ClassTag](val name: String) extends Logging
 
   protected final def defaultActions(cmd: Command): Unit = cmd match {
     case Startup  => startup()
-    case Shutdown => cleanup()
+    case Removed  => startup()
     case _        =>   // NOOP
   }
 
-  def replaceNext(stage: Stage[O, _]): stage.type
   def replaceInline(stage: Stage[I, O]): stage.type
   
   protected def untypedOutbound(data: AnyRef): Future[Unit] = {
@@ -70,9 +67,9 @@ abstract class Stage[I: ClassTag, O: ClassTag](val name: String) extends Logging
   }
 
   def findStageHandling[A:ClassTag]: Option[Stage[A, _]] = {
-    val clazz = implicitly[ClassTag[I]].runtimeClass
-
-    if (clazz.isAssignableFrom(iclass)) Some(this.asInstanceOf[Stage[A, _]])
+    if (iclass.isAssignableFrom(iclass)) Some(this.asInstanceOf[Stage[A, _]])
     else next.findStageHandling[A]
   }
+
+  def getLastStage: Stage[_, _] = if (next == null) this else next
 }

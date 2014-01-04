@@ -7,7 +7,9 @@ package pipeline
 object Command {
   sealed trait Command
 
-  object Startup extends Command
-  object Shutdown extends Command
+  case object Startup extends Command
+  case object Shutdown extends Command
+  case object Removed extends Command
+
   case class Error(e: Throwable) extends Command
 }
