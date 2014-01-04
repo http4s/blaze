@@ -307,7 +307,7 @@ public abstract class RequestParser {
     }
 
     // Removes CRs but returns LFs
-    private byte next(ByteBuffer buffer) throws BaseParseExcept {
+    private byte next(ByteBuffer buffer) throws ParsingError, NeedsInput {
         if (!buffer.hasRemaining()) throw BaseExceptions.needsInput;
 
         if (_segmentByteLimit == _segmentBytePosition) {
@@ -345,7 +345,12 @@ public abstract class RequestParser {
 
     /* ------------------------------------------------------------------ */
 
-    private boolean error(BaseParseExcept e) throws BaseParseExcept {
+    private boolean error(ParsingError e) throws ParsingError {
+        shutdown();
+        throw e;
+    }
+
+    private boolean error(BadRequest e) throws BadRequest {
         shutdown();
         throw e;
     }
@@ -588,15 +593,12 @@ public abstract class RequestParser {
 
     }
 
-    protected final boolean parseContent(ByteBuffer in) throws BaseParseExcept {
-
-        System.out.println(_endOfContent);
+    protected final boolean parseContent(ByteBuffer in) throws ParsingError, ExternalExeption {
 
         switch (_endOfContent) {
             case UNKNOWN_CONTENT:
                 // Need Content-Length or Transfer-Encoding to signal a body for GET
                 // rfc2616 Sec 4.4 for more info
-
                 // What about custom verbs which may have a body?
                 if (_methodString != "POST" || _methodString != "PUT") {
                     shutdown();
@@ -613,6 +615,7 @@ public abstract class RequestParser {
 
             case CHUNKED_CONTENT:
                     return chunkedContent(in);
+
 
             case SELF_DEFINING_CONTENT:
                 // We have unknown length, so pass it to the handler which will tell us when to stop
@@ -649,7 +652,7 @@ public abstract class RequestParser {
         }
     }
 
-    private boolean nonChunkedContent(ByteBuffer in) throws BaseParseExcept {
+    private boolean nonChunkedContent(ByteBuffer in) {
 
         final long remaining = _contentLength - _contentPosition;
 
@@ -676,97 +679,111 @@ public abstract class RequestParser {
         }
     }
 
-    private boolean chunkedContent(ByteBuffer in) throws BaseParseExcept {
+    private boolean chunkedContent(ByteBuffer in) throws ParsingError, ExternalExeption {
 
-        System.out.println("Processing chunked content");
+        try {
+            while(true) {
+                byte ch;
+                sw: switch (_chunkState) {
+                    case START:
+                        _chunkState = ChunkState.CHUNK_SIZE;
+                        // Don't want the chunk size and extension field to be too long.
+                        setLimit(256);
 
-        while(true) {
-            byte ch;
-            sw: switch (_chunkState) {
-                case START:
-                    _chunkState = ChunkState.CHUNK_SIZE;
-                    // Don't want the chunk size and extension field to be too long.
-                    setLimit(256);
+                    case CHUNK_SIZE:
+                        assert _chunkPosition == 0;
 
-                case CHUNK_SIZE:
-                   assert _chunkPosition == 0;
+                        while (true) {
+                            ch = next(in);
 
-                    while (true) {
-                        ch = next(in);
+                            if (HttpTokens.isWhiteSpace(ch) || ch == HttpTokens.SEMI_COLON) {
+                                _chunkState = ChunkState.CHUNK_PARAMS;
+                                break;  // Break out of the while loop, and fall through to params
+                            }
+                            else if (ch == HttpTokens.LF) {
+                                _chunkState = _chunkLength == 0 ? ChunkState.CHUNK_TRAILERS : ChunkState.CHUNK;
+                                break sw;
+                            }
+                            else {
+                                try {
+                                    _chunkLength = 16 * _chunkLength + HttpTokens.hexCharToInt(ch);
 
-                        if (HttpTokens.isWhiteSpace(ch) || ch == HttpTokens.SEMI_COLON) {
-                            _chunkState = ChunkState.CHUNK_PARAMS;
-                            break;  // Break out of the while loop, and fall through to params
-                        }
-                        else if (ch == HttpTokens.LF) {
-                            _chunkState = _chunkLength == 0 ? ChunkState.CHUNK_TRAILERS : ChunkState.CHUNK;
-                            break sw;
-                        }
-                        else {
-                            try {
-                                _chunkLength = 16 * _chunkLength + HttpTokens.hexCharToInt(ch);
-
-                                if (_chunkLength > maxChunkSize) {
-                                    return error(new BadRequest(400, "Chunk length too large: " + _chunkLength));
+                                    if (_chunkLength > maxChunkSize) {
+                                        return error(new ParsingError("Chunk length too large: " + _chunkLength));
+                                    }
+                                }
+                                catch (ParsingError e) {
+                                    return error(new ParsingError("Chunk length contains invalid char: " + (char)ch));
                                 }
                             }
-                            catch (ParsingError e) {
-                                return error(new BadRequest(400, "Chunk length contains invalid char: " + (char)ch));
+                        }
+
+                    case CHUNK_PARAMS:
+                        // Don't store them, for now.
+                        for(ch = next(in); ch != HttpTokens.LF; ch = next(in));
+
+                        // Check to see if this was the last chunk
+                        _chunkState = _chunkLength == 0 ? ChunkState.CHUNK_TRAILERS : ChunkState.CHUNK;
+                        break;
+
+                    case CHUNK:
+                        final int remaining_chunk_size =  _chunkLength - _chunkPosition;
+                        final int chunk_size = in.remaining();
+
+                        if (remaining_chunk_size <= chunk_size) {
+                            if (submitPartial(in, remaining_chunk_size)) {
+                                _chunkPosition = _chunkLength = 0;
+                                _chunkState = ChunkState.CHUNK_LF;
+                                // fall through
+                            }
+                            else {
+                                return false;
                             }
                         }
-                    }
-
-                case CHUNK_PARAMS:
-                    // Don't store them, for now.
-                    for(ch = next(in); ch != HttpTokens.LF; ch = next(in));
-
-                    // Check to see if this was the last chunk
-                    _chunkState = _chunkLength == 0 ? ChunkState.CHUNK_TRAILERS : ChunkState.CHUNK;
-                    break;
-
-                case CHUNK:
-                    final int remaining_chunk_size =  _chunkLength - _chunkPosition;
-                    final int chunk_size = in.remaining();
-
-                    if (remaining_chunk_size <= chunk_size) {
-                        if (submitPartial(in, remaining_chunk_size)) {
-                            _chunkPosition = _chunkLength = 0;
-                            _chunkState = ChunkState.CHUNK_LF;
-                            // fall through
-                        }
                         else {
-                            return false;
+                            if (submitContent(in)) {
+                                _chunkPosition += chunk_size;
+                                return true;
+                            }
+                            else {
+                                return false;
+                            }
                         }
-                    }
-                    else {
-                        if (submitContent(in)) {
-                            _chunkPosition += chunk_size;
+
+                    case CHUNK_LF:
+                        ch = next(in);
+
+                        if (ch != HttpTokens.LF) {
+                            return error(new ParsingError("Bad chunked encoding char: '" + (char)ch + "'"));
+                        }
+
+                        _chunkState = ChunkState.START;
+                        break;
+
+
+                    case CHUNK_TRAILERS:    // more headers
+
+                        assert _hstate == HeaderState.END;
+                        _hstate = HeaderState.START;
+
+                        // will determine if we are in Content or trailer mode, and set the end state
+                        try {
+                            return parseHeaders(in);
+                        } catch (NeedsInput e) {
                             return true;
+                        } catch (BadRequest e) {
+                            throw new ParsingError("Error parsing trailers: " + e.msg());
+                        } catch (ExternalExeption e) {
+                            throw e;
+                        } catch (BaseParseExcept e) {
+                            throw new ParsingError("Received unknown error: " + e.msg());
                         }
-                        else {
-                            return false;
-                        }
-                    }
-
-                case CHUNK_LF:
-                    ch = next(in);
-
-                    if (ch != HttpTokens.LF) {
-                        return error(new BadRequest(400, "Bad chunked encoding"));
-                    }
-
-                    _chunkState = ChunkState.START;
-                    break;
-
-
-                case CHUNK_TRAILERS:    // more headers
-
-                    assert _hstate == HeaderState.END;
-                    _hstate = HeaderState.START;
-
-                    // will determine if we are in Content or trailer mode, and set the end state
-                    return parseHeaders(in);
+                }
             }
+        }
+        // Reinterpret NeedsInput as just returning true
+        catch (NeedsInput e) {
+            return true;
         }
     }
 }

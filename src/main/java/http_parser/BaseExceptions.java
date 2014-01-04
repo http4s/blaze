@@ -8,7 +8,7 @@ public class BaseExceptions {
 
     public final static NeedsInput needsInput = new NeedsInput();
 
-    public static abstract class BaseParseExcept extends Exception {
+    static abstract class BaseParseExcept extends Exception {
 
         public BaseParseExcept(String msg) {
             super(msg);

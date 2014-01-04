@@ -14,6 +14,42 @@ class JavaParserSpec extends WordSpec with Matchers {
 
   implicit def strToBuffer(str: String) = ByteBuffer.wrap(str.getBytes())
 
+  class BenchParser(maxReq: Int = 1034, maxHeader: Int = 1024) extends RequestParser(maxReq, maxHeader, 1) {
+
+    val sb = new StringBuilder
+
+    def parseLine(s: ByteBuffer) = parseRequestLine(s)
+
+    def state(state: State): Unit = super.setState(state)
+
+    def parseheaders(s: ByteBuffer): Boolean = parseHeaders(s)
+
+    def parsecontent(s: ByteBuffer): Boolean = parseContent(s)
+
+    def badMessage(status: Int, reason: String) {
+      sys.error(s"Bad message: $status, $reason")
+    }
+
+    def earlyEOF() {}
+
+    def startRequest(methodString: String,
+                     uri: String,
+                     scheme: String,
+                     majorversion: Int,
+                     minorversion: Int): Boolean = true
+
+    def submitContent(buffer: ByteBuffer): Boolean = {
+      while (buffer.hasRemaining) sb.append(buffer.get().toChar)
+      true
+    }
+
+    def headersComplete() {}
+
+    def requestComplete() { }
+
+    def headerComplete(name: String, value: String) { }
+  }
+
   class Parser(maxReq: Int = 1034, maxHeader: Int = 1024) extends RequestParser(maxReq, maxHeader, 1) {
 
     val sb = new StringBuilder
@@ -38,7 +74,7 @@ class JavaParserSpec extends WordSpec with Matchers {
     }
 
     def submitContent(buffer: ByteBuffer): Boolean = {
-      println("Appending buffer: " + buffer)
+      //println("Appending buffer: " + buffer)
       while (buffer.hasRemaining) sb.append(buffer.get().toChar)
       true
     }
@@ -190,6 +226,154 @@ class JavaParserSpec extends WordSpec with Matchers {
 
       p.reset()
       p.getState should equal(State.START)
+    }
+
+    "Give parse a chunked request in fragments" in {
+      val p = new Parser()
+      val b = ByteBuffer.wrap(mockChunked.getBytes())
+
+      val blim = b.limit()
+      b.limit(blim - 20);
+
+      println(mockChunked)
+
+      p.parseLine(b) should equal(true)
+      p.getState should equal (State.HEADER)
+
+      p.parseheaders(b) should equal(true)
+      p.getState should equal (State.CONTENT)
+
+      p.sb.result() should equal ("")
+
+      p.parsecontent(b) should equal(true)
+      p.getState should equal (State.CONTENT)
+
+      b.limit(blim - 10)
+      p.parsecontent(b) should equal(true)
+      p.getState should equal (State.CONTENT)
+
+      b.limit(blim)
+      p.parsecontent(b) should equal(true)
+      p.getState should equal (State.END)
+      p.sb.result() should equal(body + body + " again!")
+
+      p.reset()
+      p.getState should equal(State.START)
+    }
+
+    "Benchmark" in {
+
+      val p = new BenchParser()
+      val b = ByteBuffer.wrap(mockChunked.getBytes())
+      val result = body + body + " again!"
+
+      val blim = b.limit()
+
+      def go(remaining: Int): Unit = if (remaining > 0) {
+        b.position(0)
+
+        if (remaining % 5000 == 0) println(s"Iteration $remaining")
+
+        b.limit(blim - 20)
+
+        p.parseLine(b) should equal(true)
+        p.getState should equal (State.HEADER)
+
+        p.parseheaders(b) should equal(true)
+        p.getState should equal (State.CONTENT)
+
+        p.sb.result() should equal ("")
+
+        p.parsecontent(b) should equal(true)
+        p.getState should equal (State.CONTENT)
+
+        b.limit(blim - 10)
+        p.parsecontent(b) should equal(true)
+        p.getState should equal (State.CONTENT)
+
+        b.limit(blim)
+        p.parsecontent(b) should equal(true)
+        p.getState should equal (State.END)
+        p.sb.result() should equal(result)
+
+        p.reset()
+        p.sb.clear()
+
+        p.getState should equal(State.START)
+
+        go(remaining - 1)
+      }
+
+      val reps = 1000000
+      go(reps)
+
+      val start = System.currentTimeMillis()
+      go (reps)
+      val end = System.currentTimeMillis()
+
+      println(s"Parsed ${reps*1000/(end - start)} req/sec")
+
+      println(b.position(0))
+    }
+
+    "Bare Benchmark" in {
+
+      val p = new BenchParser() {
+        override def submitContent(buffer: ByteBuffer): Boolean = {
+          buffer.position(buffer.limit())
+          true
+        }
+      }
+      val b = ByteBuffer.wrap(mockChunked.getBytes())
+      val result = body + body + " again!"
+
+      val blim = b.limit()
+
+      def go(remaining: Int): Unit = if (remaining > 0) {
+        b.position(0)
+
+        if (remaining % 5000 == 0) println(s"Iteration $remaining")
+
+//        b.limit(blim - 20)
+
+        p.parseLine(b) should equal(true)
+//        p.getState should equal (State.HEADER)
+
+        p.parseheaders(b) should equal(true)
+//        p.getState should equal (State.CONTENT)
+
+//        p.sb.result() should equal ("")
+
+        p.parsecontent(b) should equal(true)
+//        p.getState should equal (State.CONTENT)
+
+//        b.limit(blim - 10)
+//        p.parsecontent(b) should equal(true)
+//        p.getState should equal (State.CONTENT)
+//
+//        b.limit(blim)
+//        p.parsecontent(b) should equal(true)
+        p.getState should equal (State.END)
+//        p.sb.result() should equal(result)
+
+        p.reset()
+        p.sb.clear()
+
+        p.getState should equal(State.START)
+
+        go(remaining - 1)
+      }
+
+      val reps = 1000000
+      go(reps)
+
+      val start = System.currentTimeMillis()
+      go (reps)
+      val end = System.currentTimeMillis()
+
+      println(s"Parsed ${reps*1000/(end - start)} req/sec")
+
+      println(b.position(0))
     }
   }
 
