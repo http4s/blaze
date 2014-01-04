@@ -48,6 +48,21 @@ public class BaseExceptions {
         }
     }
 
+    public static final class ExternalExeption extends BaseParseExcept {
+
+        private final Exception cause;
+
+        public ExternalExeption(Exception cause, String stage) {
+            super("Caught external exception in stage " + stage + ": " + cause);
+            this.cause = cause;
+        }
+
+        @Override
+        public synchronized Throwable getCause() {
+            return cause;    //To change body of overridden methods use File | Settings | File Templates.
+        }
+    }
+
     public static final class NeedsInput extends BaseParseExcept {
         public NeedsInput() {
             super("Input needed");

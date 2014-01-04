@@ -38,20 +38,27 @@ class JavaParserSpec extends WordSpec with Matchers {
     }
 
     def submitContent(buffer: ByteBuffer): Boolean = {
+      println("Appending buffer: " + buffer)
       while (buffer.hasRemaining) sb.append(buffer.get().toChar)
       true
     }
 
-    def headersComplete(): Boolean = true
+    def headersComplete() {}
 
     def requestComplete() {
       println("Request complete.")
     }
 
-    def headerComplete(name: String, value: String) = {
-      println(s"Found header: '$name': '$value'")
-      true
+    def headerComplete(name: String, value: String) {
+      //println(s"Found header: '$name': '$value'")
     }
+  }
+
+  def toChunk(str: String): String = {
+    val len = Integer.toHexString(str.length) + "\r\n"
+    len + 
+      str + 
+      "\r\n"
   }
 
 
@@ -69,21 +76,14 @@ class JavaParserSpec extends WordSpec with Matchers {
   val body    = "hello world"
 
   val lengthh = s"Content-Length: ${body.length}\r\n"
+  
+  val chunked = "Transfer-Encoding: chunked\r\n"
 
-  val mock = request + host + lengthh + header + body
+  val mockFiniteLength = request + host + lengthh + header + body
+
+  val mockChunked = request + host + chunked + header + toChunk(body) + toChunk(body + " again!") + "0 \r\n" + "\r\n"
 
   val twoline = request + host
-
-  case class TestTools(val input: String) extends ParserTools(1000) with StringParserTools {
-    def readline: String = {
-      loadLine(true)
-      val s = result
-      clearBuffer()
-      s
-    }
-
-    def readUntil0(char: Char, keep: Boolean) = readUntil(char, keep)
-  }
 
   "RequestParser" should {
     "Parse the request line for HTTP" in {
@@ -111,14 +111,12 @@ class JavaParserSpec extends WordSpec with Matchers {
 
     "Parse headers" in {
       val p = new Parser()
-      p.state(State.HEADER)
       p.parseheaders(header) should equal (true)
       p.getContentType should equal (EndOfContent.UNKNOWN_CONTENT)
     }
 
     "need input on partial headers" in {
       val p = new Parser()
-      p.state(State.HEADER)
       a [NeedsInput] should be thrownBy p.parseHeaders(header.slice(0, 20))
       p.parseheaders(header.substring(20)) should equal (true)
 
@@ -126,7 +124,7 @@ class JavaParserSpec extends WordSpec with Matchers {
 
     "Give parse a full request" in {
       val p = new Parser()
-      val b = ByteBuffer.wrap(mock.getBytes())
+      val b = ByteBuffer.wrap(mockFiniteLength.getBytes())
 
       p.parseLine(b) should equal(true)
       p.getState should equal (State.HEADER)
@@ -146,7 +144,7 @@ class JavaParserSpec extends WordSpec with Matchers {
 
     "Give parse a full request with partial input" in {
       val p = new Parser()
-      val b = ByteBuffer.wrap(mock.getBytes())
+      val b = ByteBuffer.wrap(mockFiniteLength.getBytes())
 
       p.parseLine(b) should equal(true)
       p.getState should equal (State.HEADER)
@@ -167,6 +165,28 @@ class JavaParserSpec extends WordSpec with Matchers {
       //p.getState should equal (State.END)
 
       p.sb.result() should equal(body)
+
+      p.reset()
+      p.getState should equal(State.START)
+    }
+
+    "Give parse a chunked request" in {
+      val p = new Parser()
+      val b = ByteBuffer.wrap(mockChunked.getBytes())
+
+      println(mockChunked)
+
+      p.parseLine(b) should equal(true)
+      p.getState should equal (State.HEADER)
+
+      p.parseheaders(b) should equal(true)
+      p.getState should equal (State.CONTENT)
+
+      p.sb.result() should equal ("")
+
+      p.parsecontent(b) should equal(true)
+      p.getState should equal (State.END)
+      p.sb.result() should equal(body + body + " again!")
 
       p.reset()
       p.getState should equal(State.START)

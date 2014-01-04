@@ -24,18 +24,20 @@ public final class HttpTokens
     final static byte NINE = (byte)'9';
     final static byte A = (byte)'A';
     final static byte F = (byte)'F';
+    final static byte Z = (byte)'Z';
     final static byte a = (byte)'a';
     final static byte f = (byte)'f';
+    final static byte z = (byte)'z';
 
-    public static int byteToHex(byte ch) throws ParsingError {
-        if (ZERO <= ch || ch <= NINE ) {
+    public static int hexCharToInt(final byte ch) throws ParsingError {
+        if (ZERO <= ch && ch <= NINE) {
             return ch - ZERO;
         }
-        else if (A <= ch || ch <= F) {
-            return ch - A + 10;
-        }
-        else if (a <= ch || ch <= a) {
+        else if (a <= ch && ch <= f) {
             return ch - a + 10;
+        }
+        else if (A <= ch && ch <= F) {
+            return ch - A + 10;
         }
         else {
             throw new ParsingError("Bad hex char: " + (char)ch);
@@ -44,6 +46,12 @@ public final class HttpTokens
 
     public static boolean isDigit(byte ch) {
         return HttpTokens.NINE >= ch && ch >= HttpTokens.ZERO;
+    }
+
+    public static boolean isHexChar(byte ch) {
+        return ZERO <= ch && ch <= NINE ||
+                  a <= ch && ch <= f    ||
+                  A <= ch && ch <= F;
     }
 
     public static boolean isWhiteSpace(byte ch) {
