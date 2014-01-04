@@ -132,7 +132,7 @@ class JavaParserSpec extends WordSpec with Matchers {
 
     "Parse the request line for HTTP in segments" in {
       val p = new Parser()
-      a [NeedsInput] should be thrownBy p.parseLine("POST /enlighten/cala")
+      p.parseLine("POST /enlighten/cala") should equal(true)
       p.parseLine("is.asmx HTTP/1.1\r\n") should equal(true)
 
       //      p.s should equal ("Request('POST', '/enlighten/calais.asmx', 'http', 1.1)")
@@ -153,7 +153,7 @@ class JavaParserSpec extends WordSpec with Matchers {
 
     "need input on partial headers" in {
       val p = new Parser()
-      a [NeedsInput] should be thrownBy p.parseHeaders(header.slice(0, 20))
+      p.parseHeaders(header.slice(0, 20)) should equal (true)
       p.parseheaders(header.substring(20)) should equal (true)
 
     }
