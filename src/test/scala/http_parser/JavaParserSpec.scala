@@ -261,60 +261,60 @@ class JavaParserSpec extends WordSpec with Matchers {
       p.getState should equal(State.START)
     }
 
-    "Benchmark" in {
-
-      val p = new BenchParser()
-      val b = ByteBuffer.wrap(mockChunked.getBytes())
-      val result = body + body + " again!"
-
-      val blim = b.limit()
-
-      def go(remaining: Int): Unit = if (remaining > 0) {
-        b.position(0)
-
-        if (remaining % 5000 == 0) println(s"Iteration $remaining")
-
-        b.limit(blim - 20)
-
-        p.parseLine(b) should equal(true)
-        p.getState should equal (State.HEADER)
-
-        p.parseheaders(b) should equal(true)
-        p.getState should equal (State.CONTENT)
-
-        p.sb.result() should equal ("")
-
-        p.parsecontent(b) should equal(true)
-        p.getState should equal (State.CONTENT)
-
-        b.limit(blim - 10)
-        p.parsecontent(b) should equal(true)
-        p.getState should equal (State.CONTENT)
-
-        b.limit(blim)
-        p.parsecontent(b) should equal(true)
-        p.getState should equal (State.END)
-        p.sb.result() should equal(result)
-
-        p.reset()
-        p.sb.clear()
-
-        p.getState should equal(State.START)
-
-        go(remaining - 1)
-      }
-
-      val reps = 1000000
-      go(reps)
-
-      val start = System.currentTimeMillis()
-      go (reps)
-      val end = System.currentTimeMillis()
-
-      println(s"Parsed ${reps*1000/(end - start)} req/sec")
-
-      println(b.position(0))
-    }
+//    "Benchmark" in {
+//
+//      val p = new BenchParser()
+//      val b = ByteBuffer.wrap(mockChunked.getBytes())
+//      val result = body + body + " again!"
+//
+//      val blim = b.limit()
+//
+//      def go(remaining: Int): Unit = if (remaining > 0) {
+//        b.position(0)
+//
+//        if (remaining % 5000 == 0) println(s"Iteration $remaining")
+//
+//        b.limit(blim - 20)
+//
+//        p.parseLine(b) should equal(true)
+//        p.getState should equal (State.HEADER)
+//
+//        p.parseheaders(b) should equal(true)
+//        p.getState should equal (State.CONTENT)
+//
+//        p.sb.result() should equal ("")
+//
+//        p.parsecontent(b) should equal(true)
+//        p.getState should equal (State.CONTENT)
+//
+//        b.limit(blim - 10)
+//        p.parsecontent(b) should equal(true)
+//        p.getState should equal (State.CONTENT)
+//
+//        b.limit(blim)
+//        p.parsecontent(b) should equal(true)
+//        p.getState should equal (State.END)
+//        p.sb.result() should equal(result)
+//
+//        p.reset()
+//        p.sb.clear()
+//
+//        p.getState should equal(State.START)
+//
+//        go(remaining - 1)
+//      }
+//
+//      val reps = 1000000
+//      go(reps)
+//
+//      val start = System.currentTimeMillis()
+//      go (reps)
+//      val end = System.currentTimeMillis()
+//
+//      println(s"Parsed ${reps*1000/(end - start)} req/sec")
+//
+//      println(b.position(0))
+//    }
 
     "Bare Benchmark" in {
 
@@ -332,7 +332,7 @@ class JavaParserSpec extends WordSpec with Matchers {
       def go(remaining: Int): Unit = if (remaining > 0) {
         b.position(0)
 
-        if (remaining % 5000 == 0) println(s"Iteration $remaining")
+        if (remaining % 500000 == 0) println(s"Iteration $remaining")
 
 //        b.limit(blim - 20)
 
