@@ -27,7 +27,7 @@ sealed trait Stage[I, O] extends Logging {
   def sendOutbound(data: I): Future[Unit] = prev.handleOutbound(data)
 
   def startup() {}
-  def cleanup() {}
+  def shutdown() {}
 
   def inboundCommand(cmd: Command): Unit = {
     defaultActions(cmd)
@@ -40,13 +40,13 @@ sealed trait Stage[I, O] extends Logging {
   }
 
   protected final def defaultActions(cmd: Command): Unit = cmd match {
-    case Startup  => startup()
-    case Removed  => cleanup()
+    case Connected  => startup()
+    case Removed  => shutdown()
     case _        =>   // NOOP
   }
 
   def replaceInline(stage: Stage[I, O]): stage.type = {
-    cleanup()
+    shutdown()
     prev.next = stage
     next.prev = stage
     stage
@@ -59,7 +59,7 @@ sealed trait Stage[I, O] extends Logging {
   }
 
   def removeStage(implicit ev: Stage[I,O]=:=Stage[I, I]): this.type = {
-    cleanup()
+    shutdown()
     val me = ev(this)
     prev.next = me.next
     me.next.prev = me.prev
@@ -136,7 +136,7 @@ trait TailStage[T] extends Stage[T, Any] {
   }
 
   override def replaceInline(stage: Stage[T, Any]): stage.type = {
-    cleanup()
+    shutdown()
     prev.next = stage
     stage
   }

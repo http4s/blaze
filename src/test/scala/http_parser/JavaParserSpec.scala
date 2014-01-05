@@ -334,6 +334,9 @@ class JavaParserSpec extends WordSpec with Matchers {
         }
       }
       val b = ByteBuffer.wrap(mockChunked.getBytes())
+//      val b = ByteBuffer.allocateDirect(mockChunked.length)
+//      b.put(mockChunked.getBytes())
+//      b.flip
 //      val result = body + body + " again!"
 
 //      val blim = b.limit()
