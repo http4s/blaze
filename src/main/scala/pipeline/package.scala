@@ -9,8 +9,8 @@ import scala.concurrent.Future
 
 package object pipeline {
 
-  implicit def nioToScalaFuture(): Future[ByteBuffer] = {
-    ???
-  }
+//  implicit def nioToScalaFuture(): Future[ByteBuffer] = {
+//    ???
+//  }
 
 }

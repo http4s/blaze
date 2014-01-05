@@ -16,57 +16,48 @@ import pipeline.Command.Connected
  */
 class ServerChannelFactory {
 
-  private var pipelineExecutor: ExecutionContext = ExecutionContext.global
   private var pipeFactory: NIOChannel => HeadStage[ByteBuffer] = null
+  private var group: AsynchronousChannelGroup = null
+
+  protected def acceptConnection(channel: NIOChannel): Boolean = true
 
   def pipelineFactory(f: NIOChannel => HeadStage[ByteBuffer]): this.type = {
     pipeFactory = f
     this
   }
-
-  def withPipelineExecutor(ec: ExecutionContext): this.type = {
-    assert(ec != null)
-    pipelineExecutor = ec
-    this
-  }
+  
+  def withGroup(g: AsynchronousChannelGroup): this.type = { group = g; this }
 
   def bind(localAddress: SocketAddress = null): ServerChannel = {
-
     if (pipeFactory == null) sys.error("Pipeline factory required")
-
-    new ServerChannel(NIOServerChannel.open().bind(localAddress), pipeFactory)
+    new ServerChannel(NIOServerChannel.open(group).bind(localAddress))
   }
 
-}
 
-class ServerChannel(channel: NIOServerChannel,
-                    pipeFactory: NIOChannel => HeadStage[ByteBuffer]) {
+  class ServerChannel private[ServerChannelFactory](channel: NIOServerChannel)
+                extends Runnable{
 
-  def close(): Unit = channel.close()
+    def close(): Unit = channel.close()
 
-  protected def acceptConnection(channel: NIOChannel): Boolean = true
+    def runAsync(): Unit = new Thread(this).start()
 
-  @tailrec
-  private def acceptLoop():Unit = {
-    if (channel.isOpen) {
-      var continue = true
-      try {
-        val ch = channel.accept().get() // Will synchronize here
+    @tailrec
+    final def run():Unit = {
+      if (channel.isOpen) {
+        var continue = true
+        try {
+          val ch = channel.accept().get() // Will synchronize here
 
-        if (!acceptConnection(ch)) ch.close()
-        else pipeFactory(ch).inboundCommand(Connected)
+          if (!acceptConnection(ch)) ch.close()
+          else pipeFactory(ch).inboundCommand(Connected)
 
-      } catch {
-        case e: InterruptedException => continue = false
+        } catch {
+          case e: InterruptedException => continue = false
 
+        }
+        if (continue) run()
       }
-      if (continue) acceptLoop()
+      else sys.error("Channel closed")
     }
-    else sys.error("Channel closed")
   }
-}
-
-class ConnectionChannel {
-
-
 }

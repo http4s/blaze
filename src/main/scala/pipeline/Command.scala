@@ -10,8 +10,6 @@ object Command {
   case object Connected extends Command
   case object Shutdown extends Command
   case object Removed extends Command
-  case class ReadRequest(bytes: Int) extends Command
-  object ReadRequest extends ReadRequest(-1)
 
   case class Error(e: Throwable) extends Command
 }

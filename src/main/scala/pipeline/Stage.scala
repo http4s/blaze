@@ -17,14 +17,14 @@ sealed trait Stage[I, O] extends Logging {
   private[pipeline] var prev: Stage[_, I]
   private[pipeline] var next: Stage[O, _]
 
-  protected def iclass: Class[I]
-  protected def oclass: Class[O]
 
-  def handleInbound(data: I): Future[Unit]
-  def handleOutbound(data: O): Future[Unit]
+  def readRequest(): Future[O]
+  final def channelRead(): Future[I] = prev.readRequest()
 
-  def sendInbound(data: O): Future[Unit] = next.handleInbound(data)
-  def sendOutbound(data: I): Future[Unit] = prev.handleOutbound(data)
+  def writeRequest(data: O): Future[Any]
+  final def channelWrite(data: I): Future[Any] = prev.writeRequest(data)
+
+  def replaceInline(stage: Stage[I, O]): stage.type
 
   def startup() {}
   def shutdown() {}
@@ -45,10 +45,10 @@ sealed trait Stage[I, O] extends Logging {
     case _        =>   // NOOP
   }
 
-  def replaceInline(stage: Stage[I, O]): stage.type = {
-    shutdown()
-    prev.next = stage
-    next.prev = stage
+  def replaceNext(stage: Stage[O, _]): stage.type = {
+    next.shutdown()
+    next.prev = null
+    next = stage
     stage
   }
 
@@ -65,18 +65,6 @@ sealed trait Stage[I, O] extends Logging {
     me.next.prev = me.prev
     this
   }
-  
-  protected def untypedOutbound(data: AnyRef): Future[Unit] = {
-    if (oclass.isAssignableFrom(data.getClass))
-      handleOutbound(data.asInstanceOf[O])
-    else prev.untypedInbound(data)
-  }
-
-  protected def untypedInbound(data: AnyRef): Future[Unit] = {
-    if (iclass.isAssignableFrom(data.getClass))
-      handleInbound(data.asInstanceOf[I])
-    else next.untypedInbound(data)
-  }
 
   def findForwardStage(name: String): Option[Stage[_, _]] = {
     if (this.name == name) Some(this)
@@ -86,11 +74,6 @@ sealed trait Stage[I, O] extends Logging {
   def findForwardStage(clazz: Class[_]): Option[Stage[_, _]] = {
     if (clazz.isAssignableFrom(this.getClass)) Some(this)
     else next.findForwardStage(clazz)
-  }
-
-  def findStageHandling[A:ClassTag]: Option[Stage[A, _]] = {
-    if (iclass.isAssignableFrom(iclass)) Some(this.asInstanceOf[Stage[A, _]])
-    else next.findStageHandling[A]
   }
 
   def getLastStage: Stage[_, _] = {
@@ -105,58 +88,20 @@ sealed trait Stage[I, O] extends Logging {
 trait MiddleStage[I, O] extends Stage[I, O] {
   var prev: Stage[_, I] = null
   var next: Stage[O, _] = null
+
+  final override def replaceInline(stage: Stage[I, O]): stage.type = {
+    shutdown()
+    prev.next = stage
+    next.prev = stage
+    stage
+  }
 }
 
 trait TailStage[T] extends Stage[T, Any] {
 
-  protected final def oclass: Class[Any] = ???
-
   private[pipeline] var prev: Stage[_, T] = null
 
-  final private[pipeline] override def next: Stage[Any, _] = {
-    sys.error(s"CapStage ${getClass.getName} doesn't have a next stage")
-  }
-
-  final private[pipeline] override def next_=(stage: Stage[Any, _]) {
-    sys.error(s"CapStage ${getClass.getName} doesn't have a next stage")
-  }
-
-  final override def sendInbound(data: Any): Future[Unit] = {
-    sys.error(s"CapStage ${getClass.getName} doesn't have a next stage")
-  }
-
-  final def replaceNext(stage: Stage[Any, _]): stage.type = {
-    sys.error(s"Stage of type CapStage doesn't have a next stage")
-  }
-
   override def inboundCommand(cmd: Command): Unit = defaultActions(cmd)
-
-  final override def outboundCommand(cmd: Command): Unit = {
-    sys.error("CapStage doesn't receive commands: " + cmd)
-  }
-
-  override def replaceInline(stage: Stage[T, Any]): stage.type = {
-    shutdown()
-    prev.next = stage
-    stage
-  }
-
-  final def handleOutbound(data: Any): Future[Unit] = {
-    sys.error("CapStage has no reason to ever receive an outbound message")
-  }
-
-  final override protected def untypedOutbound(data: AnyRef): Future[Unit] = {
-    sys.error("CapStage shouldn't receive messages: " + data)
-  }
-
-  final override protected def untypedInbound(data: AnyRef): Future[Unit] = {
-    if (iclass.isAssignableFrom(data.getClass))
-      handleInbound(data.asInstanceOf[T])
-    else {
-      logger.warn(s"CapStage ${getClass.getName} is dropping message $data")
-      Future.successful()
-    }
-  }
 
   override def findForwardStage(name: String): Option[Stage[_, _]] = {
     if (name == this.name) Some(this) else None
@@ -166,42 +111,48 @@ trait TailStage[T] extends Stage[T, Any] {
     if (clazz.isAssignableFrom(this.getClass)) Some(this) else None
   }
 
-  override def findStageHandling[A: ClassTag]: Option[Stage[A, _]] = {
-    val clazz = implicitly[ClassTag[A]].runtimeClass
+  final override def replaceInline(stage: Stage[T, Any]): stage.type = {
+    shutdown()
+    prev.next = stage
+    stage
+  }
 
-    if (clazz.isAssignableFrom(iclass)) Some(this.asInstanceOf[Stage[A,_]])
-    else None
+  final override def outboundCommand(cmd: Command): Unit = {
+    sys.error("TailStage doesn't receive commands: " + cmd)
+  }
+
+  final private[pipeline] override def next: Stage[Any, _] = {
+    sys.error(s"TailStage ${getClass.getName} doesn't have a next stage")
+  }
+
+  final private[pipeline] override def next_=(stage: Stage[Any, _]) {
+    sys.error(s"TailStage ${getClass.getName} doesn't have a next stage")
+  }
+
+  final def readRequest(): Future[Any] = {
+    sys.error(s"TailStage ${getClass.getName} doesn't receive read requests")
+  }
+
+  final override def replaceNext(stage: Stage[Any, _]): stage.type = {
+    sys.error(s"Stage of type TailStage doesn't have a next stage")
+  }
+
+  final override def spliceAfter(stage: Stage[Any, Any]): stage.type = {
+    sys.error("TailStage cannot splice after")
+  }
+
+  final override def writeRequest(data: Any): Future[Any] = {
+    sys.error("TailStage has no reason to ever receive an outbound message")
   }
 }
+
 
 trait HeadStage[T] extends Stage[Nothing, T] {
 
   private[pipeline] var next: Stage[T, _] = null
 
-
-  protected final def oclass: Class[T] = {
-    sys.error("HeadStage doesn't have an outbound type")
-  }
-
-  override protected def untypedOutbound(data: AnyRef): Future[Unit] = {
-    if (oclass.isAssignableFrom(data.getClass))
-      handleOutbound(data.asInstanceOf[T])
-    else {
-      logger.warn(s"Data $data reached head of the pipeline unhandled. Dropping.")
-      Future.successful()
-    }
-  }
-
   override def outboundCommand(cmd: Command): Unit = {
     defaultActions(cmd)
-  }
-
-  final protected def iclass: Class[Nothing] = {
-    sys.error("HeadStage doesn't have an inbound class")
-  }
-
-  final def handleInbound(data: Nothing): Future[Unit] = {
-    sys.error("HeadStage doesn't receive data directly")
   }
 
   final override def replaceInline(stage: Stage[Nothing, T]): stage.type = {
@@ -213,10 +164,6 @@ trait HeadStage[T] extends Stage[Nothing, T] {
   }
 
   override private[pipeline] def prev_=(stage: Stage[_, Nothing]) {
-    sys.error("HeadStage doesn't have a previous node")
-  }
-
-  final override def sendOutbound(data: Nothing): Future[Unit] = {
     sys.error("HeadStage doesn't have a previous node")
   }
 }
