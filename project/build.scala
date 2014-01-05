@@ -3,10 +3,11 @@ import Keys._
 
 import sbtassembly.Plugin._
 import AssemblyKeys._
+import spray.revolver.RevolverPlugin._
 
 object ApplicationBuild extends Build {
 
-  lazy val buildSettings = Defaults.defaultSettings ++ Seq(
+  lazy val buildSettings = Defaults.defaultSettings ++ Revolver.settings ++ Seq(
     organization := "brycea",
     version := "0.0.1-SNAPSHOT",
     scalaVersion in ThisBuild := "2.10.3",
@@ -14,14 +15,17 @@ object ApplicationBuild extends Build {
     libraryDependencies += scalatest % "test",
     libraryDependencies += scalameter,
     libraryDependencies += scalaloggingSlf4j,
-    libraryDependencies += logbackClassic
+    libraryDependencies += logbackClassic,
+
+    mainClass in Revolver.reStart := Some("blaze.examples.DumbHttpServer"),
+    fork := true
   )
 
   val main = Project("blaze",
                     new File("."),
                     settings = buildSettings ++ assemblySettings
     ).settings(
-      mainClass in assembly := Some("blaze.examples.EchoServer"),
+      mainClass in assembly := Some("blaze.examples.DumbHttpServer"),
       mergeStrategy in assembly <<= (mergeStrategy in assembly) { (old) =>
         {
           case x if x.endsWith("MANIFEST.MF")     => 

@@ -143,8 +143,7 @@ public abstract class RequestParser {
     }
 
     public final boolean inDefinedContent() {
-        return inContent() &&
-                _endOfContent == EndOfContent.CONTENT_LENGTH;
+        return inContent() && _endOfContent == EndOfContent.CONTENT_LENGTH;
     }
 
     public final boolean inChunked() {
@@ -300,6 +299,8 @@ public abstract class RequestParser {
     public RequestParser(int initialBufferSize) {
         this(2048, 40*1024, initialBufferSize, Integer.MAX_VALUE);
     }
+
+    public RequestParser() { this(4*1024); }
 
     /* ------------------------------------------------------------------ */
 
@@ -521,11 +522,14 @@ public abstract class RequestParser {
                             _hstate = HeaderState.END;
 
                             // Finished with the whole request
-                            if (_chunkState == ChunkState.CHUNK_TRAILERS) {
-                                shutdown();
-                            }
-                            else {    // now doing the body
-                                setState(State.CONTENT);
+                            if (_chunkState == ChunkState.CHUNK_TRAILERS) shutdown();
+                            else {    // now doing the body if we have one
+                                if (_endOfContent == EndOfContent.UNKNOWN_CONTENT &&
+                                    _methodString != "POST" &&
+                                    _methodString != "PUT") setState(State.END);
+
+                                else if (_endOfContent != EndOfContent.NO_CONTENT) setState(State.CONTENT);
+                                else setState(State.END);
                             }
                         }
 

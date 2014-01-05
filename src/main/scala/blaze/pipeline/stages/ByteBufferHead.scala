@@ -63,30 +63,39 @@ class ByteBufferHead(channel: NioChannel,
         p.failure(exc)
       }
 
-      def completed(result: Integer, attachment: Null) {
-        bytes.flip()
-        p.success(bytes)
+      def completed(i: Integer, attachment: Null) {
+        if (i.intValue() >= 0) {
+          bytes.flip()
+          p.trySuccess(bytes)
+        } else {   // must be end of stream
+          p.tryFailure(EOF)
+          closeChannel()
+          sendInboundCommand(Shutdown)
+        }
       }
     })
     
     p.future
   }
 
-  override def shutdown(): Unit = closeRequest()
+  override def shutdown(): Unit = closeChannel()
 
   private def channelUnexpectedlyClosed(e: Throwable) {
-    closeRequest()
+    closeChannel()
+    sendInboundCommand(Error(e))
     sendInboundCommand(Shutdown)
   }
 
-  private def closeRequest() {
+  private def closeChannel() {
+    logger.trace("channelClose")
     try channel.close()
     catch {  case e: IOException => /* Don't care */ }
 
   }
 
   override def outboundCommand(cmd: Command): Unit = cmd match {
-    case Shutdown         => closeRequest()
+    case Shutdown         => closeChannel()
+    case Error(e)         => channelUnexpectedlyClosed(e)
     case cmd              => // NOOP
   }
 }
