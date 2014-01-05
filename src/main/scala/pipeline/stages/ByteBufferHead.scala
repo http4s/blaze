@@ -6,6 +6,7 @@ import java.nio.ByteBuffer
 import scala.concurrent.{Promise, Future}
 import pipeline.Command._
 import java.io.IOException
+import java.util.Date
 
 
 /**
@@ -19,6 +20,13 @@ class ByteBufferHead(channel: NioChannel,
   private val bytes = ByteBuffer.allocate(bufferSize)
 
   def writeRequest(data: ByteBuffer): Future[Unit] = {
+
+    if (data.remaining() < 1 && data.position > 0) {
+      logger.warn("Received write request with non-zero position but ZERO available" +
+                 s"bytes at ${new Date} on channel $channel: $data, head: $next")
+      return Future.successful()
+    }
+
     val f = Promise[Unit]
     channel.write(data, null: Null, new CompletionHandler[Integer, Null] {
       def failed(exc: Throwable, attachment: Null) {

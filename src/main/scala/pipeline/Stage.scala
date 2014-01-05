@@ -74,14 +74,14 @@ sealed trait Stage[I, O] extends Logging {
     this
   }
 
-  def findForwardStage(name: String): Option[Stage[_, _]] = {
+  def findStageByName(name: String): Option[Stage[_, _]] = {
     if (this.name == name) Some(this)
-    else next.findForwardStage(name)
+    else next.findStageByName(name)
   }
 
-  def findForwardStage(clazz: Class[_]): Option[Stage[_, _]] = {
-    if (clazz.isAssignableFrom(this.getClass)) Some(this)
-    else next.findForwardStage(clazz)
+  def findStageByClass[C <: Stage[_, _]](clazz: Class[C]): Option[C] = {
+    if (clazz.isAssignableFrom(this.getClass)) Some(this.asInstanceOf[C])
+    else next.findStageByClass(clazz)
   }
 
   def getLastStage: Stage[_, _] = {
@@ -111,12 +111,13 @@ trait TailStage[T] extends Stage[T, Any] {
 
   override def sendInboundCommand(cmd: Command): Unit = ()
 
-  override def findForwardStage(name: String): Option[Stage[_, _]] = {
+  override def findStageByName(name: String): Option[Stage[_, _]] = {
     if (name == this.name) Some(this) else None
   }
 
-  override def findForwardStage(clazz: Class[_]): Option[Stage[_, _]] = {
-    if (clazz.isAssignableFrom(this.getClass)) Some(this) else None
+  override def findStageByClass[C <: Stage[_, _]](clazz: Class[C]): Option[C] = {
+    if (clazz.isAssignableFrom(this.getClass)) Some(this.asInstanceOf[C])
+    else None
   }
 
   final override def replaceInline(stage: Stage[T, Any]): stage.type = {

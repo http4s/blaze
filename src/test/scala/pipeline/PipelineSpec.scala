@@ -63,6 +63,31 @@ class PipelineSpec extends WordSpec with Matchers {
       head.lastWrittenInt should equal(32)
 
     }
+
+    "Be able to find and remove stages with identical arguments" in {
+
+      class Noop extends MiddleStage[Int, Int] {
+        def name: String = "NOOP"
+
+        def readRequest(): Future[Int] = channelRead()
+
+        def writeRequest(data: Int): Future[Any] = channelWrite(data)
+      }
+
+      val s = new Noop
+      val p = new RootBuilder(new IntHead)
+                  .addLast(s)
+                  .addLast(new IntToString)
+                  .addLast(new StringEnd)
+                  .result
+
+      p.findStageByClass(classOf[Noop]).get should equal(s)
+      p.findStageByName(s.name).get should equal(s)
+      s.removeStage
+      p.findStageByClass(classOf[Noop]).isDefined should equal(false)
+    }
   }
+
+
 
 }
