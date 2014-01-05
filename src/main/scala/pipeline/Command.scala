@@ -9,7 +9,6 @@ object Command {
 
   case object Connected extends Command
   case object Shutdown extends Command
-  case object Removed extends Command
 
   case class Error(e: Throwable) extends Command
 }

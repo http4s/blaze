@@ -43,7 +43,9 @@ class ByteBufferHead(channel: NioChannel,
     channel.read(bytes, null: Null, new CompletionHandler[Integer, Null] {
       def failed(exc: Throwable, attachment: Null): Unit = {
         exc match {
-          case e: ShutdownChannelGroupException => shutdown()
+          case e: IOException                   => channelUnexpectedlyClosed(e)
+          case e: ShutdownChannelGroupException => channelUnexpectedlyClosed(e)
+          case _: Throwable                     => // Don't know what to do
         }
         p.failure(exc)
       }
@@ -59,13 +61,19 @@ class ByteBufferHead(channel: NioChannel,
 
   override def shutdown(): Unit = closeRequest()
 
+  private def channelUnexpectedlyClosed(e: Throwable) {
+    closeRequest()
+    sendInboundCommand(Shutdown)
+  }
+
   private def closeRequest() {
     try channel.close()
     catch {  case e: IOException => /* Don't care */ }
+
   }
 
   override def outboundCommand(cmd: Command): Unit = cmd match {
     case Shutdown         => closeRequest()
-    case cmd              => super.outboundCommand(cmd)
+    case cmd              => // NOOP
   }
 }

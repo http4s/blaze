@@ -1,6 +1,7 @@
 package pipeline
 
-import scala.reflect.ClassTag
+import java.util.Date
+
 import scala.concurrent.Future
 import pipeline.Command._
 import com.typesafe.scalalogging.slf4j.Logging
@@ -19,31 +20,38 @@ sealed trait Stage[I, O] extends Logging {
 
 
   def readRequest(): Future[O]
-  final def channelRead(): Future[I] = prev.readRequest()
+  final def channelRead(): Future[I] = {
+    logger.trace(s"Stage ${getClass.getName} sending read request.")
+    prev.readRequest()
+  }
 
   def writeRequest(data: O): Future[Any]
-  final def channelWrite(data: I): Future[Any] = prev.writeRequest(data)
+  final def channelWrite(data: I): Future[Any] = {
+    logger.trace(s"Stage ${getClass.getName} sending write request.")
+    prev.writeRequest(data)
+  }
 
   def replaceInline(stage: Stage[I, O]): stage.type
 
-  def startup() {}
-  def shutdown() {}
+  protected def startup(): Unit = logger.trace(s"Starting up at ${new Date}")
+  protected def shutdown(): Unit = logger.trace(s"Shutting down at ${new Date}")
 
   def inboundCommand(cmd: Command): Unit = {
-    defaultActions(cmd)
-    next.inboundCommand(cmd)
+    cmd match {
+      case Connected => startup()
+      case Shutdown  => shutdown()
+      case _         => // NOOP
+    }
+    sendInboundCommand(cmd)
   }
+
+  def sendInboundCommand(cmd: Command): Unit = next.inboundCommand(cmd)
 
   def outboundCommand(cmd: Command): Unit = {
-    defaultActions(cmd)
-    prev.outboundCommand(cmd)
+    sendOutboundCommand(cmd)
   }
 
-  protected final def defaultActions(cmd: Command): Unit = cmd match {
-    case Connected  => startup()
-    case Removed  => shutdown()
-    case _        =>   // NOOP
-  }
+  def sendOutboundCommand(cmd: Command): Unit = prev.outboundCommand(cmd)
 
   def replaceNext(stage: Stage[O, _]): stage.type = {
     next.shutdown()
@@ -101,7 +109,7 @@ trait TailStage[T] extends Stage[T, Any] {
 
   private[pipeline] var prev: Stage[_, T] = null
 
-  override def inboundCommand(cmd: Command): Unit = defaultActions(cmd)
+  override def sendInboundCommand(cmd: Command): Unit = ()
 
   override def findForwardStage(name: String): Option[Stage[_, _]] = {
     if (name == this.name) Some(this) else None
@@ -151,9 +159,7 @@ trait HeadStage[T] extends Stage[Nothing, T] {
 
   private[pipeline] var next: Stage[T, _] = null
 
-  override def outboundCommand(cmd: Command): Unit = {
-    defaultActions(cmd)
-  }
+  override def sendOutboundCommand(cmd: Command): Unit = ()
 
   final override def replaceInline(stage: Stage[Nothing, T]): stage.type = {
     sys.error("Cannot replace HeadStage")

@@ -10,9 +10,11 @@ object ApplicationBuild extends Build {
     organization := "brycea",
     version := "0.0.1-SNAPSHOT",
     scalaVersion in ThisBuild := "2.10.3",
+
     libraryDependencies += scalatest % "test",
     libraryDependencies += scalameter,
-    libraryDependencies += scalaloggingSlf4j
+    libraryDependencies += scalaloggingSlf4j,
+    libraryDependencies += logbackClassic
   )
 
   val main = Project("http_parser", 
@@ -39,6 +41,7 @@ object ApplicationBuild extends Build {
    lazy val scalatest  = "org.scalatest"  %% "scalatest" % "2.0.RC3"
    lazy val scalameter = "com.github.axel22" % "scalameter_2.10" % "0.4"
    
-   lazy val scalaloggingSlf4j   = "com.typesafe" %% "scalalogging-slf4j" % "1.0.1"
+   lazy val scalaloggingSlf4j   = "com.typesafe"   %% "scalalogging-slf4j" % "1.0.1"
+   lazy val logbackClassic      = "ch.qos.logback" %  "logback-classic"    % "1.0.9"
             
 }
