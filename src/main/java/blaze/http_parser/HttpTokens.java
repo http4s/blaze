@@ -1,6 +1,6 @@
-package http_parser;
+package blaze.http_parser;
 
-import http_parser.BaseExceptions.ParsingError;
+import blaze.http_parser.BaseExceptions.ParsingError;
 
 /**
  * @author Bryce Anderson

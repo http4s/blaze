@@ -1,9 +1,9 @@
-package pipeline
+package blaze.pipeline
 
 import java.util.Date
 
 import scala.concurrent.Future
-import pipeline.Command._
+import Command._
 import com.typesafe.scalalogging.slf4j.Logging
 
 /**

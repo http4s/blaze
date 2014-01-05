@@ -1,4 +1,4 @@
-package pipeline
+package blaze.pipeline
 
 /**
  * @author Bryce Anderson

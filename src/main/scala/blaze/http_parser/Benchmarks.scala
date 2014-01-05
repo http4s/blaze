@@ -1,8 +1,8 @@
-package http_parser
+package blaze.http_parser
 
 import java.nio.ByteBuffer
 import scala.annotation.tailrec
-import http_parser.RequestParser.State
+import blaze.http_parser.RequestParser.State
 
 /**
  * @author Bryce Anderson

@@ -1,3 +1,4 @@
+package blaze
 package channel
 
 import java.net.SocketAddress
@@ -7,7 +8,7 @@ import java.nio.channels.{AsynchronousServerSocketChannel => NIOServerChannel,
                           AsynchronousChannelGroup}
 
 import scala.annotation.tailrec
-import pipeline.{RootBuilder, HeadStage}
+import pipeline.RootBuilder
 import java.nio.ByteBuffer
 import pipeline.Command.Connected
 import pipeline.stages.ByteBufferHead

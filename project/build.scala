@@ -17,11 +17,11 @@ object ApplicationBuild extends Build {
     libraryDependencies += logbackClassic
   )
 
-  val main = Project("http_parser", 
+  val main = Project("blaze.http_parser",
                     new File("."),
                     settings = buildSettings ++ assemblySettings
     ).settings(
-      mainClass in assembly := Some("http_parser.Main"),
+      mainClass in assembly := Some("blaze.http_parser.Main"),
       mergeStrategy in assembly <<= (mergeStrategy in assembly) { (old) =>
         {
           case x if x.endsWith("MANIFEST.MF")     => 

@@ -1,3 +1,4 @@
+package blaze
 package examples
 
 import pipeline.TailStage

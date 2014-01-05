@@ -1,3 +1,5 @@
+package blaze
+
 import java.nio.ByteBuffer
 import scala.concurrent.Future
 

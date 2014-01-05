@@ -1,10 +1,10 @@
-package http_parser;
+package blaze.http_parser;
 
 import java.nio.ByteBuffer;
 import java.nio.charset.Charset;
 
-import http_parser.BaseExceptions.*;
-import http_parser.HttpTokens.EndOfContent;
+import blaze.http_parser.BaseExceptions.*;
+import blaze.http_parser.HttpTokens.EndOfContent;
 import sun.reflect.generics.reflectiveObjects.NotImplementedException;
 
 

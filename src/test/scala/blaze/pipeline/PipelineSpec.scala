@@ -1,4 +1,4 @@
-package pipeline
+package blaze.pipeline
 
 import org.scalatest.{Matchers, WordSpec}
 import scala.concurrent.{Future, Await}
@@ -46,7 +46,7 @@ class PipelineSpec extends WordSpec with Matchers {
   }
 
   "Pipeline" should {
-    "Make a basic pipeline" in {
+    "Make a basic blaze.pipeline" in {
       val head = new IntHead
       val tail = new StringEnd
 

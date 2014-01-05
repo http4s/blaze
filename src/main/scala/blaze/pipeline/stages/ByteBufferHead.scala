@@ -1,10 +1,10 @@
-package pipeline
+package blaze.pipeline
 package stages
 
 import java.nio.channels.{AsynchronousSocketChannel => NioChannel, ShutdownChannelGroupException, CompletionHandler}
 import java.nio.ByteBuffer
 import scala.concurrent.{Promise, Future}
-import pipeline.Command._
+import Command._
 import java.io.IOException
 import java.util.Date
 
@@ -23,7 +23,7 @@ class ByteBufferHead(channel: NioChannel,
 
     if (data.remaining() < 1 && data.position > 0) {
       logger.warn("Received write request with non-zero position but ZERO available" +
-                 s"bytes at ${new Date} on channel $channel: $data, head: $next")
+                 s"bytes at ${new Date} on blaze.channel $channel: $data, head: $next")
       return Future.successful()
     }
 

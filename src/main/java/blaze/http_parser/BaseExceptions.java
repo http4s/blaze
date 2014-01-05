@@ -1,4 +1,4 @@
-package http_parser;
+package blaze.http_parser;
 
 /**
  * @author Bryce Anderson

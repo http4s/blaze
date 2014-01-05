@@ -1,9 +1,9 @@
-package channel
+package blaze.channel
 
 import org.scalatest.{Matchers, WordSpec}
 
 import java.net.InetSocketAddress
-import examples.EchoServer
+import blaze.examples.EchoServer
 
 
 /**

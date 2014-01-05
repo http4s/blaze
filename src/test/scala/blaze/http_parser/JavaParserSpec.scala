@@ -1,3 +1,4 @@
+package blaze
 package http_parser
 
 import org.scalatest.{Matchers, WordSpec}
@@ -229,8 +230,6 @@ class JavaParserSpec extends WordSpec with Matchers {
         p.parsecontent(b) should equal (true)
         if (b.limit < blim) b.limit(b.limit() + 1)
       }
-
-      println("Got here")
 
       p.getState should equal (State.END)
       p.finished() should equal (true)

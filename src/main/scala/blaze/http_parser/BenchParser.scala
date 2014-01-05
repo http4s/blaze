@@ -1,3 +1,4 @@
+package blaze
 package http_parser
 
 import java.nio.ByteBuffer
