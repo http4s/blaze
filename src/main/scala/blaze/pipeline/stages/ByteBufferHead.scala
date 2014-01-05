@@ -21,22 +21,27 @@ class ByteBufferHead(channel: NioChannel,
 
   def writeRequest(data: ByteBuffer): Future[Unit] = {
 
-    if (data.remaining() < 1 && data.position > 0) {
+    if (!data.hasRemaining() && data.position > 0) {
       logger.warn("Received write request with non-zero position but ZERO available" +
                  s"bytes at ${new Date} on blaze.channel $channel: $data, head: $next")
       return Future.successful()
     }
 
     val f = Promise[Unit]
-    channel.write(data, null: Null, new CompletionHandler[Integer, Null] {
-      def failed(exc: Throwable, attachment: Null) {
-        f.tryFailure(exc)
-      }
 
-      def completed(result: Integer, attachment: Null) {
-        f.trySuccess()
-      }
-    })
+    def go(i: Int) {
+      channel.write(data, null: Null, new CompletionHandler[Integer, Null] {
+        def failed(exc: Throwable, attachment: Null) {
+          f.tryFailure(exc)
+        }
+
+        def completed(result: Integer, attachment: Null) {
+          if (result.intValue() < i) go(i - result.intValue())  // try to write again
+          else f.trySuccess()      // All done
+        }
+      })
+    }
+    go(data.remaining())
 
     f.future
   }
