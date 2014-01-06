@@ -25,21 +25,16 @@ public class BaseExceptions {
     }
 
     public static final class BadRequest extends ParserException {
-        private final int code;
-
-        public BadRequest(int code, String msg) {
+        public BadRequest(String msg) {
             super(msg);
-            this.code = code;
-        }
-
-        public int getCode() { return code; }
-    }
-
-    public static final class ParsingError extends ParserException {
-        public ParsingError(String error) {
-            super(error);
         }
     }
+//
+//    public static final class ParsingError extends ParserException {
+//        public ParsingError(String error) {
+//            super(error);
+//        }
+//    }
 
     public static final class ExternalExeption extends ParserException {
 

@@ -10,7 +10,7 @@ import scala.annotation.tailrec
 
 import util.DirectExecutor.direct
 
-import http_parser.BaseExceptions.{BadRequest, ParsingError}
+import http_parser.BaseExceptions.BadRequest
 
 /**
  * @author Bryce Anderson
@@ -64,10 +64,7 @@ class DumbHttpStage extends RequestParser with TailStage[ByteBuffer] {
 
 
         try parseBuffer(buff)
-        catch {
-          case e: ParsingError => earlyEOF()
-          case r: BadRequest   => earlyEOF()
-        }
+        catch { case r: BadRequest   => earlyEOF() }
 
       case Failure(Cmd.EOF)    => shutdown()
       case Failure(t)          =>

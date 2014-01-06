@@ -1,6 +1,6 @@
 package blaze.http_parser;
 
-import blaze.http_parser.BaseExceptions.ParsingError;
+import blaze.http_parser.BaseExceptions.BadRequest;
 
 /**
  * @author Bryce Anderson
@@ -29,7 +29,7 @@ public final class HttpTokens
     final static byte f = (byte)'f';
     final static byte z = (byte)'z';
 
-    public static int hexCharToInt(final byte ch) throws ParsingError {
+    public static int hexCharToInt(final byte ch) throws BadRequest {
         if (ZERO <= ch && ch <= NINE) {
             return ch - ZERO;
         }
@@ -40,7 +40,7 @@ public final class HttpTokens
             return ch - A + 10;
         }
         else {
-            throw new ParsingError("Bad hex char: " + (char)ch);
+            throw new BadRequest("Bad hex char: " + (char)ch);
         }
     }
 

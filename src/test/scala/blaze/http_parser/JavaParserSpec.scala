@@ -5,6 +5,7 @@ import org.scalatest.{Matchers, WordSpec}
 import http_parser.RequestParser.State
 import java.nio.ByteBuffer
 import http_parser.HttpTokens.EndOfContent
+import blaze.http_parser.BaseExceptions.BadRequest
 
 /**
  * @author Bryce Anderson
@@ -190,9 +191,8 @@ class JavaParserSpec extends WordSpec with Matchers {
       p.parseheaders(b) should equal(true)
       p.getState should equal (State.CONTENT)
       p.sb.result() should equal ("")
-      println("Got here!! 1 -----------------------------------------------")
+
       p.parsecontent(b) should equal(true)
-      println("Got here!! 2 -----------------------------------------------")
       p.getState should equal (State.END)
       p.sb.result() should equal(body + body + " again!")
 
@@ -234,6 +234,23 @@ class JavaParserSpec extends WordSpec with Matchers {
       p.getState should equal (State.END)
       p.finished() should equal (true)
       p.sb.result() should equal(body + body + " again!")
+    }
+
+    "throw an error if the headers are too long" in {
+      val header =  "From: someuser@jmarshall.com  \r\n" +
+        "HOST: www.foo.com\r\n" +
+        "User-Agent: HTTPTool/1.0  \r\n" +
+        "Some-Header\r\n"
+
+      val p = new Parser(maxHeader = header.length - 1)
+      p.state(State.HEADER)
+      an [BadRequest] should be thrownBy p.parseheaders(header)
+    }
+
+    "throw an error if the request line is too long" in {
+
+      val p = new Parser(maxReq = request.length - 1)
+      an [BadRequest] should be thrownBy p.parseLine(request)
     }
   }
 }

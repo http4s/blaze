@@ -5,7 +5,6 @@ import java.nio.charset.Charset;
 
 import blaze.http_parser.BaseExceptions.*;
 import blaze.http_parser.HttpTokens.EndOfContent;
-import sun.reflect.generics.reflectiveObjects.NotImplementedException;
 
 
 /**
@@ -16,12 +15,11 @@ public abstract class RequestParser {
 
     public final static Charset ASCII = Charset.forName("US-ASCII");
 
-    protected static byte[] HTTP10Bytes = "HTTP/1.0".getBytes(ASCII);
+    protected static byte[] HTTP10Bytes  = "HTTP/1.0".getBytes(ASCII);
+    protected static byte[] HTTP11Bytes  = "HTTP/1.1".getBytes(ASCII);
+
     protected static byte[] HTTPS10Bytes = "HTTPS/1.0".getBytes(ASCII);
-
-    protected static byte[] HTTP11Bytes = "HTTP/1.1".getBytes(ASCII);
     protected static byte[] HTTPS11Bytes = "HTTPS/1.1".getBytes(ASCII);
-
 
     // States
     public enum State {
@@ -117,7 +115,7 @@ public abstract class RequestParser {
      * @param value The value of the header
      * @return True if the parser should return to its caller
      */
-    public abstract void headerComplete(String name, String value) throws Exception;
+    public abstract void headerComplete(String name, String value) throws BadRequest;
 
         /* ------------------------------------------------------------ */
     /** Called to signal that an EOF was received unexpectedly
@@ -148,8 +146,7 @@ public abstract class RequestParser {
     }
 
     public final boolean inChunked() {
-        return inContent() &&
-                _endOfContent == EndOfContent.CHUNKED_CONTENT;
+        return inContent() && _endOfContent == EndOfContent.CHUNKED_CONTENT;
     }
 
     public final boolean inChunkedHeaders() {
@@ -166,7 +163,7 @@ public abstract class RequestParser {
         return _endOfContent;
     }
 
-    public void reset() {
+    public final void reset() {
         clearBuffer();
 
         _state = State.START;
@@ -175,6 +172,7 @@ public abstract class RequestParser {
         _chunkState = ChunkState.START;
 
         _endOfContent = EndOfContent.UNKNOWN_CONTENT;
+
         _contentLength = 0;
         _contentPosition = 0;
         _chunkLength = 0;
@@ -239,7 +237,7 @@ public abstract class RequestParser {
     }
 
     /** Returns the string in the buffer minus an leading or trailing whitespace or quotes */
-    private String getTrimmedString() throws ParsingError {
+    private String getTrimmedString() throws BadRequest {
 
         if (_bufferPosition == 0) return "";
 
@@ -265,14 +263,14 @@ public abstract class RequestParser {
         }
 
         if (end == start) {
-            error(new ParsingError("String might not quoted correctly: '" + getString() + "'"));
+            badRequest("String might not quoted correctly: '" + getString() + "'");
         }
 
         String str = new String(_internalBuffer, start, end + 1, ASCII);
         return str;
     }
 
-    private boolean arrayMatches(byte[] bytes) {
+    private boolean arrayMatches(final byte[] bytes) {
         if (bytes.length != _bufferPosition) return false;
 
         for (int i = 0; i < _bufferPosition; i++) {
@@ -303,22 +301,27 @@ public abstract class RequestParser {
         this(2048, 40*1024, initialBufferSize, Integer.MAX_VALUE);
     }
 
-    public RequestParser() { this(4*1024); }
+    public RequestParser() { this(10*1024); }
 
     /* ------------------------------------------------------------------ */
 
-    private void setLimit(int limit) {
+    private void resetLimit(int limit) {
         _segmentByteLimit = limit;
         _segmentBytePosition = 0;
     }
 
+    private boolean badRequest(String msg) throws BadRequest {
+        shutdown();
+        throw new BadRequest(msg);
+    }
+
     // Removes CRs but returns LFs
-    private byte next(final ByteBuffer buffer) throws ParsingError {
+    private byte next(final ByteBuffer buffer) throws BadRequest {
 
         if (!buffer.hasRemaining()) return 0;
 
         if (_segmentByteLimit == _segmentBytePosition) {
-            throw new ParsingError("Request length limit exceeded: " + _segmentByteLimit);
+            badRequest("Request length limit exceeded: " + _segmentByteLimit);
         }
 
         final byte ch = buffer.get();
@@ -327,38 +330,27 @@ public abstract class RequestParser {
         // If we ended on a CR, make sure we are
         if (_cr) {
             if (ch != HttpTokens.LF) {
-                throw new ParsingError("Invalid sequence: LF didn't follow CR: " + ch);
+                badRequest("Invalid sequence: LF didn't follow CR: " + ch);
             }
-
             _cr = false;
             return ch;
         }
 
         // Make sure its a valid character
         if (ch < HttpTokens.SPACE) {
-            if (ch == HttpTokens.CR) {
-                if (!buffer.hasRemaining()) {
-                    _cr = true;
-                    return 0;
-                }
-
-                final byte lf = buffer.get();
-                if (lf != HttpTokens.LF) {
-                    throw new ParsingError("Invalid sequence: LF without preceeding CR: " + lf);
-                }
-                else {
-                    return lf;
-                }
+            if (ch == HttpTokens.CR) {   // Set the flag to check for _cr and just run again
+                _cr = true;
+                return next(buffer);
             }
             else if (ch == HttpTokens.TAB) {
                 return ch;
             }
             else {
                 if (ch == HttpTokens.LF) {
-                    throw new ParsingError("LineFeed found without CR");
+                    badRequest("LineFeed found without CR");
                 }
                 else {
-                    throw new ParsingError("Invalid char: " + ch);
+                    badRequest("Invalid char: " + ch);
                 }
             }
         }
@@ -368,22 +360,6 @@ public abstract class RequestParser {
 
     /* ------------------------------------------------------------------ */
 
-    private boolean error(ParsingError e) throws ParsingError {
-        shutdown();
-        throw e;
-    }
-
-    private boolean error(BadRequest e) throws BadRequest {
-        shutdown();
-        throw e;
-    }
-
-
-//    private void checkMethod(String method) throws ParserException {
-//        if (method.equalsIgnoreCase("GET")) {
-//            _endOfContent = EndOfContent.NO_CONTENT;
-//        }
-//    }
 
     protected void setState(State state) {
         switch (state) {
@@ -412,8 +388,9 @@ public abstract class RequestParser {
         _state = state;
     }
 
-    private void invalidState(String msg) throws ParserException {
+    private void invalidState(String msg) throws InvalidState {
         String error = "Invalid State: " + _state + ", " + msg;
+        shutdown();
         throw new InvalidState(error);
     }
 
@@ -428,7 +405,7 @@ public abstract class RequestParser {
             switch (_lineState) {
                 case START:
                     _lineState = LineState.METHOD;
-                    setLimit(maxRequestLineSize);
+                    resetLimit(maxRequestLineSize);
 
                 case METHOD:
                     for(ch = next(in); HttpTokens.A <= ch && ch <= HttpTokens.Z; ch = next(in)) {
@@ -443,7 +420,7 @@ public abstract class RequestParser {
 
                     if (!HttpTokens.isWhiteSpace(ch)) {
                         String badmethod = _methodString + (char)ch;
-                        error(new BadRequest(400, "Invalid request method: '" + badmethod + "'"));
+                        badRequest("Invalid request method: '" + badmethod + "'");
                     }
 
                    _lineState = LineState.SPACE1;
@@ -468,7 +445,7 @@ public abstract class RequestParser {
 
                     if (!HttpTokens.isWhiteSpace(ch)) {
                         String baduri = _uriString + (char)ch;
-                        error(new BadRequest(400, "Invalid request URI: '" + baduri + "'"));
+                        badRequest("Invalid request URI: '" + baduri + "'");
                     }
 
                     _lineState = LineState.SPACE2;
@@ -479,9 +456,7 @@ public abstract class RequestParser {
 
                     if (ch == 0) return true;
 
-                    if (ch != 'H') {
-                        error(new ParsingError("Http version started with illegal character: " + 'c'));
-                    }
+                    if (ch != 'H') badRequest("Http version started with illegal character: " + 'c');
 
                     putByte(ch);
                     _lineState = LineState.REQUEST_VERSION;
@@ -507,7 +482,7 @@ public abstract class RequestParser {
                     else {
                         String reason =  "Bad HTTP version: " + getString();
                         clearBuffer();
-                        error(new BadRequest(400, reason));
+                        badRequest(reason);
                     }
 
                     String scheme = getString(bufferPosition() - 4);
@@ -518,13 +493,14 @@ public abstract class RequestParser {
                     return startRequest(_methodString, _uriString, scheme, _majorversion, _minorversion);
 
                 default:
-                    return error(new ParsingError("Attempted to parse Request line when already complete." +
-                                                  "LineState: '" + _lineState + "'"));
+                    invalidState("Attempted to parse Request line when already complete." +
+                                                  "LineState: '" + _lineState + "'");
+                    return false;
             }    // switch
         }        // while loop
     }
 
-    protected final boolean parseHeaders(ByteBuffer in) throws ParserException {
+    protected final boolean parseHeaders(ByteBuffer in) throws BadRequest, InvalidState, ExternalExeption {
         if (_state != State.HEADER &&   // Need either be in headers
             _state != State.CONTENT &&  // or need to be in trailers
             _chunkState != ChunkState.CHUNK_TRAILERS) {
@@ -536,7 +512,7 @@ public abstract class RequestParser {
             switch (_hstate) {
                 case START:
                     _hstate = HeaderState.HEADER_IN_NAME;
-                    setLimit(headerSizeLimit);
+                    resetLimit(headerSizeLimit);
 
                 case HEADER_IN_NAME:
                     for(ch = next(in); ch != ':' && ch != HttpTokens.LF; ch = next(in)) {
@@ -549,13 +525,13 @@ public abstract class RequestParser {
 
                         if (_hostRequired) {
                             // If we didn't get our host header, we have a problem.
-                            error(new BadRequest(400, "Missing host header"));
+                            badRequest("Missing host header");
                         }
 
                         // Notify the handler we are finished with this batch of headers
                         try {
                             headersComplete();
-                        } catch (ParserException e) {
+                        } catch (BadRequest e) {
                             throw e;
                         } catch (Exception e) {
                             shutdown();
@@ -584,14 +560,7 @@ public abstract class RequestParser {
                         String name = getString();
                         clearBuffer();
 
-                        try {
-                            headerComplete(name, "");
-                        } catch (ParserException e) {
-                            throw e;
-                        } catch (Exception e) {
-                            shutdown();
-                            throw new ExternalExeption(e, "valueless header submission: '" + name + "'");
-                        }
+                        headerComplete(name, "");
 
                         continue headerLoop;    // Still parsing Header name
                     }
@@ -606,7 +575,7 @@ public abstract class RequestParser {
                     if (ch == 0) return true;
 
                     if (ch == HttpTokens.LF) {
-                        return error(new ParsingError("Missing value for header " + _headerName));
+                        return badRequest("Missing value for header " + _headerName);
                     }
 
                     putByte(ch);
@@ -634,7 +603,7 @@ public abstract class RequestParser {
                         if (_endOfContent == EndOfContent.UNKNOWN_CONTENT) {
                             if (_headerName.equalsIgnoreCase("Transfer-Encoding")) {
                                 if (!value.equalsIgnoreCase("chunked")) {
-                                    error(new BadRequest(400, "Unknown Transfer-Encoding: " + value));
+                                    badRequest("Unknown Transfer-Encoding: " + value);
                                 }
                                 _endOfContent = EndOfContent.CHUNKED_CONTENT;
                             }
@@ -643,7 +612,7 @@ public abstract class RequestParser {
                                     _contentLength = Long.parseLong(value);
                                 }
                                 catch (NumberFormatException t) {
-                                    error(new BadRequest(400, "Invalid Content-Length: '" + value + "'\n"));
+                                    badRequest("Invalid Content-Length: '" + value + "'\n");
                                 }
 
                                 _endOfContent = _contentLength <= 0 ?
@@ -655,12 +624,6 @@ public abstract class RequestParser {
                     // Send off the header and see if we wish to continue
                     try {
                         headerComplete(_headerName, value);
-                    } catch (ParserException e) {
-                        throw e;
-                    } catch (Exception e) {
-                        shutdown();
-                        throw new ExternalExeption(e, "header submission: '" +
-                            _headerName + ": " + value);
                     } finally {
                         _hstate = HeaderState.HEADER_IN_NAME;
                     }
@@ -668,7 +631,7 @@ public abstract class RequestParser {
                     break;
 
                 case END:
-                    return error(new ParsingError("Header parser reached invalid position."));
+                    return badRequest("Header parser reached invalid position.");
             }   // Switch
         }   // while loop
 
@@ -688,7 +651,7 @@ public abstract class RequestParser {
                 // We could also CONSIDER doing a BAD Request here.
                 _endOfContent = EndOfContent.SELF_DEFINING_CONTENT;
                 //return parseContent(in);
-                return error(new ParsingError("not implemented: " + _endOfContent));
+                return badRequest("not implemented: " + _endOfContent);
 
             case CONTENT_LENGTH:
                 return nonChunkedContent(in);
@@ -698,7 +661,7 @@ public abstract class RequestParser {
 
             case SELF_DEFINING_CONTENT:
             default:
-                return error(new ParsingError("not implemented: " + _endOfContent));
+                return badRequest("not implemented: " + _endOfContent);
         }
     }
 
@@ -751,14 +714,14 @@ public abstract class RequestParser {
         }
     }
 
-    private boolean chunkedContent(ByteBuffer in) throws ParsingError, ExternalExeption {
+    private boolean chunkedContent(ByteBuffer in) throws BadRequest, ExternalExeption {
         while(true) {
             byte ch;
             sw: switch (_chunkState) {
                 case START:
                     _chunkState = ChunkState.CHUNK_SIZE;
                     // Don't want the chunk size and extension field to be too long.
-                    setLimit(256);
+                    resetLimit(256);
 
                 case CHUNK_SIZE:
                     assert _chunkPosition == 0;
@@ -780,7 +743,7 @@ public abstract class RequestParser {
                             _chunkLength = 16 * _chunkLength + HttpTokens.hexCharToInt(ch);
 
                             if (_chunkLength > maxChunkSize) {
-                                return error(new ParsingError("Chunk length too large: " + _chunkLength));
+                                return badRequest("Chunk length too large: " + _chunkLength);
                             }
                         }
                     }
@@ -825,7 +788,7 @@ public abstract class RequestParser {
                     if (ch == 0) return true;
 
                     if (ch != HttpTokens.LF) {
-                        return error(new ParsingError("Bad chunked encoding char: '" + (char)ch + "'"));
+                        return badRequest("Bad chunked encoding char: '" + (char)ch + "'");
                     }
 
                     _chunkState = ChunkState.START;
@@ -840,11 +803,12 @@ public abstract class RequestParser {
                     try {
                         return parseHeaders(in);
                     } catch (BadRequest e) {
-                        throw new ParsingError("Error parsing trailers: " + e.msg());
+                        badRequest("Error parsing trailers: " + e.msg());
                     } catch (ExternalExeption e) {
+                        shutdown();
                         throw e;
                     } catch (ParserException e) {
-                        throw new ParsingError("Received unknown error: " + e.msg());
+                        badRequest("Received unknown error: " + e.msg());
                     }
             }
         }
