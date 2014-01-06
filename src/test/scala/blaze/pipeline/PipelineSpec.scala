@@ -51,7 +51,7 @@ class PipelineSpec extends WordSpec with Matchers {
       val tail = new StringEnd
 
       val p = new RootBuilder(head)
-      p.addLast(new IntToString)
+      p.append(new IntToString)
         .cap(tail)
 
       println(head)
@@ -75,8 +75,8 @@ class PipelineSpec extends WordSpec with Matchers {
 
       val noop = new Noop
       val p = new RootBuilder(new IntHead)
-                  .addLast(noop)
-                  .addLast(new IntToString)
+                  .append(noop)
+                  .append(new IntToString)
                   .cap(new StringEnd)
 
       p.findStageByClass(classOf[Noop]).get should equal(noop)

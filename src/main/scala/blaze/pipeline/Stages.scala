@@ -53,10 +53,15 @@ trait TailStage[I] extends Logging {
     }
   }
 
-  final def replaceInline(stage: TailStage[I]): stage.type = {
+  final def replaceInline(stage: TailStage[I]): this.type = {
     shutdown()
     if (!this.isInstanceOf[HeadStage[_]]) prev.next = stage
-    stage
+    this.prev = null
+    this match {
+      case m: MidStage[_, _] => m.next = null
+      case _ => // NOOP
+    }
+    this
   }
 
   override def toString: String = {
@@ -82,16 +87,17 @@ trait MidStage[I, O] extends TailStage[I] {
 
   //////////////////////////////////////////////////////////////////////////////
 
-  final def replaceInline(stage: MidStage[I, O]): stage.type = {
+  final def replaceInline(stage: MidStage[I, O]): this.type = {
     shutdown()
     next.prev = stage
     if (!this.isInstanceOf[HeadStage[_]]) prev.next = stage
-    stage
+    this.next = null
+    this.prev = null
+    this
   }
 
-  final def replaceNext(stage: TailStage[O]): stage.type = {
+  final def replaceNext(stage: TailStage[O]): TailStage[O] = {
     next.replaceInline(stage)
-    stage
   }
 
   final def spliceAfter(stage: MidStage[O, O]): stage.type = {
@@ -108,6 +114,9 @@ trait MidStage[I, O] extends TailStage[I] {
     val me = ev(this)
     prev.next = me.next
     me.next.prev = me.prev
+
+    next = null
+    prev = null
     this
   }
 
@@ -130,8 +139,8 @@ trait MidStage[I, O] extends TailStage[I] {
   }
 
   final def getLastStage: TailStage[_] = next match {
-    case s: MidStage[_, _] => s.getLastStage
-    case t: TailStage[_]        => t
+    case s: MidStage[_, _] if s.next != null => s.getLastStage
+    case n => n
   }
 }
 

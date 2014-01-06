@@ -27,7 +27,7 @@ class DumbHttpStage extends RequestParser with TailStage[ByteBuffer] {
 
   private val full = headers + body
 
-  logger.info(s"Full request: $full")
+  logger.info(s"Full response: \n$full")
 
   private val fullresp = {
     val b = ByteBuffer.allocateDirect(full.length)
@@ -129,11 +129,11 @@ class DumbHttpStage extends RequestParser with TailStage[ByteBuffer] {
   }
 
   def requestComplete() {
-    logger.trace("------------- Request completed.")
+    logger.trace("---------------- Request completed.")
   }
   
   def headersComplete() {
-    logger.trace("--------------Headers completed.")
+    logger.trace("---------------- Headers completed.")
   }
 
   def startRequest(methodString: String, uri: String, scheme: String, majorversion: Int, minorversion: Int): Boolean = {

@@ -23,6 +23,7 @@ import java.util.Date
 class ServerChannelFactory(pipeFactory: PipeFactory, group: AsynchronousChannelGroup = null)
         extends Logging {
 
+  // Intended to be overridden in order to allow the reject of connections
   protected def acceptConnection(channel: NIOChannel): Boolean = true
 
   def bind(localAddress: SocketAddress = null): ServerChannel = {

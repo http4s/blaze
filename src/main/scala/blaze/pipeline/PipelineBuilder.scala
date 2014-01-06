@@ -6,11 +6,9 @@ package blaze.pipeline
  */
 class PipelineBuilder[I, O]private[pipeline](headStage: HeadStage[I], tail: MidStage[_, O]) {
 
-  def addLast[N](stage: MidStage[O, N]): PipelineBuilder[I, N] = {
+  def append[N](stage: MidStage[O, N]): PipelineBuilder[I, N] = {
 
-    if (stage.prev != null) {
-      sys.error(s"Stage $stage must be fresh")
-    }
+    if (stage.prev != null) sys.error(s"Stage $stage must be fresh")
 
     tail.next = stage
     stage.prev = tail
@@ -30,11 +28,10 @@ class PipelineBuilder[I, O]private[pipeline](headStage: HeadStage[I], tail: MidS
     headStage
   }
 
-  def addFirst(stage: MidStage[I, I]): this.type = {
+  def prepend(stage: MidStage[I, I]): this.type = {
     headStage.spliceAfter(stage)
     this
   }
-
 }
 
 class RootBuilder[T](head: HeadStage[T]) extends PipelineBuilder[T, T](head, head)
