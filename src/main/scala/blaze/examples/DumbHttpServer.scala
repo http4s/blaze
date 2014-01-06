@@ -10,7 +10,7 @@ import java.nio.channels.AsynchronousChannelGroup
  */
 class DumbHttpServer(port: Int) {
 
-  private val f: PipeFactory = _.addLast(new DumbHttpStage).result
+  private val f: PipeFactory = _.cap(new DumbHttpStage)
 
   val group = AsynchronousChannelGroup.withFixedThreadPool(50, java.util.concurrent.Executors.defaultThreadFactory())
 

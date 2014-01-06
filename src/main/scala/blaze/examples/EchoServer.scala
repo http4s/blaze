@@ -21,7 +21,7 @@ import scala.concurrent.ExecutionContext.Implicits.global
 class EchoServer extends Logging {
 
   def prepare(address: InetSocketAddress): ServerChannelFactory#ServerChannel = {
-    val f: PipeFactory = _.addLast(new EchoStage).result
+    val f: PipeFactory = _.cap(new EchoStage)
 
     val factory = new ServerChannelFactory(f)
     factory.bind(address)

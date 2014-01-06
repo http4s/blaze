@@ -4,11 +4,9 @@ package blaze.pipeline
  * @author Bryce Anderson
  *         Created on 1/4/14
  */
-class PipelineBuilder[I, O]private[pipeline](headStage: HeadStage[I], tail: Stage[_, O]) {
+class PipelineBuilder[I, O]private[pipeline](headStage: HeadStage[I], tail: MidStage[_, O]) {
 
-  def result: HeadStage[I] = headStage
-
-  def addLast[N](stage: Stage[O, N]): PipelineBuilder[I, N] = {
+  def addLast[N](stage: MidStage[O, N]): PipelineBuilder[I, N] = {
 
     if (stage.prev != null) {
       sys.error(s"Stage $stage must be fresh")
@@ -20,7 +18,19 @@ class PipelineBuilder[I, O]private[pipeline](headStage: HeadStage[I], tail: Stag
     new PipelineBuilder(headStage, stage)
   }
 
-  def addFirst(stage: Stage[I, I]): this.type = {
+  def cap(stage: TailStage[O]): HeadStage[I] = {
+
+    if (stage.prev != null) {
+      sys.error(s"Stage $stage must be fresh")
+    }
+
+    tail.next = stage
+    stage.prev = tail
+
+    headStage
+  }
+
+  def addFirst(stage: MidStage[I, I]): this.type = {
     headStage.spliceAfter(stage)
     this
   }
