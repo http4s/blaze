@@ -24,14 +24,14 @@ class PipelineSpec extends WordSpec with Matchers {
       Future.successful()
     }
 
-    def readRequest(): Future[Int] = Future(54)
+    def readRequest(size: Int): Future[Int] = Future(54)
   }
 
   class IntToString extends MiddleStage[Int, String] {
 
     def name = "IntToString"
 
-    def readRequest(): Future[String] = channelRead map (_.toString)
+    def readRequest(size: Int): Future[String] = channelRead(1) map (_.toString)
 
     def writeRequest(data: String): Future[Any] = {
       try channelWrite(data.toInt)
@@ -69,21 +69,21 @@ class PipelineSpec extends WordSpec with Matchers {
       class Noop extends MiddleStage[Int, Int] {
         def name: String = "NOOP"
 
-        def readRequest(): Future[Int] = channelRead()
+        def readRequest(size: Int): Future[Int] = channelRead(size)
 
         def writeRequest(data: Int): Future[Any] = channelWrite(data)
       }
 
-      val s = new Noop
+      val noop = new Noop
       val p = new RootBuilder(new IntHead)
-                  .addLast(s)
+                  .addLast(noop)
                   .addLast(new IntToString)
                   .addLast(new StringEnd)
                   .result
 
-      p.findStageByClass(classOf[Noop]).get should equal(s)
-      p.findStageByName(s.name).get should equal(s)
-      s.removeStage
+      p.findStageByClass(classOf[Noop]).get should equal(noop)
+      p.findStageByName(noop.name).get should equal(noop)
+      noop.removeStage
       p.findStageByClass(classOf[Noop]).isDefined should equal(false)
     }
   }

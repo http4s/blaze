@@ -19,10 +19,10 @@ sealed trait Stage[I, O] extends Logging {
   private[pipeline] var next: Stage[O, _]
 
 
-  def readRequest(): Future[O]
-  final def channelRead(): Future[I] = {
+  def readRequest(size: Int): Future[O]
+  final def channelRead(size: Int = -1): Future[I] = {
     logger.trace(s"Stage ${getClass.getName} sending read request.")
-    prev.readRequest()
+    prev.readRequest(size)
   }
 
   def writeRequest(data: O): Future[Any]
@@ -115,7 +115,7 @@ trait TailStage[T] extends Stage[T, Any] {
     if (name == this.name) Some(this) else None
   }
 
-  override def findStageByClass[C <: Stage[_, _]](clazz: Class[C]): Option[C] = {
+  final override def findStageByClass[C <: Stage[_, _]](clazz: Class[C]): Option[C] = {
     if (clazz.isAssignableFrom(this.getClass)) Some(this.asInstanceOf[C])
     else None
   }
@@ -130,15 +130,15 @@ trait TailStage[T] extends Stage[T, Any] {
     sys.error("TailStage doesn't receive commands: " + cmd)
   }
 
-  final private[pipeline] override def next: Stage[Any, _] = {
+  final override private[pipeline] def next: Stage[Any, _] = {
     sys.error(s"TailStage ${getClass.getName} doesn't have a next stage")
   }
 
-  final private[pipeline] override def next_=(stage: Stage[Any, _]) {
+  final override private[pipeline] def next_=(stage: Stage[Any, _]) {
     sys.error(s"TailStage ${getClass.getName} doesn't have a next stage")
   }
 
-  final def readRequest(): Future[Any] = {
+  final override def readRequest(size: Int): Future[Any] = {
     sys.error(s"TailStage ${getClass.getName} doesn't receive read requests")
   }
 
@@ -160,17 +160,17 @@ trait HeadStage[T] extends Stage[Nothing, T] {
 
   private[pipeline] var next: Stage[T, _] = null
 
-  override def sendOutboundCommand(cmd: Command): Unit = ()
+  final override def sendOutboundCommand(cmd: Command): Unit = ()
 
   final override def replaceInline(stage: Stage[Nothing, T]): stage.type = {
     sys.error("Cannot replace HeadStage")
   }
 
-  override private[pipeline] def prev: Stage[_, Nothing] = {
+  final override private[pipeline] def prev: Stage[_, Nothing] = {
     sys.error("HeadStage doesn't have a previous node")
   }
 
-  override private[pipeline] def prev_=(stage: Stage[_, Nothing]) {
+  final override private[pipeline] def prev_=(stage: Stage[_, Nothing]) {
     sys.error("HeadStage doesn't have a previous node")
   }
 }

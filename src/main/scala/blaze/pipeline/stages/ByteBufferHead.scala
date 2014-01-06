@@ -36,7 +36,7 @@ class ByteBufferHead(channel: NioChannel,
         }
 
         def completed(result: Integer, attachment: Null) {
-          if (result.intValue() < i) go(i - result.intValue())  // try to write again
+          if (result.intValue < i) go(i - result.intValue)  // try to write again
           else f.trySuccess()      // All done
         }
       })
@@ -46,12 +46,13 @@ class ByteBufferHead(channel: NioChannel,
     f.future
   }
 
-  
-
-  def readRequest(): Future[ByteBuffer] = {
+  def readRequest(size: Int): Future[ByteBuffer] = {
       
     val p = Promise[ByteBuffer]
     bytes.clear()
+
+    if (size >= 0 && size < bufferSize)
+      bytes.limit(size)
 
     channel.read(bytes, null: Null, new CompletionHandler[Integer, Null] {
       def failed(exc: Throwable, attachment: Null): Unit = {
