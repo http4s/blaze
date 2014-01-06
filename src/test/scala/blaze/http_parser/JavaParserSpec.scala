@@ -47,9 +47,7 @@ class JavaParserSpec extends WordSpec with Matchers {
 
     def headersComplete() {}
 
-    def requestComplete() {
-      println("Request complete.")
-    }
+    def requestComplete() {}
 
     def headerComplete(name: String, value: String) {
       //println(s"Found header: '$name': '$value'")
@@ -113,12 +111,14 @@ class JavaParserSpec extends WordSpec with Matchers {
 
     "Parse headers" in {
       val p = new Parser()
+      p.state(State.HEADER)
       p.parseheaders(header) should equal (true)
       p.getContentType should equal (EndOfContent.UNKNOWN_CONTENT)
     }
 
     "need input on partial headers" in {
       val p = new Parser()
+      p.state(State.HEADER)
       p.parseHeaders(header.slice(0, 20)) should equal (true)
       p.parseheaders(header.substring(20)) should equal (true)
 
@@ -130,7 +130,7 @@ class JavaParserSpec extends WordSpec with Matchers {
 
       p.parseLine(b) should equal(true)
       p.getState should equal (State.HEADER)
-      
+
       p.parseheaders(b) should equal(true)
       p.getState should equal (State.CONTENT)
 
@@ -157,7 +157,7 @@ class JavaParserSpec extends WordSpec with Matchers {
         b.limit(b.limit() + 1)
 
       }
-
+      println("Got here.")
       while (p.inHeaders()) {
         p.parseheaders(b) should equal(true)
         b.limit(b.limit() + 1)
@@ -189,10 +189,10 @@ class JavaParserSpec extends WordSpec with Matchers {
 
       p.parseheaders(b) should equal(true)
       p.getState should equal (State.CONTENT)
-
       p.sb.result() should equal ("")
-
+      println("Got here!! 1 -----------------------------------------------")
       p.parsecontent(b) should equal(true)
+      println("Got here!! 2 -----------------------------------------------")
       p.getState should equal (State.END)
       p.sb.result() should equal(body + body + " again!")
 

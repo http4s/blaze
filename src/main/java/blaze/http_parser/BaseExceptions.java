@@ -1,5 +1,6 @@
 package blaze.http_parser;
 
+
 /**
  * @author Bryce Anderson
  *         Created on 1/2/14
@@ -52,6 +53,12 @@ public class BaseExceptions {
         @Override
         public synchronized Throwable getCause() {
             return cause;    //To change body of overridden methods use File | Settings | File Templates.
+        }
+    }
+
+    public static final class InvalidState extends ParserException {
+        public InvalidState(String msg) {
+            super(msg);
         }
     }
 }
