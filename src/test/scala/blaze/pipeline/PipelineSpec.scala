@@ -79,10 +79,10 @@ class PipelineSpec extends WordSpec with Matchers {
                   .append(new IntToString)
                   .cap(new StringEnd)
 
-      p.findStageByClass(classOf[Noop]).get should equal(noop)
-      p.findInboundStageByName(noop.name).get should equal(noop)
+      p.findInboundStage(classOf[Noop]).get should equal(noop)
+      p.findInboundStage(noop.name).get should equal(noop)
       noop.removeStage
-      p.findStageByClass(classOf[Noop]).isDefined should equal(false)
+      p.findInboundStage(classOf[Noop]).isDefined should equal(false)
     }
 
     "Not give NPE on ending stage with a midstage" in {

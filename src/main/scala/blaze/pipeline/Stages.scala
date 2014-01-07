@@ -73,18 +73,19 @@ trait TailStage[I] extends Logging {
     if (this.name == name) Some(this)
     else prev match {
       case t: HeadStage[_]   => if (t.name == name) Some(t) else None
-      case s: MidStage[_, _] => s.findInboundStageByName(name)
+      case s: MidStage[_, _] => s.findOutboundStage(name)
     }
   }
 
-  final def findInboundStage[C <: MidStage[_, _]](clazz: Class[C]): Option[C] = {
+  final def findOutboundStage[C <: MidStage[_, _]](clazz: Class[C]): Option[C] = {
     if (clazz.isAssignableFrom(this.getClass)) Some(this.asInstanceOf[C])
     else prev match {
       case t: HeadStage[_] =>
         if (clazz.isAssignableFrom(t.getClass)) Some(t.asInstanceOf[C])
         else None
 
-      case s: MidStage[_, _] => s.findStageByClass(clazz)
+      case s: MidStage[_, _] => s.findOutboundStage[C](clazz)
+      case _ => sys.error("Shouldn't get here.")
     }
   }
 
@@ -155,18 +156,18 @@ trait MidStage[I, O] extends TailStage[I] {
     this
   }
 
-  final def findInboundStageByName(name: String): Option[TailStage[_]] = {
+  final def findInboundStage(name: String): Option[TailStage[_]] = {
     if (this.name == name) Some(this)
     else next match {
-      case s: MidStage[_, _] => s.findInboundStageByName(name)
+      case s: MidStage[_, _] => s.findInboundStage(name)
       case t: TailStage[_]   => if (t.name == name) Some(t) else None
     }
   }
 
-  final def findStageByClass[C <: TailStage[_]](clazz: Class[C]): Option[C] = {
+  final def findInboundStage[C <: TailStage[_]](clazz: Class[C]): Option[C] = {
     if (clazz.isAssignableFrom(this.getClass)) Some(this.asInstanceOf[C])
     else next match {
-      case s: MidStage[_, _]              => s.findStageByClass(clazz)
+      case s: MidStage[_, _] => s.findInboundStage[C](clazz)
       case t: TailStage[_] =>
         if (clazz.isAssignableFrom(t.getClass)) Some(t.asInstanceOf[C])
         else None
@@ -180,7 +181,7 @@ trait MidStage[I, O] extends TailStage[I] {
   }
 }
 
-/** Headstage represents the front of the pipeline, interacting with whatever
+/** HeadStage represents the front of the pipeline, interacting with whatever
   * external data source dictated to service its tail nodes.
   * WARNING! Do not attempt to use the channelWrite or channelRead, as they attempt
   * to access an upstream stage, which doesn't exist for a head node
