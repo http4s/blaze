@@ -6,6 +6,7 @@ import scala.concurrent.{Future, Await}
 import scala.concurrent.ExecutionContext.Implicits.global
 
 import scala.concurrent.duration._
+import blaze.pipeline.Command.EOF
 
 /**
  * @author Bryce Anderson
@@ -54,7 +55,6 @@ class PipelineSpec extends WordSpec with Matchers {
       p.append(new IntToString)
         .cap(tail)
 
-      println(head)
       val r = tail.channelRead()
       Await.result(r, 1.second) should equal("54")
       Await.ready(tail.channelWrite("32"), 1.second)
@@ -80,10 +80,22 @@ class PipelineSpec extends WordSpec with Matchers {
                   .cap(new StringEnd)
 
       p.findStageByClass(classOf[Noop]).get should equal(noop)
-      p.findStageByName(noop.name).get should equal(noop)
+      p.findInboundStageByName(noop.name).get should equal(noop)
       noop.removeStage
       p.findStageByClass(classOf[Noop]).isDefined should equal(false)
     }
+
+    "Not give NPE on ending stage with a midstage" in {
+      val head = new IntHead
+      val end = new IntToString
+
+      new RootBuilder(head)
+            .cap(end)
+
+      head.sendInboundCommand(EOF)
+      head.getLastStage should equal(end)
+    }
+
   }
 
 

@@ -12,6 +12,7 @@ object Command {
 
   case object Connected extends Command
   case object Shutdown extends Command
+  case object Flush extends Command
   case object EOF extends Exception with Command with NoStackTrace
   case class Error(e: Throwable) extends Command
 }

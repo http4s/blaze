@@ -5,6 +5,7 @@ import java.util.Date
 import scala.concurrent.Future
 import Command._
 import com.typesafe.scalalogging.slf4j.Logging
+import blaze.pipeline.PipelineBuilder.CapStage
 
 /**
  * @author Bryce Anderson
@@ -25,7 +26,8 @@ trait TailStage[I] extends Logging {
 
     if (this.isInstanceOf[HeadStage[_]]) sys.error("HeadStage cannot request read")
 
-    prev.readRequest(size)
+    try prev.readRequest(size)
+    catch { case t: Throwable => Future.failed(t) }
   }
 
   final def channelWrite(data: I): Future[Any] = {
@@ -33,17 +35,16 @@ trait TailStage[I] extends Logging {
 
     if (this.isInstanceOf[HeadStage[_]]) sys.error("HeadStage cannot write downstream")
 
-    prev.writeRequest(data)
+    try prev.writeRequest(data)
+    catch { case t: Throwable => Future.failed(t) }
   }
 
-  final def sendOutboundCommand(cmd: Command): Unit = {
-    this match {
-      case _: HeadStage[_] => // NOOP
-      case _               => prev.outboundCommand(cmd)
-    }
+  final def sendOutboundCommand(cmd: Command): Unit = this match {
+    case _: HeadStage[_] => sys.error("HeadStage cannot send outbound commands!")// NOOP
+    case _ =>
+      try prev.outboundCommand(cmd)
+      catch { case t: Throwable => inboundCommand(Error(t)) }
   }
-
-  def outboundCommand(cmd: Command): Unit = sendOutboundCommand(cmd)
 
   def inboundCommand(cmd: Command): Unit = {
     cmd match {
@@ -53,15 +54,38 @@ trait TailStage[I] extends Logging {
     }
   }
 
+  //////////////////////////////////////////////////////////////////////////////
+
   final def replaceInline(stage: TailStage[I]): this.type = {
     shutdown()
     if (!this.isInstanceOf[HeadStage[_]]) prev.next = stage
+
+    // remove links to other stages
     this.prev = null
     this match {
       case m: MidStage[_, _] => m.next = null
       case _ => // NOOP
     }
     this
+  }
+
+  final def findOutboundStage(name: String): Option[TailStage[_]] = {
+    if (this.name == name) Some(this)
+    else prev match {
+      case t: HeadStage[_]   => if (t.name == name) Some(t) else None
+      case s: MidStage[_, _] => s.findInboundStageByName(name)
+    }
+  }
+
+  final def findInboundStage[C <: MidStage[_, _]](clazz: Class[C]): Option[C] = {
+    if (clazz.isAssignableFrom(this.getClass)) Some(this.asInstanceOf[C])
+    else prev match {
+      case t: HeadStage[_] =>
+        if (clazz.isAssignableFrom(t.getClass)) Some(t.asInstanceOf[C])
+        else None
+
+      case s: MidStage[_, _] => s.findStageByClass(clazz)
+    }
   }
 
   override def toString: String = {
@@ -83,7 +107,19 @@ trait MidStage[I, O] extends TailStage[I] {
     sendInboundCommand(cmd)
   }
 
-  final def sendInboundCommand(cmd: Command): Unit = next.inboundCommand(cmd)
+  def outboundCommand(cmd: Command): Unit = {
+    cmd match {
+      case Connected => startup()
+      case Shutdown  => shutdown()
+      case _         => // NOOP
+    }
+    sendOutboundCommand(cmd)
+  }
+
+  final def sendInboundCommand(cmd: Command): Unit = {
+    try next.inboundCommand(cmd)
+    catch { case t: Throwable => outboundCommand(Error(t)) }
+  }
 
   //////////////////////////////////////////////////////////////////////////////
 
@@ -108,7 +144,6 @@ trait MidStage[I, O] extends TailStage[I] {
 
   final def removeStage(implicit ev: MidStage[I,O]=:=MidStage[I, I]): this.type = {
     shutdown()
-
     if (this.isInstanceOf[HeadStage[_]]) sys.error("HeadStage be removed!")
 
     val me = ev(this)
@@ -120,10 +155,10 @@ trait MidStage[I, O] extends TailStage[I] {
     this
   }
 
-  final def findStageByName(name: String): Option[TailStage[_]] = {
+  final def findInboundStageByName(name: String): Option[TailStage[_]] = {
     if (this.name == name) Some(this)
     else next match {
-      case s: MidStage[_, _] => s.findStageByName(name)
+      case s: MidStage[_, _] => s.findInboundStageByName(name)
       case t: TailStage[_]   => if (t.name == name) Some(t) else None
     }
   }
@@ -140,7 +175,8 @@ trait MidStage[I, O] extends TailStage[I] {
 
   final def getLastStage: TailStage[_] = next match {
     case s: MidStage[_, _] if s.next != null => s.getLastStage
-    case n => n
+    case c: CapStage                         => this
+    case n                                   => n
   }
 }
 
@@ -151,4 +187,10 @@ trait MidStage[I, O] extends TailStage[I] {
   *
   * @tparam O type of data which this stage can submit
   */
-trait HeadStage[O] extends MidStage[Nothing, O]
+trait HeadStage[O] extends MidStage[Nothing, O] {
+  override def outboundCommand(cmd: Command): Unit = cmd match {
+    case Connected => startup()
+    case Shutdown  => shutdown()
+    case _         => // NOOP
+  }
+}

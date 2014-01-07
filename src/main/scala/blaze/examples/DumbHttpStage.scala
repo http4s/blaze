@@ -109,7 +109,7 @@ class DumbHttpStage extends RequestParser with TailStage[ByteBuffer] {
           logger.trace(s"Wrote bytes to channel. Remaining buffer: $buff")
           parseLoop()
 
-        case Failure(t) => outboundCommand(Cmd.Error(t))
+        case Failure(t) => sendOutboundCommand(Cmd.Error(t))
       }
     }
      // inconsistent state!
