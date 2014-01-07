@@ -281,6 +281,38 @@ public abstract class RequestParser {
         return true;
     }
 
+    /** Manages the buffer position while submitting the content -------- */
+
+    private boolean submitBuffer(ByteBuffer in) {
+        if (submitContent(in.asReadOnlyBuffer())) {
+            in.position(in.limit());
+            return true;
+        } else return false;
+    }
+
+    private boolean submitPartialBuffer(ByteBuffer in, int size) {
+
+        // Perhaps we are just right? Might be common.
+        if (size == in.remaining()) {
+            return submitBuffer(in);
+        }
+
+        final int old_lim = in.limit();
+        final int end = in.position() + size;
+        in.limit(end);
+
+        ByteBuffer b = in.slice().asReadOnlyBuffer();
+
+        // fast forward our view of the data
+        in.limit(old_lim);
+
+        if (submitContent(b)) { // Successful submission
+            in.position(end);
+            return true;
+        }
+        else return false;      // need to reset things
+    }
+
     /* ------------------------------------------------------------------ */
     // the sole Constructor
 
@@ -665,32 +697,6 @@ public abstract class RequestParser {
         }
     }
 
-    private boolean submitPartial(ByteBuffer in, int size) {
-
-        // Perhaps we are just right? Might be common.
-        if (size == in.remaining()) {
-            return submitContent(in);
-        }
-
-        final ByteBuffer b = ByteBuffer.allocate(size);
-
-        final int old_lim = in.limit();
-        in.limit(in.position() + size);
-        in.mark();
-
-        b.put(in);
-        b.flip();
-        in.limit(old_lim);
-
-        if (submitContent(b)) { // Successful submission
-            return true;
-        }
-        else {                  // need to reset things
-            in.reset();
-            return false;
-        }
-    }
-
     private boolean nonChunkedContent(ByteBuffer in) {
 
         final long remaining = _contentLength - _contentPosition;
@@ -698,7 +704,7 @@ public abstract class RequestParser {
         final int buf_size = in.remaining();
 
         if (buf_size >= remaining) {
-            if (submitPartial(in, (int)remaining)) {
+            if (submitPartialBuffer(in, (int) remaining)) {
                 _contentPosition += remaining;
                 shutdown();
                 return true;
@@ -706,7 +712,7 @@ public abstract class RequestParser {
             else return false;
         }
         else {
-            if (submitContent(in)) {
+            if (submitBuffer(in)) {
                 _contentPosition += buf_size;
                 return true;
             }
@@ -763,7 +769,7 @@ public abstract class RequestParser {
                     final int chunk_size = in.remaining();
 
                     if (remaining_chunk_size <= chunk_size) {
-                        if (submitPartial(in, remaining_chunk_size)) {
+                        if (submitPartialBuffer(in, remaining_chunk_size)) {
                             _chunkPosition = _chunkLength = 0;
                             _chunkState = ChunkState.CHUNK_LF;
                             // fall through
@@ -773,7 +779,7 @@ public abstract class RequestParser {
                         }
                     }
                     else {
-                        if (submitContent(in)) {
+                        if (submitBuffer(in)) {
                             _chunkPosition += chunk_size;
                             return true;
                         }
