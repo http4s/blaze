@@ -51,7 +51,7 @@ class PipelineSpec extends WordSpec with Matchers {
       val head = new IntHead
       val tail = new StringEnd
 
-      val p = new RootBuilder(head)
+      val p = PipelineBuilder(head)
       p.append(new IntToString)
         .cap(tail)
 
@@ -74,7 +74,7 @@ class PipelineSpec extends WordSpec with Matchers {
       }
 
       val noop = new Noop
-      val p = new RootBuilder(new IntHead)
+      val p = PipelineBuilder(new IntHead)
                   .append(noop)
                   .append(new IntToString)
                   .cap(new StringEnd)
@@ -89,7 +89,7 @@ class PipelineSpec extends WordSpec with Matchers {
       val head = new IntHead
       val end = new IntToString
 
-      new RootBuilder(head)
+      PipelineBuilder(head)
             .cap(end)
 
       head.sendInboundCommand(EOF)

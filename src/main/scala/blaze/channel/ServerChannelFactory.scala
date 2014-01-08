@@ -8,7 +8,7 @@ import java.nio.channels.{AsynchronousServerSocketChannel => NIOServerChannel,
                           AsynchronousChannelGroup}
 
 import scala.annotation.tailrec
-import pipeline.RootBuilder
+import blaze.pipeline.PipelineBuilder
 import java.nio.ByteBuffer
 import pipeline.Command.Connected
 import pipeline.stages.ByteBufferHead
@@ -31,9 +31,9 @@ class ServerChannelFactory(pipeFactory: PipeFactory, group: AsynchronousChannelG
     new ServerChannel(NIOServerChannel.open(group).bind(localAddress))
   }
   
-  private def root(ch: NIOChannel): RootBuilder[ByteBuffer] = {
+  private def root(ch: NIOChannel): PipelineBuilder[ByteBuffer, ByteBuffer] = {
     val root = new ByteBufferHead(ch)
-    new RootBuilder(root)
+    PipelineBuilder(root)
   }
 
   class ServerChannel private[ServerChannelFactory](channel: NIOServerChannel)

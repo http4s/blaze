@@ -8,7 +8,7 @@ import java.nio.ByteBuffer
 import scala.util.{Success, Failure}
 import scala.annotation.tailrec
 
-import util.DirectExecutor.direct
+import util.Execution.directec
 
 import http_parser.BaseExceptions.BadRequest
 
@@ -17,6 +17,9 @@ import http_parser.BaseExceptions.BadRequest
  *         Created on 1/5/14
  */
 class DumbHttpStage extends RequestParser with TailStage[ByteBuffer] {
+
+  private implicit def ec = directec
+
   val name = "DumbHttpStage"
 
   private def body = "ping\n"

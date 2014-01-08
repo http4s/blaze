@@ -11,8 +11,6 @@ import scala.concurrent.Future
 
 package object pipeline {
 
-//  implicit def nioToScalaFuture(): Future[ByteBuffer] = {
-//    ???
-//  }
+  type RootBuilder[T] = PipelineBuilder[T, T]
 
 }

@@ -7,7 +7,7 @@ import blaze.pipeline.Command.Command
  * @author Bryce Anderson
  *         Created on 1/4/14
  */
-class PipelineBuilder[I, O]private[pipeline](headStage: HeadStage[I], tail: MidStage[_, O]) {
+class PipelineBuilder[I, O] private(headStage: HeadStage[I], tail: MidStage[_, O]) {
 
   def append[N](stage: MidStage[O, N]): PipelineBuilder[I, N] = {
 
@@ -43,10 +43,9 @@ class PipelineBuilder[I, O]private[pipeline](headStage: HeadStage[I], tail: MidS
   }
 }
 
-class RootBuilder[T](head: HeadStage[T]) extends PipelineBuilder[T, T](head, head)
-
 object PipelineBuilder {
 
+  def apply[T](head: HeadStage[T]): RootBuilder[T] = new PipelineBuilder[T, T](head, head)
 
   private[pipeline] class CapStage extends TailStage[Any] {
     def name: String = "Capping stage"
@@ -56,5 +55,4 @@ object PipelineBuilder {
                    "stage of your pipeline properly handle all commands?")
     }
   }
-
 }

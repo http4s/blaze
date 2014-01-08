@@ -63,7 +63,7 @@ public abstract class RequestParser {
     private final int maxChunkSize;
 
     /* ------------------------------------------------------------------- */
-    private State _state = State.START;
+    private volatile State _state = State.START;
     private LineState _lineState = LineState.START;
     private HeaderState _hstate = HeaderState.START;
 
