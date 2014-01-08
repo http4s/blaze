@@ -7,6 +7,10 @@ import scala.concurrent.{Promise, Future}
 import Command._
 import java.io.IOException
 import java.util.Date
+import java.util.concurrent.TimeUnit
+
+import java.lang.{Long => JLong}
+import scala.annotation.tailrec
 
 
 /**
@@ -42,6 +46,36 @@ class ByteBufferHead(channel: NioChannel,
       })
     }
     go(data.remaining())
+
+    f.future
+  }
+
+
+  override def writeRequest(data: Seq[ByteBuffer]): Future[Unit] = {
+
+    val f = Promise[Unit]
+    val srcs = data.toArray
+    val sz: Long = {
+      @tailrec def go(size: Long, pos: Int): Long = {
+        if (pos < srcs.length) go(size + srcs(pos).remaining(), pos + 1)
+        else size
+      }
+      go(0, 0)
+    }
+
+    def go(i: Long): Unit = {
+      channel.write[Null](srcs, 0, srcs.length, -1L, TimeUnit.MILLISECONDS, null: Null, new CompletionHandler[JLong, Null] {
+        def failed(exc: Throwable, attachment: Null) {
+          f.tryFailure(exc)
+        }
+
+        def completed(result: JLong, attachment: Null) {
+          if (result.longValue < i) go(i - result.longValue)  // try to write again
+          else f.trySuccess()      // All done
+        }
+      })
+    }
+    go(sz)
 
     f.future
   }

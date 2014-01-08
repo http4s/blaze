@@ -6,6 +6,7 @@ import scala.concurrent.Future
 import Command._
 import com.typesafe.scalalogging.slf4j.Logging
 import blaze.pipeline.PipelineBuilder.CapStage
+import blaze.util.Execution.directec
 
 /**
  * @author Bryce Anderson
@@ -27,6 +28,15 @@ trait TailStage[I] extends Logging {
     if (this.isInstanceOf[HeadStage[_]]) sys.error("HeadStage cannot request read")
 
     try prev.readRequest(size)
+    catch { case t: Throwable => Future.failed(t) }
+  }
+
+  final def channelWrite(data: Seq[I]): Future[Any] = {
+    logger.trace(s"Stage ${getClass.getName} sending multiple write request.")
+
+    if (this.isInstanceOf[HeadStage[_]]) sys.error("HeadStage cannot write downstream")
+
+    try prev.writeRequest(data)
     catch { case t: Throwable => Future.failed(t) }
   }
 
@@ -102,6 +112,12 @@ trait MidStage[I, O] extends TailStage[I] {
   def readRequest(size: Int): Future[O]
 
   def writeRequest(data: O): Future[Any]
+
+  def writeRequest(data: Seq[O]): Future[Any] = {
+    data.foldLeft[Future[Any]](Future.successful()){ (f, d) =>
+      f.flatMap(_ => writeRequest(d))(directec)
+    }
+  }
 
   override def inboundCommand(cmd: Command): Unit = {
     super.inboundCommand(cmd)
