@@ -10,6 +10,7 @@ import com.typesafe.scalalogging.slf4j.Logging
 import java.util.Date
 
 import scala.concurrent.ExecutionContext.Implicits.global
+import blaze.pipeline.Command.EOF
 
 /**
  * @author Bryce Anderson
@@ -49,7 +50,8 @@ class EchoServer extends Logging {
           // Write it, wait for conformation, and start again
           channelWrite(b).onSuccess{ case _ => startup() }
 
-        case Failure(t) =>   logger.error("Channel read failed: " + t)
+        case Failure(EOF) => logger.trace("Channel closed.")
+        case Failure(t) => logger.error("Channel read failed: " + t)
       }
     }
   }

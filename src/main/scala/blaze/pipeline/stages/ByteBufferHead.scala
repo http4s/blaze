@@ -1,7 +1,11 @@
 package blaze.pipeline
 package stages
 
-import java.nio.channels.{AsynchronousSocketChannel => NioChannel, ShutdownChannelGroupException, CompletionHandler}
+import java.nio.channels.{AsynchronousSocketChannel => NioChannel,
+                          ClosedChannelException,
+                          ShutdownChannelGroupException,
+                          CompletionHandler}
+
 import java.nio.ByteBuffer
 import scala.concurrent.{Promise, Future}
 import Command._
@@ -36,6 +40,9 @@ class ByteBufferHead(channel: NioChannel,
     def go(i: Int) {
       channel.write(data, null: Null, new CompletionHandler[Integer, Null] {
         def failed(exc: Throwable, attachment: Null) {
+          if (exc.isInstanceOf[ClosedChannelException]) logger.trace("Channel closed, dropping packet")
+          else logger.error("Failure writing to channel", exc)
+
           f.tryFailure(exc)
         }
 
@@ -66,6 +73,9 @@ class ByteBufferHead(channel: NioChannel,
     def go(i: Long): Unit = {
       channel.write[Null](srcs, 0, srcs.length, -1L, TimeUnit.MILLISECONDS, null: Null, new CompletionHandler[JLong, Null] {
         def failed(exc: Throwable, attachment: Null) {
+          if (exc.isInstanceOf[ClosedChannelException]) logger.trace("Channel closed, dropping packet")
+          else logger.error("Failure writing to channel", exc)
+
           f.tryFailure(exc)
         }
 
