@@ -2,7 +2,7 @@ package blaze
 package http_parser
 
 import org.scalatest.{Matchers, WordSpec}
-import http_parser.RequestParser.State
+import http_parser.Http1Parser.State
 import java.nio.ByteBuffer
 import http_parser.HttpTokens.EndOfContent
 import blaze.http_parser.BaseExceptions.BadRequest
@@ -17,7 +17,7 @@ class JavaParserSpec extends WordSpec with Matchers {
 
 
 
-  class Parser(maxReq: Int = 1034, maxHeader: Int = 1024) extends RequestParser(maxReq, maxHeader, 1) {
+  class Parser(maxReq: Int = 1034, maxHeader: Int = 1024) extends Http1Parser(maxReq, maxHeader, 1) {
 
     val sb = new StringBuilder
 
@@ -86,7 +86,7 @@ class JavaParserSpec extends WordSpec with Matchers {
 
   val twoline = request + host
 
-  "RequestParser" should {
+  "Http1Parser" should {
     "Parse the request line for HTTP" in {
       val p = new Parser()
       p.parseLine("POST /enlighten/calais.asmx HTTP/1.1\r\n") should equal(true)

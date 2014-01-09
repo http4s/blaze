@@ -1,7 +1,7 @@
 package blaze
 package examples
 
-import http_parser.RequestParser
+import http_parser.Http1Parser
 import pipeline.{TailStage, Command => Cmd}
 import java.nio.ByteBuffer
 
@@ -16,7 +16,7 @@ import http_parser.BaseExceptions.BadRequest
  * @author Bryce Anderson
  *         Created on 1/5/14
  */
-class DumbHttpStage extends RequestParser with TailStage[ByteBuffer] {
+class DumbHttpStage extends Http1Parser with TailStage[ByteBuffer] {
 
   private implicit def ec = directec
 
@@ -67,7 +67,7 @@ class DumbHttpStage extends RequestParser with TailStage[ByteBuffer] {
 
 
         try parseBuffer(buff)
-        catch { case r: BadRequest   => earlyEOF() }
+        catch { case r: BadRequest   => shutdown() }
 
       case Failure(Cmd.EOF)    => shutdown()
       case Failure(t)          =>
@@ -76,47 +76,47 @@ class DumbHttpStage extends RequestParser with TailStage[ByteBuffer] {
     }
   }
 
-  @tailrec
+//  @tailrec
   private def parseBuffer(buff: ByteBuffer): Unit = {
     
-    if (!inloop) return
-    
-    if (buff.remaining() < 1 && !finished()) { // Do we need more data?
-      parseLoop()
-      return
-    }
-
-    if (inRequestLine && parseRequestLine(buff)) {
-      logger.trace("Parsing request line")
-      parseBuffer(buff)
-    }
-    else if (inHeaders() && parseHeaders(buff)) {
-      logger.trace("---------------- Parsing headers")
-      parseBuffer(buff)
-    }
-    else if (inContent() && parseContent(buff)) {
-      logger.trace("---------------- Parsing content")
-      parseContent(buff)
-    }
-    else if (finished()) {
-      logger.trace("---------------- Request Finished")
-      if (buff.hasRemaining) logger.warn(s"Request finished, but there is buffer remaining")
-      reset()
-      if (closeOnFinish) {
-        shutdown()
-        sendOutboundCommand(Cmd.Shutdown)
-      }
-      else channelWrite(fullresp).onComplete{
-        case Success(_) =>
-          fullresp.position(0)
-          logger.trace(s"Wrote bytes to channel. Remaining buffer: $buff")
-          parseLoop()
-
-        case Failure(t) => sendOutboundCommand(Cmd.Error(t))
-      }
-    }
-     // inconsistent state!
-    else sys.error("Inconsistent state")
+//    if (!inloop) return
+//
+//    if (buff.remaining() < 1 && !finished()) { // Do we need more data?
+//      parseLoop()
+//      return
+//    }
+//
+//    if (inRequestLine && parseRequestLine(buff)) {
+//      logger.trace("Parsing request line")
+//      parseBuffer(buff)
+//    }
+//    else if (inHeaders() && parseHeaders(buff)) {
+//      logger.trace("---------------- Parsing headers")
+//      parseBuffer(buff)
+//    }
+//    else if (inContent() ) {
+//      logger.trace("---------------- Parsing content")
+//      val content = parseContent(buff)
+//    }
+//    else if (finished()) {
+//      logger.trace("---------------- Request Finished")
+//      if (buff.hasRemaining) logger.warn(s"Request finished, but there is buffer remaining")
+//      reset()
+//      if (closeOnFinish) {
+//        shutdown()
+//        sendOutboundCommand(Cmd.Shutdown)
+//      }
+//      else channelWrite(fullresp).onComplete{
+//        case Success(_) =>
+//          fullresp.position(0)
+//          logger.trace(s"Wrote bytes to channel. Remaining buffer: $buff")
+//          parseLoop()
+//
+//        case Failure(t) => sendOutboundCommand(Cmd.Error(t))
+//      }
+//    }
+//     // inconsistent state!
+//    else sys.error("Inconsistent state")
   }
 
   override protected def shutdown(): Unit = {
@@ -125,25 +125,14 @@ class DumbHttpStage extends RequestParser with TailStage[ByteBuffer] {
     super.shutdown()
   }
 
-  def earlyEOF(): Unit = sendOutboundCommand(Cmd.Shutdown)
-
   def headerComplete(name: String, value: String) = {
     //logger.trace(s"Received header '$name: $value'")
   }
 
-  def requestComplete() {
-    logger.trace("---------------- Request completed.")
-  }
-  
-  def headersComplete() {
-    logger.trace("---------------- Headers completed.")
-  }
-
-  def startRequest(methodString: String, uri: String, scheme: String, majorversion: Int, minorversion: Int): Boolean = {
+  def requestLineComplete(methodString: String, uri: String, scheme: String, majorversion: Int, minorversion: Int) {
     //if (minorversion == 0) closeOnFinish = true
 
-    logger.trace(s"Received request($methodString $uri $scheme/$majorversion.$minorversion)");
-    true
+    logger.trace(s"Received request($methodString $uri $scheme/$majorversion.$minorversion)")
   }
 
   def submitContent(buffer: ByteBuffer): Boolean = {

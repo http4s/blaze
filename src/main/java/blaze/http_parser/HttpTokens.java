@@ -58,6 +58,6 @@ public final class HttpTokens
         return ch == HttpTokens.SPACE || ch == HttpTokens.TAB;
     }
 
-    public enum EndOfContent { UNKNOWN_CONTENT,NO_CONTENT,EOF_CONTENT,CONTENT_LENGTH,CHUNKED_CONTENT,SELF_DEFINING_CONTENT }
+    public enum EndOfContent { UNKNOWN_CONTENT,NO_CONTENT,CONTENT_LENGTH,CHUNKED_CONTENT,SELF_DEFINING_CONTENT,EOF_CONTENT }
 
 }

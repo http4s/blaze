@@ -24,34 +24,13 @@ public class BaseExceptions {
         }
     }
 
-    public static final class BadRequest extends ParserException {
+    public static class BadRequest extends ParserException {
         public BadRequest(String msg) {
             super(msg);
         }
     }
-//
-//    public static final class ParsingError extends ParserException {
-//        public ParsingError(String error) {
-//            super(error);
-//        }
-//    }
 
-    public static final class ExternalExeption extends ParserException {
-
-        private final Exception cause;
-
-        public ExternalExeption(Exception cause, String stage) {
-            super("Caught external exception in stage " + stage + ": " + cause);
-            this.cause = cause;
-        }
-
-        @Override
-        public synchronized Throwable getCause() {
-            return cause;    //To change body of overridden methods use File | Settings | File Templates.
-        }
-    }
-
-    public static final class InvalidState extends ParserException {
+    public static class InvalidState extends ParserException {
         public InvalidState(String msg) {
             super(msg);
         }

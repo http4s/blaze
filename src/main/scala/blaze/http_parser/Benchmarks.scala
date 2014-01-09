@@ -2,7 +2,6 @@ package blaze
 package http_parser
 
 import java.nio.ByteBuffer
-import http_parser.RequestParser.State
 import scala.collection.mutable.ListBuffer
 
 /**
@@ -48,20 +47,37 @@ class Benchmarks {
       f(ii)
     }
     val end = System.currentTimeMillis()
-    println(s"Parsed ${i/(end - start)}K req/sec")
 
+    if (end - start > 0) println(s"Parsed ${i/(end - start)}K req/sec")
+    else println("Unable to bench result")
   }
   
   def checkingBenchmark() {
     val p = new BenchParser() {
       val sb = new StringBuilder
 
-      override def submitContent(buffer: ByteBuffer): Boolean = {
-        while(buffer.hasRemaining)
-          sb.append(buffer.get().toChar)
-        true
+      override def parsecontent(s: ByteBuffer): ByteBuffer = {
+        val b = super.parsecontent(s)
+        if (b != null) {
+          b.mark()
+          while (b.hasRemaining) sb.append(b.get().toChar)
+          b.reset()
+        }
+        b
       }
+
+      override def headerComplete(name: String, value: String): Unit = {
+        //println(s"Header($name, $value)")
+        super.headerComplete(name, value)
+      }
+
+//      override def requestLineComplete(methodString: String, uri: String, scheme: String, majorversion: Int, minorversion: Int): Unit = {
+//        println(s"Request($methodString, $uri, $scheme/$majorversion.$minorversion)")
+//        super.requestLineComplete(methodString, uri, scheme, majorversion, minorversion)
+//      }
     }
+
+
     val b = ByteBuffer.wrap(mockChunked.getBytes())
     val blim = b.limit()
     val reconstructed = body + ", " + body + " again!"
@@ -73,27 +89,30 @@ class Benchmarks {
 
       b.limit(blim - 20)
 
-      p.parseLine(b)// should equal(true)
-      assert(p.getState == State.HEADER)
+
+      assert(p.parseLine(b))// should equal(true)
+      assert(p.requestLineComplete())
 
       p.parseheaders(b) //should equal(true)
-      assert(p.getState == State.CONTENT)
+      assert(p.headersComplete())
 
-      assert(p.parsecontent(b))
-      assert(p.getState == State.CONTENT)
+      p.parsecontent(b)
+      assert(!p.contentComplete())
 
       b.limit(blim - 10)
-      assert(p.parsecontent(b))
+      p.parsecontent(b)
 
       b.limit(blim)
-      assert(p.parsecontent(b))
-      assert(p.getState == State.END)
+      p.parsecontent(b)
+      p.parsecontent(b)
+      assert(p.contentComplete())
+//      println(p.sb.result())
       assert(p.sb.result() == reconstructed)
 
       p.sb.clear()
       p.reset()
 
-      assert(p.getState == State.START)
+      assert(!p.requestLineComplete())
     }
 
     run(1000000)(iteration(_))
@@ -110,13 +129,15 @@ class Benchmarks {
 
       assert(p.parseLine(b))
 
-      assert(p.parseheaders(b)) 
+      assert(p.parseheaders(b))
 
-      assert(p.parsecontent(b))
+      assert(p.parsecontent(b) != null)
+      assert(p.parsecontent(b) != null)
+      assert(p.parsecontent(b) == null && p.contentComplete())
 
       p.reset()
 
-      assert(p.getState == State.START)
+      assert(!p.requestLineComplete())
     }
 
     run(1000000)(iteration(_))
@@ -142,10 +163,10 @@ class Benchmarks {
 
       assert(p.parseLine(b))
       assert(p.parseheaders(b))
-      assert(p.parsecontent(b))
+      p.parsecontent(b)
       assert(p.headers.length == 5)
       p.clear()
-      assert(p.getState == State.START)
+      assert(!p.requestLineComplete())
     }
 
     run(10)(iteration(_))
@@ -157,7 +178,7 @@ class Benchmarks {
 object Benchmarks {
   def main(args: Array[String]) {
     val b = new Benchmarks
-    b.headerCounterBenchmark()
+//    b.headerCounterBenchmark()
     b.checkingBenchmark()
     b.rawBenchmark()
   }
