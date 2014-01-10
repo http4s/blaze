@@ -41,14 +41,14 @@ class EchoServer extends Logging {
 
     val msg = "echo: ".getBytes
 
-    final override def startup(): Unit = {
+    final override def stageStartup(): Unit = {
       channelRead().onComplete{
         case Success(buff) =>
           val b = ByteBuffer.allocate(buff.remaining() + msg.length)
           b.put(msg).put(buff).flip()
 
           // Write it, wait for conformation, and start again
-          channelWrite(b).onSuccess{ case _ => startup() }
+          channelWrite(b).onSuccess{ case _ => stageStartup() }
 
         case Failure(EOF) => logger.trace("Channel closed.")
         case Failure(t) => logger.error("Channel read failed: " + t)

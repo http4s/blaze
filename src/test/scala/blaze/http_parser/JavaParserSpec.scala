@@ -37,7 +37,7 @@ class JavaParserSpec extends WordSpec with Matchers {
       c
     }
 
-    def requestLineComplete(methodString: String, uri: String, scheme: String, majorversion: Int, minorversion: Int) {
+    def submitRequestLine(methodString: String, uri: String, scheme: String, majorversion: Int, minorversion: Int) {
       println(s"$methodString, $uri, $scheme/$majorversion.$minorversion")
     }
 

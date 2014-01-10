@@ -19,8 +19,8 @@ trait TailStage[I] extends Logging {
 
   private[pipeline] var prev: MidStage[_, I] = null
 
-  protected def startup(): Unit = logger.trace(s"Starting up at ${new Date}")
-  protected def shutdown(): Unit = logger.trace(s"Shutting down at ${new Date}")
+  protected def stageStartup(): Unit = logger.trace(s"Starting up at ${new Date}")
+  protected def stageShutdown(): Unit = logger.trace(s"Shutting down at ${new Date}")
 
   final def channelRead(size: Int = -1): Future[I] = {
     logger.trace(s"Stage ${getClass.getName} sending read request.")
@@ -58,8 +58,8 @@ trait TailStage[I] extends Logging {
 
   def inboundCommand(cmd: Command): Unit = {
     cmd match {
-      case Connected => startup()
-      case Shutdown  => shutdown()
+      case Connected => stageStartup()
+      case Shutdown  => stageShutdown()
       case _         => // NOOP
     }
   }
@@ -67,7 +67,7 @@ trait TailStage[I] extends Logging {
   //////////////////////////////////////////////////////////////////////////////
 
   final def replaceInline(stage: TailStage[I]): this.type = {
-    shutdown()
+    stageShutdown()
     if (!this.isInstanceOf[HeadStage[_]]) prev.next = stage
 
     // remove links to other stages
@@ -126,8 +126,8 @@ trait MidStage[I, O] extends TailStage[I] {
 
   def outboundCommand(cmd: Command): Unit = {
     cmd match {
-      case Connected => startup()
-      case Shutdown  => shutdown()
+      case Connected => stageStartup()
+      case Shutdown  => stageShutdown()
       case _         => // NOOP
     }
     sendOutboundCommand(cmd)
@@ -141,7 +141,7 @@ trait MidStage[I, O] extends TailStage[I] {
   //////////////////////////////////////////////////////////////////////////////
 
   final def replaceInline(stage: MidStage[I, O]): this.type = {
-    shutdown()
+    stageShutdown()
     next.prev = stage
     if (!this.isInstanceOf[HeadStage[_]]) prev.next = stage
     this.next = null
@@ -160,7 +160,7 @@ trait MidStage[I, O] extends TailStage[I] {
   }
 
   final def removeStage(implicit ev: MidStage[I,O]=:=MidStage[I, I]): this.type = {
-    shutdown()
+    stageShutdown()
     if (this.isInstanceOf[HeadStage[_]]) sys.error("HeadStage be removed!")
 
     val me = ev(this)
@@ -206,8 +206,8 @@ trait MidStage[I, O] extends TailStage[I] {
   */
 trait HeadStage[O] extends MidStage[Nothing, O] {
   override def outboundCommand(cmd: Command): Unit = cmd match {
-    case Connected => startup()
-    case Shutdown  => shutdown()
+    case Connected => stageStartup()
+    case Shutdown  => stageShutdown()
     case _         => // NOOP
   }
 }

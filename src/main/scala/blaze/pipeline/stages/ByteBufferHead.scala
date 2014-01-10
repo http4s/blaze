@@ -123,7 +123,7 @@ class ByteBufferHead(channel: NioChannel,
     p.future
   }
 
-  override def shutdown(): Unit = closeChannel()
+  override def stageShutdown(): Unit = closeChannel()
 
   private def channelUnexpectedlyClosed(e: Throwable) {
     closeChannel()

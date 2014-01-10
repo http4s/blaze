@@ -45,11 +45,11 @@ abstract class Http4sStage(maxReqLen: Int = 2048,
   private var storedBuffer: ByteBuffer = null
 
 
-  override protected def shutdown(): Unit = {
+  override protected def stageShutdown(): Unit = {
     logger.trace("Shutting down HttpPipeline")
 
     reset()
-    super.shutdown()
+    super.stageShutdown()
   }
 
   protected def getRequest(): Future[Request] = {

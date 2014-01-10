@@ -41,10 +41,10 @@ abstract class BufferingStage[T](bufferSize: Int, val name: String = "BufferingS
     f
   }
 
-  override protected def shutdown(): Unit = {
+  override protected def stageShutdown(): Unit = {
     buffer.clear()
     size = 0
-    super.shutdown()
+    super.stageShutdown()
   }
 
   override def outboundCommand(cmd: Command): Unit = {

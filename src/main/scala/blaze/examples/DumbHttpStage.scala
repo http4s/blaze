@@ -26,9 +26,7 @@ class DumbHttpStage extends Http1Parser with TailStage[ByteBuffer] {
 
   private def body = "ping\n"
   private def requestHeaders = "HTTP/1.1 200 OK\r\n" +
-                        "Connection: Keep-Alive\r\n" +
-                        "Content-Length: " + body.length + "\r\n" +
-                        "\r\n"
+                               "Connection: Keep-Alive\r\n"
 
   private val full = requestHeaders + body
 
@@ -43,7 +41,7 @@ class DumbHttpStage extends Http1Parser with TailStage[ByteBuffer] {
   val fullRespLimit = fullresp.limit()
 
   // Will act as our loop
-  override def startup() {
+  override def stageStartup() {
     logger.info("Starting pipeline")
     requestLoop()
   }
@@ -69,23 +67,30 @@ class DumbHttpStage extends Http1Parser with TailStage[ByteBuffer] {
           runRequest(buff).onComplete {
             case Success(true)  => reset(); requestLoop()
             case o              =>
-              logger.info("Found other: " + o)
-              shutdown()
+//              logger.info("Found other: " + o)
+              stageShutdown()
               sendOutboundCommand(Cmd.Shutdown)
           }
         }
-        catch { case r: BadRequest   => shutdown() }
+        catch { case t: Throwable   => stageShutdown() }
 
-      case Failure(Cmd.EOF)    => shutdown()
+      case Failure(Cmd.EOF)    => stageShutdown()
       case Failure(t)          =>
-        shutdown()
+        stageShutdown()
         sendOutboundCommand(Cmd.Error(t))
     }
   }
 
   private def runRequest(buffer: ByteBuffer): Future[Boolean] = {
-    val body = requestHeaders + this.body
-    val buff = ByteBuffer.wrap(body.getBytes())
+//    val bb = new StringBuilder().append("You sent the following headers:\n")
+//    headers.foreach{ case (n,v) => bb.append(n).append(": ").append(v).append("\n") }
+//    val body = bb.result()
+
+    val full = new StringBuilder().append(requestHeaders)
+                  .append("Content-Length: ").append(body.length).append("\r\n\r\n")
+                  .append(body)
+
+    val buff = ByteBuffer.wrap(full.result.getBytes())
 
     val keepAlive: Boolean = {
       minor == 1 && keepAliveHeader.map(_._2.equalsIgnoreCase("Keep-Alive")).getOrElse(true)   ||
@@ -117,10 +122,10 @@ class DumbHttpStage extends Http1Parser with TailStage[ByteBuffer] {
     case _ => false
   }
 
-  override protected def shutdown(): Unit = {
+  override protected def stageShutdown(): Unit = {
     logger.info("Shutting down HttpPipeline")
     shutdownParser()
-    super.shutdown()
+    super.stageShutdown()
   }
 
   def headerComplete(name: String, value: String) = {
