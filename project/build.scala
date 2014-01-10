@@ -38,9 +38,6 @@ object ApplicationBuild extends Build {
         }
       }
     )
-   .dependsOn(http4s)
-
-   lazy val http4s = ProjectRef(file("../http4s"), "core")
    
    lazy val scalatest  = "org.scalatest"  %% "scalatest" % "2.0.RC3"
    lazy val scalameter = "com.github.axel22" % "scalameter_2.10" % "0.4"
