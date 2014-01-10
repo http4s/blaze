@@ -6,11 +6,9 @@ import pipeline.{TailStage, Command => Cmd}
 import java.nio.ByteBuffer
 
 import scala.util.{Success, Failure}
-import scala.annotation.tailrec
 
-import util.Execution.directec
+import util.Execution.trampoline
 
-import http_parser.BaseExceptions.BadRequest
 import scala.concurrent.Future
 import scala.collection.mutable.ListBuffer
 
@@ -20,7 +18,7 @@ import scala.collection.mutable.ListBuffer
  */
 class DumbHttpStage extends Http1Parser with TailStage[ByteBuffer] {
 
-  private implicit def ec = directec
+  private implicit def ec = trampoline
 
   val name = "DumbHttpStage"
 
@@ -100,7 +98,7 @@ class DumbHttpStage extends Http1Parser with TailStage[ByteBuffer] {
     headers.clear()
 
     channelWrite(buff).flatMap(_ => drainBody(buffer)).map{_ =>
-      uri = null
+      uri = null         // zero out the state
       method = null
       minor = -1
       major = -1
