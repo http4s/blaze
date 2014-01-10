@@ -71,9 +71,9 @@ class Benchmarks {
         super.headerComplete(name, value)
       }
 
-//      override def requestLineComplete(methodString: String, uri: String, scheme: String, majorversion: Int, minorversion: Int): Unit = {
+//      override def submitRequestLine(methodString: String, uri: String, scheme: String, majorversion: Int, minorversion: Int): Unit = {
 //        println(s"Request($methodString, $uri, $scheme/$majorversion.$minorversion)")
-//        super.requestLineComplete(methodString, uri, scheme, majorversion, minorversion)
+//        super.submitRequestLine(methodString, uri, scheme, majorversion, minorversion)
 //      }
     }
 

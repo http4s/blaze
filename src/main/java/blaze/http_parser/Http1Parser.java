@@ -17,14 +17,14 @@ public abstract class Http1Parser {
     private class ParserBadRequest extends BadRequest {
         private ParserBadRequest(String msg) {
             super(msg);
-            shutdown();
+            shutdownParser();
         }
     }
 
     private class ParserInvalidState extends InvalidState {
         private ParserInvalidState(String msg) {
             super(msg);
-            shutdown();
+            shutdownParser();
         }
     }
 
@@ -99,7 +99,7 @@ public abstract class Http1Parser {
      * @param minorversion minor version
      * @return true if handling parsing should return.
      */
-    public abstract void requestLineComplete(String methodString, String uri, String scheme, int majorversion, int minorversion);
+    public abstract void submitRequestLine(String methodString, String uri, String scheme, int majorversion, int minorversion);
 
     /**
      * This is the method called by parser when a HTTP Header name and value is found
@@ -143,6 +143,7 @@ public abstract class Http1Parser {
     /* ------------------------------------------------------------------ */
 
     public final void reset() {
+
         clearBuffer();
 
         _lineState = LineState.START;
@@ -160,7 +161,7 @@ public abstract class Http1Parser {
 
     /* ------------------------------------------------------------------ */
 
-    protected void shutdown() {
+    protected void shutdownParser() {
         _lineState = LineState.END;
         _hstate = HeaderState.END;
         _chunkState = ChunkState.END;
@@ -260,9 +261,9 @@ public abstract class Http1Parser {
     /** Manages the buffer position while submitting the content -------- */
 
     private ByteBuffer submitBuffer(ByteBuffer in) {
-        ByteBuffer result = in.asReadOnlyBuffer();
+        ByteBuffer out = in.asReadOnlyBuffer();
         in.position(in.limit());
-        return result;
+        return out;
     }
 
     private ByteBuffer submitPartialBuffer(ByteBuffer in, int size) {
@@ -449,7 +450,7 @@ public abstract class Http1Parser {
 
                     // We are through parsing the request line
                     _lineState = LineState.END;
-                    requestLineComplete(_methodString, _uriString, scheme, _majorversion, _minorversion);
+                    submitRequestLine(_methodString, _uriString, scheme, _majorversion, _minorversion);
                     return true;
 
                 default:
@@ -485,13 +486,13 @@ public abstract class Http1Parser {
                         _hstate = HeaderState.END;
 
                         // Finished with the whole request
-                        if (_chunkState == ChunkState.CHUNK_TRAILERS) shutdown();
+                        if (_chunkState == ChunkState.CHUNK_TRAILERS) shutdownParser();
 
-                        // do we not expect a body?
+                        // TODO: perhaps we should test against if it is GET, OPTION, or HEAD.
                         else if ((_endOfContent == EndOfContent.UNKNOWN_CONTENT &&
+                                 _methodString != null   &&
                                  _methodString != "POST" &&
-                                 _methodString != "PUT") ||
-                                _endOfContent == EndOfContent.NO_CONTENT) shutdown();
+                                 _methodString != "PUT")) shutdownParser();
 
                         // Done parsing headers
                         return true;
@@ -546,6 +547,7 @@ public abstract class Http1Parser {
                                 if (!value.equalsIgnoreCase("chunked")) {
                                     throw new ParserBadRequest("Unknown Transfer-Encoding: " + value);
                                 }
+
                                 _endOfContent = EndOfContent.CHUNKED_CONTENT;
                             }
                             else if (_headerName.equalsIgnoreCase("Content-Length")) {
@@ -585,6 +587,7 @@ public abstract class Http1Parser {
                 // rfc2616 Sec 4.4 for more info
                 // What about custom verbs which may have a body?
                 // We could also CONSIDER doing a BAD Request here.
+
                 _endOfContent = EndOfContent.SELF_DEFINING_CONTENT;
                 return parseContent(in);
 
@@ -595,24 +598,26 @@ public abstract class Http1Parser {
                     return chunkedContent(in);
 
             case SELF_DEFINING_CONTENT:
+
             default:
                 throw new InvalidState("not implemented: " + _endOfContent);
         }
     }
 
     private ByteBuffer nonChunkedContent(ByteBuffer in) {
-
         final long remaining = _contentLength - _contentPosition;
-
         final int buf_size = in.remaining();
 
         if (buf_size >= remaining) {
-            ByteBuffer result = submitPartialBuffer(in, (int) remaining);
             _contentPosition += remaining;
-            shutdown();
+            ByteBuffer result = submitPartialBuffer(in, (int)remaining);
+            shutdownParser();
             return result;
         }
-        else return submitBuffer(in);
+        else {
+            _contentPosition += buf_size;
+            return submitBuffer(in);
+        }
     }
 
     private ByteBuffer chunkedContent(ByteBuffer in) throws BadRequest, InvalidState {

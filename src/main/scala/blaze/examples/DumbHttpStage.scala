@@ -11,6 +11,8 @@ import scala.annotation.tailrec
 import util.Execution.directec
 
 import http_parser.BaseExceptions.BadRequest
+import scala.concurrent.Future
+import scala.collection.mutable.ListBuffer
 
 /**
  * @author Bryce Anderson
@@ -23,14 +25,14 @@ class DumbHttpStage extends Http1Parser with TailStage[ByteBuffer] {
   val name = "DumbHttpStage"
 
   private def body = "ping\n"
-  private def headers = "HTTP/1.1 200 OK\r\n" +
+  private def requestHeaders = "HTTP/1.1 200 OK\r\n" +
                         "Connection: Keep-Alive\r\n" +
                         "Content-Length: " + body.length + "\r\n" +
                         "\r\n"
 
-  private val full = headers + body
+  private val full = requestHeaders + body
 
-  logger.info(s"Full response: \n$full")
+  logger.trace(s"DumbHttpStage starting up")
 
   private val fullresp = {
     val b = ByteBuffer.allocateDirect(full.length)
@@ -40,18 +42,13 @@ class DumbHttpStage extends Http1Parser with TailStage[ByteBuffer] {
   }
   val fullRespLimit = fullresp.limit()
 
-  private var inloop =  false
-
-  private var closeOnFinish = false
-
   // Will act as our loop
   override def startup() {
-    assert(!inloop)
-    inloop = true
-    parseLoop()
+    logger.info("Starting pipeline")
+    requestLoop()
   }
 
-  private def parseLoop() {
+  private def requestLoop(): Unit = {
     channelRead().onComplete {
       case Success(buff) =>
 
@@ -65,8 +62,18 @@ class DumbHttpStage extends Http1Parser with TailStage[ByteBuffer] {
           s"Received request\n${sb.result}"
         }
 
-
-        try parseBuffer(buff)
+        try {
+          if (!requestLineComplete() && !parseRequestLine(buff)) return requestLoop()
+          if (!headersComplete() && !parseHeaders(buff)) return requestLoop()
+          // we have enough to start the request
+          runRequest(buff).onComplete {
+            case Success(true)  => reset(); requestLoop()
+            case o              =>
+              logger.info("Found other: " + o)
+              shutdown()
+              sendOutboundCommand(Cmd.Shutdown)
+          }
+        }
         catch { case r: BadRequest   => shutdown() }
 
       case Failure(Cmd.EOF)    => shutdown()
@@ -76,63 +83,63 @@ class DumbHttpStage extends Http1Parser with TailStage[ByteBuffer] {
     }
   }
 
-//  @tailrec
-  private def parseBuffer(buff: ByteBuffer): Unit = {
-    
-//    if (!inloop) return
-//
-//    if (buff.remaining() < 1 && !finished()) { // Do we need more data?
-//      parseLoop()
-//      return
-//    }
-//
-//    if (inRequestLine && parseRequestLine(buff)) {
-//      logger.trace("Parsing request line")
-//      parseBuffer(buff)
-//    }
-//    else if (inHeaders() && parseHeaders(buff)) {
-//      logger.trace("---------------- Parsing headers")
-//      parseBuffer(buff)
-//    }
-//    else if (inContent() ) {
-//      logger.trace("---------------- Parsing content")
-//      val content = parseContent(buff)
-//    }
-//    else if (finished()) {
-//      logger.trace("---------------- Request Finished")
-//      if (buff.hasRemaining) logger.warn(s"Request finished, but there is buffer remaining")
-//      reset()
-//      if (closeOnFinish) {
-//        shutdown()
-//        sendOutboundCommand(Cmd.Shutdown)
-//      }
-//      else channelWrite(fullresp).onComplete{
-//        case Success(_) =>
-//          fullresp.position(0)
-//          logger.trace(s"Wrote bytes to channel. Remaining buffer: $buff")
-//          parseLoop()
-//
-//        case Failure(t) => sendOutboundCommand(Cmd.Error(t))
-//      }
-//    }
-//     // inconsistent state!
-//    else sys.error("Inconsistent state")
+  private def runRequest(buffer: ByteBuffer): Future[Boolean] = {
+    val body = requestHeaders + this.body
+    val buff = ByteBuffer.wrap(body.getBytes())
+
+    val keepAlive: Boolean = {
+      minor == 1 && keepAliveHeader.map(_._2.equalsIgnoreCase("Keep-Alive")).getOrElse(true)   ||
+      minor == 0 && keepAliveHeader.map(_._2.equalsIgnoreCase("Keep-Alive")).getOrElse(false)
+    }
+
+    headers.clear()
+
+    channelWrite(buff).flatMap(_ => drainBody(buffer)).map{_ =>
+      uri = null
+      method = null
+      minor = -1
+      major = -1
+      headers.clear()
+      keepAlive
+    }
+  }
+
+  private def drainBody(buffer: ByteBuffer): Future[Unit] = {
+    if (!contentComplete()) {
+      parseContent(buffer)
+      channelRead().flatMap(drainBody)
+    }
+    else Future.successful()
+  }
+
+  private def keepAliveHeader = headers.find {
+    case ("Connection", _) => true
+    case _ => false
   }
 
   override protected def shutdown(): Unit = {
-    logger.trace("Shutting down HttpPipeline")
-    inloop = false
+    logger.info("Shutting down HttpPipeline")
+    shutdownParser()
     super.shutdown()
   }
 
   def headerComplete(name: String, value: String) = {
-    //logger.trace(s"Received header '$name: $value'")
+    logger.trace(s"Received header '$name: $value'")
+    headers += ((name, value))
   }
+  
+  private var uri: String = null
+  private var method: String = null
+  private var minor: Int = -1
+  private var major: Int = -1
+  private val headers = new ListBuffer[(String, String)]
 
-  def requestLineComplete(methodString: String, uri: String, scheme: String, majorversion: Int, minorversion: Int) {
-    //if (minorversion == 0) closeOnFinish = true
-
+  def submitRequestLine(methodString: String, uri: String, scheme: String, majorversion: Int, minorversion: Int) {
     logger.trace(s"Received request($methodString $uri $scheme/$majorversion.$minorversion)")
+    this.uri = uri
+    this.method = methodString
+    this.major = majorversion
+    this.minor = minorversion
   }
 
   def submitContent(buffer: ByteBuffer): Boolean = {

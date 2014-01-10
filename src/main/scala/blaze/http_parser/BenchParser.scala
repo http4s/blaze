@@ -21,9 +21,8 @@ class BenchParser(maxReq: Int = 1034, maxHeader: Int = 1024) extends Http1Parser
     sys.error(s"Bad message: $status, $reason")
   }
 
-  def earlyEOF() {}
 
-  def requestLineComplete(methodString: String,
+  def submitRequestLine(methodString: String,
                    uri: String,
                    scheme: String,
                    majorversion: Int,
