@@ -104,7 +104,7 @@ class Http4sStage(route: HttpService) extends Http1Parser with TailStage[ByteBuf
           else sys.error("Unknown Connection header")
         }
       
-        rr ~ '\r' ~ '\n' ~ "pong"
+        rr ~ '\r' ~ '\n'
       
         val b = ByteBuffer.wrap(rr.result().getBytes("US-ASCII"))
 
