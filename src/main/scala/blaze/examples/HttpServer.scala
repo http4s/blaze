@@ -10,9 +10,9 @@ import java.nio.ByteBuffer
  * @author Bryce Anderson
  *         Created on 1/5/14
  */
-class DumbHttpServer(port: Int) {
+class HttpServer(port: Int) {
 
-  private val f: PipeFactory = _.cap(new DumbHttpStage)
+  private val f: PipeFactory = _.cap(new ExampleHttpStage(10*1024))
 
   val group = AsynchronousChannelGroup.withFixedThreadPool(50, java.util.concurrent.Executors.defaultThreadFactory())
 
@@ -21,6 +21,6 @@ class DumbHttpServer(port: Int) {
   def run(): Unit = factory.bind(new InetSocketAddress(port)).run()
 }
 
-object DumbHttpServer {
-  def main(args: Array[String]): Unit = new DumbHttpServer(8080).run()
+object HttpServer {
+  def main(args: Array[String]): Unit = new HttpServer(8080).run()
 }
