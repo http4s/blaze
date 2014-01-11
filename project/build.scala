@@ -17,7 +17,7 @@ object ApplicationBuild extends Build {
     libraryDependencies += scalaloggingSlf4j,
     libraryDependencies += logbackClassic,
 
-    mainClass in Revolver.reStart := Some("blaze.examples.DumbHttpServer"),
+    mainClass in Revolver.reStart := Some("blaze.examples.HttpServer"),
     fork := true
   )
 
@@ -25,7 +25,7 @@ object ApplicationBuild extends Build {
                     new File("."),
                     settings = buildSettings ++ assemblySettings
     ).settings(
-      mainClass in assembly := Some("blaze.examples.DumbHttpServer"),
+      mainClass in assembly := Some("blaze.examples.HttpServer"),
       mergeStrategy in assembly <<= (mergeStrategy in assembly) { (old) =>
         {
           case x if x.endsWith("MANIFEST.MF")     => 

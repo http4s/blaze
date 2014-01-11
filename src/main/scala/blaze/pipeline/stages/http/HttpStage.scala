@@ -7,6 +7,9 @@ import scala.util.{Failure, Success}
 import scala.concurrent.Future
 import scala.collection.mutable.ListBuffer
 import blaze.http_parser.Http1Parser
+import Http1Parser.ASCII
+
+import blaze.http_parser.BaseExceptions.BadRequest
 
 /**
  * @author Bryce Anderson
@@ -17,7 +20,7 @@ case class Response(status: String, code: Int, headers: Traversable[(String, Str
 
 abstract class HttpStage(maxReqBody: Int) extends Http1Parser with TailStage[ByteBuffer] {
 
-  private implicit def ec = trampoline
+  private implicit def ec = directec
 
   val name = "HttpStage"
 
@@ -57,11 +60,9 @@ abstract class HttpStage(maxReqBody: Int) extends Http1Parser with TailStage[Byt
           if (!requestLineComplete() && !parseRequestLine(buff)) return requestLoop()
           if (!headersComplete() && !parseHeaders(buff)) return requestLoop()
           // we have enough to start the request
-          gatherBody(buff, emptyBuffer).flatMap(runRequest).onComplete {
-            case Success(true)  => resetStage(); requestLoop()
-            case o              =>
-              //              logger.info("Found other: " + o)
-              sendOutboundCommand(Cmd.Shutdown)
+          gatherBody(buff, emptyBuffer).onComplete{
+            case Success(b) => runRequest(b)
+            case Failure(t) => sendOutboundCommand(Cmd.Shutdown)
           }
         }
         catch { case t: Throwable   => sendOutboundCommand(Cmd.Shutdown) }
@@ -82,7 +83,7 @@ abstract class HttpStage(maxReqBody: Int) extends Http1Parser with TailStage[Byt
     headers.clear()
   }
 
-  private def runRequest(buffer: ByteBuffer): Future[Boolean] = {
+  private def runRequest(buffer: ByteBuffer): Unit = {
 
     val fr = handleRequest(method, uri, headers, buffer)
 
@@ -110,8 +111,28 @@ abstract class HttpStage(maxReqBody: Int) extends Http1Parser with TailStage[Byt
 
       renderHeaders(sb, resp.headers, resp.body.remaining())
 
-      channelWrite(ByteBuffer.wrap(sb.result().getBytes(Http1Parser.ASCII))::resp.body::Nil)
-    }.map(_ => keepAlive)
+      val messages = new Array[ByteBuffer](2)
+      messages(0) = ByteBuffer.wrap(sb.result().getBytes(ASCII))
+      messages(1) = resp.body
+
+      channelWrite(messages)
+    }.onComplete {       // See if we should restart the loop
+      case Success(_) if keepAlive  => resetStage(); requestLoop()
+      case Failure(t: BadRequest)   => badRequest(t)
+      case o                        =>
+        //              logger.info("Found other: " + o)
+        sendOutboundCommand(Cmd.Shutdown)
+    }
+  }
+
+  private def badRequest(msg: BadRequest) {
+    val sb = new StringBuilder(512)
+    sb.append("HTTP/").append(1).append('.')
+      .append(minor).append(' ').append(400)
+      .append(' ').append("Bad Request").append('\r').append('\n').append('\r').append('\n')
+
+    channelWrite(ByteBuffer.wrap(sb.result().getBytes(ASCII)))
+      .onComplete(_ => sendOutboundCommand(Cmd.Shutdown))
   }
 
   private def renderHeaders(sb: StringBuilder, headers: Traversable[(String, String)], length: Int) {
