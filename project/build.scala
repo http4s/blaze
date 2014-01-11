@@ -21,7 +21,7 @@ object ApplicationBuild extends Build {
     fork := true
   )
 
-  val main = Project("blaze",
+  lazy val main = Project("blaze",
                     new File("."),
                     settings = buildSettings ++ assemblySettings
     ).settings(
@@ -38,11 +38,19 @@ object ApplicationBuild extends Build {
         }
       }
     )
+    
+  lazy val http4s = Project("http4s",
+                      new File("http4s"),
+                      settings = buildSettings ++ assemblySettings
+              ).dependsOn(main, http4score, http4sdsl)
    
    lazy val scalatest  = "org.scalatest"  %% "scalatest" % "2.0.RC3"
    lazy val scalameter = "com.github.axel22" % "scalameter_2.10" % "0.4"
    
    lazy val scalaloggingSlf4j   = "com.typesafe"   %% "scalalogging-slf4j" % "1.0.1"
    lazy val logbackClassic      = "ch.qos.logback" %  "logback-classic"    % "1.0.9"
+   
+   lazy val http4score = ProjectRef(file("../http4s"), "core")
+   lazy val http4sdsl = ProjectRef(file("../http4s"), "dsl")
             
 }
