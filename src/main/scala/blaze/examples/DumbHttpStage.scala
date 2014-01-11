@@ -144,10 +144,4 @@ class DumbHttpStage extends Http1Parser with TailStage[ByteBuffer] {
     this.major = majorversion
     this.minor = minorversion
   }
-
-  def submitContent(buffer: ByteBuffer): Boolean = {
-    // Don't care about content
-    buffer.clear()
-    true
-  }
 }
