@@ -93,10 +93,11 @@ class ByteBufferHead(channel: NioChannel,
   def readRequest(size: Int): Future[ByteBuffer] = {
       
     val p = Promise[ByteBuffer]
+
     bytes.clear()
 
-    if (size >= 0 && size < bufferSize)
-      bytes.limit(size)
+    if (size >= 0 && size + bytes.position() < bufferSize)
+      bytes.limit(size + bytes.position())
 
     channel.read(bytes, null: Null, new CompletionHandler[Integer, Null] {
       def failed(exc: Throwable, attachment: Null): Unit = {
@@ -126,6 +127,7 @@ class ByteBufferHead(channel: NioChannel,
   override def stageShutdown(): Unit = closeChannel()
 
   private def channelUnexpectedlyClosed(e: Throwable) {
+    logger.error("Unexpected fatal error", e)
     closeChannel()
     sendInboundCommand(Error(e))
     sendInboundCommand(Shutdown)

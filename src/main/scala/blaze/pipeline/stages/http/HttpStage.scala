@@ -49,11 +49,11 @@ abstract class HttpStage(maxReqBody: Int) extends Http1Parser with TailStage[Byt
         logger.trace{
           buff.mark()
           val sb = new StringBuilder
-          println(buff)
+
           while(buff.hasRemaining) sb.append(buff.get().toChar)
 
           buff.reset()
-          s"Received request\n${sb.result}"
+          s"RequestLoop received buffer $buff. Request:\n${sb.result}"
         }
 
         try {

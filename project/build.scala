@@ -17,8 +17,9 @@ object ApplicationBuild extends Build {
     libraryDependencies += scalaloggingSlf4j,
     libraryDependencies += logbackClassic,
 
-    mainClass in Revolver.reStart := Some("blaze.examples.HttpServer"),
-    fork := true
+    mainClass in Revolver.reStart := Some("blaze.examples.SSLHttpServer"),
+    fork := true,
+    javaOptions in run += "-Djavax.net.debug=all"
   )
 
   val main = Project("blaze",
