@@ -17,7 +17,7 @@ object Execution extends Logging {
     private val local = new ThreadLocal[util.Deque[Runnable]]
 
     def execute(runnable: Runnable): Unit = {
-      @volatile var queue = local.get()
+      var queue = local.get()
       if (queue == null) {
         // Since there is no local queue, we need to install one and
         // start our trampolining loop.

@@ -102,11 +102,20 @@ class ByteBufferHead(channel: NioChannel,
     channel.read(bytes, null: Null, new CompletionHandler[Integer, Null] {
       def failed(exc: Throwable, attachment: Null): Unit = {
         exc match {
-          case e: IOException                   => channelUnexpectedlyClosed(e)
-          case e: ShutdownChannelGroupException => channelUnexpectedlyClosed(e)
-          case _: Throwable                     => // Don't know what to do
+          case e: IOException =>
+            logger.trace("Channel IO Error. Closing", e)
+            channelShutdown()
+            p.tryFailure(EOF)
+
+          case e: ShutdownChannelGroupException =>
+            logger.trace("Channel Group was shutdown", e)
+            channelShutdown()
+            p.tryFailure(EOF)
+
+          case e: Throwable =>  // Don't know what to do besides close
+            channelError(e)
+            p.tryFailure(e)
         }
-        p.failure(exc)
       }
 
       def completed(i: Integer, attachment: Null) {
@@ -115,8 +124,7 @@ class ByteBufferHead(channel: NioChannel,
           p.trySuccess(bytes)
         } else {   // must be end of stream
           p.tryFailure(EOF)
-          closeChannel()
-          sendInboundCommand(Shutdown)
+          channelShutdown()
         }
       }
     })
@@ -126,23 +134,26 @@ class ByteBufferHead(channel: NioChannel,
 
   override def stageShutdown(): Unit = closeChannel()
 
-  private def channelUnexpectedlyClosed(e: Throwable) {
-    logger.error("Unexpected fatal error", e)
+  private def channelShutdown() {
     closeChannel()
-    sendInboundCommand(Error(e))
     sendInboundCommand(Shutdown)
+  }
+
+  private def channelError(e: Throwable) {
+    logger.error("Unexpected fatal error", e)
+    sendInboundCommand(Error(e))
+    channelShutdown()
   }
 
   private def closeChannel() {
     logger.trace("channelClose")
     try channel.close()
     catch {  case e: IOException => /* Don't care */ }
-
   }
 
   override def outboundCommand(cmd: Command): Unit = cmd match {
     case Shutdown         => closeChannel()
-    case Error(e)         => channelUnexpectedlyClosed(e)
+    case Error(e)         => logger.error("ByteBufferHead received error command", e); channelError(e)
     case cmd              => // NOOP
   }
 }
