@@ -17,6 +17,7 @@ import scalaz.concurrent.Task
 import Process._
 import scalaz.{\/-, -\/}
 import org.http4s.util.StringWriter
+import org.http4s.Status.{InternalServerError, NotFound}
 
 /**
  * @author Bryce Anderson
@@ -85,7 +86,14 @@ class Http4sStage(route: HttpService) extends Http1Parser with TailStage[ByteBuf
                       if (minor == 1) ServerProtocol.`HTTP/1.1` else ServerProtocol.`HTTP/1.0`,
                       h, body)
 
-    route(req).runAsync {
+    val result = try route(req) catch {
+      case _: MatchError => NotFound("404 Not found: " + req.pathInfo)
+      case t: Throwable =>
+        logger.error("Error running route", t)
+        InternalServerError("500 Internal Service Error\n" + t.getMessage)
+    }
+
+    result.runAsync {
       case \/-(resp) =>
         val rr = new StringWriter(512)
         rr ~ req.protocol.value.toString ~ ' ' ~ resp.status.code ~ ' ' ~ resp.status.reason ~ '\r' ~ '\n'
