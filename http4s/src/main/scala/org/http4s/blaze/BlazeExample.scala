@@ -12,6 +12,10 @@ import java.net.InetSocketAddress
 import org.http4s.blaze.Http4sStage
 import org.http4s.examples.ExampleRoute
 import org.http4s.util.middleware.URITranslation
+import blaze.util.BogusKeystore
+import java.security.KeyStore
+import javax.net.ssl.{SSLContext, KeyManagerFactory}
+import blaze.pipeline.stages.SSLStage
 
 /**
  * @author Bryce Anderson
@@ -19,11 +23,30 @@ import org.http4s.util.middleware.URITranslation
  */
 class BlazeExample(port: Int) {
 
+  val sslContext = {
+    val ksStream = BogusKeystore.asInputStream()
+    val ks = KeyStore.getInstance("JKS")
+    ks.load(ksStream, BogusKeystore.getKeyStorePassword)
+
+    val kmf = KeyManagerFactory.getInstance(KeyManagerFactory.getDefaultAlgorithm())
+    kmf.init(ks, BogusKeystore.getCertificatePassword)
+
+    val context = SSLContext.getInstance("SSL")
+
+    context.init(kmf.getKeyManagers(), null, null)
+    context
+  }
+
   val route = new ExampleRoute().apply()
 
-  private val f: PipeFactory = _.cap(new Http4sStage(URITranslation.translateRoot("/http4s")(route)))
+  private val f: PipeFactory = { b =>
+  val eng = sslContext.createSSLEngine()
+  eng.setUseClientMode(false)
 
-  val group = AsynchronousChannelGroup.withFixedThreadPool(50, java.util.concurrent.Executors.defaultThreadFactory())
+  b.append(new SSLStage(eng)).cap(new Http4sStage(URITranslation.translateRoot("/http4s")(route)))
+  }
+
+  val group = AsynchronousChannelGroup.withFixedThreadPool(10, java.util.concurrent.Executors.defaultThreadFactory())
 
   private val factory = new ServerChannelFactory(f)
 
@@ -31,5 +54,5 @@ class BlazeExample(port: Int) {
 }
 
 object BlazeExample {
-  def main(args: Array[String]): Unit = new BlazeExample(8080).run()
+  def main(args: Array[String]): Unit = new BlazeExample(4430).run()
 }

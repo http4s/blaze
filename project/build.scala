@@ -18,8 +18,8 @@ object ApplicationBuild extends Build {
     libraryDependencies += logbackClassic,
 
     mainClass in Revolver.reStart := Some("blaze.examples.SSLHttpServer"),
-    fork := true,
-    javaOptions in run += "-Djavax.net.debug=all"
+    fork := true
+    //javaOptions in run += "-Djavax.net.debug=all"
   )
 
   lazy val main = Project("blaze",

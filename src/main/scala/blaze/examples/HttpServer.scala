@@ -14,7 +14,7 @@ class HttpServer(port: Int) {
 
   private val f: PipeFactory = _.cap(new ExampleHttpStage(10*1024))
 
-  val group = AsynchronousChannelGroup.withFixedThreadPool(50, java.util.concurrent.Executors.defaultThreadFactory())
+  val group = AsynchronousChannelGroup.withFixedThreadPool(10, java.util.concurrent.Executors.defaultThreadFactory())
 
   private val factory = new ServerChannelFactory(f)
 

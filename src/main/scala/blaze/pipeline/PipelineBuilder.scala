@@ -1,6 +1,5 @@
 package blaze.pipeline
 
-import blaze.pipeline.PipelineBuilder.CapStage
 import blaze.pipeline.Command.Command
 
 /**
@@ -29,8 +28,8 @@ class PipelineBuilder[I, O] private(headStage: HeadStage[I], tail: MidStage[_, O
     stage.prev = tail
 
     stage match {
-      case m: MidStage[O, Any] if m.next == null =>
-        m.next = new CapStage
+      case m: MidStage[O, _] if m.next == null =>
+        m.next = PipelineBuilder.capStage
       case _ =>   // NOOP
     }
 
@@ -46,6 +45,9 @@ class PipelineBuilder[I, O] private(headStage: HeadStage[I], tail: MidStage[_, O
 object PipelineBuilder {
 
   def apply[T](head: HeadStage[T]): RootBuilder[T] = new PipelineBuilder[T, T](head, head)
+
+  // Allows for the proper type inference
+  private [pipeline] def capStage[T] = new CapStage().asInstanceOf[TailStage[T]]
 
   private[pipeline] class CapStage extends TailStage[Any] {
     def name: String = "Capping stage"
