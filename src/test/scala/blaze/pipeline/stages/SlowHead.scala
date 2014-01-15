@@ -26,7 +26,7 @@ trait SlowHead[O] extends HeadStage[O] {
       val p = Promise[O]
       new Thread {
         override def run() {
-          val delay = Random.nextFloat()*20
+          val delay = Random.nextFloat()*10
           Thread.sleep(delay.toInt)
           if (readGuard.compareAndSet(true, false)) p.success(get)
           else p.completeWith(Future(sys.error("Read guard breached!")))

@@ -41,7 +41,7 @@ class SerializingStageSpec extends WordSpec with Matchers {
       .append(new SerializingStage[Int])
       .cap(tail)
 
-    val ints = (0 until 20).toList
+    val ints = (0 until 200).toList
 
     "serialize reads" in {
       val tail = new TailStage[Int] { def name: String = "int getter" }
@@ -58,11 +58,11 @@ class SerializingStageSpec extends WordSpec with Matchers {
       }
 
       val numbers = Future.sequence(results)
-      Await.result(numbers, 20.seconds) should equal(ints)
+      Await.result(numbers, 10.seconds) should equal(ints)
     }
 
     "serialize writes" in {
-      val f = 0 until 20 map { i =>
+      val f = 0 until 200 map { i =>
         tail.channelWrite(i)
       } last
 
