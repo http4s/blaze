@@ -32,7 +32,7 @@ trait ByteToObjectStage[O] extends MidStage[ByteBuffer, O] {
     */
   def bufferToMessage(in: ByteBuffer): Option[O]
 
-  def maxBufferSize: Int
+  val maxBufferSize: Int
 
   /////////////////////////////////////////////////////////////////////////////
 
@@ -84,7 +84,7 @@ trait ByteToObjectStage[O] extends MidStage[ByteBuffer, O] {
       catch { case t: Throwable => p.tryFailure(t) }
       finally {   // Make sure we are not trying to store the previous stages buffer
         // see if we have too large of buffer remaining
-        if (_decodeBuffer.remaining() > maxBufferSize) {
+        if (maxBufferSize > 0 && _decodeBuffer.remaining() > maxBufferSize) {
           outboundCommand(Error(new BufferOverflowException))
         }
 
