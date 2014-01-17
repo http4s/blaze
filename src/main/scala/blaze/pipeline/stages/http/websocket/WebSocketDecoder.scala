@@ -4,8 +4,8 @@ import blaze.pipeline.stages.ByteToObjectStage
 import java.nio.ByteBuffer
 
 import WebsocketBits._
-import scala.annotation.switch
-import java.nio.charset.{StandardCharsets, Charset}
+import java.nio.charset.StandardCharsets
+import scala.util.Random
 
 /**
  * @author Bryce Anderson
@@ -19,7 +19,59 @@ class WebSocketDecoder(isClient: Boolean, val maxBufferSize: Int = 0) extends By
     * @param in object to decode
     * @return sequence of ByteBuffers to pass to the head
     */
-  def messageToBuffer(in: WebSocMessage): Seq[ByteBuffer] = ???
+  def messageToBuffer(in: WebSocMessage): Seq[ByteBuffer] = {
+    val size = { 2 +
+      (if (isClient) 4 else 0) +
+      (if (in.length < 126) 0 else if (in.length <= 0xffff) 2 else 8) +
+      in.length
+    }
+    val buff = ByteBuffer.allocate(size)
+
+    val opcode = in match {
+      case _: Continuation  => CONTINUATION
+      case _: BinaryMessage => BINARY
+      case _: Ping          => PING
+      case _: Pong          => PONG
+      case _: Close         => CLOSE
+      case _: TextMessage   => TEXT
+    }
+    
+    if (opcode == PING && in.length > 125) transcodeError("Invalid PING frame: frame too long.")
+    
+    // OP Code
+    buff.put(((if (in.finished) FINISHED else 0x0) | opcode).toByte)
+
+    buff.put{((if (isClient) MASK else 0x0) |
+      (if (in.length < 126) in.length
+       else if (in.length <= 0xffff) 126
+       else 127)
+      ).toByte }
+
+    // Put the length if it is not already set
+    if (in.length > 125 && in.length <= 0xffff) {
+      buff.put(((in.length >> 8) & 0xff).toByte)
+        .put((in.length & 0xff).toByte)
+    } else if (in.length > 0xffff) buff.putLong(in.length)
+
+    if (isClient) {
+      val mask = Random.nextInt()
+      val maskBits = Array(((mask >> 24) & 0xff).toByte,
+                           ((mask >> 16) & 0xff).toByte,
+                           ((mask >>  8) & 0xff).toByte,
+                           ((mask >>  0) & 0xff).toByte)
+
+      buff.put(maskBits)
+
+      var i = 0
+      while (i < in.length) {
+        buff.put((in.data(i) ^ maskBits(i & 0x3)).toByte) // i & 0x3 is the same as i % 4 but faster
+        i += 1
+      }
+    } else buff.put(in.data)
+
+    buff.flip()
+    buff::Nil
+  }
 
   /** Method that decodes ByteBuffers to objects. None reflects not enough data to decode a message
     * Any unused data in the ByteBuffer will be recycled and available for the next read
@@ -31,13 +83,14 @@ class WebSocketDecoder(isClient: Boolean, val maxBufferSize: Int = 0) extends By
     if (in.remaining() < 2) return None
 
     val len = getMsgLength(in)
+
     if (len < 0) return None
 
-    val opcode = (in.get(0) & OP_CODE) >> 4
+    val opcode = in.get(0) & OP_CODE
     val finished = (in.get(0) & FINISHED) != 0
     val masked = (in.get(1) & MASK) != 0
 
-    if (masked && isClient) decodeError("Client received a masked message")
+    if (masked && isClient) transcodeError("Client received a masked message")
     val m = if (masked) getMask(in) else null
     
     val bodyOffset = lengthOffset(in) + (if (masked) 4 else 0)
@@ -52,31 +105,27 @@ class WebSocketDecoder(isClient: Boolean, val maxBufferSize: Int = 0) extends By
     in.position(in.limit())
     in.limit(oldLim)
 
-    val result = (opcode: @switch) match {
+    val result = opcode match {
     case CONTINUATION => Continuation(decodeBinary(slice, m), finished)
-    case TEXT =>  TextMessage(decodeText(slice, m), finished)
+    case TEXT =>  TextMessage(decodeBinary(slice, m), finished)
     case BINARY => BinaryMessage(decodeBinary(slice, m), finished)
     case CLOSE => Close(decodeBinary(slice, m), finished)
     case PING => Ping(decodeBinary(slice, m), finished)
     case PONG => Pong(decodeBinary(slice, m), finished)
-    case _ => decodeError(s"Unknown message type: " + Integer.toHexString(opcode))
+    case _ => transcodeError(s"Unknown message type: " + Integer.toHexString(opcode))
 
     }
     Some(result)
   }
 
-  private def decodeError(msg: String): Nothing = sys.error(msg)
-
-  private def decodeText(in: ByteBuffer, mask: Array[Byte]): String = {
-    new String(decodeBinary(in, mask), StandardCharsets.UTF_8)
-  }
+  private def transcodeError(msg: String): Nothing = sys.error(msg)
 
   private def decodeBinary(in: ByteBuffer, mask: Array[Byte]): Array[Byte] = {
 
     val data = new Array[Byte](in.remaining())
     in.get(data)
 
-    if (mask == null) {  // We can use the charset decode
+    if (mask != null) {  // We can use the charset decode
       var i = 0
       while (i < data.length) {
         data(i) = (data(i) ^ mask(i & 0x3)).toByte   // i mod 4 is the same as i & 0x3 but slower
@@ -92,7 +141,7 @@ class WebSocketDecoder(isClient: Boolean, val maxBufferSize: Int = 0) extends By
     val offset = if (len < 126) 2
     else if (len == 126) 4
     else if (len == 127) 10
-    else decodeError("Length error!")
+    else transcodeError("Length error!")
 
     offset
   }
@@ -107,20 +156,20 @@ class WebSocketDecoder(isClient: Boolean, val maxBufferSize: Int = 0) extends By
   }
 
   private def bodyLength(in: ByteBuffer): Int = {
-    val len = (in.get(1) & LENGTH) >> 1
+    val len = (in.get(1) & LENGTH)
     if (len < 126) len
     else if (len == 126) in.getShort(2)
     else if (len == 127) {
       val l = in.getLong(2)
-      if (l > Int.MaxValue) decodeError("Frame is too long")
+      if (l > Int.MaxValue) transcodeError("Frame is too long")
       else l.toInt
     }
-    else decodeError("Length error")
+    else transcodeError("Length error")
   }
 
   private def getMsgLength(in: ByteBuffer): Int = {
-    var totalLen = if ((in.get(0) & MASK) != 0) 6 else 2
-    val len = (in.get(1) & LENGTH) >> 1
+    var totalLen = if ((in.get(1) & MASK) != 0) 6 else 2
+    val len = in.get(1) & LENGTH
 
     if (len == 126) totalLen += 2
     if (len == 127) totalLen += 8

@@ -8,13 +8,14 @@ package blaze.pipeline.stages.http.websocket
 
 sealed trait WebSocMessage {
   def finished: Boolean
+  def data: Array[Byte]
+  def length: Int = data.length
 }
 
-case class Continuation(msg: Array[Byte], finished: Boolean) extends WebSocMessage
-case class BinaryMessage(msg: Array[Byte], finished: Boolean) extends WebSocMessage
-case class TextMessage(msg: String, finished: Boolean) extends WebSocMessage
-case class Ping(msg: Array[Byte], finished: Boolean) extends WebSocMessage
-case class Pong(msg: Array[Byte], finished: Boolean) extends WebSocMessage
-case class Close(msg: Array[Byte], finished: Boolean) extends WebSocMessage
-
+case class Continuation(data: Array[Byte], finished: Boolean) extends WebSocMessage
+case class BinaryMessage(data: Array[Byte], finished: Boolean) extends WebSocMessage
+case class Ping(data: Array[Byte], finished: Boolean) extends WebSocMessage
+case class Pong(data: Array[Byte], finished: Boolean) extends WebSocMessage
+case class Close(data: Array[Byte], finished: Boolean) extends WebSocMessage
+case class TextMessage(data: Array[Byte], finished: Boolean) extends WebSocMessage
 

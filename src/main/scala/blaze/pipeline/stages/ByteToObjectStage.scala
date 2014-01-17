@@ -42,9 +42,10 @@ trait ByteToObjectStage[O] extends MidStage[ByteBuffer, O] {
 
   def readRequest(size: Int): Future[O] = {
     if (_decodeBuffer != null && _decodeBuffer.hasRemaining) {
-      try bufferToMessage(_decodeBuffer) match {
+      try bufferToMessage(_decodeBuffer.slice()) match {
         case Some(o) =>
           if (!_decodeBuffer.hasRemaining) _decodeBuffer = null
+
           return Future.successful(o)
 
         case None =>  // NOOP, fall through
@@ -77,8 +78,11 @@ trait ByteToObjectStage[O] extends MidStage[ByteBuffer, O] {
         }
       } else _decodeBuffer = b
 
-      try bufferToMessage(_decodeBuffer) match {
-        case Some(o) => p.success(o)
+      try bufferToMessage(_decodeBuffer.slice()) match {
+        case Some(o) =>
+          if (!_decodeBuffer.hasRemaining) _decodeBuffer = null
+          p.success(o)
+
         case None => decodeLoop(p)
       }
       catch { case t: Throwable => p.tryFailure(t) }

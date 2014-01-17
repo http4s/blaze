@@ -7,8 +7,8 @@ package blaze.pipeline.stages.http.websocket
 object WebsocketBits {
 
   // Masks for extracting fields
-  val OP_CODE = 0xf0
-  val FINISHED = 0xf1
+  val OP_CODE = 0xf
+  val FINISHED = 0x80
   val MASK = 0x80
   val LENGTH = 0x7f
   val RESERVED = 0xe
