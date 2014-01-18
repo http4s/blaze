@@ -1,8 +1,7 @@
 package blaze.pipeline.stages.http.websocket;
 
+import java.net.ProtocolException;
 import java.nio.ByteBuffer;
-
-import blaze.pipeline.stages.http.websocket.WebsocketBits.*;
 
 /**
  * @author Bryce Anderson
@@ -21,9 +20,9 @@ public class FrameTranscoder {
 //    public final static int CONTINUATION = 0x0;
 //    public final static int TEXT = 0x1;
 //    public final static int BINARY = 0x2;
-//    public final static int CLOSE = 0x8;
+    public final static int CLOSE = WebsocketBits.CLOSE();
     public final static int PING = WebsocketBits.PING();
-//    public final static int PONG = 0xa;
+    public final static int PONG = WebsocketBits.PONG();
 
     public final static class TranscodeError extends Exception {
         public TranscodeError(String message) {
@@ -50,12 +49,12 @@ public class FrameTranscoder {
 
         final int opcode = in.opcode();
 
-        if (opcode == PING && in.length() > 125)
+        if (in.length() > 125 && (opcode == PING || opcode == PONG || opcode == CLOSE))
             throw new TranscodeError("Invalid PING frame: frame too long: " + in.length());
 
         // First byte. Finished, reserved, and OP CODE
         byte b1 = (byte)opcode;
-        if (in.finished()) b1 |= FINISHED;
+        if (in.last()) b1 |= FINISHED;
 
         buff.put(b1);
 
@@ -102,7 +101,7 @@ public class FrameTranscoder {
      * @param in ByteBuffer of immediately available data
      * @return optional message if enough data was available
      */
-    protected WebSocketDecoder.WebSocketFrame _bufferToMessage(final ByteBuffer in) throws TranscodeError {
+    protected WebSocketDecoder.WebSocketFrame _bufferToMessage(final ByteBuffer in) throws TranscodeError, ProtocolException {
 
         if (in.remaining() < 2) return null;
 
@@ -136,7 +135,7 @@ public class FrameTranscoder {
         in.position(in.limit());
         in.limit(oldLim);
 
-        return new WebSocketDecoder.WebSocketFrame(opcode, decodeBinary(slice, m), finished);
+        return WebSocketDecoder.makeFrame(opcode, decodeBinary(slice, m), finished);
     }
 
     private byte[] decodeBinary(ByteBuffer in, byte[] mask) {

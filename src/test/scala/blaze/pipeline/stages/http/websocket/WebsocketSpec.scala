@@ -9,8 +9,8 @@ import scala.concurrent.Await
 import scala.concurrent.duration._
 
 import java.nio.charset.StandardCharsets.UTF_8
-import blaze.pipeline.stages.http.websocket.WebSocketDecoder.WebSocketFrame
-import scala.util.Random
+import blaze.pipeline.stages.http.websocket.WebSocketDecoder._
+
 
 /**
  * @author Bryce Anderson
@@ -56,11 +56,11 @@ class WebsocketSpec extends WordSpec with Matchers {
   "Websocket decoder" should {
 
     "equate frames correctly" in {
-      val f1 = WebSocketFrame(WebsocketBits.BINARY, Array(0x2.toByte, 0x3.toByte), true)
-      val f11 = WebSocketFrame(WebsocketBits.BINARY, Array(0x2.toByte, 0x3.toByte), true)
-      val f2 = WebSocketFrame(WebsocketBits.BINARY, Array(0x2.toByte, 0x3.toByte), false)
-      val f3 = WebSocketFrame(WebsocketBits.TEXT, Array(0x2.toByte, 0x3.toByte), true)
-      val f4 = WebSocketFrame(WebsocketBits.BINARY, Array(0x2.toByte, 0x4.toByte), true)
+      val f1 = Binary(Array(0x2.toByte, 0x3.toByte), true)
+      val f11 = Binary(Array(0x2.toByte, 0x3.toByte), true)
+      val f2 = Binary(Array(0x2.toByte, 0x3.toByte), false)
+      val f3 = Text(Array(0x2.toByte, 0x3.toByte), true)
+      val f4 = Binary(Array(0x2.toByte, 0x4.toByte), true)
 
       f1 should equal(f1)
       f1 should equal(f11)
@@ -77,26 +77,26 @@ class WebsocketSpec extends WordSpec with Matchers {
 //      p2.getMessage() should equal (TextMessage("Hello".getBytes(UTF_8), true))
 
       val result = decode(helloTxtMasked, false)
-      result.finished should equal (true)
+      result.last should equal (true)
       new String(result.data, UTF_8) should equal ("Hello")
 
       val result2 = decode(helloTxt, true)
-      result2.finished should equal (true)
+      result2.last should equal (true)
       new String(result2.data, UTF_8) should equal ("Hello")
 
     }
 
     "encode a hello world message" in {
-      val frame = WebSocketFrame(WebsocketBits.TEXT, "Hello".getBytes(UTF_8), false)
+      val frame = Text("Hello".getBytes(UTF_8), false)
       val msg = decode(encode(frame, true), false)
       msg should equal (frame)
-      msg.finished should equal (false)
+      msg.last should equal (false)
       new String(msg.data, UTF_8) should equal ("Hello")
     }
 
     "encode and decode a message with 125 < len <= 0xffff" in {
       val bytes = 0 until 0xfff map(_.toByte) toArray
-      val frame = WebSocketFrame(WebsocketBits.BINARY, bytes, false)
+      val frame = Binary(bytes, false)
 
       val msg = decode(encode(frame, true), false)
       val msg2 = decode(encode(frame, false), true)
@@ -108,7 +108,7 @@ class WebsocketSpec extends WordSpec with Matchers {
 
     "encode and decode a message len > 0xffff" in {
       val bytes = 0 until (0xffff + 1) map(_.toByte) toArray
-      val frame = WebSocketFrame(WebsocketBits.BINARY, bytes, false)
+      val frame = Binary(bytes, false)
 
       val msg = decode(encode(frame, true), false)
       val msg2 = decode(encode(frame, false), true)
