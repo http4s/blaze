@@ -33,6 +33,12 @@ class FrameAggregatorSpec extends WordSpec with Matchers {
 
     val wControl = Text("foo", false)::Ping()::Continuation("bar".getBytes(), true)::Nil
 
+    "Pass pure frames" in {
+      val s = Sequencer(fooFrames:::Text("bar")::Nil)
+      s.next should equal(Text("foobar"))
+      s.next should equal(Text("bar"))
+    }
+
     "Aggregate frames" in {
       Sequencer(fooFrames).next should equal(Text("foobar"))
 
@@ -55,7 +61,6 @@ class FrameAggregatorSpec extends WordSpec with Matchers {
       val msgs = Text("foo", false)::Text("bar", true)::Nil
       a[ProtocolException] should be thrownBy Sequencer(msgs).next
     }
-
   }
 
 }
