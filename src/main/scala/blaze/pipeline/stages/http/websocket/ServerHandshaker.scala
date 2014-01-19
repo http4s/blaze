@@ -26,6 +26,10 @@ object ServerHandshaker {
     }.getOrElse(Left(-1, "Bad Sec-WebSocket-Key header"))
   }
 
+  def isWebSocketRequest(headers: TraversableOnce[(String, String)]): Boolean = {
+    headers.exists{ case (k, v) => k.equalsIgnoreCase("Upgrade") && v.equalsIgnoreCase("websocket") }
+  }
+
   private def keyLength(key: String): Int = parseBase64Binary(key).length
 
   private def genAcceptKey(str: String): String = {

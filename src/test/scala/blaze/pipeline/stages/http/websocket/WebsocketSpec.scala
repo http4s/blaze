@@ -3,13 +3,13 @@ package blaze.pipeline.stages.http.websocket
 import org.scalatest.{Matchers, WordSpec}
 import java.nio.ByteBuffer
 import blaze.pipeline.{TailStage, PipelineBuilder}
-import blaze.pipeline.stages.HoldingHead
 
 import scala.concurrent.Await
 import scala.concurrent.duration._
 
 import java.nio.charset.StandardCharsets.UTF_8
 import blaze.pipeline.stages.http.websocket.WebSocketDecoder._
+import blaze.pipeline.stages.SeqHead
 
 
 /**
@@ -23,25 +23,6 @@ class WebsocketSpec extends WordSpec with Matchers {
                              0x4d, 0x51, 0x58).map(_.toByte)
 
   def helloTxt = Array(0x81, 0x05, 0x48, 0x65, 0x6c, 0x6c, 0x6f).map(_.toByte)
-
-  class Reporter extends TailStage[WebSocketFrame] {
-    def name: String = "Fetcher"
-    def getMessage(): WebSocketFrame = {
-      Await.result(channelRead(), 4.seconds)
-    }
-  }
-
-
-  def pipeline(msg: Array[Byte], isClient: Boolean): Reporter = {
-    val buff = ByteBuffer.wrap(msg)
-
-    val tail = new Reporter
-    PipelineBuilder(new HoldingHead(buff))
-      .append(new WebSocketDecoder(isClient))
-      .cap(tail)
-
-    tail
-  }
 
   def decode(msg: Array[Byte], isClient: Boolean): WebSocketFrame = {
     val buff = ByteBuffer.wrap(msg)
@@ -74,11 +55,6 @@ class WebsocketSpec extends WordSpec with Matchers {
     }
 
     "decode a hello world message" in {
-//      val p = pipeline(helloTxtMasked, false)
-//      p.getMessage() should equal (TextMessage("Hello".getBytes(UTF_8), true))
-//
-//      val p2 = pipeline(helloTxt, true)
-//      p2.getMessage() should equal (TextMessage("Hello".getBytes(UTF_8), true))
 
       val result = decode(helloTxtMasked, false)
       result.last should equal (true)
@@ -87,7 +63,6 @@ class WebsocketSpec extends WordSpec with Matchers {
       val result2 = decode(helloTxt, true)
       result2.last should equal (true)
       new String(result2.data, UTF_8) should equal ("Hello")
-
     }
 
     "encode a hello world message" in {
@@ -107,7 +82,6 @@ class WebsocketSpec extends WordSpec with Matchers {
 
       msg should equal(frame)
       msg should equal(msg2)
-
     }
 
     "encode and decode a message len > 0xffff" in {

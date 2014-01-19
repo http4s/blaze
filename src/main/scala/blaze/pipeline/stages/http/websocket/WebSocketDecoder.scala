@@ -87,13 +87,17 @@ object WebSocketDecoder {
     def unapply(txt: Text): Option[(String, Boolean)] = Some((txt.str, txt.last))
   }
 
-  final case class Binary(data: Array[Byte], last: Boolean) extends WebSocketFrame {
+  final case class Binary(data: Array[Byte], last: Boolean = true) extends WebSocketFrame {
     def opcode = WebsocketBits.BINARY
     override def toString: String = s"Binary(Array(${data.length}), last: $last)"
   }
 
+  final case class Continuation(data: Array[Byte], last: Boolean) extends WebSocketFrame {
+    def opcode: Int = WebsocketBits.CONTINUATION
+    override def toString: String = s"Continuation(Array(${data.length}), last: $last)"
+  }
 
-  final case class Ping(data: Array[Byte]) extends ControlFrame {
+  final case class Ping(data: Array[Byte] = Array.empty) extends ControlFrame {
     def opcode = WebsocketBits.PING
     override def toString: String = {
       if (data.length > 0) s"Ping(Array(${data.length}))"
@@ -101,7 +105,7 @@ object WebSocketDecoder {
     }
   }
 
-  final case class Pong(data: Array[Byte]) extends ControlFrame {
+  final case class Pong(data: Array[Byte] = Array.empty) extends ControlFrame {
     def opcode = WebsocketBits.PONG
     override def toString: String = {
       if (data.length > 0) s"Pong(Array(${data.length}))"
@@ -109,7 +113,7 @@ object WebSocketDecoder {
     }
   }
 
-  final case class Close(data: Array[Byte]) extends ControlFrame {
+  final case class Close(data: Array[Byte] = Array.empty) extends ControlFrame {
     def opcode = WebsocketBits.CLOSE
 
     def closeCode: Int = if (data.length > 0) {
@@ -121,6 +125,8 @@ object WebSocketDecoder {
       else s"Close"
     }
   }
+
+
 
   @throws[ProtocolException]
   def makeFrame(opcode: Int, data: Array[Byte], last: Boolean): WebSocketFrame = opcode match {

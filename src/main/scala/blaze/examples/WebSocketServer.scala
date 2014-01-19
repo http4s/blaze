@@ -9,6 +9,7 @@ import scala.concurrent.Future
 import blaze.pipeline.{Command, TailStage}
 import blaze.pipeline.stages.http.websocket.WebSocketDecoder._
 import scala.util.{Failure, Success}
+import blaze.pipeline.stages.http.websocket.{ServerHandshaker, WSStage}
 
 /**
  * @author Bryce Anderson
@@ -28,50 +29,34 @@ object WebSocketServer {
   def main(args: Array[String]): Unit = new WebSocketServer(8080).run()
 }
 
+/** this stage can be seen as the "route" of the example. It handles requests and returns responses */
 class ExampleWebSocketHttpStage extends HttpStage(10*1024) {
-  def handleRequest(method: String, uri: String, headers: Traversable[(String, String)], body: ByteBuffer): Future[Response] = {
-    if (headers.exists{ case (k, v) => k.equalsIgnoreCase("Upgrade") && v.equalsIgnoreCase("websocket")}) {
+  def handleRequest(method: String, uri: String, headers: Seq[(String, String)], body: ByteBuffer): Future[Response] = {
+    if (ServerHandshaker.isWebSocketRequest(headers)) {
       logger.info(s"Received a websocket request at $uri")
-      Future.successful(WSResponse(new SocketStage))
-    } else {
-      val msg = "Use a websocket!"
-      Future.successful(HttpResponse("OK", 200, Nil, ByteBuffer.wrap(msg.getBytes())))
-    }
+
+      // Note the use of WSStage.segment. This makes a pipeline segment that includes a serializer so we
+      // can safely write as many messages we want without worrying about clashing with pending writes
+      Future.successful(WSResponse(WSStage.segment(new SocketStage)))
+    } else Future.successful(HttpResponse.Ok("Use a websocket!\n" + uri))
   }
 }
 
-class SocketStage extends TailStage[WebSocketFrame] {
-  import blaze.util.Execution._
+/** This represents the actual web socket interactions */
+class SocketStage extends WSStage {
 
-  implicit val ec = trampoline
+  def onMessage(msg: WebSocketFrame): Unit = msg match {
+    case Text(msg, _) =>
+      channelWrite(Text("You sent: " + msg))
+      channelWrite(Text("this is a second message which will get queued safely!"))
 
-  def name: String = "WS Stage"
+    case Close(_) => sendOutboundCommand(Command.Shutdown)
 
+  }
 
   override protected def stageStartup(): Unit = {
     logger.trace("SocketStage starting up.")
     super.stageStartup()
     channelWrite(Text("Hello! This is an echo websocket"))
-      .onSuccess{ case _ => loop() }
-  }
-
-  def loop(): Unit = {
-    channelRead().onComplete {
-      case Success(Text(msg, _)) =>
-        logger.trace(s"Received Websocket message: $msg")
-        channelWrite(Text("You sent: " + msg)).onSuccess{ case _ => loop() }
-
-      case Success(Close(_)) =>
-        logger.trace("Closing websocket channel")
-        sendOutboundCommand(Command.Shutdown)
-
-      case Failure(t) =>
-        logger.error("error on Websocket read loop", t)
-        sendOutboundCommand(Command.Shutdown)
-
-      case m  =>
-        logger.trace(s"Received bad message: $m")
-        sendOutboundCommand(Command.Shutdown)
-    }
   }
 }

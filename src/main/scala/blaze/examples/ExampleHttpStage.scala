@@ -12,7 +12,7 @@ import blaze.http_parser.BaseExceptions.BadRequest
  *         Created on 1/5/14
  */
 class ExampleHttpStage(maxRequestLength: Int) extends HttpStage(maxRequestLength) {
-  def handleRequest(method: String, uri: String, headers: Traversable[(String, String)], body: ByteBuffer): Future[HttpResponse] = {
+  def handleRequest(method: String, uri: String, headers: Seq[(String, String)], body: ByteBuffer): Future[HttpResponse] = {
 
     if (uri.endsWith("error")) Future.failed(new BadRequest("You requested an error!"))
     else {

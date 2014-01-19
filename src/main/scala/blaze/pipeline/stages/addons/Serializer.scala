@@ -5,7 +5,7 @@ package addons
 import java.util.concurrent.atomic.{AtomicInteger, AtomicReference}
 import scala.concurrent.{Promise, Future}
 
-import java.util.ArrayDeque
+import scala.collection.mutable.Queue
 
 import blaze.util.Execution._
 import scala.util.{Failure, Success}
@@ -16,14 +16,15 @@ import scala.util.{Failure, Success}
  */
 trait Serializer[I, O] extends MidStage[I, O] {
 
-  // These can be overridden to set the true queue overflow size
+  // These can be overridden to set the queue overflow size
   val maxReadQueue: Int = 0
   val maxWriteQueue: Int = 0
 
   ////////////////////////////////////////////////////////////////////////
 
-  private val _serializerWriteQueue = new ArrayDeque[O]
-  @volatile private var _serializerWritePromise: Promise[Any] = null
+  private val _writeLock = new AnyRef
+  private var _serializerWriteQueue: Queue[O] = new Queue
+  private var _serializerWritePromise: Promise[Any] = null
 
   private val _serializerReadRef = new AtomicReference[Future[O]](null)
   private val _serializerWaitingReads  = if (maxReadQueue > 0) new AtomicInteger(0) else null
@@ -57,8 +58,8 @@ trait Serializer[I, O] extends MidStage[I, O] {
 
   ///  channel writing bits //////////////////////////////////////////////
 
-  abstract override def writeRequest(data: O): Future[Any] = _serializerWriteQueue.synchronized {
-    if (maxWriteQueue > 0 && _serializerWriteQueue.size() > maxWriteQueue) {
+  abstract override def writeRequest(data: O): Future[Any] = _writeLock.synchronized {
+    if (maxWriteQueue > 0 && _serializerWriteQueue.length > maxWriteQueue) {
       Future.failed(new Exception(s"$name Stage max write queue exceeded: $maxReadQueue"))
     }
     else {
@@ -74,53 +75,48 @@ trait Serializer[I, O] extends MidStage[I, O] {
         f
       }
       else {
-        _serializerWriteQueue.offer(data)
+        _serializerWriteQueue += (data)
         _serializerWritePromise.future
       }
-
-
     }
   }
 
-  abstract override def writeRequest(data: Seq[O]): Future[Any] = _serializerWriteQueue.synchronized {
-    if (maxWriteQueue > 0 && _serializerWriteQueue.size() > maxWriteQueue) {
+  abstract override def writeRequest(data: Seq[O]): Future[Any] = _writeLock.synchronized {
+    if (maxWriteQueue > 0 && _serializerWriteQueue.length > maxWriteQueue) {
       Future.failed(new Exception(s"$name Stage max write queue exceeded: $maxReadQueue"))
     }
     else {
       if (_serializerWritePromise == null) {   // there is no queue!
         _serializerWritePromise = Promise[Any]
         val f = super.writeRequest(data)
-        f.onComplete {
-          case Success(_) => _checkQueue()
-          case f:Failure[_] => _serializerWritePromise.complete(f)
-        }(directec)
+        f.onComplete( _ => _checkQueue())(directec)
         f
       }
       else {
-        data.foreach(_serializerWriteQueue.offer)
+        _serializerWriteQueue ++= data
         _serializerWritePromise.future
       }
     }
   }
 
-  private def _checkQueue(): Unit = _serializerWriteQueue.synchronized {
+  // Needs to be in a synchronized because it is called from continuations
+  private def _checkQueue(): Unit = _writeLock.synchronized {
     if (_serializerWriteQueue.isEmpty) _serializerWritePromise = null  // Nobody has written anything
     else {      // stuff to write
-      import scala.collection.JavaConversions._
       val f = {
-        if (_serializerWriteQueue.size() > 1) {
-          val a = _serializerWriteQueue.toVector
-          _serializerWriteQueue.clear()
+        if (_serializerWriteQueue.length > 1) {
+          val a = _serializerWriteQueue
+          _serializerWriteQueue = new Queue[O]
 
           super.writeRequest(a)
-        } else super.writeRequest(_serializerWriteQueue.poll())
+        } else super.writeRequest(_serializerWriteQueue.dequeue)
       }
 
       val p = _serializerWritePromise
       _serializerWritePromise = Promise[Any]
 
       f.onComplete { t =>
-        if (t.isSuccess) _checkQueue()
+        _checkQueue()
         p.complete(t)
       }(trampoline)
     }
