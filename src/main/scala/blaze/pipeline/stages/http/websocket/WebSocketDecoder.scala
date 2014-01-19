@@ -23,11 +23,7 @@ class WebSocketDecoder(isClient: Boolean, val maxBufferSize: Int = 0)
     * @return sequence of ByteBuffers to pass to the head
     */
   @throws[TranscodeError]
-  def messageToBuffer(in: WebSocketFrame): Seq[ByteBuffer] = {
-
-    val buff = _messageToBuffer(in)
-    buff::Nil
-  }
+  def messageToBuffer(in: WebSocketFrame): Seq[ByteBuffer] = _messageToBuffer(in)
 
   /** Method that decodes ByteBuffers to objects. None reflects not enough data to decode a message
     * Any unused data in the ByteBuffer will be recycled and available for the next read
@@ -85,8 +81,9 @@ object WebSocketDecoder {
   }
 
   object Text {
-    def apply(str: String, last: Boolean): Text = new StringText(str, last)
+    def apply(str: String, last: Boolean = true): Text = new StringText(str, last)
     def apply(data: Array[Byte], last: Boolean): Text = new BinaryText(data, last)
+    def apply(data: Array[Byte]): Text = new BinaryText(data, true)
     def unapply(txt: Text): Option[(String, Boolean)] = Some((txt.str, txt.last))
   }
 

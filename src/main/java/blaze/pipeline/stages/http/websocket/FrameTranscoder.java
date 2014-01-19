@@ -7,7 +7,7 @@ import java.nio.ByteBuffer;
  * @author Bryce Anderson
  *         Created on 1/17/14
  */
-public class FrameTranscoder {
+class FrameTranscoder {
 
     // Masks for extracting fields
     public final static int OP_CODE = WebsocketBits.OP_CODE();
@@ -36,8 +36,8 @@ public class FrameTranscoder {
         isClient = client;
     }
 
-    protected ByteBuffer _messageToBuffer(WebSocketDecoder.WebSocketFrame in) throws TranscodeError {
-        int size = 2 + in.length();
+    protected ByteBuffer[] _messageToBuffer(WebSocketDecoder.WebSocketFrame in) throws TranscodeError {
+        int size = 2;
 
         if (isClient) size += 4;   // for the mask
 
@@ -45,7 +45,7 @@ public class FrameTranscoder {
         else if (in.length() <= 0xffff) size += 2;
         else size += 8;
 
-        ByteBuffer buff = ByteBuffer.allocate(size);
+        final ByteBuffer buff = ByteBuffer.allocate(isClient ? size + in.length() : size);
 
         final int opcode = in.opcode();
 
@@ -76,6 +76,7 @@ public class FrameTranscoder {
         }
         else if (in.length() > 0xffff) buff.putLong(in.length());
 
+        // If we are a client, we need to mask the data, else just wrap it in a buffer and done
         if (isClient && in.length() > 0) {  // need to mask outgoing bytes
             int mask = (int)(Math.random()*Integer.MAX_VALUE);
             byte[] maskBits = {(byte)((mask >>> 24) & 0xff),
@@ -90,10 +91,12 @@ public class FrameTranscoder {
             for(int i = 0; i < in.length(); i++) {
                 buff.put((byte)(data[i] ^ maskBits[i & 0x3])); // i & 0x3 is the same as i % 4 but faster
             }
-        } else buff.put(in.data());
-
-        buff.flip();
-        return buff;
+            buff.flip();
+            return new ByteBuffer[] { buff };
+        } else {
+            buff.flip();
+            return new ByteBuffer[]{ buff, ByteBuffer.wrap(in.data()) };
+        }
     }
 
     /** Method that decodes ByteBuffers to objects. None reflects not enough data to decode a message

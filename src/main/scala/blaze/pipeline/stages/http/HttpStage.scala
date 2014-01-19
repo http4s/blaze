@@ -1,7 +1,7 @@
 package blaze.pipeline.stages.http
 
 import java.nio.ByteBuffer
-import blaze.pipeline.{Command => Cmd, TailStage}
+import blaze.pipeline.{Command => Cmd, PipelineBuilder, TailStage}
 import blaze.util.Execution._
 import scala.util.{Failure, Success}
 import scala.concurrent.Future
@@ -10,15 +10,16 @@ import blaze.http_parser.Http1Parser
 import Http1Parser.ASCII
 
 import blaze.http_parser.BaseExceptions.BadRequest
+import blaze.pipeline.stages.http.websocket.{WebSocketDecoder, ServerHandshaker}
+import java.util.Date
 
 /**
  * @author Bryce Anderson
  *         Created on 1/11/14
  */
 
-case class Response(status: String, code: Int, headers: Traversable[(String, String)], body: ByteBuffer)
-
 abstract class HttpStage(maxReqBody: Int) extends Http1Parser with TailStage[ByteBuffer] {
+  import HttpStage._
 
   private implicit def ec = directec
 
@@ -61,7 +62,10 @@ abstract class HttpStage(maxReqBody: Int) extends Http1Parser with TailStage[Byt
           if (!headersComplete() && !parseHeaders(buff)) return requestLoop()
           // we have enough to start the request
           gatherBody(buff, emptyBuffer).onComplete{
-            case Success(b) => runRequest(b)
+            case Success(b) =>
+              val hdrs = headers.result()
+              headers.clear()
+              runRequest(b, hdrs)
             case Failure(t) => sendOutboundCommand(Cmd.Shutdown)
           }
         }
@@ -83,45 +87,56 @@ abstract class HttpStage(maxReqBody: Int) extends Http1Parser with TailStage[Byt
     headers.clear()
   }
 
-  private def runRequest(buffer: ByteBuffer): Unit = {
+  private def runRequest(buffer: ByteBuffer, headers: Seq[(String, String)]): Unit = {
 
     val fr = handleRequest(method, uri, headers, buffer)
 
-    val keepAlive: Boolean = {
-      val h = connectionHeader
-      if (h.isDefined) {
-        if (h.get._2.equalsIgnoreCase("Keep-Alive")) true
-        else if (h.get._2.equalsIgnoreCase("close")) false
-        else { logger.info(s"Bad Connection header value: '${h.get._2}'. Closing after request."); false }
-      }
-      else if (minor == 0) false
-      else true
-    }
+    val keepAlive = isKeepAlive(headers)
 
-    headers.clear()
 
-    fr.flatMap{ resp =>
-      val sb = new StringBuilder(512)
-      sb.append("HTTP/").append(1).append('.')
-        .append(minor).append(' ').append(resp.code)
-        .append(' ').append(resp.status).append('\r').append('\n')
+    fr.flatMap{
+      case HttpResponse(status, code, headers, body) =>
+        val sb = new StringBuilder(512)
+        sb.append("HTTP/").append(1).append('.')
+          .append(minor).append(' ').append(code)
+          .append(' ').append(status).append('\r').append('\n')
 
-      if (!keepAlive) sb.append("Connection: close\r\n")
-      else if (minor == 0 && keepAlive) sb.append("Connection: Keep-Alive\r\n")
+        if (!keepAlive) sb.append("Connection: close\r\n")
+        else if (minor == 0 && keepAlive) sb.append("Connection: Keep-Alive\r\n")
 
-      renderHeaders(sb, resp.headers, resp.body.remaining())
+        renderHeaders(sb, headers, body.remaining())
 
-      val messages = new Array[ByteBuffer](2)
-      messages(0) = ByteBuffer.wrap(sb.result().getBytes(ASCII))
-      messages(1) = resp.body
+        val messages = Array(ByteBuffer.wrap(sb.result().getBytes(ASCII)), body)
 
-      channelWrite(messages)
+        channelWrite(messages).map(_ => if (keepAlive) Reload else Close)(directec)
+
+      case WSResponse(stage) =>
+        val sb = new StringBuilder(512)
+        ServerHandshaker.handshakeHeaders(headers) match {
+          case Left((i, msg)) =>
+            logger.trace(s"Failed to get response: $i: $msg")
+            ???
+
+          case Right(hdrs) =>
+            logger.trace("Starting websocket request")
+            sb.append("HTTP/1.1 101 Switching Protocols\r\n")
+            hdrs.foreach { case (k, v) => sb.append(k).append(": ").append(v).append('\r').append('\n') }
+            sb.append('\r').append('\n')
+
+            // write the accept headers and reform the pipeline
+            channelWrite(ByteBuffer.wrap(sb.result().getBytes(ASCII))).map{_ =>
+              logger.trace("Switching segments.")
+              val segment = PipelineBuilder.apply(new WebSocketDecoder(false)).cap(stage)
+              this.replaceInline(segment)
+              Upgrade
+            }
+        }
     }.onComplete {       // See if we should restart the loop
-      case Success(_) if keepAlive  => resetStage(); requestLoop()
+      case Success(Reload)          => resetStage(); requestLoop()
+      case Success(Close)           => sendOutboundCommand(Cmd.Shutdown)
+      case Success(Upgrade)         => // NOOP dont need to do anything
       case Failure(t: BadRequest)   => badRequest(t)
-      case o                        =>
-        //              logger.info("Found other: " + o)
-        sendOutboundCommand(Cmd.Shutdown)
+      case Failure(t)               => sendOutboundCommand(Cmd.Shutdown)
     }
   }
 
@@ -168,15 +183,25 @@ abstract class HttpStage(maxReqBody: Int) extends Http1Parser with TailStage[Byt
     }
   }
 
-  private def connectionHeader = headers.find {
-    case ("Connection", _) => true
-    case _ => false
+  def isKeepAlive(headers: Seq[(String, String)]): Boolean = {
+    val h = headers.find {
+      case ("Connection", _) => true
+      case _ => false
+    }
+
+    if (h.isDefined) {
+      if (h.get._2.equalsIgnoreCase("Keep-Alive")) true
+      else if (h.get._2.equalsIgnoreCase("close")) false
+      else if (h.get._2.equalsIgnoreCase("Upgrade")) true
+      else { logger.info(s"Bad Connection header value: '${h.get._2}'. Closing after request."); false }
+    }
+    else if (minor == 0) false
+    else true
   }
 
   override protected def stageShutdown(): Unit = {
-    logger.info("Shutting down HttpPipeline")
+    logger.info("Shutting down HttpPipeline at " + new Date())
     shutdownParser()
-    super.stageShutdown()
   }
 
   def headerComplete(name: String, value: String) = {
@@ -191,5 +216,12 @@ abstract class HttpStage(maxReqBody: Int) extends Http1Parser with TailStage[Byt
     this.major = majorversion
     this.minor = minorversion
   }
+}
 
+private object HttpStage {
+
+  sealed trait RouteResult
+  case object Close extends RouteResult
+  case object Upgrade extends RouteResult
+  case object Reload extends RouteResult
 }

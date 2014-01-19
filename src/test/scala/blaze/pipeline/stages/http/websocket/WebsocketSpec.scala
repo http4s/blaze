@@ -50,7 +50,11 @@ class WebsocketSpec extends WordSpec with Matchers {
   }
 
   def encode(msg: WebSocketFrame, isClient: Boolean): Array[Byte] = {
-    new WebSocketDecoder(isClient).messageToBuffer(msg).head.array()
+    val msgs = new WebSocketDecoder(isClient).messageToBuffer(msg)
+    val sz = msgs.foldLeft(0)((c, i) => c + i.remaining())
+    val b = ByteBuffer.allocate(sz)
+    msgs.foreach(b.put)
+    b.array()
   }
 
   "Websocket decoder" should {

@@ -12,5 +12,6 @@ import scala.concurrent.Future
 package object pipeline {
 
   type RootBuilder[T] = PipelineBuilder[T, T]
+  type RootSegment[T1, T2] = Segment[T1, T2, T2]
 
 }

@@ -68,6 +68,8 @@ trait TailStage[I] extends Logging {
 
   final def replaceInline(stage: TailStage[I]): this.type = {
     stageShutdown()
+
+    stage.prev = this.prev
     if (!this.isInstanceOf[HeadStage[_]]) prev.next = stage
 
     // remove links to other stages
@@ -76,6 +78,7 @@ trait TailStage[I] extends Logging {
       case m: MidStage[_, _] => m.next = null
       case _ => // NOOP
     }
+    stage.inboundCommand(Command.Connected)
     this
   }
 

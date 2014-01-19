@@ -6,6 +6,8 @@ import java.nio.charset.Charset;
 import blaze.http_parser.BaseExceptions.*;
 import blaze.http_parser.HttpTokens.EndOfContent;
 
+import java.nio.charset.StandardCharsets;
+
 
 /**
  * @author Bryce Anderson
@@ -28,7 +30,7 @@ public abstract class Http1Parser {
         }
     }
 
-    public final static Charset ASCII = Charset.forName("US-ASCII");
+    public final static Charset ASCII = StandardCharsets.US_ASCII;
 
     protected static byte[] HTTP10Bytes  = "HTTP/1.0".getBytes(ASCII);
     protected static byte[] HTTP11Bytes  = "HTTP/1.1".getBytes(ASCII);
