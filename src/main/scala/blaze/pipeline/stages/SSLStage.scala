@@ -168,11 +168,11 @@ class SSLStage(engine: SSLEngine, maxSubmission: Int = -1) extends MidStage[Byte
 
   private def writeLoop(written: Int, buffers: Array[ByteBuffer], out: ListBuffer[ByteBuffer], p: Promise[Any]) {
 
-    var o: ByteBuffer = null
+    val o = SSLStage.getScratchBuffer(maxBuffer)
     var wr = written
 
     while (true) {
-      if (o == null) o = allocate(maxNetSize)
+//      if (o == null) o = allocate(maxNetSize)
 
       val r = engine.wrap(buffers, o)
 
@@ -186,7 +186,8 @@ class SSLStage(engine: SSLEngine, maxSubmission: Int = -1) extends MidStage[Byte
           if (o.position() > 0) {
             o.flip()
             wr += o.remaining()
-            out += o
+            out += copyBuffer(o)
+            o.clear()
           }
 
           channelRead().onComplete {
@@ -211,9 +212,9 @@ class SSLStage(engine: SSLEngine, maxSubmission: Int = -1) extends MidStage[Byte
           if (o.position() > 0) {
             o.flip()
             wr += o.remaining()
-            out += o
+            out += copyBuffer(o)
 
-            o = null
+            o.clear()
 
             // See if we should write
             if (maxSubmission > 0 && wr > maxSubmission) {
@@ -242,7 +243,7 @@ class SSLStage(engine: SSLEngine, maxSubmission: Int = -1) extends MidStage[Byte
         case Status.BUFFER_UNDERFLOW => // Need more data. might never get here
           if (o.position() > 0) {
             o.flip()
-            out += o
+            out += copyBuffer(o)
           }
           p.completeWith(channelWrite(out))
           return
@@ -251,7 +252,7 @@ class SSLStage(engine: SSLEngine, maxSubmission: Int = -1) extends MidStage[Byte
       if (!buffers(buffers.length - 1).hasRemaining) {
         if (o != null && o.position() > 0) {
           o.flip()
-          out += o
+          out += copyBuffer(o)
         }
 
         p.completeWith(channelWrite(out))
@@ -310,5 +311,8 @@ private object SSLStage extends Logging {
     }
   }
 
-  def clearBuffer(): Unit = localBuffer.remove()
+  def clearBuffer(): Unit = {
+    logger.trace("Removing thread local ByteBuffer")
+    localBuffer.remove()
+  }
 }
