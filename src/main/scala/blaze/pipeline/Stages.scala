@@ -211,6 +211,7 @@ trait HeadStage[O] extends MidStage[Nothing, O] {
   override def outboundCommand(cmd: Command): Unit = cmd match {
     case Connected => stageStartup()
     case Shutdown  => stageShutdown()
-    case _         => // NOOP
+    case Error(e)  => logger.error("Unhandled outbound error", e)
+    case _         =>   // NOOP
   }
 }

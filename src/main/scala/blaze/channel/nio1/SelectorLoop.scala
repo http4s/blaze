@@ -3,20 +3,21 @@ package blaze.channel.nio1
 import java.util.concurrent.ConcurrentLinkedQueue
 
 import scala.annotation.tailrec
-import java.nio.channels.{SelectionKey, Selector}
+import java.nio.channels.{CancelledKeyException, SelectableChannel, SelectionKey, Selector}
 import java.nio.ByteBuffer
 import scala.concurrent.{Future, Promise}
 import blaze.pipeline.{Command, PipelineBuilder, HeadStage}
 import blaze.channel.PipeFactory
 import scala.util.Try
 import java.io.IOException
+import com.typesafe.scalalogging.slf4j.Logging
 
 /**
  * @author Bryce Anderson
  *         Created on 1/20/14
  */
 
-final class SelectorLoop(selector: Selector, bufferSize: Int = 4*1024) extends Thread { self =>
+final class SelectorLoop(selector: Selector, bufferSize: Int) extends Thread with Logging { self =>
 
   private val pendingTasks = new ConcurrentLinkedQueue[Runnable]()
 
@@ -24,59 +25,90 @@ final class SelectorLoop(selector: Selector, bufferSize: Int = 4*1024) extends T
 
   def executeTask(r: Runnable) {
     if (Thread.currentThread() == self) r.run()
-    else queueTask(r)
+    else enqueTask(r)
   }
 
-  def queueTask(r: Runnable): Unit = pendingTasks.add(r)
+  def enqueTask(r: Runnable): Unit = {
+    pendingTasks.add(r)
+    wakeup()
+  }
 
-  @tailrec
+  override def run() = loop()
+
   private def loop() {
 
-    // Run any pending tasks. It is theoretically possible for the loop to
-    // Tasks are run first to add any pending OPS before waiting on the selector
-    @tailrec
-    def go(r: Runnable): Unit = if (r != null) {
-      r.run()
+    try while(true) {
+      // Run any pending tasks. It is theoretically possible for the loop to
+      // Tasks are run first to add any pending OPS before waiting on the selector
+      @tailrec
+      def go(r: Runnable): Unit = if (r != null) {
+        try r.run()
+        catch { case t: Exception => logger.error("Caught exception in queued task", t) }
+        go(pendingTasks.poll())
+      }
       go(pendingTasks.poll())
-    }
-    go(pendingTasks.poll())
 
     // Block here for a bit until an operation happens or we are awaken by an operation
-    try {
+
+      logger.trace("Starting select.")
       selector.select()
       val it = selector.selectedKeys().iterator()
+
 
       while(it.hasNext) {
         val k = it.next()
         it.remove()
 
-        if (k.isValid) {
-          val head = k.attachment().asInstanceOf[NIOHeadStage]
+        try {
+          if (k.isValid) {
+            val head = k.attachment().asInstanceOf[NIOHeadStage]
 
-          if (k.isReadable) {
-            scratch.clear()
-            val rt = head.ops.performRead(scratch)
-            if (rt == null)  head.setRead() // incomplete, re-register
-            else head.completeRead(rt)
-          }
+            if (head != null) {
+              logger.trace{"selection key interests: " +
+                "write: " + k.isWritable +
+                ", read: " + k.isReadable }
 
-          if (k.isWritable) {
-            val buffers = head.getWrites()
-            if (buffers != null) {
-              val t = head.ops.performWrite(buffers)
-              if (t == null) head.setWrite()  // incomplete, re-register
-              else head.completeWrite(t)
+              if (k.isReadable) {
+                scratch.clear()
+                val rt = head.ops.performRead(scratch)
+                if (rt != null){
+                  head.ops.unsetOp(SelectionKey.OP_READ)
+                  head.completeRead(rt)
+                }
+              }
+
+              if (k.isWritable) {
+                val buffers = head.getWrites()
+                assert(buffers != null)
+
+                val t = head.ops.performWrite(buffers)
+                if (t != null) {
+                  head.ops.unsetOp(SelectionKey.OP_WRITE)
+                  head.completeWrite(t)
+                }
+              }
             }
-            else ???   // should probably not get here
+            else {   // Null head. Must be disconnected
+              logger.warn("Selector key had null attachment. Why is the key still in the ops?")
+            }
 
           }
+        } catch {
+          case e: CancelledKeyException => // NOOP
         }
+
+
       }
 
-    } catch { case e: IOException => killSelector() }
+    } catch {
+      case e: IOException =>
+        logger.error("IOException in SelectorLoop", e)
+        killSelector()
 
-
-    loop()
+      case e: Throwable =>
+        logger.error("Unhandled exception in selector loop", e)
+        killSelector()
+    }
   }
 
   def close() {
@@ -91,28 +123,37 @@ final class SelectorLoop(selector: Selector, bufferSize: Int = 4*1024) extends T
       k.attach(null)
     }
 
-    selector.keys().clear()
+    selector.close()
   }
 
   def wakeup(): Unit = selector.wakeup()
 
-  def initChannel(builder: PipeFactory, ops: ChannelOps) {
-    ops.ch.configureBlocking(false)
-    
-    val key = ops.ch.register(selector, 0)
-    val head = new NIOHeadStage(key, ops)
-    key.attach(head)
-    builder(PipelineBuilder(head))
+  def initChannel(builder: PipeFactory, ch: SelectableChannel, ops: SelectionKey => ChannelOps) {
+   enqueTask( new Runnable {
+      def run() {
+        try {
+          ch.configureBlocking(false)
+          val key = ch.register(selector, 0)
 
-    head.outboundCommand(Command.Connected)
+          val head = new NIOHeadStage(ops(key))
+          key.attach(head)
+
+          // construct the pipeline
+          builder(PipelineBuilder(head))
+
+          head.inboundCommand(Command.Connected)
+          logger.trace("Started channel.")
+        } catch { case e: Throwable => logger.error("Caught error during channel init.", e) }
+      }
+    })
   }
 
-  private class NIOHeadStage(key: SelectionKey, private[SelectorLoop] val ops: ChannelOps) extends HeadStage[ByteBuffer] {
+  private class NIOHeadStage(private[SelectorLoop] val ops: ChannelOps) extends HeadStage[ByteBuffer] {
     def name: String = "NIO1 ByteBuffer Head Stage"
 
     private val writeLock = new AnyRef
     private var writeQueue: Array[ByteBuffer] = null
-    private var writePromise: Promise[Any] = Promise[Any]
+    private var writePromise: Promise[Any] = null
 
     @volatile private var _readPromise: Promise[ByteBuffer] = null
 
@@ -125,18 +166,15 @@ final class SelectorLoop(selector: Selector, bufferSize: Int = 4*1024) extends T
     }
 
     def readRequest(size: Int): Future[ByteBuffer] = {
-        if (_readPromise != null) Future.failed(new IndexOutOfBoundsException("Cannot have more than one pending read request"))
-        else {
-          _readPromise = Promise[ByteBuffer]
+      logger.trace("NIOHeadStage received a read request")
 
-          if (Thread.currentThread() == self) setWrite()  // Already in SelectorLoop
-          else {
-            queueTask(new Runnable { def run() = setRead() })
-            wakeup()
-          }
-          
-          _readPromise.future
-        }
+      if (_readPromise != null) Future.failed(new IndexOutOfBoundsException("Cannot have more than one pending read request"))
+      else {
+        _readPromise = Promise[ByteBuffer]
+        ops.setOp(SelectionKey.OP_READ)  // Already in SelectorLoop
+
+        _readPromise.future
+      }
     }
     
     /// channel write bits /////////////////////////////////////////////////
@@ -148,12 +186,7 @@ final class SelectorLoop(selector: Selector, bufferSize: Int = 4*1024) extends T
       else {
         writeQueue = data.toArray
         writePromise = Promise[Any]
-
-        if (Thread.currentThread() == self) setWrite()  // Already in SelectorLoop
-        else {
-          queueTask(new Runnable { def run() = setWrite() })
-          wakeup()
-        }
+        ops.setOp(SelectionKey.OP_WRITE)  // Already in SelectorLoop
 
         writePromise.future
       }
@@ -169,16 +202,13 @@ final class SelectorLoop(selector: Selector, bufferSize: Int = 4*1024) extends T
     }
     
     /// set the channel interests //////////////////////////////////////////
-    
-    def setWrite() = setOp(SelectionKey.OP_WRITE)
-    def setRead() = setOp(SelectionKey.OP_READ)
 
-    private def setOp(op: Int) {
-      val ops = key.interestOps()
-      if ((ops & op) != 0) {
-        key.interestOps(ops | op)
-      }
+    override protected def stageShutdown(): Unit = {
+      super.stageShutdown()
+      ops.close()
     }
+
+
   }
 
 }
