@@ -39,7 +39,9 @@ final class SelectorLoop(selector: Selector, bufferSize: Int) extends Thread wit
 
     try while(true) {
       // Run any pending tasks. It is theoretically possible for the loop to
-      // Tasks are run first to add any pending OPS before waiting on the selector
+      // Tasks are run first to add any pending OPS before waiting on the selector but that is
+      // moot because a call to wakeup if the selector is not waiting on a select call will
+      // cause the next invocation of selector.select() to return immediately per spec.
       @tailrec
       def go(r: Runnable): Unit = if (r != null) {
         try r.run()
@@ -65,11 +67,12 @@ final class SelectorLoop(selector: Selector, bufferSize: Int) extends Thread wit
 
             if (head != null) {
               logger.trace{"selection key interests: " +
-                "write: " + k.isWritable +
+                "write: " +  k.isWritable +
                 ", read: " + k.isReadable }
 
-              if (k.isReadable) {
-                scratch.clear()
+              val readyOps: Int = k.readyOps()
+
+              if ((readyOps & SelectionKey.OP_READ) != 0) {
                 val rt = head.ops.performRead(scratch)
                 if (rt != null){
                   head.ops.unsetOp(SelectionKey.OP_READ)
@@ -77,11 +80,11 @@ final class SelectorLoop(selector: Selector, bufferSize: Int) extends Thread wit
                 }
               }
 
-              if (k.isWritable) {
+              if ((readyOps & SelectionKey.OP_WRITE) != 0) {
                 val buffers = head.getWrites()
                 assert(buffers != null)
 
-                val t = head.ops.performWrite(buffers)
+                val t = head.ops.performWrite(scratch, buffers)
                 if (t != null) {
                   head.ops.unsetOp(SelectionKey.OP_WRITE)
                   head.completeWrite(t)
@@ -93,11 +96,7 @@ final class SelectorLoop(selector: Selector, bufferSize: Int) extends Thread wit
             }
 
           }
-        } catch {
-          case e: CancelledKeyException => // NOOP
-        }
-
-
+        } catch { case e: CancelledKeyException => /* NOOP */ }
       }
 
     } catch {
@@ -115,12 +114,15 @@ final class SelectorLoop(selector: Selector, bufferSize: Int) extends Thread wit
     killSelector()
   }
 
+  @throws[IOException]
   private def killSelector() {
     import scala.collection.JavaConversions._
 
     selector.keys().foreach { k =>
-      k.cancel()
-      k.attach(null)
+      try {
+        k.channel().close()
+        k.attach(null)
+      } catch { case _: IOException => /* NOOP */ }
     }
 
     selector.close()

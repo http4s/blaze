@@ -33,6 +33,7 @@ class SocketServerChannelFactory(pipeFactory: PipeFactory, bufferSize: Int = 4*1
               extends ChannelOps {
     def performRead(scratch: ByteBuffer): Try[ByteBuffer] = {
       try {
+        scratch.clear()
         val bytes = ch.read(scratch)
         logger.trace(s"Read $bytes bytes")
         if (bytes >= 0) {
@@ -54,7 +55,7 @@ class SocketServerChannelFactory(pipeFactory: PipeFactory, bufferSize: Int = 4*1
       }
     }
 
-    def performWrite(buffers: Array[ByteBuffer]): Try[Any] = {
+    def performWrite(scratch: ByteBuffer, buffers: Array[ByteBuffer]): Try[Any] = {
       logger.trace("Performing write: " + buffers)
       try {
         ch.write(buffers)

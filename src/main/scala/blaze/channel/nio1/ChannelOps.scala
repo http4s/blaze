@@ -23,7 +23,7 @@ trait ChannelOps {
     * @return a Try that is either a Success(Any), a Failure with an appropriate error,
     *         or null if this operation is not complete
     */
-  def performWrite(buffers: Array[ByteBuffer]): Try[Any]
+  def performWrite(scratch: ByteBuffer, buffers: Array[ByteBuffer]): Try[Any]
 
   def ch: SelectableChannel
 
