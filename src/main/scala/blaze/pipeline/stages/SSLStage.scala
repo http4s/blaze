@@ -12,6 +12,7 @@ import scala.util.{Failure, Success}
 import blaze.pipeline.MidStage
 import blaze.pipeline.Command.EOF
 import blaze.util.Execution._
+import com.typesafe.scalalogging.slf4j.Logging
 
 
 /**
@@ -24,6 +25,8 @@ class SSLStage(engine: SSLEngine, maxSubmission: Int = -1) extends MidStage[Byte
 
   private val maxNetSize = engine.getSession.getPacketBufferSize
   private val maxAppSize = engine.getSession.getApplicationBufferSize
+
+  private val maxBuffer = math.max(maxNetSize, maxAppSize)
   
   val empty = { val b = ByteBuffer.allocate(0); b.flip(); b }
   
@@ -60,22 +63,20 @@ class SSLStage(engine: SSLEngine, maxSubmission: Int = -1) extends MidStage[Byte
     readLeftover = null
 
     var bytesRead = 0
-    var o: ByteBuffer = null
+    val o = SSLStage.getScratchBuffer(maxBuffer)
 
     while(true) {
-
-      if (o == null) o = allocate(math.max(b.remaining() + 100, 2*1024))
 
       val r = engine.unwrap(b, o)
 
       if (r.bytesProduced() > 0) {
         bytesRead += r.bytesProduced()
         o.flip()
-        out += o
-        o = null
+        out += copyBuffer(o)
+        o.clear()
       }
 
-      logger.trace(s"SSL Read Request Status: $r")
+      logger.trace(s"SSL Read Request Status: $r, $o")
 
       r.getHandshakeStatus match {
         case HandshakeStatus.NEED_UNWRAP =>  // must need more data
@@ -92,14 +93,14 @@ class SSLStage(engine: SSLEngine, maxSubmission: Int = -1) extends MidStage[Byte
           runTasks()
 
         case HandshakeStatus.NEED_WRAP =>
-          o = allocate(maxNetSize)
-
           assert(engine.wrap(empty, o).bytesProduced() > 0)
           o.flip()
-          channelWrite(o).onComplete {
+
+          channelWrite(copyBuffer(o)).onComplete {
             case Success(_) => readRequestLoop(b, if (size > 0) size - bytesRead else size, out, p)
             case f: Failure[_] => p.tryComplete(f.asInstanceOf[Failure[ByteBuffer]])
           }(trampoline)
+
           return
 
         case _ => // NOOP
@@ -109,15 +110,9 @@ class SSLStage(engine: SSLEngine, maxSubmission: Int = -1) extends MidStage[Byte
         case Status.OK => // NOOP
 
         case Status.BUFFER_OVERFLOW =>  // resize and go again
-          logger.trace(s"Buffer overflow: $o")
-
-          val n = ByteBuffer.allocate(maxAppSize)
-          o.flip()
-          if (o != null && o.hasRemaining) n.put(o)
-          o = n
+          sys.error("Shouldn't have gotten here")
 
         case Status.BUFFER_UNDERFLOW => // Need more data
-
           storeRead(b)
 
           if ((r.getHandshakeStatus == HandshakeStatus.NOT_HANDSHAKING ||
@@ -174,12 +169,10 @@ class SSLStage(engine: SSLEngine, maxSubmission: Int = -1) extends MidStage[Byte
 
   private def writeLoop(written: Int, buffers: Array[ByteBuffer], out: ListBuffer[ByteBuffer], p: Promise[Any]) {
 
-    var o: ByteBuffer = null
+    val o = SSLStage.getScratchBuffer(maxBuffer)
     var wr = written
 
     while (true) {
-      if (o == null) o = allocate(maxNetSize)
-
       val r = engine.wrap(buffers, o)
 
       logger.trace(s"Write request result: $r, $o")
@@ -192,7 +185,8 @@ class SSLStage(engine: SSLEngine, maxSubmission: Int = -1) extends MidStage[Byte
           if (o.position() > 0) {
             o.flip()
             wr += o.remaining()
-            out += o
+            out += copyBuffer(o)
+            o.clear()
           }
 
           channelRead().onComplete {
@@ -217,9 +211,8 @@ class SSLStage(engine: SSLEngine, maxSubmission: Int = -1) extends MidStage[Byte
           if (o.position() > 0) {
             o.flip()
             wr += o.remaining()
-            out += o
-
-            o = null
+            out += copyBuffer(o)
+            o.clear()
 
             // See if we should write
             if (maxSubmission > 0 && wr > maxSubmission) {
@@ -248,7 +241,7 @@ class SSLStage(engine: SSLEngine, maxSubmission: Int = -1) extends MidStage[Byte
         case Status.BUFFER_UNDERFLOW => // Need more data. might never get here
           if (o.position() > 0) {
             o.flip()
-            out += o
+            out += copyBuffer(o)
           }
           p.completeWith(channelWrite(out))
           return
@@ -257,7 +250,7 @@ class SSLStage(engine: SSLEngine, maxSubmission: Int = -1) extends MidStage[Byte
       if (!buffers(buffers.length - 1).hasRemaining) {
         if (o != null && o.position() > 0) {
           o.flip()
-          out += o
+          out += copyBuffer(o)
         }
 
         p.completeWith(channelWrite(out))
@@ -268,7 +261,18 @@ class SSLStage(engine: SSLEngine, maxSubmission: Int = -1) extends MidStage[Byte
     sys.error("Shouldn't get here.")
   }
 
+  override protected def stageShutdown(): Unit = {
+    SSLStage.clearBuffer()
+    super.stageShutdown()
+  }
+
   private def allocate(size: Int): ByteBuffer = ByteBuffer.allocate(size)
+
+  private def copyBuffer(b: ByteBuffer): ByteBuffer = {
+    val bb = allocate(b.remaining())
+    bb.put(b).flip()
+    bb
+  }
 
   private def joinBuffers(buffers: Seq[ByteBuffer]): ByteBuffer = {
     val sz = buffers.foldLeft(0)((sz, o) => sz + o.remaining())
@@ -285,5 +289,28 @@ class SSLStage(engine: SSLEngine, maxSubmission: Int = -1) extends MidStage[Byte
       t.run()
       t = engine.getDelegatedTask
     }
+  }
+}
+
+private object SSLStage extends Logging {
+  val localBuffer = new ThreadLocal[ByteBuffer]
+
+  def getScratchBuffer(size: Int): ByteBuffer = {
+    val b = localBuffer.get()
+
+    if (b == null || b.capacity() < size) {
+      logger.trace(s"Allocating thread local ByteBuffer($size)")
+      val b = ByteBuffer.allocate(size)
+      localBuffer.set(b)
+      b
+    } else {
+      b.clear()
+      b
+    }
+  }
+
+  def clearBuffer(): Unit = {
+    logger.trace("Removing thread local ByteBuffer")
+    localBuffer.remove()
   }
 }
