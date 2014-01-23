@@ -73,8 +73,9 @@ class SSLStage(engine: SSLEngine, maxSubmission: Int = -1) extends MidStage[Byte
         bytesRead += r.bytesProduced()
         o.flip()
         out += copyBuffer(o)
+        o.clear()
       }
-      o.clear()
+
       logger.trace(s"SSL Read Request Status: $r, $o")
 
       r.getHandshakeStatus match {
@@ -172,8 +173,6 @@ class SSLStage(engine: SSLEngine, maxSubmission: Int = -1) extends MidStage[Byte
     var wr = written
 
     while (true) {
-//      if (o == null) o = allocate(maxNetSize)
-
       val r = engine.wrap(buffers, o)
 
       logger.trace(s"Write request result: $r, $o")
@@ -213,7 +212,6 @@ class SSLStage(engine: SSLEngine, maxSubmission: Int = -1) extends MidStage[Byte
             o.flip()
             wr += o.remaining()
             out += copyBuffer(o)
-
             o.clear()
 
             // See if we should write
