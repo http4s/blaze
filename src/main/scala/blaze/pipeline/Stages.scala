@@ -23,7 +23,7 @@ trait TailStage[I] extends Logging {
   protected def stageShutdown(): Unit = logger.trace(s"Shutting down at ${new Date}")
 
   final def channelRead(size: Int = -1): Future[I] = {
-    logger.trace(s"Stage ${getClass.getName} sending read request.")
+    logger.debug(s"Stage ${getClass.getName} sending read request.")
 
     if (this.isInstanceOf[HeadStage[_]]) sys.error("HeadStage cannot request read")
 
@@ -32,7 +32,7 @@ trait TailStage[I] extends Logging {
   }
 
   final def channelWrite(data: Seq[I]): Future[Any] = {
-    logger.trace(s"Stage ${getClass.getName} sending multiple write request.")
+    logger.debug(s"Stage ${getClass.getName} sending multiple write request.")
 
     if (this.isInstanceOf[HeadStage[_]]) sys.error("HeadStage cannot write downstream")
 
@@ -41,7 +41,7 @@ trait TailStage[I] extends Logging {
   }
 
   final def channelWrite(data: I): Future[Any] = {
-    logger.trace(s"Stage ${getClass.getName} sending write request.")
+    logger.debug(s"Stage ${getClass.getName} sending write request.")
 
     if (this.isInstanceOf[HeadStage[_]]) sys.error("HeadStage cannot write downstream")
 

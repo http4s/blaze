@@ -3,21 +3,21 @@ package blaze.channel.nio1
 import java.util.concurrent.ConcurrentLinkedQueue
 
 import scala.annotation.tailrec
-import java.nio.channels.{CancelledKeyException, SelectableChannel, SelectionKey, Selector}
+import java.nio.channels._
 import java.nio.ByteBuffer
 import scala.concurrent.{Future, Promise}
 import blaze.pipeline.{Command, PipelineBuilder, HeadStage}
 import blaze.channel.PipeFactory
 import scala.util.Try
 import java.io.IOException
-import com.typesafe.scalalogging.slf4j.Logging
+import com.typesafe.scalalogging.slf4j.StrictLogging
 
 /**
  * @author Bryce Anderson
  *         Created on 1/20/14
  */
 
-final class SelectorLoop(selector: Selector, bufferSize: Int) extends Thread with Logging { self =>
+final class SelectorLoop(selector: Selector, bufferSize: Int) extends Thread("SelectorLoop") with StrictLogging { self =>
 
   private val pendingTasks = new ConcurrentLinkedQueue[Runnable]()
 
@@ -66,7 +66,7 @@ final class SelectorLoop(selector: Selector, bufferSize: Int) extends Thread wit
             val head = k.attachment().asInstanceOf[NIOHeadStage]
 
             if (head != null) {
-              logger.trace{"selection key interests: " +
+              logger.debug{"selection key interests: " +
                 "write: " +  k.isWritable +
                 ", read: " + k.isReadable }
 
@@ -102,11 +102,13 @@ final class SelectorLoop(selector: Selector, bufferSize: Int) extends Thread wit
     } catch {
       case e: IOException =>
         logger.error("IOException in SelectorLoop", e)
+
+      case e: ClosedSelectorException =>
+        logger.error("Selector unexpectedly closed", e)
         killSelector()
 
       case e: Throwable =>
         logger.error("Unhandled exception in selector loop", e)
-        killSelector()
     }
   }
 
@@ -209,8 +211,6 @@ final class SelectorLoop(selector: Selector, bufferSize: Int) extends Thread wit
       super.stageShutdown()
       ops.close()
     }
-
-
   }
 
 }
