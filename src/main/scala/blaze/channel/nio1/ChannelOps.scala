@@ -11,6 +11,12 @@ import java.nio.channels.{SelectionKey, SelectableChannel}
 
 trait ChannelOps {
 
+  protected def ch: SelectableChannel
+
+  protected def key: SelectionKey
+
+  protected def loop: SelectorLoop
+
   /** Performs the read operation
     * @param scratch a ByteBuffer which is owned by the SelectorLoop to use as
     *                scratch space until this method returns
@@ -24,12 +30,6 @@ trait ChannelOps {
     *         or null if this operation is not complete
     */
   def performWrite(scratch: ByteBuffer, buffers: Array[ByteBuffer]): Try[Any]
-
-  def ch: SelectableChannel
-
-  def key: SelectionKey
-
-  def loop: SelectorLoop
 
   /** Don't close until the next cycle */
   def close(): Unit = loop.enqueTask(new Runnable {

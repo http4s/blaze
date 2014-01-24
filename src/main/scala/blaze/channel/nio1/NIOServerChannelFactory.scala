@@ -10,54 +10,43 @@ import blaze.channel._
  * @author Bryce Anderson
  *         Created on 1/19/14
  */
-abstract class NIOServerChannelFactory(bufferSize: Int, workerThreads: Int) extends Logging {
-  
-  type Channel <: NetworkChannel // <: SelectableChannel with ByteChannel with NetworkChannel
+abstract class NIOServerChannelFactory[Channel <: NetworkChannel](pool: SelectorLoopPool)
+                extends ServerChannelFactory[Channel] with Logging {
 
-  def doBind(address: SocketAddress): Channel
+  def this(fixedPoolSize: Int, bufferSize: Int = 8*1024) = this(new FixedArraySelectorPool(fixedPoolSize, bufferSize))
 
-  def acceptConnection(ch: Channel, loop: SelectorLoop): Boolean
+  protected def doBind(address: SocketAddress): Channel
+
+  protected def acceptConnection(ch: Channel, loop: SelectorLoop): Boolean
 
   protected def makeSelector: Selector = Selector.open()
 
-  def bind(localAddress: SocketAddress = null): ServerChannel = {
-    val pool = 0.until(workerThreads).map { _ =>
-      val t = new SelectorLoop(makeSelector, bufferSize)
-      t.start()
-      t
-    }.toArray
-    
-    new ServerChannel(doBind(localAddress), pool)
-  }
+  protected def createServerChannel(channel: Channel): ServerChannel =
+    new NIO1ServerChannel(channel, pool)
 
-  class ServerChannel private[NIOServerChannelFactory](channel: Channel, pool: Array[SelectorLoop]) extends Runnable {
+  def bind(localAddress: SocketAddress = null): ServerChannel = createServerChannel(doBind(localAddress))
 
-    private var nextPool: Int = 0
+
+  /** This class can be extended to change the way selector loops are provided */
+  protected class NIO1ServerChannel(val channel: Channel, pool: SelectorLoopPool) extends ServerChannel {
+
+    type C = Channel
+
     @volatile private var closed = false
 
-    def nextLoop(): SelectorLoop = {
-      nextPool = (nextPool + 1) % pool.length
-      pool(nextPool)
-    }
-
-    def close(): Unit = {
+    override def close(): Unit = {
       closed = true
-      pool.foreach(_.close())
-    }
-
-    def runAsync(): Unit = {
-      logger.trace("Starting server loop on separate thread")
-      new Thread(this).start()
+      pool.shutdown()
+      channel.close()
     }
 
     // The accept thread just accepts connections and pawns them off on the SelectorLoop pool
     final def run(): Unit = {
       while (channel.isOpen && !closed) {
-        val p = nextLoop()
+        val p = pool.nextLoop()
         acceptConnection(channel, p)
       }
     }
 
   }
-
 }

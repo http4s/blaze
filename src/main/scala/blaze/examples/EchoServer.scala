@@ -4,13 +4,14 @@ package examples
 import pipeline.TailStage
 import java.nio.ByteBuffer
 import scala.util.{Failure, Success}
-import channel.{PipeFactory, ServerChannelFactory}
+import blaze.channel.{ServerChannel, PipeFactory}
 import java.net.InetSocketAddress
 import com.typesafe.scalalogging.slf4j.Logging
 import java.util.Date
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import blaze.pipeline.Command.EOF
+import blaze.channel.nio2.NIO2ServerChannelFactory
 
 /**
  * @author Bryce Anderson
@@ -21,10 +22,10 @@ import blaze.pipeline.Command.EOF
 
 class EchoServer extends Logging {
 
-  def prepare(address: InetSocketAddress): ServerChannelFactory#ServerChannel = {
+  def prepare(address: InetSocketAddress): ServerChannel = {
     val f: PipeFactory = _.cap(new EchoStage)
 
-    val factory = new ServerChannelFactory(f)
+    val factory = new NIO2ServerChannelFactory(f)
     factory.bind(address)
   }
   

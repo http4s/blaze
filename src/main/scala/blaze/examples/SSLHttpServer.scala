@@ -8,6 +8,7 @@ import javax.net.ssl.{KeyManagerFactory, SSLContext}
 
 import java.security.KeyStore
 import blaze.util.BogusKeystore
+import blaze.channel.nio2.NIO2ServerChannelFactory
 
 /**
  * @author Bryce Anderson
@@ -39,7 +40,7 @@ class SSLHttpServer(port: Int) {
 
   val group = AsynchronousChannelGroup.withFixedThreadPool(10, java.util.concurrent.Executors.defaultThreadFactory())
 
-  private val factory = new ServerChannelFactory(f)
+  private val factory = new NIO2ServerChannelFactory(f)
 
   def run(): Unit = factory.bind(new InetSocketAddress(port)).run()
 }

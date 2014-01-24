@@ -1,27 +1,24 @@
-package blaze.pipeline
-package stages
+package blaze.channel.nio2
 
-import java.nio.channels.{AsynchronousSocketChannel => NioChannel,
-                          ClosedChannelException,
-                          ShutdownChannelGroupException,
-                          CompletionHandler}
+import java.nio.channels._
 
 import java.nio.ByteBuffer
 import scala.concurrent.{Promise, Future}
-import Command._
 import java.io.IOException
 import java.util.Date
 import java.util.concurrent.TimeUnit
 
 import java.lang.{Long => JLong}
 import scala.annotation.tailrec
+import blaze.pipeline.HeadStage
+import blaze.pipeline.Command.{Command, Error, Shutdown, EOF}
 
 
 /**
 * @author Bryce Anderson
 *         Created on 1/4/14
 */
-class ByteBufferHead(channel: NioChannel,
+class ByteBufferHead(channel: AsynchronousSocketChannel,
                      val name: String = "ByteBufferHeadStage",
                      bufferSize: Int = 20*1024) extends HeadStage[ByteBuffer] {
 
@@ -31,7 +28,7 @@ class ByteBufferHead(channel: NioChannel,
 
     if (!data.hasRemaining() && data.position > 0) {
       logger.warn("Received write request with non-zero position but ZERO available" +
-                 s"bytes at ${new Date} on blaze.channel $channel: $data, head: $next")
+                 s"bytes at ${new Date} on blaze.channel $channel: $data")
       return Future.successful()
     }
 

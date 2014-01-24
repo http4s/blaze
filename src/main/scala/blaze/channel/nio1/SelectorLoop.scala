@@ -51,8 +51,6 @@ final class SelectorLoop(selector: Selector, bufferSize: Int) extends Thread("Se
       go(pendingTasks.poll())
 
     // Block here for a bit until an operation happens or we are awaken by an operation
-
-      logger.trace("Starting select.")
       selector.select()
       val it = selector.selectedKeys().iterator()
 

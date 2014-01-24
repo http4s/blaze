@@ -5,6 +5,7 @@ import java.net.InetSocketAddress
 import java.nio.channels.AsynchronousChannelGroup
 import blaze.pipeline.stages.SerializingStage
 import java.nio.ByteBuffer
+import blaze.channel.nio2.NIO2ServerChannelFactory
 
 /**
  * @author Bryce Anderson
@@ -16,7 +17,7 @@ class HttpServer(port: Int) {
 
   val group = AsynchronousChannelGroup.withFixedThreadPool(10, java.util.concurrent.Executors.defaultThreadFactory())
 
-  private val factory = new ServerChannelFactory(f)
+  private val factory = new NIO2ServerChannelFactory(f)
 
   def run(): Unit = factory.bind(new InetSocketAddress(port)).run()
 }

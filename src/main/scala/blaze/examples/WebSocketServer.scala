@@ -10,6 +10,7 @@ import blaze.pipeline.{Command, TailStage}
 import blaze.pipeline.stages.http.websocket.WebSocketDecoder._
 import scala.util.{Failure, Success}
 import blaze.pipeline.stages.http.websocket.{ServerHandshaker, WSStage}
+import blaze.channel.nio2.NIO2ServerChannelFactory
 
 /**
  * @author Bryce Anderson
@@ -20,7 +21,7 @@ class WebSocketServer(port: Int) {
 
   val group = AsynchronousChannelGroup.withFixedThreadPool(10, java.util.concurrent.Executors.defaultThreadFactory())
 
-  private val factory = new ServerChannelFactory(f)
+  private val factory = new NIO2ServerChannelFactory(f)
 
   def run(): Unit = factory.bind(new InetSocketAddress(port)).run()
 }

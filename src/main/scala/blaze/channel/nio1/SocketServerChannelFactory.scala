@@ -12,15 +12,16 @@ import blaze.pipeline.Command.EOF
  * @author Bryce Anderson
  *         Created on 1/21/14
  */
-class SocketServerChannelFactory(pipeFactory: PipeFactory, bufferSize: Int = 4*1024, workerThreads: Int = 8)
-                extends NIOServerChannelFactory(bufferSize, workerThreads ) {
+class SocketServerChannelFactory(pipeFactory: PipeFactory, pool: SelectorLoopPool)
+                extends NIOServerChannelFactory[ServerSocketChannel](pool) {
 
-  type Channel = ServerSocketChannel
+  def this(pipeFactory: PipeFactory, workerThreads: Int = 8, bufferSize: Int = 4*1024) = {
+    this(pipeFactory, new FixedArraySelectorPool(workerThreads, bufferSize))
+  }
 
+  def doBind(address: SocketAddress): ServerSocketChannel = ServerSocketChannel.open().bind(address)
 
-  def doBind(address: SocketAddress): Channel = ServerSocketChannel.open().bind(address)
-
-  def acceptConnection(serverChannel: Channel, loop: SelectorLoop): Boolean = {
+  def acceptConnection(serverChannel: ServerSocketChannel, loop: SelectorLoop): Boolean = {
     try {
       val ch = serverChannel.accept()
       loop.initChannel(pipeFactory, ch, key => new SocketChannelOps(ch, loop, key))
@@ -31,6 +32,7 @@ class SocketServerChannelFactory(pipeFactory: PipeFactory, bufferSize: Int = 4*1
 
   private class SocketChannelOps(val ch: SocketChannel, val loop: SelectorLoop, val key: SelectionKey)
               extends ChannelOps {
+
     def performRead(scratch: ByteBuffer): Try[ByteBuffer] = {
       try {
         scratch.clear()
