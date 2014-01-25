@@ -58,19 +58,18 @@ class SocketServerChannelFactory(pipeFactory: PipeFactory, pool: SelectorLoopPoo
       }
     }
 
-    def performWrite(scratch: ByteBuffer, buffers: Array[ByteBuffer]): Try[Any] = {
+    def performWrite(scratch: ByteBuffer, buffers: Array[ByteBuffer]): Boolean = {
       logger.trace("Performing write: " + buffers)
       try {
         ch.write(buffers)
-        if (buffers(buffers.length - 1).hasRemaining) null
-        else Success()
+        if (buffers(buffers.length - 1).hasRemaining) false
+        else true
       }
       catch {
-        case e: ClosedChannelException => Failure(EOF)
+        case e: ClosedChannelException => throw EOF
         // Weird problem with windows
         case e: IOException if e.getMessage == "An existing connection was forcibly closed by the remote host" =>
-          Failure(EOF)
-        case e: IOException => Failure(e)
+          throw EOF
       }
     }
   }

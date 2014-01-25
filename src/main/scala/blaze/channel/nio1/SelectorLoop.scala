@@ -1,6 +1,8 @@
 package blaze.channel.nio1
 
 import scala.annotation.tailrec
+import scala.util.control.NonFatal
+
 import java.nio.channels._
 import java.nio.ByteBuffer
 import scala.concurrent.{Future, Promise}
@@ -172,12 +174,9 @@ final class SelectorLoop(selector: Selector, bufferSize: Int) extends Thread("Se
   private class NIOHeadStage(ops: ChannelOps) extends HeadStage[ByteBuffer] {
     def name: String = "NIO1 ByteBuffer Head Stage"
 
-    private val writeQueue = new AtomicReference[Array[ByteBuffer]](null)
-    @volatile private var _writePromise: Promise[Any] = null
+    ///  channel reading bits //////////////////////////////////////////////
 
     @volatile private var _readPromise: Promise[ByteBuffer] = null
-
-    ///  channel reading bits //////////////////////////////////////////////
 
     def readReady(scratch: ByteBuffer) {
       val r = ops.performRead(scratch)
@@ -206,30 +205,85 @@ final class SelectorLoop(selector: Selector, bufferSize: Int) extends Thread("Se
     
     /// channel write bits /////////////////////////////////////////////////
 
-    def writeReady(scratch: ByteBuffer) {
-      val buffers = writeQueue.get()
-      assert(buffers != null)
-      val rt = ops.performWrite(scratch, buffers)
+    private class WriteNode(val data: Array[ByteBuffer]) extends AtomicReference[WriteNode]
 
-      if (rt != null) {
-        ops.unsetOp(SelectionKey.OP_WRITE)
-        val p = _writePromise
-        _writePromise = null
-        writeQueue.lazySet(null)
-        p.complete(rt)
+    private val writeHead = new AtomicReference[WriteNode](null)
+    private val writeTail = new AtomicReference[WriteNode](null)
+
+    private val writePromise = new AtomicReference[Promise[Any]](null)
+
+    // Will always be called from the SelectorLoop thread
+    def writeReady(scratch: ByteBuffer) {
+
+      @tailrec
+      def go(node: WriteNode): Unit = {
+        assert(node.data != null)
+
+        var success = false
+        try success = ops.performWrite(scratch, node.data)
+        catch { case NonFatal(t) =>
+          val p = writePromise.get
+          writePromise.set(null)
+          writeHead.set(null)
+          p.failure(t)
+          return
+        }
+
+          if (success) {  // successful completion
+          val tail = node.get()
+            if (tail eq null) {   // could be last loop
+
+              // Need to wait for a real Promise, in the off world chance we enter this loop before the
+              // first write has had time to set the promise into the atomic
+              var p = writePromise.getAndSet(null)
+              while (p == null) p = writePromise.getAndSet(null)
+
+              if (writeHead.compareAndSet(node, null)) { // successfully set the completion
+                // Don't need to worry about races with this, we are in the selector loop already and
+                // all ops setting and un-setting is processed on this thread, so this is guaranteed to
+                // execute before another call to set a write interest
+                ops.unsetOp(SelectionKey.OP_WRITE)
+                p.success()
+              }
+              else { // Need to reset the promise we just took on accident
+                writePromise.set(p)
+
+                // Wait for the next node to resolve
+                var n = node.get()
+                while (n == null) n = node.get()
+                go(n)
+              }                                // waiting to resolve tail
+            }
+            else go(tail)
+          }
+          else writeTail.set(node)  // unfinished. Will wait for next write opportunity
+//        }
       }
+
+      go(writeTail.get())
     }
 
     def writeRequest(data: ByteBuffer): Future[Any] = writeRequest(data::Nil)
 
     override def writeRequest(data: Seq[ByteBuffer]): Future[Any] = {
       val writes = data.toArray
-      if (!writeQueue.compareAndSet(null, writes)) Future.failed(new IndexOutOfBoundsException("Cannot have more than one pending write request"))
-      else {
-        _writePromise = Promise[Any]
-        //ops.setOp(SelectionKey.OP_WRITE)  // Already in SelectorLoop
+
+      val node = new WriteNode(writes)
+      val last = writeHead.getAndSet(node)
+      if (last eq null) { // We just set the head. Need to set the tail, fix the Promise, and set the interest
+        writeTail.set(node)
+        val p = Promise[Any]
+        writePromise.set(p)
         ops.setWrite()
-        _writePromise.future
+        p.future
+      } else {           // queue already going
+        last.lazySet(node)
+
+        // Get the already set promise. The first write is guaranteed
+        // to have set it, so if its not there we need to wait
+        var p = writePromise.get()
+        while (p == null) p = writePromise.get()
+        p.future
       }
     }
     

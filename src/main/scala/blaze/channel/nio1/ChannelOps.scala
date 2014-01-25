@@ -29,7 +29,7 @@ trait ChannelOps {
     * @return a Try that is either a Success(Any), a Failure with an appropriate error,
     *         or null if this operation is not complete
     */
-  def performWrite(scratch: ByteBuffer, buffers: Array[ByteBuffer]): Try[Any]
+  def performWrite(scratch: ByteBuffer, buffers: Array[ByteBuffer]): Boolean
 
   /** Don't close until the next cycle */
   def close(): Unit = loop.enqueTask(new Runnable {
