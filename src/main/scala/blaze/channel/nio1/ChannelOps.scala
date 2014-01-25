@@ -3,11 +3,20 @@ package blaze.channel.nio1
 import scala.util.Try
 import java.nio.ByteBuffer
 import java.nio.channels.{SelectionKey, SelectableChannel}
+import blaze.channel.nio1.ChannelOps.WriteResult
 
 /**
  * @author Bryce Anderson
  *         Created on 1/21/14
  */
+
+object ChannelOps {
+  sealed trait WriteResult
+  case object Complete extends WriteResult
+  case object Incomplete extends WriteResult
+  case object ChannelClosed extends WriteResult
+  case class WriteError(t: Exception) extends WriteResult
+}
 
 trait ChannelOps {
 
@@ -29,7 +38,7 @@ trait ChannelOps {
     * @return a Try that is either a Success(Any), a Failure with an appropriate error,
     *         or null if this operation is not complete
     */
-  def performWrite(scratch: ByteBuffer, buffers: Array[ByteBuffer]): Boolean
+  def performWrite(scratch: ByteBuffer, buffers: Array[ByteBuffer]): WriteResult
 
   /** Don't close until the next cycle */
   def close(): Unit = loop.enqueTask(new Runnable {

@@ -7,6 +7,7 @@ import java.io.IOException
 import java.nio.ByteBuffer
 import scala.util.{Failure, Success, Try}
 import blaze.pipeline.Command.EOF
+import blaze.channel.nio1.ChannelOps.{ChannelClosed, Complete, Incomplete, WriteResult}
 
 /**
  * @author Bryce Anderson
@@ -54,22 +55,28 @@ class SocketServerChannelFactory(pipeFactory: PipeFactory, pool: SelectorLoopPoo
           // Weird problem with windows
         case e: IOException if e.getMessage == "An existing connection was forcibly closed by the remote host" =>
           Failure(EOF)
+
+        case e: IOException if e.getMessage == "Connection reset by peer" =>
+          Failure(EOF)
+
         case e: IOException => Failure(e)
       }
     }
 
-    def performWrite(scratch: ByteBuffer, buffers: Array[ByteBuffer]): Boolean = {
+    def performWrite(scratch: ByteBuffer, buffers: Array[ByteBuffer]): WriteResult = {
       logger.trace("Performing write: " + buffers)
       try {
         ch.write(buffers)
-        if (buffers(buffers.length - 1).hasRemaining) false
-        else true
+        if (buffers(buffers.length - 1).hasRemaining) Incomplete
+        else Complete
       }
       catch {
-        case e: ClosedChannelException => throw EOF
+        case e: ClosedChannelException =>
+          ChannelClosed
+
         // Weird problem with windows
         case e: IOException if e.getMessage == "An existing connection was forcibly closed by the remote host" =>
-          throw EOF
+          ChannelClosed
       }
     }
   }

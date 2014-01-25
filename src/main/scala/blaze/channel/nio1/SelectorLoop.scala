@@ -12,13 +12,15 @@ import java.io.IOException
 import com.typesafe.scalalogging.slf4j.StrictLogging
 import java.util.concurrent.atomic.AtomicReference
 import java.util.concurrent.RejectedExecutionException
+import blaze.channel.nio1.ChannelOps.{ChannelClosed, WriteError, Incomplete, Complete}
+import blaze.pipeline.Command.EOF
 
 /**
  * @author Bryce Anderson
  *         Created on 1/20/14
  */
 
-final class SelectorLoop(selector: Selector, bufferSize: Int) extends Thread("SelectorLoop") with StrictLogging { self =>
+final class SelectorLoop(selector: Selector, bufferSize: Int) extends Thread("SelectorLoop") with StrictLogging { thisLoop =>
 
   private class Node(val runnable: Runnable) extends AtomicReference[Node]
 
@@ -29,7 +31,7 @@ final class SelectorLoop(selector: Selector, bufferSize: Int) extends Thread("Se
   @volatile private var _isClosed = false
 
   def executeTask(r: Runnable) {
-    if (Thread.currentThread() == self) r.run()
+    if (Thread.currentThread() == thisLoop) r.run()
     else enqueTask(r)
   }
 
@@ -79,7 +81,7 @@ final class SelectorLoop(selector: Selector, bufferSize: Int) extends Thread("Se
       // Run any pending tasks. These may set interest ops, just compute something, etc.
       runTasks()
 
-    // Block here for a bit until some IO event happens or someone adds a task to run and wakes the loop
+    // Block here until some IO event happens or someone adds a task to run and wakes the loop
       if (selector.select() > 0) {
         // We have some new IO operations waiting for us. Process them
         val it = selector.selectedKeys().iterator()
@@ -196,7 +198,6 @@ final class SelectorLoop(selector: Selector, bufferSize: Int) extends Thread("Se
       if (_readPromise != null) Future.failed(new IndexOutOfBoundsException("Cannot have more than one pending read request"))
       else {
         _readPromise = Promise[ByteBuffer]
-        //ops.setOp(SelectionKey.OP_READ)  // Already in SelectorLoop
         ops.setRead()
 
         _readPromise.future
@@ -219,22 +220,13 @@ final class SelectorLoop(selector: Selector, bufferSize: Int) extends Thread("Se
       def go(node: WriteNode): Unit = {
         assert(node.data != null)
 
-        var success = false
-        try success = ops.performWrite(scratch, node.data)
-        catch { case NonFatal(t) =>
-          val p = writePromise.get
-          writePromise.set(null)
-          writeHead.set(null)
-          p.failure(t)
-          return
-        }
-
-          if (success) {  // successful completion
-          val tail = node.get()
+        ops.performWrite(scratch, node.data) match {
+          case Complete =>
+            val tail = node.get()
             if (tail eq null) {   // could be last loop
 
               // Need to wait for a real Promise, in the off world chance we enter this loop before the
-              // first write has had time to set the promise into the atomic
+              // first write has had time to set the promise into the atomic, we must spin
               var p = writePromise.getAndSet(null)
               while (p == null) p = writePromise.getAndSet(null)
 
@@ -245,7 +237,8 @@ final class SelectorLoop(selector: Selector, bufferSize: Int) extends Thread("Se
                 ops.unsetOp(SelectionKey.OP_WRITE)
                 p.success()
               }
-              else { // Need to reset the promise we just took on accident
+              else {
+              // Waiting for the node to link. Need to reset the promise and continue the writing process
                 writePromise.set(p)
 
                 // Wait for the next node to resolve
@@ -255,9 +248,33 @@ final class SelectorLoop(selector: Selector, bufferSize: Int) extends Thread("Se
               }                                // waiting to resolve tail
             }
             else go(tail)
-          }
-          else writeTail.set(node)  // unfinished. Will wait for next write opportunity
-//        }
+
+          case Incomplete => writeTail.set(node)
+
+          case ChannelClosed =>
+            writeTail.set(null) // further write requests will be gc accessible without holding the tail
+
+            var p = writePromise.get()
+            while (p == null) p = writePromise.get()
+
+            p.failure(EOF)
+            ops.close()
+
+          case WriteError(NonFatal(t)) =>
+            // seems the channel needs to be shut down
+            var p = writePromise.get()
+            while (p == null) p = writePromise.get()
+
+            queueTail.set(null)
+            queueHead.set(null)
+            p.failure(t)
+            ops.close()
+
+          case WriteError(t) =>
+            logger.error("Serious error while performing write. Shutting down Loop", t)
+            ops.close()
+            thisLoop.close()
+        }
       }
 
       go(writeTail.get())
@@ -270,17 +287,18 @@ final class SelectorLoop(selector: Selector, bufferSize: Int) extends Thread("Se
 
       val node = new WriteNode(writes)
       val last = writeHead.getAndSet(node)
-      if (last eq null) { // We just set the head. Need to set the tail, fix the Promise, and set the interest
-        writeTail.set(node)
+      if (last eq null) {
+      // We just set the head. Need to set the tail, fix the Promise, and set the interest
         val p = Promise[Any]
         writePromise.set(p)
+        writeTail.set(node)
         ops.setWrite()
         p.future
-      } else {           // queue already going
+      } else {
+      // queue already going so link the node and get the promise
         last.lazySet(node)
-
         // Get the already set promise. The first write is guaranteed
-        // to have set it, so if its not there we need to wait
+        // to have set it, so if its not there we need to spin
         var p = writePromise.get()
         while (p == null) p = writePromise.get()
         p.future
