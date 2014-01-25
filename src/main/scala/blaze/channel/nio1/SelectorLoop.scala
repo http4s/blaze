@@ -1,17 +1,15 @@
 package blaze.channel.nio1
 
-import java.util.concurrent.ConcurrentLinkedQueue
-
 import scala.annotation.tailrec
 import java.nio.channels._
 import java.nio.ByteBuffer
 import scala.concurrent.{Future, Promise}
 import blaze.pipeline.{Command, PipelineBuilder, HeadStage}
 import blaze.channel.PipeFactory
-import scala.util.Try
 import java.io.IOException
 import com.typesafe.scalalogging.slf4j.StrictLogging
 import java.util.concurrent.atomic.AtomicReference
+import java.util.concurrent.RejectedExecutionException
 
 /**
  * @author Bryce Anderson
@@ -20,13 +18,13 @@ import java.util.concurrent.atomic.AtomicReference
 
 final class SelectorLoop(selector: Selector, bufferSize: Int) extends Thread("SelectorLoop") with StrictLogging { self =>
 
-//  private val pendingTasks = new ConcurrentLinkedQueue[Runnable]()
   private class Node(val runnable: Runnable) extends AtomicReference[Node]
 
   private val queueHead = new AtomicReference[Node](null)
   private val queueTail = new AtomicReference[Node](null)
 
   private val scratch = ByteBuffer.allocate(bufferSize)
+  @volatile private var _isClosed = false
 
   def executeTask(r: Runnable) {
     if (Thread.currentThread() == self) r.run()
@@ -34,6 +32,8 @@ final class SelectorLoop(selector: Selector, bufferSize: Int) extends Thread("Se
   }
 
   def enqueTask(r: Runnable): Unit = {
+    if (_isClosed) throw new RejectedExecutionException("This SelectorLoop is closed.")
+
     val node = new Node(r)
     val head = queueHead.getAndSet(node)
     if (head eq null) {
@@ -44,7 +44,6 @@ final class SelectorLoop(selector: Selector, bufferSize: Int) extends Thread("Se
 
   private def runTasks() {
     @tailrec def spin(n: Node): Node = {
-      logger.error("Spinning.")
       val next = n.get()
       if (next ne null) next
       else spin(n)
@@ -58,6 +57,7 @@ final class SelectorLoop(selector: Selector, bufferSize: Int) extends Thread("Se
       if (next eq null) {
         // If we are not the last cell, we will spin until the cons resolves and continue
         if (!queueHead.compareAndSet(n, null)) go(spin(n))
+        //else () // Finished the last node. All done.
       }
       else go(next)
     }
@@ -69,63 +69,45 @@ final class SelectorLoop(selector: Selector, bufferSize: Int) extends Thread("Se
     }
   }
 
-  override def run() = loop()
+  // Main thread method. This is just a everlasting loop.
+  // TODO: should we plan an escape for this loop?
+  override def run() {
 
-  private def loop() {
-
-    try while(true) {
-      // Run any pending tasks. It is theoretically possible for the loop to
-      // Tasks are run first to add any pending OPS before waiting on the selector but that is
-      // moot because a call to wakeup if the selector is not waiting on a select call will
-      // cause the next invocation of selector.select() to return immediately per spec.
+    try while(!_isClosed) {
+      // Run any pending tasks. These may set interest ops, just compute something, etc.
       runTasks()
 
+    // Block here for a bit until some IO event happens or someone adds a task to run and wakes the loop
+      if (selector.select() > 0) {
+        // We have some new IO operations waiting for us. Process them
+        val it = selector.selectedKeys().iterator()
 
-    // Block here for a bit until an operation happens or we are awaken by an operation
-      selector.select()
-      val it = selector.selectedKeys().iterator()
+        while(it.hasNext) {
+          val k = it.next()
+          it.remove()
 
+          try {
+            if (k.isValid) {
+              val head = k.attachment().asInstanceOf[NIOHeadStage]
 
-      while(it.hasNext) {
-        val k = it.next()
-        it.remove()
+              if (head != null) {
+                logger.debug{"selection key interests: " +
+                  "write: " +  k.isWritable +
+                  ", read: " + k.isReadable }
 
-        try {
-          if (k.isValid) {
-            val head = k.attachment().asInstanceOf[NIOHeadStage]
+                val readyOps: Int = k.readyOps()
 
-            if (head != null) {
-              logger.debug{"selection key interests: " +
-                "write: " +  k.isWritable +
-                ", read: " + k.isReadable }
-
-              val readyOps: Int = k.readyOps()
-
-              if ((readyOps & SelectionKey.OP_READ) != 0) {
-                val rt = head.ops.performRead(scratch)
-                if (rt != null){
-                  head.ops.unsetOp(SelectionKey.OP_READ)
-                  head.completeRead(rt)
-                }
+                if ((readyOps & SelectionKey.OP_READ) != 0) head.readReady(scratch)
+                if ((readyOps & SelectionKey.OP_WRITE) != 0) head.writeReady(scratch)
+              }
+              else {   // Null head. Must be disconnected
+                k.cancel()
+                logger.warn("Selector key had null attachment. Why is the key still in the ops?")
               }
 
-              if ((readyOps & SelectionKey.OP_WRITE) != 0) {
-                val buffers = head.getWrites()
-                assert(buffers != null)
-
-                val t = head.ops.performWrite(scratch, buffers)
-                if (t != null) {
-                  head.ops.unsetOp(SelectionKey.OP_WRITE)
-                  head.completeWrite(t)
-                }
-              }
             }
-            else {   // Null head. Must be disconnected
-              logger.warn("Selector key had null attachment. Why is the key still in the ops?")
-            }
-
-          }
-        } catch { case e: CancelledKeyException => /* NOOP */ }
+          } catch { case e: CancelledKeyException => /* NOOP */ }
+        }
       }
 
     } catch {
@@ -133,15 +115,19 @@ final class SelectorLoop(selector: Selector, bufferSize: Int) extends Thread("Se
         logger.error("IOException in SelectorLoop", e)
 
       case e: ClosedSelectorException =>
+        _isClosed = true
         logger.error("Selector unexpectedly closed", e)
-        killSelector()
+        return  // If the selector is closed, no reason to continue the thread.
 
       case e: Throwable =>
         logger.error("Unhandled exception in selector loop", e)
+        close()
+        return
     }
   }
 
   def close() {
+    _isClosed = true
     killSelector()
   }
 
@@ -149,14 +135,16 @@ final class SelectorLoop(selector: Selector, bufferSize: Int) extends Thread("Se
   private def killSelector() {
     import scala.collection.JavaConversions._
 
-    selector.keys().foreach { k =>
-      try {
-        k.channel().close()
-        k.attach(null)
-      } catch { case _: IOException => /* NOOP */ }
-    }
+    try {
+      selector.keys().foreach { k =>
+        try {
+          k.channel().close()
+          k.attach(null)
+        } catch { case _: IOException => /* NOOP */ }
+      }
 
-    selector.close()
+      selector.close()
+    } catch { case t: Throwable => logger.warn("Killing selector resulted in an exception", t) }
   }
 
   def wakeup(): Unit = selector.wakeup()
@@ -181,21 +169,26 @@ final class SelectorLoop(selector: Selector, bufferSize: Int) extends Thread("Se
     })
   }
 
-  private class NIOHeadStage(private[SelectorLoop] val ops: ChannelOps) extends HeadStage[ByteBuffer] {
+  private class NIOHeadStage(ops: ChannelOps) extends HeadStage[ByteBuffer] {
     def name: String = "NIO1 ByteBuffer Head Stage"
 
-//    private val writeLock = new AnyRef
     private val writeQueue = new AtomicReference[Array[ByteBuffer]](null)
     @volatile private var _writePromise: Promise[Any] = null
 
     @volatile private var _readPromise: Promise[ByteBuffer] = null
 
     ///  channel reading bits //////////////////////////////////////////////
-    
-    def completeRead(t: Try[ByteBuffer]) {
-      val p = _readPromise
-      _readPromise = null
-      p.complete(t)
+
+    def readReady(scratch: ByteBuffer) {
+      val r = ops.performRead(scratch)
+
+      // if we successfully read some data, unset the interest and complete the promise
+      if (r != null) {
+        ops.unsetOp(SelectionKey.OP_READ)
+        val p = _readPromise
+        _readPromise = null
+        p.complete(r)
+      }
     }
 
     def readRequest(size: Int): Future[ByteBuffer] = {
@@ -213,6 +206,20 @@ final class SelectorLoop(selector: Selector, bufferSize: Int) extends Thread("Se
     
     /// channel write bits /////////////////////////////////////////////////
 
+    def writeReady(scratch: ByteBuffer) {
+      val buffers = writeQueue.get()
+      assert(buffers != null)
+      val rt = ops.performWrite(scratch, buffers)
+
+      if (rt != null) {
+        ops.unsetOp(SelectionKey.OP_WRITE)
+        val p = _writePromise
+        _writePromise = null
+        writeQueue.lazySet(null)
+        p.complete(rt)
+      }
+    }
+
     def writeRequest(data: ByteBuffer): Future[Any] = writeRequest(data::Nil)
 
     override def writeRequest(data: Seq[ByteBuffer]): Future[Any] = {
@@ -224,15 +231,6 @@ final class SelectorLoop(selector: Selector, bufferSize: Int) extends Thread("Se
         ops.setWrite()
         _writePromise.future
       }
-    }
-
-    def getWrites(): Array[ByteBuffer] = writeQueue.get
-
-    def completeWrite(t: Try[Any]): Unit = {
-      val p = _writePromise
-      _writePromise = null
-      writeQueue.lazySet(null)
-      p.complete(t)
     }
     
     /// set the channel interests //////////////////////////////////////////
