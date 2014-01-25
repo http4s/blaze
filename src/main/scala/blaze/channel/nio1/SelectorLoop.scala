@@ -11,6 +11,7 @@ import blaze.channel.PipeFactory
 import scala.util.Try
 import java.io.IOException
 import com.typesafe.scalalogging.slf4j.StrictLogging
+import java.util.concurrent.atomic.AtomicReference
 
 /**
  * @author Bryce Anderson
@@ -19,7 +20,11 @@ import com.typesafe.scalalogging.slf4j.StrictLogging
 
 final class SelectorLoop(selector: Selector, bufferSize: Int) extends Thread("SelectorLoop") with StrictLogging { self =>
 
-  private val pendingTasks = new ConcurrentLinkedQueue[Runnable]()
+//  private val pendingTasks = new ConcurrentLinkedQueue[Runnable]()
+  private class Node(val runnable: Runnable) extends AtomicReference[Node]
+
+  private val queueHead = new AtomicReference[Node](null)
+  private val queueTail = new AtomicReference[Node](null)
 
   private val scratch = ByteBuffer.allocate(bufferSize)
 
@@ -29,8 +34,39 @@ final class SelectorLoop(selector: Selector, bufferSize: Int) extends Thread("Se
   }
 
   def enqueTask(r: Runnable): Unit = {
-    pendingTasks.add(r)
-    wakeup()
+    val node = new Node(r)
+    val head = queueHead.getAndSet(node)
+    if (head eq null) {
+      queueTail.set(node)
+      wakeup()
+    } else head.lazySet(node)
+  }
+
+  private def runTasks() {
+    @tailrec def spin(n: Node): Node = {
+      logger.error("Spinning.")
+      val next = n.get()
+      if (next ne null) next
+      else spin(n)
+    }
+
+    @tailrec
+    def go(n: Node): Unit = {
+      try n.runnable.run()
+      catch { case t: Exception => logger.error("Caught exception in queued task", t) }
+      val next = n.get()
+      if (next eq null) {
+        // If we are not the last cell, we will spin until the cons resolves and continue
+        if (!queueHead.compareAndSet(n, null)) go(spin(n))
+      }
+      else go(next)
+    }
+
+    val t = queueTail.get()
+    if (t ne null) {
+      queueTail.lazySet(null)
+      go(t)
+    }
   }
 
   override def run() = loop()
@@ -42,13 +78,8 @@ final class SelectorLoop(selector: Selector, bufferSize: Int) extends Thread("Se
       // Tasks are run first to add any pending OPS before waiting on the selector but that is
       // moot because a call to wakeup if the selector is not waiting on a select call will
       // cause the next invocation of selector.select() to return immediately per spec.
-      @tailrec
-      def go(r: Runnable): Unit = if (r != null) {
-        try r.run()
-        catch { case t: Exception => logger.error("Caught exception in queued task", t) }
-        go(pendingTasks.poll())
-      }
-      go(pendingTasks.poll())
+      runTasks()
+
 
     // Block here for a bit until an operation happens or we are awaken by an operation
       selector.select()
@@ -153,9 +184,9 @@ final class SelectorLoop(selector: Selector, bufferSize: Int) extends Thread("Se
   private class NIOHeadStage(private[SelectorLoop] val ops: ChannelOps) extends HeadStage[ByteBuffer] {
     def name: String = "NIO1 ByteBuffer Head Stage"
 
-    private val writeLock = new AnyRef
-    private var writeQueue: Array[ByteBuffer] = null
-    private var writePromise: Promise[Any] = null
+//    private val writeLock = new AnyRef
+    private val writeQueue = new AtomicReference[Array[ByteBuffer]](null)
+    @volatile private var _writePromise: Promise[Any] = null
 
     @volatile private var _readPromise: Promise[ByteBuffer] = null
 
@@ -184,24 +215,23 @@ final class SelectorLoop(selector: Selector, bufferSize: Int) extends Thread("Se
 
     def writeRequest(data: ByteBuffer): Future[Any] = writeRequest(data::Nil)
 
-    override def writeRequest(data: Seq[ByteBuffer]): Future[Any] = writeLock.synchronized {
-      if (writePromise != null) Future.failed(new IndexOutOfBoundsException("Cannot have more than one pending write request"))
+    override def writeRequest(data: Seq[ByteBuffer]): Future[Any] = {
+      val writes = data.toArray
+      if (!writeQueue.compareAndSet(null, writes)) Future.failed(new IndexOutOfBoundsException("Cannot have more than one pending write request"))
       else {
-        writeQueue = data.toArray
-        writePromise = Promise[Any]
+        _writePromise = Promise[Any]
         //ops.setOp(SelectionKey.OP_WRITE)  // Already in SelectorLoop
         ops.setWrite()
-
-        writePromise.future
+        _writePromise.future
       }
     }
 
-    def getWrites(): Array[ByteBuffer] = writeLock.synchronized(writeQueue)
+    def getWrites(): Array[ByteBuffer] = writeQueue.get
 
-    def completeWrite(t: Try[Any]): Unit = writeLock.synchronized {
-      val p = writePromise
-      writePromise = null
-      writeQueue = null
+    def completeWrite(t: Try[Any]): Unit = {
+      val p = _writePromise
+      _writePromise = null
+      writeQueue.lazySet(null)
       p.complete(t)
     }
     
