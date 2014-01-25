@@ -173,7 +173,8 @@ final class SelectorLoop(selector: Selector, bufferSize: Int) extends Thread("Se
       if (_readPromise != null) Future.failed(new IndexOutOfBoundsException("Cannot have more than one pending read request"))
       else {
         _readPromise = Promise[ByteBuffer]
-        ops.setOp(SelectionKey.OP_READ)  // Already in SelectorLoop
+        //ops.setOp(SelectionKey.OP_READ)  // Already in SelectorLoop
+        ops.setRead()
 
         _readPromise.future
       }
@@ -188,7 +189,8 @@ final class SelectorLoop(selector: Selector, bufferSize: Int) extends Thread("Se
       else {
         writeQueue = data.toArray
         writePromise = Promise[Any]
-        ops.setOp(SelectionKey.OP_WRITE)  // Already in SelectorLoop
+        //ops.setOp(SelectionKey.OP_WRITE)  // Already in SelectorLoop
+        ops.setWrite()
 
         writePromise.future
       }

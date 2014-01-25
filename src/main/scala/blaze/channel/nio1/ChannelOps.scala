@@ -39,16 +39,34 @@ trait ChannelOps {
       ch.close()
     }
   })
+  
+  def setRead() {
+    if (Thread.currentThread() == loop) _readTask.run()  // Already in SelectorLoop
+    else loop.enqueTask(_readTask)
+  }
+  
+  private val _readTask = new Runnable {
+    def run() { _setOp(SelectionKey.OP_READ) }
+  }
+
+  def setWrite() {
+    if (Thread.currentThread() == loop) _writeTask.run()  // Already in SelectorLoop
+    else loop.enqueTask(_writeTask)
+  }
+
+  private val _writeTask = new Runnable {
+    def run() { _setOp(SelectionKey.OP_WRITE) }
+  }
 
   def unsetOp(op: Int) {
     if (Thread.currentThread() == loop) _unsetOp(op)  // Already in SelectorLoop
     else loop.enqueTask(new Runnable { def run() = _unsetOp(op) })
   }
-
-  def setOp(op: Int) {
-    if (Thread.currentThread() == loop) _setOp(op)  // Already in SelectorLoop
-    else loop.enqueTask(new Runnable { def run() = _setOp(op) })
-  }
+//
+//  def setOp(op: Int) {
+//    if (Thread.currentThread() == loop) _setOp(op)  // Already in SelectorLoop
+//    else loop.enqueTask(new Runnable { def run() = _setOp(op) })
+//  }
 
   final private def _unsetOp(op: Int) {
     val ops = key.interestOps()

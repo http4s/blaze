@@ -24,6 +24,7 @@ class SocketServerChannelFactory(pipeFactory: PipeFactory, pool: SelectorLoopPoo
   def acceptConnection(serverChannel: ServerSocketChannel, loop: SelectorLoop): Boolean = {
     try {
       val ch = serverChannel.accept()
+      ch.setOption(java.net.StandardSocketOptions.TCP_NODELAY, java.lang.Boolean.FALSE)
       loop.initChannel(pipeFactory, ch, key => new SocketChannelOps(ch, loop, key))
       true
     }
