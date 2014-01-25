@@ -1,8 +1,6 @@
 import sbt._
 import Keys._
 
-import sbtassembly.Plugin._
-import AssemblyKeys._
 import spray.revolver.RevolverPlugin._
 
 object ApplicationBuild extends Build {
@@ -24,25 +22,12 @@ object ApplicationBuild extends Build {
 
   lazy val main = Project("blaze",
                     new File("."),
-                    settings = buildSettings ++ assemblySettings
-    ).settings(
-      mainClass in assembly := Some("blaze.examples.HttpServer"),
-      mergeStrategy in assembly <<= (mergeStrategy in assembly) { (old) =>
-        {
-          case x if x.endsWith("MANIFEST.MF")     => 
-            println("Found : " + x.getClass)
-            MergeStrategy.discard
-          case x if x.endsWith("rootdoc.txt")     => 
-            println("Found : " + x)
-            MergeStrategy.concat
-          case x => old(x)
-        }
-      }
+                    settings = buildSettings
     )
     
   lazy val http4s = Project("http4s",
                       new File("http4s"),
-                      settings = buildSettings ++ assemblySettings
+                      settings = buildSettings
               ).dependsOn(main, http4score, http4sdsl)
    
    lazy val scalatest  = "org.scalatest"  %% "scalatest" % "2.0.RC3"
