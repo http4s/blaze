@@ -10,6 +10,10 @@ import blaze.pipeline.Command.EOF
  */
 class SeqHead[O](private var data: Seq[O]) extends HeadStage[O] {
 
+  @volatile var results: Vector[O] = Vector.empty
+
+  private val lock = new AnyRef
+
   def name: String = "SeqHead test HeadStage"
 
   def readRequest(size: Int): Future[O] = {
@@ -21,6 +25,9 @@ class SeqHead[O](private var data: Seq[O]) extends HeadStage[O] {
     else Future.failed(EOF)
   }
 
-  def writeRequest(data: O): Future[Any] = Future.failed(new NotImplementedError("SeqHead doesn't accept writes"))
+  def writeRequest(data: O): Future[Any] = lock.synchronized {
+    results :+= data
+    Future.successful()
+  }
 
 }

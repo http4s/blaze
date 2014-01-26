@@ -8,7 +8,7 @@ import scala.util.control.NoStackTrace
  *         Created on 1/4/14
  */
 object Command {
-  sealed trait Command
+  trait Command
 
   case object Connected extends Command
 

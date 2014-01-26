@@ -97,7 +97,7 @@ abstract class HttpStage(maxReqBody: Int) extends Http1Parser with TailStage[Byt
     }.onComplete {       // See if we should restart the loop
       case Success(Reload)          => resetStage(); requestLoop()
       case Success(Close)           => sendOutboundCommand(Cmd.Shutdown)
-      case Success(Upgrade)         => // NOOP dont need to do anything
+      case Success(Upgrade)         => // NOOP don't need to do anything
       case Failure(t: BadRequest)   => badRequest(t)
       case Failure(t)               => sendOutboundCommand(Cmd.Shutdown)
       case Success(other) =>

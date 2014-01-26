@@ -47,8 +47,9 @@ object Execution extends Logging {
 
     def execute(runnable: Runnable): Unit = runnable.run()
 
-    def reportFailure(t: Throwable): Unit = logger.error("Error encountered in Direct EC", t)
-
-    implicit def direct: ExecutionContext = this
+    def reportFailure(t: Throwable): Unit = {
+      logger.error("Error encountered in Direct EC", t)
+      throw t
+    }
   }
 }
