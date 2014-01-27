@@ -13,6 +13,7 @@ import blaze.pipeline.MidStage
 import blaze.pipeline.Command.EOF
 import blaze.util.Execution._
 import com.typesafe.scalalogging.slf4j.Logging
+import blaze.util.ScratchBuffer
 
 
 /**
@@ -63,7 +64,7 @@ class SSLStage(engine: SSLEngine, maxSubmission: Int = -1) extends MidStage[Byte
     readLeftover = null
 
     var bytesRead = 0
-    val o = SSLStage.getScratchBuffer(maxBuffer)
+    val o = ScratchBuffer.getScratchBuffer(maxBuffer)
 
     while(true) {
 
@@ -169,7 +170,7 @@ class SSLStage(engine: SSLEngine, maxSubmission: Int = -1) extends MidStage[Byte
 
   private def writeLoop(written: Int, buffers: Array[ByteBuffer], out: ListBuffer[ByteBuffer], p: Promise[Any]) {
 
-    val o = SSLStage.getScratchBuffer(maxBuffer)
+    val o = ScratchBuffer.getScratchBuffer(maxBuffer)
     var wr = written
 
     while (true) {
@@ -262,7 +263,7 @@ class SSLStage(engine: SSLEngine, maxSubmission: Int = -1) extends MidStage[Byte
   }
 
   override protected def stageShutdown(): Unit = {
-    SSLStage.clearBuffer()
+    ScratchBuffer.clearBuffer()
     super.stageShutdown()
   }
 
@@ -292,25 +293,4 @@ class SSLStage(engine: SSLEngine, maxSubmission: Int = -1) extends MidStage[Byte
   }
 }
 
-private object SSLStage extends Logging {
-  val localBuffer = new ThreadLocal[ByteBuffer]
 
-  def getScratchBuffer(size: Int): ByteBuffer = {
-    val b = localBuffer.get()
-
-    if (b == null || b.capacity() < size) {
-      logger.trace(s"Allocating thread local ByteBuffer($size)")
-      val b = ByteBuffer.allocate(size)
-      localBuffer.set(b)
-      b
-    } else {
-      b.clear()
-      b
-    }
-  }
-
-  def clearBuffer(): Unit = {
-    logger.trace("Removing thread local ByteBuffer")
-    localBuffer.remove()
-  }
-}
