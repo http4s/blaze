@@ -14,10 +14,21 @@ object ApplicationBuild extends Build {
     libraryDependencies += scalameter,
     libraryDependencies += scalaloggingSlf4j,
     libraryDependencies += logbackClassic,
+    libraryDependencies += npn_api,
+    libraryDependencies += npn_boot,
 
-    mainClass in Revolver.reStart := Some("blaze.examples.SSLHttpServer"),
-    fork := true
-    //javaOptions in run += "-Djavax.net.debug=all"
+    mainClass in Revolver.reStart := Some("blaze.examples.spdy.SpdyServer"),
+    fork := true,
+//    javaOptions in run += "-Djavax.net.debug=all",
+
+      // Adds NPN to the boot classpath for Spdy support
+    javaOptions in run <++= (managedClasspath in Runtime) map { attList =>
+      for {
+        file <- attList.map(_.data)
+        path = file.getAbsolutePath if path.contains("jetty.npn")
+      } yield { println(path); "-Xbootclasspath/p:" + path}
+    }
+
   )
 
   lazy val main = Project("blaze",
@@ -38,5 +49,10 @@ object ApplicationBuild extends Build {
    
    lazy val http4score = ProjectRef(file("../http4s"), "core")
    lazy val http4sdsl = ProjectRef(file("../http4s"), "dsl")
+
+  lazy val npn_api             = "org.eclipse.jetty.npn"     % "npn-api"  % npn_version
+  lazy val npn_boot            = "org.mortbay.jetty.npn"     % "npn-boot" % npn_version
+
+  lazy val npn_version = "8.1.2.v20120308"
             
 }

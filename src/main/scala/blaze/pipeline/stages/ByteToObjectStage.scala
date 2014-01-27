@@ -7,6 +7,7 @@ import java.nio.{BufferOverflowException, ByteBuffer}
 import scala.concurrent.{Promise, Future}
 import scala.util.{Failure, Success}
 import blaze.pipeline.Command.Error
+import scala.util.control.NonFatal
 
 
 /**
@@ -42,7 +43,10 @@ trait ByteToObjectStage[O] extends MidStage[ByteBuffer, O] {
 
   def readRequest(size: Int): Future[O] = {
     if (_decodeBuffer != null && _decodeBuffer.hasRemaining) {
-      try bufferToMessage(_decodeBuffer.slice()) match {
+
+      if (_decodeBuffer.position() != 0)  _decodeBuffer.compact().flip()
+
+      try bufferToMessage(_decodeBuffer) match {
         case Some(o) =>
           if (!_decodeBuffer.hasRemaining) _decodeBuffer = null
 
@@ -50,7 +54,7 @@ trait ByteToObjectStage[O] extends MidStage[ByteBuffer, O] {
 
         case None =>  // NOOP, fall through
       }
-      catch { case t: Throwable => return Future.failed(t) }
+      catch { case NonFatal(t) => return Future.failed(t) }
     }
 
     val p = Promise[O]
@@ -66,19 +70,22 @@ trait ByteToObjectStage[O] extends MidStage[ByteBuffer, O] {
         // Need to consolidate the buffer regardless
         val size = _decodeBuffer.remaining() + b.remaining()
 
-        if (_decodeBuffer.capacity() >= size) {  // enough room so just consolidate
-          _decodeBuffer.compact()
+        if (_decodeBuffer.capacity() >= size) {
+          // enough room so just consolidate
+          _decodeBuffer.position(_decodeBuffer.limit())
+          _decodeBuffer.limit(size)
           _decodeBuffer.put(b)
           _decodeBuffer.flip()
         }
         else {
+          // Need to make a new buffer
           val n = ByteBuffer.allocate(size)
           n.put(_decodeBuffer).put(b).flip()
           _decodeBuffer = n
         }
       } else _decodeBuffer = b
 
-      try bufferToMessage(_decodeBuffer.slice()) match {
+      try bufferToMessage(_decodeBuffer) match {
         case Some(o) =>
           if (!_decodeBuffer.hasRemaining) _decodeBuffer = null
           p.success(o)
@@ -86,7 +93,8 @@ trait ByteToObjectStage[O] extends MidStage[ByteBuffer, O] {
         case None => decodeLoop(p)
       }
       catch { case t: Throwable => p.tryFailure(t) }
-      finally {   // Make sure we are not trying to store the previous stages buffer
+      finally {
+        // Make sure we are not trying to store the previous stages buffer
         // see if we have too large of buffer remaining
         if (maxBufferSize > 0 && _decodeBuffer.remaining() > maxBufferSize) {
           outboundCommand(Error(new BufferOverflowException))
@@ -95,12 +103,12 @@ trait ByteToObjectStage[O] extends MidStage[ByteBuffer, O] {
         // Make sure we are not holding onto the ByteBuffer from the inbound stage
         if (_decodeBuffer == b) {
           val b = ByteBuffer.allocate(_decodeBuffer.remaining())
-          b.put(_decodeBuffer)
+          b.put(_decodeBuffer).flip()
           _decodeBuffer = b
         }
       }
 
 
-    case f: Failure[_] => p.complete(f.asInstanceOf[Failure[O]])
+    case Failure(t) => p.failure(t)
   }(trampoline)
 }

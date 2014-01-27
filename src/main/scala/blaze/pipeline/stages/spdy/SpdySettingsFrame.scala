@@ -68,6 +68,20 @@ final case class Setting(flags: Int, id: SettingID, value: Array[Byte]) {
 
   }
 
+
+  override def toString: String = {
+    val sb = new StringBuilder
+    sb.append("(")
+    if (persistValue) sb.append("Persist, ")
+    if (settingPersisted) sb.append("Persisted, ")
+    sb.append(id)
+      .append(", ")
+      .append(intValue)
+      .append(")")
+
+    sb.result()
+  }
+
   private def wrap = ByteBuffer.wrap(value)
 }
 

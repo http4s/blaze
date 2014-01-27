@@ -49,8 +49,13 @@ class SpdyFrameCodecSpec extends WordSpec with Matchers {
   
   def windowUpdateFrame = WindowUpdate(2, 4)
   
-  def decode(buff: ByteBuffer): SpdyFrame = {
-    new SpdyFrameCodec().bufferToMessage(buff).get
+  def decode(buff: ByteBuffer, requireFull: Boolean = true): SpdyFrame = {
+    val h = new SpdyFrameCodec().bufferToMessage(buff).get
+
+    if (requireFull)
+      assert(buff.position() == buff.limit())
+
+    h
   }
   
   def concat(buffs: Seq[ByteBuffer]): ByteBuffer = {
@@ -97,7 +102,7 @@ class SpdyFrameCodecSpec extends WordSpec with Matchers {
       decode(concat(synStreamFrame.encode)) should equal(synStreamFrame)
     }
 
-    "Decode a SynRe[;uFrame" in {
+    "Decode a SynReplyFrame" in {
       decode(concat(synReplyFrame.encode)) should equal(synReplyFrame)
     }
 

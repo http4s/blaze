@@ -5,29 +5,34 @@ import scala.collection.mutable.ListBuffer
 import scala.annotation.tailrec
 import java.nio.charset.StandardCharsets._
 import java.nio.{BufferUnderflowException, ByteBuffer}
+import scala.util.control.NonFatal
 
 /**
  * @author Bryce Anderson
  *         Created on 1/26/14
  */
-class SpdyHeaderDecoder(data: ByteBuffer) {
+class SpdyHeaderDecoder {
 
-  private val start = data.position()
-  private val end = data.limit()
-  private val len = end - start
+  private val inflater = new java.util.zip.Inflater()
 
-  println(s"$start, $end, $len")
+  def decodeHeaders(data: ByteBuffer): Map[String, Seq[String]] = {
+
+    val scratch = inflate(data)
+    decodeToHeaders(scratch)
+  }
 
   /* WARNING: this method returns a the data stored in a thread local
    * scratch buffer! Handle it on the stack! */
-  private def inflate(): ByteBuffer = {
-
-    val inflater = new java.util.zip.Inflater()
-
+  private def inflate(data: ByteBuffer): ByteBuffer = {
     try {
-      // Set the data into the buffer
+
+      val start = data.position()
+      val end = data.limit()
+      val len = end - start
+      // Load the data into the inflater
       if (data.hasArray) {
         inflater.setInput(data.array(), start, len)
+        data.position(start + len)
       } else {
         val tmp = new Array[Byte](data.remaining())
         data.get(tmp)
@@ -43,14 +48,14 @@ class SpdyHeaderDecoder(data: ByteBuffer) {
         sz += inflater.inflate(scratch.array(), 0, scratch.capacity())
       }
 
-      println(s"Size: $sz")
-      assert(inflater.finished)
-
       scratch.limit(sz)
-
       scratch.slice()
     }
-    finally inflater.end()
+    catch { case t: Throwable => close(); throw t }
+  }
+
+  def close() {
+    inflater.end()
   }
 
   private def decodeToHeaders(data: ByteBuffer): Map[String, Seq[String]] = {
@@ -105,12 +110,4 @@ class SpdyHeaderDecoder(data: ByteBuffer) {
 
     headers.toMap
   }
-
-  def decodeHeaders(): Map[String, Seq[String]] = {
-
-    val scratch = inflate()
-
-    decodeToHeaders(scratch)
-  }
-
 }
