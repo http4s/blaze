@@ -22,6 +22,8 @@ import blaze.util.ScratchBuffer
  */
 class SSLStage(engine: SSLEngine, maxSubmission: Int = -1) extends MidStage[ByteBuffer, ByteBuffer] {
 
+  import blaze.util.BufferTools._
+
   def name: String = s"SSLStage"
 
   private val maxNetSize = engine.getSession.getPacketBufferSize
@@ -47,20 +49,7 @@ class SSLStage(engine: SSLEngine, maxSubmission: Int = -1) extends MidStage[Byte
   private def readRequestLoop(buffer: ByteBuffer, size: Int, out: ListBuffer[ByteBuffer], p: Promise[ByteBuffer]): Unit = {
 
     // Consolidate buffers if they exist
-    val b = {
-      if (readLeftover != null && readLeftover.position() > 0) {
-        if (readLeftover.remaining() < buffer.remaining()) {
-          val n = allocate(readLeftover.remaining() + buffer.remaining())
-          readLeftover.flip()
-          n.put(readLeftover)
-          readLeftover = n
-        }
-
-        readLeftover.put(buffer).flip()
-        readLeftover
-      } else buffer
-    }
-
+    val b = concatBuffers(readLeftover, buffer)
     readLeftover = null
 
     var bytesRead = 0
@@ -82,7 +71,8 @@ class SSLStage(engine: SSLEngine, maxSubmission: Int = -1) extends MidStage[Byte
       r.getHandshakeStatus match {
         case HandshakeStatus.NEED_UNWRAP =>  // must need more data
           if (r.getStatus == Status.BUFFER_UNDERFLOW) {
-            storeRead(b)
+            readLeftover = b
+
             channelRead().onComplete {
               case Success(b) => readRequestLoop(b, if (size > 0) size - bytesRead else size, out, p)
               case f: Failure[_] => p.tryComplete(f.asInstanceOf[Failure[ByteBuffer]])
@@ -114,7 +104,7 @@ class SSLStage(engine: SSLEngine, maxSubmission: Int = -1) extends MidStage[Byte
           sys.error("Shouldn't have gotten here")
 
         case Status.BUFFER_UNDERFLOW => // Need more data
-          storeRead(b)
+          readLeftover = b
 
           if ((r.getHandshakeStatus == HandshakeStatus.NOT_HANDSHAKING ||
                r.getHandshakeStatus == HandshakeStatus.FINISHED) && !out.isEmpty) {          // We got some data so send it
@@ -140,19 +130,6 @@ class SSLStage(engine: SSLEngine, maxSubmission: Int = -1) extends MidStage[Byte
 
     sys.error("Shouldn't get here")
   }
-
-  private def storeRead(b: ByteBuffer) {
-    if (b.hasRemaining) {
-      if (readLeftover != null) {
-        val n = ByteBuffer.allocate(readLeftover.remaining() + b.remaining())
-        n.put(readLeftover)
-        readLeftover = n
-      } else readLeftover = ByteBuffer.allocate(b.remaining())
-
-      readLeftover.put(b)
-    }
-  }
-
 
   override def writeRequest(data: Seq[ByteBuffer]): Future[Any] = {
     val p = Promise[Any]

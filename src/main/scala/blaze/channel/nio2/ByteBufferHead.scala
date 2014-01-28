@@ -20,9 +20,9 @@ import blaze.pipeline.Command.{Command, Error, Shutdown, EOF}
 */
 class ByteBufferHead(channel: AsynchronousSocketChannel,
                      val name: String = "ByteBufferHeadStage",
-                     bufferSize: Int = 20*1024) extends HeadStage[ByteBuffer] {
+                     bufferSize: Int = 8*1024) extends HeadStage[ByteBuffer] {
 
-  private val bytes = ByteBuffer.allocate(bufferSize)
+  private val buffer = ByteBuffer.allocate(bufferSize)
 
   def writeRequest(data: ByteBuffer): Future[Unit] = {
 
@@ -91,12 +91,12 @@ class ByteBufferHead(channel: AsynchronousSocketChannel,
       
     val p = Promise[ByteBuffer]
 
-    bytes.clear()
+    buffer.clear()
 
-    if (size >= 0 && size + bytes.position() < bufferSize)
-      bytes.limit(size + bytes.position())
+    if (size >= 0 && size < bufferSize)
+      buffer.limit(size)
 
-    channel.read(bytes, null: Null, new CompletionHandler[Integer, Null] {
+    channel.read(buffer, null: Null, new CompletionHandler[Integer, Null] {
       def failed(exc: Throwable, attachment: Null): Unit = {
         exc match {
           case e: IOException =>
@@ -117,8 +117,10 @@ class ByteBufferHead(channel: AsynchronousSocketChannel,
 
       def completed(i: Integer, attachment: Null) {
         if (i.intValue() >= 0) {
-          bytes.flip()
-          p.trySuccess(bytes)
+          buffer.flip()
+          val b = ByteBuffer.allocate(buffer.remaining())
+          b.put(buffer).flip()
+          p.trySuccess(b)
         } else {   // must be end of stream
           p.tryFailure(EOF)
           channelShutdown()
