@@ -23,7 +23,6 @@ For a quick start, look at the examples for some simple examples of HTTP, WebSoc
 
 #### Important Blaze Behaviors
 * By default, read and write requests should be serialized either manually, or with a SerializerStage.
-* Blaze tries to minimize copying and garbage. ByteBuffers are one of the biggest culprits, so it is, in general, not safe to hold a returned ByteBuffer and request more data.
 
 #### Dataflow
 

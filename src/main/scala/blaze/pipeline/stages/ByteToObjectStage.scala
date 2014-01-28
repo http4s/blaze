@@ -17,6 +17,8 @@ import scala.util.control.NonFatal
  */
 trait ByteToObjectStage[O] extends MidStage[ByteBuffer, O] {
 
+  import blaze.util.BufferTools._
+
   private var _decodeBuffer: ByteBuffer = null
 
   /////////////////////////////////////////////////////////////////////////////
@@ -71,21 +73,13 @@ trait ByteToObjectStage[O] extends MidStage[ByteBuffer, O] {
   // if we got here, we need more data
   private def readAndDecodeLoop(p: Promise[O]): Unit = channelRead().onComplete {
     case Success(lineBuffer) =>
-
-      consolidateBuffers(lineBuffer)
+      _decodeBuffer = concatBuffers(_decodeBuffer, lineBuffer)
 
       // Now we slice the buffer, decode, and set the correct position on our internal buffer
       try {
         val slice = _decodeBuffer.slice()
         val result = bufferToMessage(slice)
         cleanBuffers(slice)
-
-        // Make sure we are not holding onto the ByteBuffer from the inbound stage
-        if (_decodeBuffer eq lineBuffer) {
-          val b = ByteBuffer.allocate(slice.remaining())
-          b.put(slice).flip()
-          _decodeBuffer = b
-        }
 
         result match {
           case Some(o) =>  p.success(o)
@@ -113,37 +107,5 @@ trait ByteToObjectStage[O] extends MidStage[ByteBuffer, O] {
     }
 
     else if (!_decodeBuffer.hasRemaining)  _decodeBuffer = null
-  }
-
-  /** Takes a buffer off the line and concats its data to any remaining data,
-    * storing the result in the _decodeBuffer field.
-    * WARNING: to reduce copying, can assign the buffer right off the line
-    * to _decodeBuffer, so after the decode phase, make sure to release it _*/
-  private def consolidateBuffers(b: ByteBuffer) {
-    // Store all data in _decodeBuffer var
-    if (_decodeBuffer != null && _decodeBuffer.hasRemaining) {
-
-      val size = _decodeBuffer.remaining() + b.remaining()
-
-      if (_decodeBuffer.capacity() >= b.remaining() + _decodeBuffer.limit()) {
-        // Can place the data at the end of this ByteBuffer
-        val pos = _decodeBuffer.position()
-        _decodeBuffer.position(_decodeBuffer.limit())
-        _decodeBuffer.limit(_decodeBuffer.position() + b.remaining())
-        _decodeBuffer.put(b)
-        _decodeBuffer.position(pos)
-      }
-      else if (_decodeBuffer.capacity() >= size) {
-        // enough room but must compact
-        _decodeBuffer.compact().put(b).flip()
-      }
-      else {
-        // Need to make a new and larger buffer
-        val n = ByteBuffer.allocate(size)
-        n.put(_decodeBuffer).put(b).flip()
-        _decodeBuffer = n
-      }
-    }
-    else _decodeBuffer = b   // we have no buffer
   }
 }
