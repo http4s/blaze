@@ -26,30 +26,24 @@ class SpdyHeaderDecoder {
   private def inflate(data: ByteBuffer): ByteBuffer = {
     try {
 
-      val start = data.position()
-      val end = data.limit()
-      val len = end - start
-      // Load the data into the inflater
-      if (data.hasArray) {
-        inflater.setInput(data.array(), start, len)
-        data.position(start + len)
-      } else {
-        val tmp = new Array[Byte](data.remaining())
-        data.get(tmp)
-        inflater.setInput(tmp)
+      // Load the data into the inflater. We will use the scratch buffer for double duty
+      val len = data.remaining()
+      val scratch = ScratchBuffer.getScratchBuffer(len * 10)
+      val arr = scratch.array()
+      scratch.put(data)
+
+      inflater.setInput(arr, 0, len)
+
+      val sz = {
+        val sz = inflater.inflate(arr, len, 9 * len)
+        if (sz == 0 && inflater.needsDictionary()) {
+          inflater.setDictionary(spdyCompresionDict)
+          inflater.inflate(arr, len, 9 * len)
+        }
+        else sz
       }
 
-      val scratch = ScratchBuffer.getScratchBuffer(len * 7)
-
-      var sz = inflater.inflate(scratch.array(), 0, scratch.capacity())
-
-      if (sz == 0 && inflater.needsDictionary()) {
-        inflater.setDictionary(spdyCompresionDict)
-        sz += inflater.inflate(scratch.array(), 0, scratch.capacity())
-      }
-
-      scratch.limit(sz)
-      scratch.slice()
+      ByteBuffer.wrap(arr, len, sz + len)
     }
     catch { case t: Throwable => close(); throw t }
   }

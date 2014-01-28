@@ -1,5 +1,7 @@
 package blaze.pipeline.stages.spdy
 
+import com.typesafe.scalalogging.slf4j.Logging
+
 /**
  * @author Bryce Anderson
  *         Created on 1/27/14
@@ -7,5 +9,7 @@ package blaze.pipeline.stages.spdy
 
 abstract class SpdyException(msg: String) extends Exception(msg)
 
-class ProtocolException(msg: String) extends SpdyException(msg)
+class ProtocolException(msg: String) extends SpdyException(msg) with Logging {
+  logger.info(msg)
+}
 

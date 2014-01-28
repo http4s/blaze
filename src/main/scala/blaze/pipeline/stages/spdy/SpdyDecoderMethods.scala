@@ -33,13 +33,8 @@ private[spdy] trait SpdyDecoderMethods { self: Logging =>
 
     val len = data.get() << 16 | data.get() << 8 | data.get()
 
-    if (len < 10) {
-      val err = new ProtocolException("Invalid length of SynStreamFrame: $len")
-      logger.error("Error during SpdySynStream decode", err)
-      throw err
-    }
-
-    logger.info("Syn Stream Frame Length: " + len)
+    if (len < 10)
+      throw new ProtocolException("Invalid length of SynStreamFrame: $len")
 
     val streamid = data.getInt() & Masks.STREAMID
     val associated = data.getInt() & Masks.STREAMID
@@ -48,17 +43,12 @@ private[spdy] trait SpdyDecoderMethods { self: Logging =>
 
     data.position(18)
     val limit = data.limit()
-
-    // Limit: 271, length: 263
-    println(s"Limit: $limit, length: $len")
     data.limit(len + 8)    // end position of the compressed header data
 
     val headers = inflater.decodeHeaders(data)
 
     data.limit(limit)
     data.position(8 + len)
-
-    logger.info("GOT HERE ----------------- Position: " + data.position())
 
     SynStreamFrame(streamid, headers, finished, associated, unidir, priority)
   }
@@ -72,6 +62,7 @@ private[spdy] trait SpdyDecoderMethods { self: Logging =>
 
     if (len < 10)
       throw new ProtocolException(s"Invalid length of SynStreamFrame: $len")
+     
 
     val streamid = data.getInt() & Masks.STREAMID
 
@@ -150,8 +141,6 @@ private[spdy] trait SpdyDecoderMethods { self: Logging =>
     data.position(4)
     val last = (data.get() & Flags.FINISHED) != 0
     val len = data.get() << 16 | data.get() << 8 | data.get()
-
-    println(s"Length: $len")
 
     if (len < 4)
       throw new ProtocolException(s"Invalid length of HeadersFrame: $len")

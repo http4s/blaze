@@ -37,8 +37,6 @@ class SpdyFrameCodec(val maxBufferSize: Int = -1)
 
     val len = in.get(5) << 16 | in.get(6) << 8 | in.get(7)
 
-    logger.info("Frame length, remaining ******** " + (8 + len) + "   " + in.remaining())
-
     if (in.remaining() < 8 + len) return None
 
     // Are we a data frame?
@@ -46,7 +44,7 @@ class SpdyFrameCodec(val maxBufferSize: Int = -1)
 
     val frametype = in.getShort(2)
 
-    logger.info("Decoding frame type: " + frametype)
+    logger.trace("Decoding frame type: " + frametype)
 
     // We are a control frame
     try {
@@ -63,7 +61,7 @@ class SpdyFrameCodec(val maxBufferSize: Int = -1)
         case e => sys.error("Unknown control frame type: " + e)
       }
 
-      logger.info("After decode: " + in)
+      logger.trace("Buffer After decode: " + in)
 
       Some(frame)
     } catch {

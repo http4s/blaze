@@ -4,12 +4,20 @@ import java.nio.ByteBuffer
 import java.nio.charset.StandardCharsets._
 import scala.annotation.tailrec
 import blaze.util.ScratchBuffer
+import java.util.zip.Deflater
 
 /**
  * @author Bryce Anderson
  *         Created on 1/27/14
  */
 class SpdyHeaderEncoder {
+
+  private val deflater = new java.util.zip.Deflater
+  deflater.setDictionary(spdyCompresionDict)
+
+  def close() {
+    deflater.end()
+  }
 
   private def putHeaders(buff: ByteBuffer, headers: Map[String, Seq[String]]) {
     buff.putInt(headers.size)
@@ -33,6 +41,30 @@ class SpdyHeaderEncoder {
     }
   }
 
+  @tailrec
+  private def compressToBuffer(start: Int, buff: ByteBuffer): ByteBuffer = {
+    val arr = buff.array()
+    val pos = buff.position()
+
+    val sz = deflater.deflate(arr, pos, arr.length - pos, Deflater.SYNC_FLUSH)
+
+    if (sz + pos == arr.length) { // Not enough room
+
+      // Don't go past the max header size
+      if (arr.length <= 0xffffff)
+        throw new ProtocolException(s"Compressed header length larger than 24 bit: ${sz + pos}")
+
+      val n = ByteBuffer.allocate(math.min(0xffffff, 2*(arr.length - pos)))
+      buff.limit(pos + sz)
+      n.put(buff)
+      compressToBuffer(0, n)
+    }
+    else {
+      buff.limit(pos + sz).position(start)
+      buff
+    }
+  }
+
   /* Takes headers and returns a frash ByteBuffer with the compressed data */
   def encodeHeaders(headers: Map[String, Seq[String]]): ByteBuffer = {
     // compute the size of the header field
@@ -42,36 +74,22 @@ class SpdyHeaderEncoder {
     }
 
     // Compress the headers into a scratch buffer
-    val scratch = ScratchBuffer.getScratchBuffer(headerlen + 50)
+    val scratch = ScratchBuffer.getScratchBuffer(headerlen * 3)
+    val arr = scratch.array()
     putHeaders(scratch, headers)
 
-    val deflater = new java.util.zip.Deflater
+    val rawpos = scratch.position()
 
     try {
-      deflater.setDictionary(spdyCompresionDict)
+      deflater.setInput(arr, 0, rawpos)
 
-      deflater.setInput(scratch.array(), 0, scratch.position())
-      deflater.finish()
-
-      val out = new Array[Byte](headerlen + 50)
-
-      // Store the data in the ByteBuffer wrapped array
-      @tailrec
-      def go(pos: Int): Int = {
-        if (!deflater.finished()) {
-          val sz = deflater.deflate(out, 0, out.length - pos)
-          assert(sz > 0)
-          go(sz + pos)
-        } else pos
-      }
-      val len = go(0)
-
-      if (len > 0xffffff)
-        throw new ProtocolException(s"Compressed header length larger than 24 bit: $len")
-
-      ByteBuffer.wrap(out, 0, len)
-    }
-    finally deflater.end()
+      val buff = compressToBuffer(scratch.position(), scratch)
+      if (buff eq scratch) {  // Need to copy it out of the scratch buffer
+        val b = ByteBuffer.allocate(buff.remaining())
+        b.put(buff).flip()
+        b
+      } else buff
+    } catch { case t: Throwable => close(); throw t }
   }
 
 }
