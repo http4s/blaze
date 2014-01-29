@@ -49,11 +49,13 @@ trait TailStage[I] extends Logging {
     catch { case t: Throwable => Future.failed(t) }
   }
 
-  final def sendOutboundCommand(cmd: Command): Unit = this match {
-    case _: HeadStage[_] => sys.error("HeadStage cannot send outbound commands!")// NOOP
-    case _ =>
-      try prev.outboundCommand(cmd)
-      catch { case t: Throwable => inboundCommand(Error(t)) }
+  final def sendOutboundCommand(cmd: Command): Unit = {
+    logger.debug(s"Stage ${getClass.getName} sending outbound command")
+
+    if(this.isInstanceOf[HeadStage[_]]) sys.error("HeadStage cannot send outbound commands!")
+
+    try prev.outboundCommand(cmd)
+    catch { case t: Throwable => inboundCommand(Error(t)) }
   }
 
   def inboundCommand(cmd: Command): Unit = {
@@ -109,7 +111,6 @@ trait TailStage[I] extends Logging {
 
 trait MidStage[I, O] extends TailStage[I] {
 
-//  private[pipeline] var prev: MidStage[_, I]
   private[pipeline] var next: TailStage[O] = null
 
   def readRequest(size: Int): Future[O]

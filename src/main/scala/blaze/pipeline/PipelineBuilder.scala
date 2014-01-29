@@ -6,7 +6,7 @@ import blaze.pipeline.Command.Command
  * @author Bryce Anderson
  *         Created on 1/4/14
  */
-class PipelineBuilder[I, O] private[pipeline](headStage: HeadStage[I], tail: MidStage[_, O]) {
+final class PipelineBuilder[I, O] private[pipeline](headStage: HeadStage[I], tail: MidStage[_, O]) {
 
   def append[N](stage: MidStage[O, N]): PipelineBuilder[I, N] = {
 
@@ -42,7 +42,7 @@ class PipelineBuilder[I, O] private[pipeline](headStage: HeadStage[I], tail: Mid
   }
 }
 
-class Segment[I1, I2, O] private[pipeline](head: MidStage[I1, I2], tail: MidStage[_, O]) {
+final class Segment[I1, I2, O] private[pipeline](head: MidStage[I1, I2], tail: MidStage[_, O]) {
 
   def append[N](stage: MidStage[O, N]): Segment[I1, I2, N] = {
     if (stage.prev != null) sys.error(s"Stage $stage must be fresh")
@@ -53,7 +53,7 @@ class Segment[I1, I2, O] private[pipeline](head: MidStage[I1, I2], tail: MidStag
     new Segment(head, stage)
   }
 
-  def cap(stage: TailStage[O]): MidStage[I1, I2] = {
+  def cap[T](stage: TailStage[O]): MidStage[I1, I2] = {
 
     if (stage.prev != null) {
       sys.error(s"Stage $stage must be fresh")
