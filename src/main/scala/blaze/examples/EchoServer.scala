@@ -1,7 +1,7 @@
 package blaze
 package examples
 
-import pipeline.TailStage
+import blaze.pipeline.{TailStage, BaseStage}
 import java.nio.ByteBuffer
 import scala.util.{Failure, Success}
 import blaze.channel.{ServerChannel, PipeFactory}

@@ -3,7 +3,7 @@ package blaze.pipeline.stages
 import org.scalatest.{Matchers, WordSpec}
 import blaze.pipeline.Command._
 import scala.concurrent.Future
-import blaze.pipeline.{TailStage, RootBuilder, HeadStage}
+import blaze.pipeline.{TailStage, BaseStage, RootBuilder, HeadStage}
 import scala.util.{Failure, Success}
 import blaze.util.Execution
 
@@ -22,7 +22,7 @@ class HubStageSpec extends WordSpec with Matchers {
 
   val msgs = Msg(1, "one")::Msg(2, "two")::Nil
 
-  class TestHubStage(builder: RootBuilder[Msg] => HeadStage[Msg]) extends HubStage[Msg, Msg, Int](builder) {
+  class TestHubStage(builder: RootBuilder[Msg, Msg] => HeadStage[Msg]) extends HubStage[Msg, Msg, Int](builder) {
 
     override protected def stageStartup(): Unit = {
       super.stageStartup()
@@ -79,9 +79,9 @@ class HubStageSpec extends WordSpec with Matchers {
     }
   }
 
-  def nodeBuilder(r: RootBuilder[Msg]): HeadStage[Msg] = r.cap(new Echo)
+  def nodeBuilder(r: RootBuilder[Msg, Msg]): HeadStage[Msg] = r.cap(new Echo)
 
-  def rootBuilder(r: RootBuilder[Msg]): HeadStage[Msg] = r.cap(new TestHubStage(nodeBuilder))
+  def rootBuilder(r: RootBuilder[Msg, Msg]): HeadStage[Msg] = r.cap(new TestHubStage(nodeBuilder))
 
   "HubStage" should {
     "Initialize" in {

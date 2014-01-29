@@ -6,7 +6,7 @@ import scala.util.control.NonFatal
 import java.nio.channels._
 import java.nio.ByteBuffer
 import scala.concurrent.{Future, Promise}
-import blaze.pipeline.{Command, PipelineBuilder, HeadStage}
+import blaze.pipeline.{PipelineBuilder, Command, RootBuilder, HeadStage}
 import blaze.channel.PipeFactory
 import java.io.IOException
 import com.typesafe.scalalogging.slf4j.StrictLogging

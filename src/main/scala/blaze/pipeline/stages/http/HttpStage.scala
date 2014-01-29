@@ -1,7 +1,7 @@
 package blaze.pipeline.stages.http
 
 import java.nio.ByteBuffer
-import blaze.pipeline.{Command => Cmd, PipelineBuilder, TailStage}
+import blaze.pipeline.{Command => Cmd, _}
 import blaze.util.Execution._
 import scala.util.{Failure, Success}
 import scala.concurrent.Future
@@ -10,10 +10,10 @@ import blaze.http_parser.Http1Parser
 import Http1Parser.ASCII
 
 import blaze.http_parser.BaseExceptions.BadRequest
-import blaze.pipeline.stages.http.websocket.{WebSocketDecoder, ServerHandshaker}
+import websocket.{WebSocketDecoder, ServerHandshaker}
 import java.util.Date
 
-import blaze.pipeline.stages.http.websocket.WebSocketDecoder.WebSocketFrame
+import websocket.WebSocketDecoder.WebSocketFrame
 
 /**
  * @author Bryce Anderson
@@ -126,7 +126,7 @@ abstract class HttpStage(maxReqBody: Int) extends Http1Parser with TailStage[Byt
   }
 
   /** Deal with route response of WebSocket form */
-  private def handleWebSocket(reqHeaders: Headers, stage: TailStage[WebSocketFrame]): Future[RouteResult] = {
+  private def handleWebSocket(reqHeaders: Headers, wsBuilder: LeafBuilder[WebSocketFrame]): Future[RouteResult] = {
     val sb = new StringBuilder(512)
     ServerHandshaker.handshakeHeaders(reqHeaders) match {
       case Left((i, msg)) =>
@@ -145,8 +145,7 @@ abstract class HttpStage(maxReqBody: Int) extends Http1Parser with TailStage[Byt
         // write the accept headers and reform the pipeline
         channelWrite(ByteBuffer.wrap(sb.result().getBytes(ASCII))).map{_ =>
           logger.trace("Switching segments.")
-          val segment = PipelineBuilder(new WebSocketDecoder(false))
-            .cap(stage)
+          val segment = wsBuilder.prepend(new WebSocketDecoder(false))
           this.replaceInline(segment)
           Upgrade
         }

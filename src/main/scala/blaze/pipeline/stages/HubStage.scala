@@ -1,6 +1,6 @@
 package blaze.pipeline.stages
 
-import blaze.pipeline.{HeadStage, RootBuilder, TailStage}
+import blaze.pipeline.{TailStage, HeadStage, RootBuilder, BaseStage}
 import java.util.concurrent.ConcurrentHashMap
 import scala.concurrent.{Promise, Future}
 import blaze.pipeline.Command._
@@ -11,7 +11,7 @@ import java.nio.channels.NotYetConnectedException
  *         Created on 1/25/14
  */
 
-abstract class HubStage[I, O, K](nodeBuilder: RootBuilder[O] => HeadStage[O]) extends TailStage[I] {
+abstract class HubStage[I, O, K](nodeBuilder: RootBuilder[O, O] => HeadStage[O]) extends TailStage[I] {
 
   def name: String = "HubStage"
 

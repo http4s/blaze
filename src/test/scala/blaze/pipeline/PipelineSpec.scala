@@ -84,18 +84,6 @@ class PipelineSpec extends WordSpec with Matchers {
       noop.removeStage
       p.findInboundStage(classOf[Noop]).isDefined should equal(false)
     }
-
-    "Not give NPE on ending stage with a midstage" in {
-      val head = new IntHead
-      val end = new IntToString
-
-      PipelineBuilder(head)
-            .cap(end)
-
-      head.sendInboundCommand(EOF)
-      head.getLastStage should equal(end)
-    }
-
   }
 
 

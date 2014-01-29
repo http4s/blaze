@@ -2,7 +2,7 @@ package blaze.pipeline.stages.http.websocket
 
 import org.scalatest.{Matchers, WordSpec}
 import java.nio.ByteBuffer
-import blaze.pipeline.{TailStage, PipelineBuilder}
+import blaze.pipeline.{BaseStage, RootBuilder}
 
 import scala.concurrent.Await
 import scala.concurrent.duration._

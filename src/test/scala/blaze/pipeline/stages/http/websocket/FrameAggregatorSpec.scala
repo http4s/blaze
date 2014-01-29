@@ -3,7 +3,7 @@ package blaze.pipeline.stages.http.websocket
 import org.scalatest.{Matchers, WordSpec}
 
 import blaze.pipeline.stages.http.websocket.WebSocketDecoder._
-import blaze.pipeline.{PipelineBuilder, TailStage}
+import blaze.pipeline.{TailStage, PipelineBuilder}
 import blaze.pipeline.stages.SeqHead
 
 import scala.concurrent.Await

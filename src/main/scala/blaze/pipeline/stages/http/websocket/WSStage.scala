@@ -1,11 +1,13 @@
 package blaze.pipeline.stages.http.websocket
 
-import blaze.pipeline.{PipelineBuilder, Command, TailStage}
+import blaze.pipeline._
 import blaze.pipeline.stages.http.websocket.WebSocketDecoder.WebSocketFrame
 import blaze.util.Execution.trampoline
 
 import scala.util.{Failure, Success}
 import blaze.pipeline.stages.SerializingStage
+import scala.util.Failure
+import scala.util.Success
 
 /**
  * @author Bryce Anderson
@@ -44,7 +46,7 @@ trait WSStage extends TailStage[WebSocketFrame] {
 }
 
 object WSStage {
-  def segment(stage: WSStage): TailStage[WebSocketFrame] = {
+  def segment(stage: WSStage): LeafBuilder[WebSocketFrame] = {
     PipelineBuilder(new SerializingStage[WebSocketFrame]).cap(stage)
   }
 }

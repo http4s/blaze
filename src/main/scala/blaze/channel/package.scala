@@ -9,6 +9,6 @@ import pipeline.{RootBuilder, HeadStage}
  */
 package object channel {
 
-  type PipeFactory = RootBuilder[ByteBuffer] => HeadStage[ByteBuffer]
+  type PipeFactory = RootBuilder[ByteBuffer, ByteBuffer] => HeadStage[ByteBuffer]
 
 }

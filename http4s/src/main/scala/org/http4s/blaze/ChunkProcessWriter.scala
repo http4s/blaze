@@ -1,7 +1,7 @@
 package org.http4s.blaze
 
 import java.nio.ByteBuffer
-import blaze.pipeline.TailStage
+import blaze.pipeline.BaseStage
 import scala.concurrent.{Future, ExecutionContext}
 import org.http4s.{TrailerChunk, BodyChunk}
 import com.typesafe.scalalogging.slf4j.Logging
@@ -11,7 +11,7 @@ import java.nio.charset.Charset
  * @author Bryce Anderson
  *         Created on 1/10/14
  */
-final class ChunkProcessWriter(private var buffer: ByteBuffer, pipe: TailStage[ByteBuffer])
+final class ChunkProcessWriter(private var buffer: ByteBuffer, pipe: BaseStage[ByteBuffer])
                               (implicit val ec: ExecutionContext) extends ProcessWriter {
 
   import ChunkProcessWriter._

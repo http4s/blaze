@@ -1,7 +1,7 @@
 package blaze.pipeline.stages
 
 import java.nio.ByteBuffer
-import blaze.pipeline.TailStage
+import blaze.pipeline.{LeafBuilder, BaseStage}
 import blaze.pipeline.stages.http.websocket.WebSocketDecoder.WebSocketFrame
 
 import java.nio.charset.StandardCharsets.UTF_8
@@ -26,6 +26,6 @@ package object http {
     def Ok(body: Node): HttpResponse = Ok(body.toString())
   }
 
-  case class WSResponse(stage: TailStage[WebSocketFrame]) extends Response
+  case class WSResponse(stage: LeafBuilder[WebSocketFrame]) extends Response
 
 }

@@ -68,7 +68,7 @@ class ByteToObjectStageSpec extends WordSpec with Matchers {
     val head = new SeqHead(buffs)
     val b = new RootBuilder(head, head)
     val c = new MsgCodec
-    b.cap(c)
+    b.append(c)
     c
   }
 

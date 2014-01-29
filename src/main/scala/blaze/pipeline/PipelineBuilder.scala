@@ -6,99 +6,102 @@ import blaze.pipeline.Command.Command
  * @author Bryce Anderson
  *         Created on 1/4/14
  */
-final class PipelineBuilder[I, O] private[pipeline](headStage: HeadStage[I], tail: MidStage[_, O]) {
 
-  def append[N](stage: MidStage[O, N]): PipelineBuilder[I, N] = {
+final class RootBuilder[I, O] private[pipeline](headStage: HeadStage[I], tail: MidStage[_, O]) {
 
-    if (stage.prev != null) sys.error(s"Stage $stage must be fresh")
+  def append[N](stage: MidStage[O, N]): RootBuilder[I, N] = {
+    if (stage._prevStage != null) sys.error(s"Stage $stage must be fresh")
 
-    tail.next = stage
-    stage.prev = tail
+    tail._nextStage = stage
+    stage._prevStage = tail
 
-    new PipelineBuilder(headStage, stage)
+    new RootBuilder(headStage, stage)
   }
 
   def cap(stage: TailStage[O]): HeadStage[I] = {
-
-    if (stage.prev != null) {
+    if (stage._prevStage != null)
       sys.error(s"Stage $stage must be fresh")
-    }
-
-    tail.next = stage
-    stage.prev = tail
-
-    stage match {
-      case m: MidStage[O, _] if m.next == null =>
-        m.next = PipelineBuilder.capStage
-      case _ =>   // NOOP
-    }
+    
+    tail._nextStage = stage
+    stage._prevStage = tail
 
     headStage
   }
 
   def prepend(stage: MidStage[I, I]): this.type = {
+    if (stage._prevStage != null)
+      sys.error(s"Stage $stage must be fresh!")
+    
     headStage.spliceAfter(stage)
     this
   }
 }
 
-final class Segment[I1, I2, O] private[pipeline](head: MidStage[I1, I2], tail: MidStage[_, O]) {
+final class LeafBuilder[I] private[pipeline](val leaf: BaseStage[I]) {
+  
+  def prepend[N](stage: MidStage[N, I]): LeafBuilder[N] = {
+    leaf._prevStage = stage
+    stage._nextStage = leaf
+    new LeafBuilder[N](stage)
+  }
+  
+  def base(root: HeadStage[I]): root.type = {
+    if (root._nextStage != null) sys.error(s"Stage $root must be fresh")
+    leaf._prevStage = root
+    root._nextStage = leaf
+    root    
+  }
+}
 
-  def append[N](stage: MidStage[O, N]): Segment[I1, I2, N] = {
-    if (stage.prev != null) sys.error(s"Stage $stage must be fresh")
+final class TrunkBuilder[I1, I2, O] private[pipeline](head: MidStage[I1, I2], tail: MidStage[_, O]) {
 
-    tail.next = stage
-    stage.prev = tail
+  def append[N](stage: MidStage[O, N]): TrunkBuilder[I1, I2, N] = {
+    if (stage._prevStage != null) sys.error(s"Stage $stage must be fresh")
 
-    new Segment(head, stage)
+    tail._nextStage = stage
+    stage._prevStage = tail
+
+    new TrunkBuilder(head, stage)
   }
 
-  def cap[T](stage: TailStage[O]): MidStage[I1, I2] = {
-
-    if (stage.prev != null) {
+  def cap[T](stage: TailStage[O]): LeafBuilder[I1] = {
+    if (stage._prevStage != null) {
       sys.error(s"Stage $stage must be fresh")
     }
 
-    tail.next = stage
-    stage.prev = tail
-
-    stage match {
-      case m: MidStage[O, _] if m.next == null =>
-        m.next = PipelineBuilder.capStage
-      case _ =>   // NOOP
+    tail._nextStage = stage
+    stage._prevStage = tail
+    new LeafBuilder(head)
+  }
+  
+  def base(root: HeadStage[I1]): RootBuilder[I1, O] = {
+    if (root._nextStage != null) {
+      sys.error(s"Stage $root must be fresh")
     }
-
-    head
+    
+    head._prevStage = root
+    root._nextStage = head
+    new RootBuilder(root, tail)
   }
 
-  def prepend(stage: HeadStage[I1]): PipelineBuilder[I1, O] = {
-    head.prev = stage
-    stage.next = head
-    new PipelineBuilder(stage, tail)
+  def prepend(stage: HeadStage[I1]): RootBuilder[I1, O] = {
+    head._prevStage = stage
+    stage._nextStage = head
+    new RootBuilder(stage, tail)
   }
 
-  def prepend[A](stage: MidStage[A, I1]): Segment[A, I1, O] = {
-    head.prev = stage
-    stage.next = head
-    new Segment(stage, tail)
+  def prepend[A](stage: MidStage[A, I1]): TrunkBuilder[A, I1, O] = {
+    head._prevStage = stage
+    stage._nextStage = head
+    new TrunkBuilder(stage, tail)
   }
 }
 
 object PipelineBuilder {
 
-  def apply[T](head: HeadStage[T]): RootBuilder[T] = new PipelineBuilder(head, head)
+  def apply[T](head: HeadStage[T]): RootBuilder[T, T] = new RootBuilder(head, head)
+  
+  def apply[T](leaf: TailStage[T]): LeafBuilder[T] = new LeafBuilder[T](leaf)
 
-  def apply[T1, T2](mid: MidStage[T1, T2]): RootSegment[T1, T2] = new Segment(mid, mid)
-
-  // Allows for the proper type inference
-  private [pipeline] def capStage[T] = new CapStage().asInstanceOf[TailStage[T]]
-
-  private[pipeline] class CapStage extends TailStage[Any] {
-    def name: String = "Capping stage"
-
-    override def inboundCommand(cmd: Command): Unit = {
-      logger.warn(s"Command $cmd reached a Capping Stage. Does the last " +
-                   "stage of your pipeline properly handle all commands?")
-    }
-  }
+  def apply[T1, T2](mid: MidStage[T1, T2]): TrunkBuilder[T1, T2, T2] = new TrunkBuilder(mid, mid)
 }

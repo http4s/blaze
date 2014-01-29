@@ -2,7 +2,7 @@ package org.http4s.blaze
 
 import blaze.http_parser.Http1Parser
 import blaze.pipeline.{Command => Cmd}
-import blaze.pipeline.TailStage
+import blaze.pipeline.BaseStage
 import blaze.util.Execution._
 
 import java.nio.ByteBuffer
@@ -23,7 +23,7 @@ import org.http4s.Status.{InternalServerError, NotFound}
  * @author Bryce Anderson
  *         Created on 1/10/14
  */
-class Http4sStage(route: HttpService) extends Http1Parser with TailStage[ByteBuffer] {
+class Http4sStage(route: HttpService) extends Http1Parser with BaseStage[ByteBuffer] {
 
   protected implicit def ec = directec
 

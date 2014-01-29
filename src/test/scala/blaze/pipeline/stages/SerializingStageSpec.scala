@@ -4,7 +4,7 @@ package stages
 import org.scalatest.{Matchers, WordSpec}
 import java.util.concurrent.atomic.AtomicInteger
 import scala.collection.mutable.ListBuffer
-import blaze.pipeline.TailStage
+import blaze.pipeline.BaseStage
 
 import scala.concurrent.Future
 import scala.concurrent.duration._
@@ -31,9 +31,13 @@ class SerializingStageSpec extends WordSpec with Matchers {
     def name: String = "SlowIntHead"
   }
 
+  class Nameless extends TailStage[Int] {
+    def name: String = "int getter"
+  }
+
   "SerializingStage" should {
 
-    val tail = new TailStage[Int] { def name: String = "int getter" }
+    val tail = new Nameless
     val head = new SlowIntHead
 
     // build our pipeline
@@ -44,7 +48,7 @@ class SerializingStageSpec extends WordSpec with Matchers {
     val ints = (0 until 200).toList
 
     "serialize reads" in {
-      val tail = new TailStage[Int] { def name: String = "int getter" }
+      val tail = new Nameless
       val head = new SlowIntHead
 
       // build our pipeline

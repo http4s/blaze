@@ -7,7 +7,7 @@ import java.nio.channels.{AsynchronousServerSocketChannel,
                           AsynchronousChannelGroup}
 
 import scala.annotation.tailrec
-import blaze.pipeline.PipelineBuilder
+import blaze.pipeline.{PipelineBuilder, RootBuilder}
 import java.nio.ByteBuffer
 import com.typesafe.scalalogging.slf4j.Logging
 import java.util.Date
@@ -30,7 +30,7 @@ class NIO2ServerChannelFactory(pipeFactory: PipeFactory, group: AsynchronousChan
     new NIO2ServerChannel(AsynchronousServerSocketChannel.open(group).bind(localAddress))
   }
   
-  private def root(ch: AsynchronousSocketChannel): PipelineBuilder[ByteBuffer, ByteBuffer] = {
+  private def root(ch: AsynchronousSocketChannel): RootBuilder[ByteBuffer, ByteBuffer] = {
     val root = new ByteBufferHead(ch)
     PipelineBuilder(root)
   }

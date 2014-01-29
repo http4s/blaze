@@ -5,7 +5,6 @@ import java.util.Date
 import scala.concurrent.Future
 import Command._
 import com.typesafe.scalalogging.slf4j.Logging
-import blaze.pipeline.PipelineBuilder.CapStage
 import blaze.util.Execution.directec
 
 /**
@@ -13,11 +12,11 @@ import blaze.util.Execution.directec
  *         Created on 1/4/14
  */
 
-trait TailStage[I] extends Logging {
+sealed trait BaseStage[I] extends Logging {
   
   def name: String
 
-  private[pipeline] var prev: MidStage[_, I] = null
+  private[pipeline] var _prevStage: MidStage[_, I] = null
 
   protected def stageStartup(): Unit = logger.trace(s"Starting up at ${new Date}")
   protected def stageShutdown(): Unit = logger.trace(s"Shutting down at ${new Date}")
@@ -27,7 +26,7 @@ trait TailStage[I] extends Logging {
 
     if (this.isInstanceOf[HeadStage[_]]) sys.error("HeadStage cannot request read")
 
-    try prev.readRequest(size)
+    try _prevStage.readRequest(size)
     catch { case t: Throwable => Future.failed(t) }
   }
 
@@ -36,7 +35,7 @@ trait TailStage[I] extends Logging {
 
     if (this.isInstanceOf[HeadStage[_]]) sys.error("HeadStage cannot write downstream")
 
-    try prev.writeRequest(data)
+    try _prevStage.writeRequest(data)
     catch { case t: Throwable => Future.failed(t) }
   }
 
@@ -45,7 +44,7 @@ trait TailStage[I] extends Logging {
 
     if (this.isInstanceOf[HeadStage[_]]) sys.error("HeadStage cannot write downstream")
 
-    try prev.writeRequest(data)
+    try _prevStage.writeRequest(data)
     catch { case t: Throwable => Future.failed(t) }
   }
 
@@ -54,7 +53,7 @@ trait TailStage[I] extends Logging {
 
     if(this.isInstanceOf[HeadStage[_]]) sys.error("HeadStage cannot send outbound commands!")
 
-    try prev.outboundCommand(cmd)
+    try _prevStage.outboundCommand(cmd)
     catch { case t: Throwable => inboundCommand(Error(t)) }
   }
 
@@ -67,26 +66,29 @@ trait TailStage[I] extends Logging {
   }
 
   //////////////////////////////////////////////////////////////////////////////
+  final def replaceInline(leafBuilder: LeafBuilder[I]): this.type = {
+    replaceInline(leafBuilder.leaf)
+  }
 
-  final def replaceInline(stage: TailStage[I]): this.type = {
+  final def replaceInline(stage: BaseStage[I]): this.type = {
     stageShutdown()
 
-    stage.prev = this.prev
-    if (!this.isInstanceOf[HeadStage[_]]) prev.next = stage
+    stage._prevStage = this._prevStage
+    if (!this.isInstanceOf[HeadStage[_]]) _prevStage._nextStage = stage
 
-    // remove links to other stages
-    this.prev = null
+    // remove my links to other stages
+    this._prevStage = null
     this match {
-      case m: MidStage[_, _] => m.next = null
+      case m: MidStage[_, _] => m._nextStage = null
       case _ => // NOOP
     }
     stage.inboundCommand(Command.Connected)
     this
   }
 
-  final def findOutboundStage(name: String): Option[TailStage[_]] = {
+  final def findOutboundStage(name: String): Option[BaseStage[_]] = {
     if (this.name == name) Some(this)
-    else prev match {
+    else _prevStage match {
       case t: HeadStage[_]   => if (t.name == name) Some(t) else None
       case s: MidStage[_, _] => s.findOutboundStage(name)
     }
@@ -94,7 +96,7 @@ trait TailStage[I] extends Logging {
 
   final def findOutboundStage[C <: MidStage[_, _]](clazz: Class[C]): Option[C] = {
     if (clazz.isAssignableFrom(this.getClass)) Some(this.asInstanceOf[C])
-    else prev match {
+    else _prevStage match {
       case t: HeadStage[_] =>
         if (clazz.isAssignableFrom(t.getClass)) Some(t.asInstanceOf[C])
         else None
@@ -109,9 +111,15 @@ trait TailStage[I] extends Logging {
   }
 }
 
-trait MidStage[I, O] extends TailStage[I] {
+/** This trait exists only to diverge the class structure
+  * to enforce certain methods will not accept a MidStage or HeadStage.
+  * @tparam O value which this stage can read and write from the pipeline
+  */
+trait TailStage[O] extends BaseStage[O]
 
-  private[pipeline] var next: TailStage[O] = null
+trait MidStage[I, O] extends BaseStage[I] {
+
+  private[pipeline] var _nextStage: BaseStage[O] = null
 
   def readRequest(size: Int): Future[O]
 
@@ -143,7 +151,7 @@ trait MidStage[I, O] extends TailStage[I] {
   }
 
   final def sendInboundCommand(cmd: Command): Unit = {
-    try next.inboundCommand(cmd)
+    try _nextStage.inboundCommand(cmd)
     catch { case t: Throwable => outboundCommand(Error(t)) }
   }
 
@@ -151,20 +159,20 @@ trait MidStage[I, O] extends TailStage[I] {
 
   final def replaceInline(stage: MidStage[I, O]): this.type = {
     stageShutdown()
-    next.prev = stage
-    if (!this.isInstanceOf[HeadStage[_]]) prev.next = stage
-    this.next = null
-    this.prev = null
+    _nextStage._prevStage = stage
+    if (!this.isInstanceOf[HeadStage[_]]) _prevStage._nextStage = stage
+    this._nextStage = null
+    this._prevStage = null
     this
   }
 
-  final def replaceNext(stage: TailStage[O]): TailStage[O] = {
-    next.replaceInline(stage)
+  final def replaceNext(stage: BaseStage[O]): BaseStage[O] = {
+    _nextStage.replaceInline(stage)
   }
 
   final def spliceAfter(stage: MidStage[O, O]): stage.type = {
-    next.prev = stage
-    next = stage
+    _nextStage._prevStage = stage
+    _nextStage = stage
     stage
   }
 
@@ -173,36 +181,36 @@ trait MidStage[I, O] extends TailStage[I] {
     if (this.isInstanceOf[HeadStage[_]]) sys.error("HeadStage be removed!")
 
     val me = ev(this)
-    prev.next = me.next
-    me.next.prev = me.prev
+    _prevStage._nextStage = me._nextStage
+    me._nextStage._prevStage = me._prevStage
 
-    next = null
-    prev = null
+    _nextStage = null
+    _prevStage = null
     this
   }
 
-  final def findInboundStage(name: String): Option[TailStage[_]] = {
+  final def findInboundStage(name: String): Option[BaseStage[_]] = {
     if (this.name == name) Some(this)
-    else next match {
+    else _nextStage match {
       case s: MidStage[_, _] => s.findInboundStage(name)
-      case t: TailStage[_]   => if (t.name == name) Some(t) else None
+      case t: BaseStage[_]   => if (t.name == name) Some(t) else None
     }
   }
 
-  final def findInboundStage[C <: TailStage[_]](clazz: Class[C]): Option[C] = {
+  final def findInboundStage[C <: BaseStage[_]](clazz: Class[C]): Option[C] = {
     if (clazz.isAssignableFrom(this.getClass)) Some(this.asInstanceOf[C])
-    else next match {
+    else _nextStage match {
       case s: MidStage[_, _] => s.findInboundStage[C](clazz)
-      case t: TailStage[_] =>
+      case t: BaseStage[_] =>
         if (clazz.isAssignableFrom(t.getClass)) Some(t.asInstanceOf[C])
         else None
     }
   }
 
-  final def getLastStage: TailStage[_] = next match {
-    case s: MidStage[_, _] if s.next != null => s.getLastStage
-    case c: CapStage                         => this
-    case n                                   => n
+  final def getLastStage: TailStage[_] = _nextStage match {
+    case s: MidStage[_, _] if s._nextStage != null => s.getLastStage
+    case n: TailStage[_]                     => n
+    case _ => sys.error("Cannot get last stage. Next in line: " + _nextStage)
   }
 }
 
