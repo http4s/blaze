@@ -116,6 +116,11 @@ trait MidStage[I, O] extends TailStage[I] {
 
   def writeRequest(data: O): Future[Any]
 
+  /** A simple default that serializes the write requests into the
+    * single element form. It almost certainly should be overwritten
+    * @param data sequence of elements which are to be written
+    * @return Future which will resolve when pipeline is ready for more data or fails
+    */
   def writeRequest(data: Seq[O]): Future[Any] = {
     data.foldLeft[Future[Any]](Future.successful()){ (f, d) =>
       f.flatMap(_ => writeRequest(d))(directec)

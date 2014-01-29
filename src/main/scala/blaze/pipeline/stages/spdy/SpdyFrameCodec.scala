@@ -1,11 +1,8 @@
 package blaze.pipeline.stages.spdy
 
 import blaze.pipeline.stages.ByteToObjectStage
-import java.nio.{BufferUnderflowException, ByteBuffer}
-import scala.annotation.{tailrec, switch}
-import blaze.util.ScratchBuffer
-import scala.collection.mutable.ListBuffer
-import java.nio.charset.StandardCharsets.US_ASCII
+import java.nio. ByteBuffer
+import scala.annotation.switch
 import scala.util.control.NonFatal
 
 /**
@@ -18,12 +15,16 @@ class SpdyFrameCodec(val maxBufferSize: Int = -1)
   def name: String = "Spdy Frame Codec"
 
   protected val inflater = new SpdyHeaderDecoder
+  protected val deflater = new SpdyHeaderEncoder
 
   /** Encode objects to buffers
     * @param in object to decode
     * @return sequence of ByteBuffers to pass to the head
     */
-  def messageToBuffer(in: SpdyFrame): Seq[ByteBuffer] = in.encode
+  def messageToBuffer(in: SpdyFrame): Seq[ByteBuffer] = in match {
+    case f: SynReplyFrame => f.encode(deflater)
+    case f => f.encode
+  }
 
   /** Method that decodes ByteBuffers to objects. None reflects not enough data to decode a message
     * Any unused data in the ByteBuffer will be recycled and available for the next read
@@ -40,7 +41,7 @@ class SpdyFrameCodec(val maxBufferSize: Int = -1)
     if (in.remaining() < 8 + len) return None
 
     // Are we a data frame?
-    if ((in.get(0) & (1<<7)) == 0) return Some(decodeDataFrame(in))
+    if ((in.get(0) & (1 << 7)) == 0) return Some(decodeDataFrame(in))
 
     val frametype = in.getShort(2)
 
@@ -66,18 +67,39 @@ class SpdyFrameCodec(val maxBufferSize: Int = -1)
       Some(frame)
     } catch {
       case t: ProtocolException =>
-        logger.error("Protocol Error during decoding of frame type $frametype", t)
+        logger.error(s"Protocol Error during decoding of frame type $frametype", t)
+        val p = in.position()
+        in.position(0)
+        dumpFrame(in)
+        in.position(p)
         throw t
 
       case NonFatal(t) =>
         logger.error(s"Error decoding frame type $frametype", t)
+        val p = in.position()
+        in.position(0)
+        dumpFrame(in)
+        in.position(p)
         throw t
-
     }
   }
 
   override protected def stageShutdown(): Unit = {
     inflater.close()
     super.stageShutdown()
+  }
+
+  private def dumpFrame(buffer: ByteBuffer) {
+    val sb = new StringBuilder
+    var i = 0
+    while (buffer.hasRemaining) {
+      sb.append("%02X".format(buffer.get() & 0xff)).append(" ")
+      i += 1
+      if (i == 4) {
+        i = 0
+        sb.append("\n")
+      }
+    }
+    logger.info("Buffer Content:\n" + sb.result() + "\n")
   }
 }

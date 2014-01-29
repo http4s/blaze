@@ -73,15 +73,15 @@ class SpdyHeaderEncoder {
       i + pair._1.length + pairlen + 8 - 1
     }
 
-    // Compress the headers into a scratch buffer
+    // Compress the headers into a scratch buffer. Give
+    // one length for orig, two for compressed just in case
     val scratch = ScratchBuffer.getScratchBuffer(headerlen * 3)
-    val arr = scratch.array()
+
     putHeaders(scratch, headers)
 
-    val rawpos = scratch.position()
-
     try {
-      deflater.setInput(arr, 0, rawpos)
+      val arr = scratch.array()
+      deflater.setInput(arr, 0, scratch.position())
 
       val buff = compressToBuffer(scratch.position(), scratch)
       if (buff eq scratch) {  // Need to copy it out of the scratch buffer

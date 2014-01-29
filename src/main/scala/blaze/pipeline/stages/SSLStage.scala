@@ -27,9 +27,8 @@ class SSLStage(engine: SSLEngine, maxSubmission: Int = -1) extends MidStage[Byte
   def name: String = s"SSLStage"
 
   private val maxNetSize = engine.getSession.getPacketBufferSize
-  private val maxAppSize = engine.getSession.getApplicationBufferSize
 
-  private val maxBuffer = math.max(maxNetSize, maxAppSize)
+  private val maxBuffer = math.max(maxNetSize, engine.getSession.getApplicationBufferSize)
   
   val empty = { val b = ByteBuffer.allocate(0); b.flip(); b }
   
@@ -66,7 +65,7 @@ class SSLStage(engine: SSLEngine, maxSubmission: Int = -1) extends MidStage[Byte
         o.clear()
       }
 
-      logger.trace(s"SSL Read Request Status: $r, $o")
+      logger.debug(s"SSL Read Request Status: $r, $o")
 
       r.getHandshakeStatus match {
         case HandshakeStatus.NEED_UNWRAP =>  // must need more data
@@ -153,7 +152,7 @@ class SSLStage(engine: SSLEngine, maxSubmission: Int = -1) extends MidStage[Byte
     while (true) {
       val r = engine.wrap(buffers, o)
 
-      logger.trace(s"Write request result: $r, $o")
+      logger.debug(s"Write request result: $r, $o")
 
       r.getHandshakeStatus match {
         case HandshakeStatus.NEED_TASK =>

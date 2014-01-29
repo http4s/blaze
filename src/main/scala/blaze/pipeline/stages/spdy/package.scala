@@ -12,29 +12,29 @@ import scala.annotation.tailrec
 package object spdy {
 
   private[spdy] object Flags {
-    val FINISHED: Byte = 0x01
-    val UNIDIRECTIONAL: Byte = 0x02
-    val CONTROL: Byte = (0x01 << 7).toByte
+    val FINISHED: Byte       =  0x01
+    val UNIDIRECTIONAL: Byte =  0x02
+    val CONTROL: Byte        = (0x01 << 7).toByte
   }
 
   private[spdy] object Masks {
-    val STREAMID = 0x7fffffff
-    val LENGTH = 0xffffff
+    val STREAMID  = 0x7fffffff
+    val LENGTH    = 0xffffff
   }
 
   object RstCode extends Enumeration {
     type RstCode = Value
-    val PROTOCOL_ERROR = Value(1)
-    val INVALID_STREAM = Value(2)
-    val REFUSED_STREAM = Value(3)
-    val UNSUPPORTED_VERSION = Value(4)
-    val CANCEL = Value(5)
-    val INTERNAL_ERROR = Value(6)
-    val FLOW_CONTROL_ERROR = Value(7)
-    val STREAM_IN_USE = Value(8)
+    val PROTOCOL_ERROR        = Value(1)
+    val INVALID_STREAM        = Value(2)
+    val REFUSED_STREAM        = Value(3)
+    val UNSUPPORTED_VERSION   = Value(4)
+    val CANCEL                = Value(5)
+    val INTERNAL_ERROR        = Value(6)
+    val FLOW_CONTROL_ERROR    = Value(7)
+    val STREAM_IN_USE         = Value(8)
     val STREAM_ALREADY_CLOSED = Value(9)
     // 10 - deprecated/unused.
-    val FRAME_TOO_LARGE = Value(11)
+    val FRAME_TOO_LARGE       = Value(11)
   }
 
   object GoAwayCode extends Enumeration {
@@ -74,11 +74,11 @@ package object spdy {
       val header = ByteBuffer.allocate(8)
 
       header.putInt(streamid & Masks.STREAMID)
-      val fin = if (isLast) Flags.FINISHED << 24 else 0
-      header.putInt(fin | length)
+      header.put((if (isLast) Flags.FINISHED else 0).toByte)
+      putLength(header, length)
       header.flip()
 
-      header::data.asReadOnlyBuffer()::Nil
+      header::data::Nil
     }
   }
 
@@ -100,7 +100,7 @@ package object spdy {
 
     final def frameID = 1
 
-    def encode(): Seq[ByteBuffer] = {
+    def encode: Seq[ByteBuffer] = {
       val arr = new Array[Byte](18)
       val buff = ByteBuffer.wrap(arr)
 
@@ -131,24 +131,24 @@ package object spdy {
   case class SynReplyFrame(streamid: Int, headers: Map[String, Seq[String]], isLast: Boolean) extends ControlFrame with StreamFrame {
     final def frameID: Int = 2
 
-    def encode: Seq[ByteBuffer] = {
+    def encode = ???
 
-      // add a buffer zone of 20 bytes in case compression is terrible
+    def encode(compressor: SpdyHeaderEncoder): Seq[ByteBuffer] = {
+
       val buff = ByteBuffer.allocate(12)
 
       buff.putShort((Flags.CONTROL << 8 | spdyVersion).toShort)
       buff.putShort(frameID.toShort)
 
       val flags = if (isLast) Flags.FINISHED else 0
-
       buff.put(flags.toByte)
       buff.position(8)
       buff.putInt(streamid & Masks.STREAMID)
 
       // Must deflate, and see how long we are
-      val hbuff = new SpdyHeaderEncoder().encodeHeaders(headers)
-
-      putLength(buff, hbuff.remaining())
+      val hbuff = compressor.encodeHeaders(headers)
+      buff.position(5)
+      putLength(buff, hbuff.remaining() + 4)
 
       buff.position(12)
       buff.flip()
@@ -158,7 +158,6 @@ package object spdy {
   }
 
   case class RstStreamFrame(streamid: Int, code: RstCode.RstCode) extends ControlFrame with StreamFrame {
-
     final def frameID: Int = 3
 
     def isLast: Boolean = true
