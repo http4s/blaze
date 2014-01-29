@@ -47,10 +47,10 @@ class SpdyFrameCodecSpec extends WordSpec with Matchers {
     SettingsFrame(settings, true)
   }
   
-  def windowUpdateFrame = WindowUpdate(2, 4)
+  def windowUpdateFrame = WindowUpdateFrame(2, 4)
   
   def decode(buff: ByteBuffer, requireFull: Boolean = true): SpdyFrame = {
-    val h = new SpdyFrameCodec().bufferToMessage(buff).get
+    val h = new Spdy3_1FrameCodec().bufferToMessage(buff).get
 
     if (requireFull)
       assert(buff.position() == buff.limit())
@@ -67,27 +67,32 @@ class SpdyFrameCodecSpec extends WordSpec with Matchers {
     buff
   }
 
+  def encode(frame: SpdyFrame): ByteBuffer = {
+    val codec = new Spdy3_1FrameCodec()
+    concat(codec.messageToBuffer(frame))
+  }
+
   "Spdy Types" should {
     "encode DataFrames" in {
-      val buffs = dataFrame.encode
+      val buffs = new Spdy3_1FrameCodec().messageToBuffer(dataFrame)
       buffs.head.getInt(4) & 0xffffff should equal(5)
       buffs.tail.head should equal (data)
     }
 
     "encode SynStreamFrames" in {
-      val buffs = synStreamFrame.encode()
+      val buffs = encode(synStreamFrame)
     }
 
     "encode SynReplyFrames" in {
-      val buffs = synReplyFrame.encode
+      val buffs = encode(synReplyFrame)
     }
 
     "encode RstFrame" in {
-      val buffs = rstFrame.encode
+      val buffs = encode(rstFrame)
     }
 
     "encode a SettingsFrame" in {
-      val buffs = settingsFrame.encode
+      val buffs = encode(settingsFrame)
     }
     
     
@@ -95,39 +100,39 @@ class SpdyFrameCodecSpec extends WordSpec with Matchers {
 
   "SpdyFrameCodec" should {
     "Decode a Data frame" in {
-      decode(concat(dataFrame.encode)) should equal(dataFrame)
+      decode(encode(dataFrame)) should equal(dataFrame)
     }
 
     "Decode a SynFrame" in {
-      decode(concat(synStreamFrame.encode)) should equal(synStreamFrame)
+      decode(encode(synStreamFrame)) should equal(synStreamFrame)
     }
 
     "Decode a SynReplyFrame" in {
-      decode(concat(synReplyFrame.encode)) should equal(synReplyFrame)
+      decode(encode(synReplyFrame)) should equal(synReplyFrame)
     }
 
     "Decode a RstFrame" in {
-      decode(concat(rstFrame.encode)) should equal(rstFrame)
+      decode(encode(rstFrame)) should equal(rstFrame)
     }
 
     "Decode a SettingsFrame" in {
-      decode(concat(settingsFrame.encode)) should equal(settingsFrame)
+      decode(encode(settingsFrame)) should equal(settingsFrame)
     }
 
     "Decode a PingFrame" in {
-      decode(concat(pingFrame.encode)) should equal(pingFrame)
+      decode(encode(pingFrame)) should equal(pingFrame)
     }
 
     "Decode a GoAwayFrame" in {
-      decode(concat(goAwayFrame.encode)) should equal(goAwayFrame)
+      decode(encode(goAwayFrame)) should equal(goAwayFrame)
     }
 
     "Decode a HeadersFrame" in {
-      decode(concat(headersFrame.encode)) should equal(headersFrame)
+      decode(encode(headersFrame)) should equal(headersFrame)
     }
     
     "Decode a WindowUpdate frame" in {
-      decode(concat(windowUpdateFrame.encode)) should equal(windowUpdateFrame)
+      decode(encode(windowUpdateFrame)) should equal(windowUpdateFrame)
     }
   }
 

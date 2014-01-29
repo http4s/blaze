@@ -67,8 +67,9 @@ private[spdy] trait SpdyDecoderMethods { self: Logging =>
     val streamid = data.getInt() & Masks.STREAMID
 
     val lim = data.limit()
-    data.limit(data.position() + len)
+    data.limit(data.position() + len - 4)
 
+    // Decode the headers, reset the limit, and get out of here
     val headers = inflater.decodeHeaders(data)
     data.limit(lim)
 
@@ -158,13 +159,13 @@ private[spdy] trait SpdyDecoderMethods { self: Logging =>
     HeadersFrame(streamid, headers, last)
   }
 
-  protected def decodeWindowUpdate(data: ByteBuffer): WindowUpdate = {
+  protected def decodeWindowUpdate(data: ByteBuffer): WindowUpdateFrame = {
     data.position(4)
     val len = data.getInt()
     if (len != 8)
       throw new ProtocolException(s"Invalid length for WindowUpdate Frame: $len")
 
-    WindowUpdate(data.getInt, data.getInt)
+    WindowUpdateFrame(data.getInt, data.getInt)
   }
 
 }

@@ -10,6 +10,6 @@ import com.typesafe.scalalogging.slf4j.Logging
 abstract class SpdyException(msg: String) extends Exception(msg)
 
 class ProtocolException(msg: String) extends SpdyException(msg) with Logging {
-  logger.info(msg)
+  logger.info(msg, this)
 }
 

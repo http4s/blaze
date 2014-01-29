@@ -9,11 +9,12 @@ import scala.util.control.NonFatal
  * @author Bryce Anderson
  *         Created on 1/26/14
  */
-class SpdyFrameCodec(val maxBufferSize: Int = -1)
-      extends ByteToObjectStage[SpdyFrame] with SpdyDecoderMethods {
+class Spdy3_1FrameCodec(val maxBufferSize: Int = -1)
+      extends ByteToObjectStage[SpdyFrame] with SpdyDecoderMethods with SpdyEncoderMethods {
 
-  def name: String = "Spdy Frame Codec"
-
+  def name: String = "Spdy3.1 Frame Codec"
+  
+  def spdyVersion = 3
   protected val inflater = new SpdyHeaderDecoder
   protected val deflater = new SpdyHeaderEncoder
 
@@ -22,8 +23,16 @@ class SpdyFrameCodec(val maxBufferSize: Int = -1)
     * @return sequence of ByteBuffers to pass to the head
     */
   def messageToBuffer(in: SpdyFrame): Seq[ByteBuffer] = in match {
-    case f: SynReplyFrame => f.encode(deflater)
-    case f => f.encode
+    case f: DataFrame         => encodeData(f)
+    case f: SynStreamFrame    => encodeSynStream(f)
+    case f: SynReplyFrame     => encodeSynReply(f)
+    case f: RstStreamFrame    => encodeRstStream(f)
+    case f: SettingsFrame     => encodeSettings(f)
+    case f: PingFrame         => encodePing(f)
+    case f: GoAwayFrame       => encodeGoAway(f)
+    case f: HeadersFrame      => encodeHeaders(f)
+    case f: WindowUpdateFrame => encodeWindowUpdate(f)
+    case f => sys.error(s"Unknown Spdy frame type: $f")
   }
 
   /** Method that decodes ByteBuffers to objects. None reflects not enough data to decode a message
@@ -41,7 +50,8 @@ class SpdyFrameCodec(val maxBufferSize: Int = -1)
     if (in.remaining() < 8 + len) return None
 
     // Are we a data frame?
-    if ((in.get(0) & (1 << 7)) == 0) return Some(decodeDataFrame(in))
+    if ((in.get(0) & Flags.CONTROL) == 0)
+      return Some(decodeDataFrame(in))
 
     val frametype = in.getShort(2)
 

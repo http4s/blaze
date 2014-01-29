@@ -44,19 +44,7 @@ package object spdy {
     val INTERNAL_ERROR = Value(2)
   }
 
-  sealed trait SpdyFrame {
-    def isControl: Boolean
-    def encode: Seq[ByteBuffer]
-
-    protected final def putLength(buff: ByteBuffer, len: Int): ByteBuffer = {
-      buff.position(5)
-      buff.put((len >>> 16 & 0xff).toByte)
-          .put((len >>> 8 & 0xff).toByte)
-          .put((len & 0xff).toByte)
-
-      buff
-    }
-  }
+  sealed trait SpdyFrame
 
   sealed trait StreamFrame extends SpdyFrame {
     def streamid: Int
@@ -64,28 +52,14 @@ package object spdy {
   }
 
   case class DataFrame(data: ByteBuffer, streamid: Int, isLast: Boolean) extends StreamFrame {
-    def isControl = false
     val length = data.remaining()
 
     if (length > Masks.LENGTH) sys.error(s"Frame to large: $length")
-
-    def encode: Seq[ByteBuffer] = {
-
-      val header = ByteBuffer.allocate(8)
-
-      header.putInt(streamid & Masks.STREAMID)
-      header.put((if (isLast) Flags.FINISHED else 0).toByte)
-      putLength(header, length)
-      header.flip()
-
-      header::data::Nil
-    }
   }
 
   sealed trait ControlFrame extends SpdyFrame {
     def frameID: Int
-    def isControl = true
-    def spdyVersion: Int = 3
+//    def spdyVersion: Int = 3
   }
 
   case class SynStreamFrame(streamid: Int,
@@ -99,174 +73,39 @@ package object spdy {
     if (priority > 7 || priority < 0) sys.error(s"Invalid priority: $priority")
 
     final def frameID = 1
-
-    def encode: Seq[ByteBuffer] = {
-      val arr = new Array[Byte](18)
-      val buff = ByteBuffer.wrap(arr)
-
-      buff.putShort((Flags.CONTROL << 8 | spdyVersion).toShort)
-      buff.putShort(frameID.toShort)
-
-      var flags = 0
-      if (unidirectional) flags |= Flags.UNIDIRECTIONAL
-      if (isLast) flags |= Flags.FINISHED
-
-      buff.put(flags.toByte)
-      buff.position(8)
-      buff.putInt(streamid)
-      buff.putInt(associatedStream)
-      buff.put((priority << 5).toByte)   // priority
-
-      val hbuff = new SpdyHeaderEncoder().encodeHeaders(headers)
-
-      putLength(buff, hbuff.remaining() + 10)
-
-      buff.position(18)
-      buff.flip()
-
-      buff::hbuff::Nil
-    }
   }
 
   case class SynReplyFrame(streamid: Int, headers: Map[String, Seq[String]], isLast: Boolean) extends ControlFrame with StreamFrame {
     final def frameID: Int = 2
-
-    def encode = ???
-
-    def encode(compressor: SpdyHeaderEncoder): Seq[ByteBuffer] = {
-
-      val buff = ByteBuffer.allocate(12)
-
-      buff.putShort((Flags.CONTROL << 8 | spdyVersion).toShort)
-      buff.putShort(frameID.toShort)
-
-      val flags = if (isLast) Flags.FINISHED else 0
-      buff.put(flags.toByte)
-      buff.position(8)
-      buff.putInt(streamid & Masks.STREAMID)
-
-      // Must deflate, and see how long we are
-      val hbuff = compressor.encodeHeaders(headers)
-      buff.position(5)
-      putLength(buff, hbuff.remaining() + 4)
-
-      buff.position(12)
-      buff.flip()
-
-      buff::hbuff::Nil
-    }
   }
 
   case class RstStreamFrame(streamid: Int, code: RstCode.RstCode) extends ControlFrame with StreamFrame {
     final def frameID: Int = 3
-
     def isLast: Boolean = true
-
-    def encode: Seq[ByteBuffer] = {
-      val buff = ByteBuffer.allocate(16)
-      buff.putShort((Flags.CONTROL << 8 | spdyVersion).toShort)
-      buff.putShort(frameID.toShort)
-      buff.position(7)
-      buff.put(8.toByte)
-      buff.putInt(streamid & Masks.STREAMID)
-      buff.putInt(code.id)
-      buff.flip()
-
-      buff::Nil
-    }
   }
 
   case class SettingsFrame(settings: Seq[Setting], clear: Boolean) extends ControlFrame {
-    def frameID: Int = 4
-
-    def encode: Seq[ByteBuffer] = {
-      val count = settings.length
-      val buff = ByteBuffer.allocate(12 + 8 * count)
-
-      buff.putShort((Flags.CONTROL << 8 | spdyVersion).toShort)
-          .putShort(frameID.toShort)
-          .put(if (clear) 0x1.toByte else 0.toByte)
-
-      putLength(buff, 8 * count + 4)
-      buff.putInt(count)
-
-      settings.foreach(_.encode(buff))
-      buff.flip()
-
-      buff::Nil
-    }
+    final def frameID: Int = 4
   }
 
   case class PingFrame(id: Int) extends ControlFrame {
-    def frameID: Int = 6
-
-    def encode: Seq[ByteBuffer] = {
-      val buff = ByteBuffer.allocate(12)
-
-      buff.putShort((Flags.CONTROL << 8 | spdyVersion).toShort)
-        .putShort(frameID.toShort)
-        .putInt(4)    // flags and length, which are 0 and 4 respectively
-        .putInt(id)
-
-      buff.flip()
-      buff::Nil
-    }
+    final def frameID: Int = 6
   }
 
   case class GoAwayFrame(lastGoodStream: Int, code: GoAwayCode.GoAwayCode) extends ControlFrame {
-    def frameID: Int = 7
-
-    def encode: Seq[ByteBuffer] = {
-      val buff = ByteBuffer.allocate(16)
-      buff.putShort((Flags.CONTROL << 8 | spdyVersion).toShort)
-        .putShort(frameID.toShort)
-        .putInt(8)    // flags and length, which are 0 and 8 respectively
-        .putInt(lastGoodStream)
-        .putInt(code.id)
-
-      buff.flip()
-      buff::Nil
-    }
+    final def frameID: Int = 7
   }
 
   case class HeadersFrame(streamid: Int, headers: Map[String, Seq[String]], isLast: Boolean)
               extends ControlFrame with StreamFrame {
-    def frameID: Int = 8
-
-    def encode: Seq[ByteBuffer] = {
-      val buff = ByteBuffer.allocate(12)
-      buff.putShort((Flags.CONTROL << 8 | spdyVersion).toShort)
-          .putShort(frameID.toShort)
-      if (isLast) buff.put(Flags.FINISHED)
-
-      val hbuff = new SpdyHeaderEncoder().encodeHeaders(headers)
-      buff.position(5)
-      putLength(buff, hbuff.remaining() + 4)
-          .putInt(streamid)
-          .flip()
-
-      buff::hbuff::Nil
-    }
+    final def frameID: Int = 8
   }
 
-  case class WindowUpdate(streamid: Int, delta: Int) extends ControlFrame with StreamFrame {
-    def frameID: Int = 9
+  case class WindowUpdateFrame(streamid: Int, delta: Int) extends ControlFrame with StreamFrame {
+    final def frameID: Int = 9
     def isLast: Boolean = false
 
-    if (delta < 1)
-      throw new ProtocolException(s"Invalid WindowUpdate size: $delta")
-
-    def encode: Seq[ByteBuffer] = {
-      val buff = ByteBuffer.allocate(16)
-      buff.putShort((Flags.CONTROL << 8 | spdyVersion).toShort)
-        .putShort(frameID.toShort)
-        .putInt(8)    // flags (0) and length (8)
-        .putInt(streamid & Masks.STREAMID)
-        .putInt(delta)
-        .flip()
-
-      buff::Nil
-    }
+    if (delta < 1) throw new ProtocolException(s"Invalid WindowUpdate size: $delta")
   }
 
   val spdyCompresionDict: Array[Byte] = Array(
