@@ -1,19 +1,22 @@
 package blaze.channel.nio1
 
+
+import com.typesafe.scalalogging.slf4j.StrictLogging
+
 import scala.annotation.tailrec
 import scala.util.control.NonFatal
+import scala.concurrent.{Future, Promise}
 
 import java.nio.channels._
 import java.nio.ByteBuffer
-import scala.concurrent.{Future, Promise}
-import blaze.pipeline.{PipelineBuilder, Command, RootBuilder, HeadStage}
-import blaze.channel.PipeFactory
 import java.io.IOException
-import com.typesafe.scalalogging.slf4j.StrictLogging
 import java.util.concurrent.atomic.AtomicReference
 import java.util.concurrent.RejectedExecutionException
-import blaze.channel.nio1.ChannelOps.{ChannelClosed, WriteError, Incomplete, Complete}
+
+import blaze.pipeline._
+import blaze.channel.nio1.ChannelOps.{ChannelClosed, Incomplete, Complete}
 import blaze.pipeline.Command.EOF
+import blaze.channel.nio1.ChannelOps.WriteError
 
 /**
  * @author Bryce Anderson
@@ -153,7 +156,7 @@ final class SelectorLoop(selector: Selector, bufferSize: Int) extends Thread("Se
 
   def wakeup(): Unit = selector.wakeup()
 
-  def initChannel(builder: PipeFactory, ch: SelectableChannel, ops: SelectionKey => ChannelOps) {
+  def initChannel(builder: () => LeafBuilder[ByteBuffer], ch: SelectableChannel, ops: SelectionKey => ChannelOps) {
    enqueTask( new Runnable {
       def run() {
         try {
@@ -164,7 +167,7 @@ final class SelectorLoop(selector: Selector, bufferSize: Int) extends Thread("Se
           key.attach(head)
 
           // construct the pipeline
-          builder(PipelineBuilder(head))
+          builder().base(head)
 
           head.inboundCommand(Command.Connected)
           logger.trace("Started channel.")

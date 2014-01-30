@@ -1,10 +1,10 @@
 package blaze
 package examples
 
-import blaze.pipeline.{TailStage, BaseStage}
+import blaze.pipeline.{PipelineBuilder, TailStage}
 import java.nio.ByteBuffer
 import scala.util.{Failure, Success}
-import blaze.channel.{ServerChannel, PipeFactory}
+import blaze.channel.{BufferPipeline, ServerChannel}
 import java.net.InetSocketAddress
 import com.typesafe.scalalogging.slf4j.Logging
 import java.util.Date
@@ -23,7 +23,7 @@ import blaze.channel.nio2.NIO2ServerChannelFactory
 class EchoServer extends Logging {
 
   def prepare(address: InetSocketAddress): ServerChannel = {
-    val f: PipeFactory = _.cap(new EchoStage)
+    val f: BufferPipeline = () => PipelineBuilder(new EchoStage)
 
     val factory = new NIO2ServerChannelFactory(f)
     factory.bind(address)

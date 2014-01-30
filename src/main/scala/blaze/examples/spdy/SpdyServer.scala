@@ -12,6 +12,7 @@ import java.net.InetSocketAddress
 import org.eclipse.jetty.npn.NextProtoNego
 
 import blaze.pipeline.stages.spdy.Spdy3_1FrameCodec
+import blaze.pipeline.PipelineBuilder
 
 /**
  * @author Bryce Anderson
@@ -33,12 +34,12 @@ class SpdyServer(port: Int) {
   }
 
 
-  private val f: PipeFactory = { b =>
+  private val f: BufferPipeline = { () =>
     val eng = sslContext.createSSLEngine()
     eng.setUseClientMode(false)
 
     NextProtoNego.put(eng, new ServerProvider)
-    b.append(new SSLStage(eng)).append(new Spdy3_1FrameCodec).cap(new SpdyHandler(eng))
+    PipelineBuilder(new SSLStage(eng)).append(new Spdy3_1FrameCodec).cap(new SpdyHandler(eng))
   }
 
   val group = AsynchronousChannelGroup.withFixedThreadPool(10, java.util.concurrent.Executors.defaultThreadFactory())

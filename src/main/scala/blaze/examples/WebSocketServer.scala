@@ -6,7 +6,7 @@ import java.net.InetSocketAddress
 import blaze.pipeline.stages.http.{WSResponse, HttpResponse, Response, HttpStage}
 import java.nio.ByteBuffer
 import scala.concurrent.Future
-import blaze.pipeline.{Command, BaseStage}
+import blaze.pipeline.{LeafBuilder, Command, BaseStage}
 import blaze.pipeline.stages.http.websocket.WebSocketDecoder._
 import scala.util.{Failure, Success}
 import blaze.pipeline.stages.http.websocket.{ServerHandshaker, WSStage}
@@ -17,7 +17,7 @@ import blaze.channel.nio2.NIO2ServerChannelFactory
  *         Created on 1/18/14
  */
 class WebSocketServer(port: Int) {
-  private val f: PipeFactory = _.cap(new ExampleWebSocketHttpStage)
+  private val f: BufferPipeline = () => LeafBuilder(new ExampleWebSocketHttpStage)
 
   val group = AsynchronousChannelGroup.withFixedThreadPool(10, java.util.concurrent.Executors.defaultThreadFactory())
 
@@ -38,7 +38,7 @@ class ExampleWebSocketHttpStage extends HttpStage(10*1024) {
 
       // Note the use of WSStage.segment. This makes a pipeline segment that includes a serializer so we
       // can safely write as many messages we want without worrying about clashing with pending writes
-      Future.successful(WSResponse(WSStage.segment(new SocketStage)))
+      Future.successful(WSResponse(WSStage.bufferingSegment(new SocketStage)))
     } else Future.successful(HttpResponse.Ok("Use a websocket!\n" + uri))
   }
 }

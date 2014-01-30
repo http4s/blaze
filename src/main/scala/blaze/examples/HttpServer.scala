@@ -3,9 +3,8 @@ package blaze.examples
 import blaze.channel._
 import java.net.InetSocketAddress
 import java.nio.channels.AsynchronousChannelGroup
-import blaze.pipeline.stages.SerializingStage
-import java.nio.ByteBuffer
 import blaze.channel.nio2.NIO2ServerChannelFactory
+import blaze.pipeline.LeafBuilder
 
 /**
  * @author Bryce Anderson
@@ -13,7 +12,7 @@ import blaze.channel.nio2.NIO2ServerChannelFactory
  */
 class HttpServer(port: Int) {
 
-  private val f: PipeFactory = _.cap(new ExampleHttpStage(10*1024))
+  private val f: BufferPipeline = () => LeafBuilder(new ExampleHttpStage(10*1024))
 
   val group = AsynchronousChannelGroup.withFixedThreadPool(10, java.util.concurrent.Executors.defaultThreadFactory())
 

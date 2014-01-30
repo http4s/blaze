@@ -4,6 +4,7 @@ import blaze.channel._
 
 import java.net.InetSocketAddress
 import blaze.channel.nio1.SocketServerChannelFactory
+import blaze.pipeline.LeafBuilder
 
 /**
  * @author Bryce Anderson
@@ -11,7 +12,7 @@ import blaze.channel.nio1.SocketServerChannelFactory
  */
 class NIO1HttpServer(port: Int) {
 
-  private val f: PipeFactory = _.cap(new ExampleHttpStage(10*1024))
+  private val f: BufferPipeline = () => LeafBuilder(new ExampleHttpStage(10*1024))
 
   private val factory = new SocketServerChannelFactory(f, workerThreads = 6)
 

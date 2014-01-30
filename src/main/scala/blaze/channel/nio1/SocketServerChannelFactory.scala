@@ -1,6 +1,6 @@
 package blaze.channel.nio1
 
-import blaze.channel.PipeFactory
+import blaze.channel.BufferPipeline
 import java.nio.channels._
 import java.net.SocketAddress
 import java.io.IOException
@@ -13,10 +13,10 @@ import blaze.channel.nio1.ChannelOps.{ChannelClosed, Complete, Incomplete, Write
  * @author Bryce Anderson
  *         Created on 1/21/14
  */
-class SocketServerChannelFactory(pipeFactory: PipeFactory, pool: SelectorLoopPool)
+class SocketServerChannelFactory(pipeFactory: BufferPipeline, pool: SelectorLoopPool)
                 extends NIOServerChannelFactory[ServerSocketChannel](pool) {
 
-  def this(pipeFactory: PipeFactory, workerThreads: Int = 8, bufferSize: Int = 4*1024) = {
+  def this(pipeFactory: BufferPipeline, workerThreads: Int = 8, bufferSize: Int = 4*1024) = {
     this(pipeFactory, new FixedArraySelectorPool(workerThreads, bufferSize))
   }
 

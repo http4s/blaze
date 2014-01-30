@@ -46,7 +46,7 @@ trait WSStage extends TailStage[WebSocketFrame] {
 }
 
 object WSStage {
-  def segment(stage: WSStage): LeafBuilder[WebSocketFrame] = {
+  def bufferingSegment(stage: WSStage): LeafBuilder[WebSocketFrame] = {
     PipelineBuilder(new SerializingStage[WebSocketFrame]).cap(stage)
   }
 }

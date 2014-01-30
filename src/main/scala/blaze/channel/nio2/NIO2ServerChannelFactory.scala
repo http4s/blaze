@@ -7,7 +7,7 @@ import java.nio.channels.{AsynchronousServerSocketChannel,
                           AsynchronousChannelGroup}
 
 import scala.annotation.tailrec
-import blaze.pipeline.{PipelineBuilder, RootBuilder}
+import blaze.pipeline.{LeafBuilder, PipelineBuilder, RootBuilder}
 import java.nio.ByteBuffer
 import com.typesafe.scalalogging.slf4j.Logging
 import java.util.Date
@@ -19,7 +19,7 @@ import blaze.pipeline.Command.Connected
  * @author Bryce Anderson
  *         Created on 1/4/14
  */
-class NIO2ServerChannelFactory(pipeFactory: PipeFactory, group: AsynchronousChannelGroup = null)
+class NIO2ServerChannelFactory(pipeFactory: () => LeafBuilder[ByteBuffer], group: AsynchronousChannelGroup = null)
         extends ServerChannelFactory[AsynchronousServerSocketChannel] with Logging {
 
   // Intended to be overridden in order to allow the reject of connections
@@ -28,11 +28,6 @@ class NIO2ServerChannelFactory(pipeFactory: PipeFactory, group: AsynchronousChan
   def bind(localAddress: SocketAddress = null): ServerChannel = {
     if (pipeFactory == null) sys.error("Pipeline factory required")
     new NIO2ServerChannel(AsynchronousServerSocketChannel.open(group).bind(localAddress))
-  }
-  
-  private def root(ch: AsynchronousSocketChannel): RootBuilder[ByteBuffer, ByteBuffer] = {
-    val root = new ByteBufferHead(ch)
-    PipelineBuilder(root)
   }
 
   private class NIO2ServerChannel(protected val channel: AsynchronousServerSocketChannel)
@@ -53,7 +48,7 @@ class NIO2ServerChannelFactory(pipeFactory: PipeFactory, group: AsynchronousChan
           }
           else {
             logger.trace(s"Connection to ${ch.getRemoteAddress} accepted at ${new Date}")
-            pipeFactory(root(ch)).inboundCommand(Connected)
+            pipeFactory().base(new ByteBufferHead(ch)).inboundCommand(Connected)
           }
 
         } catch {
