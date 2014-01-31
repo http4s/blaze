@@ -21,7 +21,7 @@ class FrameAggregatorSpec extends WordSpec with Matchers {
       def name: String = "gatherer"
     }
 
-    PipelineBuilder(new SeqHead(frames)).append(new WSFrameAggregator).cap(h)
+    PipelineBuilder(new WSFrameAggregator).cap(h).base(new SeqHead(frames))
 
     def next = Await.result(h.channelRead(), 2.seconds)
   }

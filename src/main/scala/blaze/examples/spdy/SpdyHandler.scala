@@ -1,6 +1,6 @@
 package blaze.examples.spdy
 
-import blaze.pipeline.{TailStage, Command, BaseStage}
+import blaze.pipeline.{TailStage, Command}
 import blaze.pipeline.stages.spdy._
 import javax.net.ssl.SSLEngine
 import scala.util.{Failure, Success}

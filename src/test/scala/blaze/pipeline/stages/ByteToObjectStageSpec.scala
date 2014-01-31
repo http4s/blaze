@@ -2,9 +2,9 @@ package blaze.pipeline.stages
 
 import org.scalatest.{Matchers, WordSpec}
 import java.nio.ByteBuffer
-import blaze.pipeline.RootBuilder
 import scala.concurrent.Await
 import scala.concurrent.duration._
+import blaze.pipeline.LeafBuilder
 
 /**
  * @author Bryce Anderson
@@ -66,9 +66,9 @@ class ByteToObjectStageSpec extends WordSpec with Matchers {
 
   def buildPipeline(buffs: Seq[ByteBuffer]): MsgCodec = {
     val head = new SeqHead(buffs)
-    val b = new RootBuilder(head, head)
     val c = new MsgCodec
-    b.append(c)
+    val b = new LeafBuilder(c)
+    b.base(head)
     c
   }
 

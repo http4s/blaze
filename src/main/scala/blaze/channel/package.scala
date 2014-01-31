@@ -1,7 +1,7 @@
 package blaze
 
 import java.nio.ByteBuffer
-import blaze.pipeline.{LeafBuilder, RootBuilder, HeadStage}
+import blaze.pipeline.LeafBuilder
 
 /**
  * @author Bryce Anderson

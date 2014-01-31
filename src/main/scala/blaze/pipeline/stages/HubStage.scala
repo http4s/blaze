@@ -1,6 +1,6 @@
 package blaze.pipeline.stages
 
-import blaze.pipeline.{TailStage, HeadStage, RootBuilder, BaseStage}
+import blaze.pipeline.{LeafBuilder, TailStage, HeadStage}
 import java.util.concurrent.ConcurrentHashMap
 import scala.concurrent.{Promise, Future}
 import blaze.pipeline.Command._
@@ -11,7 +11,7 @@ import java.nio.channels.NotYetConnectedException
  *         Created on 1/25/14
  */
 
-abstract class HubStage[I, O, K](nodeBuilder: RootBuilder[O, O] => HeadStage[O]) extends TailStage[I] {
+abstract class HubStage[I, O, K](nodeBuilder: () => LeafBuilder[O]) extends TailStage[I] {
 
   def name: String = "HubStage"
 
@@ -47,12 +47,12 @@ abstract class HubStage[I, O, K](nodeBuilder: RootBuilder[O, O] => HeadStage[O])
     */
   protected def makeNode(key: K): NodeHead = nodeMap.synchronized {
     val hub = newHead(key)
-    nodeBuilder(new RootBuilder(hub, hub))
+    nodeBuilder().base(hub)
     val old = nodeMap.put(key, hub)
 
     if (old != null) {
       logger.warn(s"New Node $old with key $key created which replaced an existing Node")
-      old.inboundCommand(Shutdown)
+      old
     }
 
     hub
@@ -60,7 +60,7 @@ abstract class HubStage[I, O, K](nodeBuilder: RootBuilder[O, O] => HeadStage[O])
 
   final protected def makeAndInitNode(key: K): NodeHead = {
     val node = makeNode(key)
-    node.inboundCommand(Connected)
+    node.stageStartup()
     node
   }
 
@@ -78,13 +78,13 @@ abstract class HubStage[I, O, K](nodeBuilder: RootBuilder[O, O] => HeadStage[O])
 
   final protected def sendNodeCommand(key: K, cmd: Command) {
     val hub = nodeMap.get(key)
-    if (hub != null) hub.inboundCommand(cmd)
+    if (hub != null) hub.sendInboundCommand(cmd)
     else logger.warn(s"Sent command $cmd to non-existent node with key $key")
   }
   
   protected def removeNode(key: K): Unit = nodeMap.synchronized {
     val node = nodeMap.remove(key)
-    if (node != null) node.inboundCommand(Shutdown)
+    if (node != null) node.sendInboundCommand(Shutdown)
     else logger.warn(s"Tried to remove non-existent node with key $key")
   }
 
@@ -150,10 +150,10 @@ abstract class HubStage[I, O, K](nodeBuilder: RootBuilder[O, O] => HeadStage[O])
 
     override def outboundCommand(cmd: Command): Unit = onNodeCommand(key, cmd)
 
-    override protected def stageStartup(): Unit = {
+    override def stageStartup(): Unit = {
       connected = true
       initialized = true
-      super.stageStartup()
+      sendInboundCommand(Connected)
     }
 
     override protected def stageShutdown(): Unit = {

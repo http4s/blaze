@@ -51,9 +51,9 @@ class PipelineSpec extends WordSpec with Matchers {
       val head = new IntHead
       val tail = new StringEnd
 
-      val p = PipelineBuilder(head)
-      p.append(new IntToString)
-        .cap(tail)
+      val p = LeafBuilder(tail)
+      p.prepend(new IntToString)
+        .base(head)
 
       val r = tail.channelRead()
       Await.result(r, 1.second) should equal("54")
@@ -74,10 +74,14 @@ class PipelineSpec extends WordSpec with Matchers {
       }
 
       val noop = new Noop
-      val p = PipelineBuilder(new IntHead)
-                  .append(noop)
-                  .append(new IntToString)
-                  .cap(new StringEnd)
+//      val p = PipelineBuilder(new IntHead)
+//                  .append(noop)
+//                  .append(new IntToString)
+//                  .cap(new StringEnd)
+      val p = LeafBuilder(new StringEnd)
+                        .prepend(new IntToString)
+                        .prepend(noop)
+                        .base(new IntHead)
 
       p.findInboundStage(classOf[Noop]).get should equal(noop)
       p.findInboundStage(noop.name).get should equal(noop)

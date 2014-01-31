@@ -3,9 +3,12 @@ package blaze.pipeline.stages
 import org.scalatest.{Matchers, WordSpec}
 import blaze.pipeline.Command._
 import scala.concurrent.Future
-import blaze.pipeline.{TailStage, BaseStage, RootBuilder, HeadStage}
-import scala.util.{Failure, Success}
+import blaze.pipeline._
 import blaze.util.Execution
+import scala.util.Failure
+import scala.Some
+import scala.util.Success
+import blaze.pipeline.Command.Command
 
 
 /**
@@ -22,9 +25,10 @@ class HubStageSpec extends WordSpec with Matchers {
 
   val msgs = Msg(1, "one")::Msg(2, "two")::Nil
 
-  class TestHubStage(builder: RootBuilder[Msg, Msg] => HeadStage[Msg]) extends HubStage[Msg, Msg, Int](builder) {
+  class TestHubStage(builder: () => LeafBuilder[Msg]) extends HubStage[Msg, Msg, Int](builder) {
 
     override protected def stageStartup(): Unit = {
+      println("@@@@@@@@@@@@@@@@@@@@@@ HubStage startup")
       super.stageStartup()
       reqLoop()
     }
@@ -67,6 +71,7 @@ class HubStageSpec extends WordSpec with Matchers {
     def name: String = "EchoTest"
 
     override protected def stageStartup(): Unit = {
+      println("STARTING %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%")
       readLoop()
     }
 
@@ -79,16 +84,16 @@ class HubStageSpec extends WordSpec with Matchers {
     }
   }
 
-  def nodeBuilder(r: RootBuilder[Msg, Msg]): HeadStage[Msg] = r.cap(new Echo)
+  def nodeBuilder(): LeafBuilder[Msg] = LeafBuilder(new Echo)
 
-  def rootBuilder(r: RootBuilder[Msg, Msg]): HeadStage[Msg] = r.cap(new TestHubStage(nodeBuilder))
+    def rootBuilder(): LeafBuilder[Msg] = LeafBuilder(new TestHubStage(nodeBuilder))
 
   "HubStage" should {
     "Initialize" in {
       val h = new SeqHead(msgs)
-      val rb = new RootBuilder(h, h)
 
-      rootBuilder(rb)
+      rootBuilder().base(h)
+
       h.inboundCommand(Connected)
       h.inboundCommand(Shutdown)
       // All the business should have finished because it was done using the directec

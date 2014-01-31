@@ -1,7 +1,7 @@
 package blaze.pipeline.stages
 
 import java.nio.ByteBuffer
-import blaze.pipeline.{LeafBuilder, BaseStage}
+import blaze.pipeline.LeafBuilder
 import blaze.pipeline.stages.http.websocket.WebSocketDecoder.WebSocketFrame
 
 import java.nio.charset.StandardCharsets.UTF_8

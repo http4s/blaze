@@ -7,7 +7,7 @@ import java.nio.channels.{AsynchronousServerSocketChannel,
                           AsynchronousChannelGroup}
 
 import scala.annotation.tailrec
-import blaze.pipeline.{LeafBuilder, PipelineBuilder, RootBuilder}
+import blaze.pipeline.LeafBuilder
 import java.nio.ByteBuffer
 import com.typesafe.scalalogging.slf4j.Logging
 import java.util.Date
@@ -48,7 +48,7 @@ class NIO2ServerChannelFactory(pipeFactory: () => LeafBuilder[ByteBuffer], group
           }
           else {
             logger.trace(s"Connection to ${ch.getRemoteAddress} accepted at ${new Date}")
-            pipeFactory().base(new ByteBufferHead(ch)).inboundCommand(Connected)
+            pipeFactory().base(new ByteBufferHead(ch)).sendInboundCommand(Connected)
           }
 
         } catch {

@@ -2,14 +2,9 @@ package blaze.pipeline.stages.http.websocket
 
 import org.scalatest.{Matchers, WordSpec}
 import java.nio.ByteBuffer
-import blaze.pipeline.{BaseStage, RootBuilder}
-
-import scala.concurrent.Await
-import scala.concurrent.duration._
 
 import java.nio.charset.StandardCharsets.UTF_8
 import blaze.pipeline.stages.http.websocket.WebSocketDecoder._
-import blaze.pipeline.stages.SeqHead
 
 
 /**

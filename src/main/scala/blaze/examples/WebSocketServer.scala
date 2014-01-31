@@ -6,7 +6,7 @@ import java.net.InetSocketAddress
 import blaze.pipeline.stages.http.{WSResponse, HttpResponse, Response, HttpStage}
 import java.nio.ByteBuffer
 import scala.concurrent.Future
-import blaze.pipeline.{LeafBuilder, Command, BaseStage}
+import blaze.pipeline.{LeafBuilder, Command}
 import blaze.pipeline.stages.http.websocket.WebSocketDecoder._
 import scala.util.{Failure, Success}
 import blaze.pipeline.stages.http.websocket.{ServerHandshaker, WSStage}
