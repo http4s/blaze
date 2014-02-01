@@ -17,7 +17,7 @@ object ApplicationBuild extends Build {
     libraryDependencies += npn_api,
     libraryDependencies += npn_boot,
 
-    mainClass in Revolver.reStart := Some("blaze.examples.spdy.SpdyServer"),
+    mainClass in Revolver.reStart := Some("blaze.examples.NIO1HttpServer"),
     fork := true,
 //    javaOptions in run += "-Djavax.net.debug=all",
 
@@ -47,9 +47,13 @@ object ApplicationBuild extends Build {
    lazy val scalaloggingSlf4j   = "com.typesafe"   %% "scalalogging-slf4j" % "1.0.1"
    lazy val logbackClassic      = "ch.qos.logback" %  "logback-classic"    % "1.0.9"
    
-   lazy val http4score = ProjectRef(file("../http4s"), "core")
-   lazy val http4sdsl = ProjectRef(file("../http4s"), "dsl")
+   lazy val http4score = ProjectRef(uri("git://github.com/http4s/http4s.git"), "core")
+   lazy val http4sdsl = ProjectRef(uri("git://github.com/http4s/http4s.git"), "dsl")
 
+
+  // Needed for Spdy Support. Perhaps it should be a sub-project?
+  // Interesting note: Http2.0 will use the TSLALPN extension which, unfortunately,
+  // is also not implemented in java SSL yet.
   lazy val npn_api             = "org.eclipse.jetty.npn"     % "npn-api"  % npn_version
   lazy val npn_boot            = "org.mortbay.jetty.npn"     % "npn-boot" % npn_version
 
