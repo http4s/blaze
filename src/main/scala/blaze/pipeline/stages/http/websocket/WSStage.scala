@@ -4,7 +4,6 @@ import blaze.pipeline._
 import blaze.pipeline.stages.http.websocket.WebSocketDecoder.WebSocketFrame
 import blaze.util.Execution.trampoline
 
-import scala.util.{Failure, Success}
 import blaze.pipeline.stages.SerializingStage
 import scala.util.Failure
 import scala.util.Success
@@ -30,12 +29,12 @@ trait WSStage extends TailStage[WebSocketFrame] {
         }
         catch {case t: Throwable =>
           logger.error("WSStage onMessage threw exception. Shutting down.", t)
-          sendOutboundCommand(Command.Shutdown)
+          sendOutboundCommand(Command.Disconnect)
         }
 
       case Failure(t) =>
         logger.error("error on Websocket read loop", t)
-        sendOutboundCommand(Command.Shutdown)
+        sendOutboundCommand(Command.Disconnect)
     }(trampoline)
   }
 
@@ -47,6 +46,6 @@ trait WSStage extends TailStage[WebSocketFrame] {
 
 object WSStage {
   def bufferingSegment(stage: WSStage): LeafBuilder[WebSocketFrame] = {
-    PipelineBuilder(new SerializingStage[WebSocketFrame]).cap(stage)
+    TrunkBuilder(new SerializingStage[WebSocketFrame]).cap(stage)
   }
 }

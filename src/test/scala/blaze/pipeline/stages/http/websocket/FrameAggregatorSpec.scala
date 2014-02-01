@@ -3,7 +3,7 @@ package blaze.pipeline.stages.http.websocket
 import org.scalatest.{Matchers, WordSpec}
 
 import blaze.pipeline.stages.http.websocket.WebSocketDecoder._
-import blaze.pipeline.{TailStage, PipelineBuilder}
+import blaze.pipeline.{TrunkBuilder, TailStage}
 import blaze.pipeline.stages.SeqHead
 
 import scala.concurrent.Await
@@ -21,7 +21,7 @@ class FrameAggregatorSpec extends WordSpec with Matchers {
       def name: String = "gatherer"
     }
 
-    PipelineBuilder(new WSFrameAggregator).cap(h).base(new SeqHead(frames))
+    TrunkBuilder(new WSFrameAggregator).cap(h).base(new SeqHead(frames))
 
     def next = Await.result(h.channelRead(), 2.seconds)
   }

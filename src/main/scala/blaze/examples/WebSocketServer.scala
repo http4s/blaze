@@ -51,7 +51,7 @@ class SocketStage extends WSStage {
       channelWrite(Text("You sent: " + msg))
       channelWrite(Text("this is a second message which will get queued safely!"))
 
-    case Close(_) => sendOutboundCommand(Command.Shutdown)
+    case Close(_) => sendOutboundCommand(Command.Disconnect)
 
   }
 

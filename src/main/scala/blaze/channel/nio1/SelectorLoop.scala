@@ -169,7 +169,7 @@ final class SelectorLoop(selector: Selector, bufferSize: Int) extends Thread("Se
           // construct the pipeline
           builder().base(head)
 
-          head.inboundCommand(Command.Connected)
+          head.inboundCommand(Command.Connect)
           logger.trace("Started channel.")
         } catch { case e: Throwable => logger.error("Caught error during channel init.", e) }
       }

@@ -8,17 +8,18 @@ import scala.util.control.NoStackTrace
  *         Created on 1/4/14
  */
 object Command {
+
   trait Command
 
-  case object Connected extends Command
+  case object Connect extends Command
 
-  case object Shutdown extends Command
+  case object Disconnect extends Command
 
   case object Flush extends Command
 
-  case object EOF extends Exception with Command with NoStackTrace {
-    override def toString() = "EOF"
+  case object EOF extends Exception("EOF") with Command with NoStackTrace {
+    override def toString() = getMessage
   }
 
-  case class Error(e: Throwable) extends Command
+  case class Error(e: Throwable) extends Exception(e) with Command
 }

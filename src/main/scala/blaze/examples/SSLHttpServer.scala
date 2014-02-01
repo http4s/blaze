@@ -9,7 +9,7 @@ import javax.net.ssl.{KeyManagerFactory, SSLContext}
 import java.security.KeyStore
 import blaze.util.BogusKeystore
 import blaze.channel.nio2.NIO2ServerChannelFactory
-import blaze.pipeline.{PipelineBuilder, LeafBuilder}
+import blaze.pipeline.TrunkBuilder
 
 /**
  * @author Bryce Anderson
@@ -36,7 +36,7 @@ class SSLHttpServer(port: Int) {
     val eng = sslContext.createSSLEngine()
     eng.setUseClientMode(false)
 
-    PipelineBuilder(new SSLStage(eng)).cap(new ExampleHttpStage(10*1024))
+    TrunkBuilder(new SSLStage(eng)).cap(new ExampleHttpStage(10*1024))
   }
 
   val group = AsynchronousChannelGroup.withFixedThreadPool(10, java.util.concurrent.Executors.defaultThreadFactory())

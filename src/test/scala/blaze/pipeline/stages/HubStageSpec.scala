@@ -61,7 +61,7 @@ class HubStageSpec extends WordSpec with Matchers {
     protected def onNodeCommand(key: Int, cmd: Command): Unit = {
       logger.trace(s"Received command $cmd")
       cmd match {
-        case Shutdown => removeNode(key)
+        case Disconnect => removeNode(key)
         case _ => sendOutboundCommand(cmd)
       }
     }
@@ -94,8 +94,8 @@ class HubStageSpec extends WordSpec with Matchers {
 
       rootBuilder().base(h)
 
-      h.inboundCommand(Connected)
-      h.inboundCommand(Shutdown)
+      h.inboundCommand(Connect)
+      h.inboundCommand(Disconnect)
       // All the business should have finished because it was done using the directec
 
       h.results should equal(Vector(Msg(1, "Echoing: one"), Msg(2, "Echoing: two")))

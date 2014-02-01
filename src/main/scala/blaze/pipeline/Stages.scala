@@ -24,6 +24,9 @@ import blaze.util.Execution.directec
  *                 /      \  /       \
  *     HeadStage[O]   MidStage[I,O]   TailStage[I]    // Fundamental stage traits
  *
+ *       -------------- Inbound -------------->
+ *       < ------------ Outbound --------------
+ *
  *
  */
 
@@ -40,8 +43,8 @@ sealed trait Stage extends Logging {
     * @param cmd a command originating from the channel
     */
   def inboundCommand(cmd: Command): Unit = cmd match {
-    case Connected => stageStartup()
-    case Shutdown  => stageShutdown()
+    case Connect => stageStartup()
+    case Disconnect  => stageShutdown()
     case _         => // NOOP
   }
 }
@@ -101,22 +104,25 @@ sealed trait Tail[I] extends Stage {
   }
 
   final def replaceInline(leafBuilder: LeafBuilder[I]): this.type = {
-    replaceInline(leafBuilder.leaf)
-  }
-
-  final def replaceInline(stage: Tail[I]): this.type = {
     stageShutdown()
 
-    stage._prevStage = this._prevStage
-    this._prevStage._nextStage = stage
-
-    // remove my links to other stages
-    this._prevStage = null
     this match {
-      case m: MidStage[_, _] => m._nextStage = null
+      case m: MidStage[_, _] =>
+        m.sendInboundCommand(Command.Disconnect)
+        m._nextStage = null
+
       case _ => // NOOP
     }
-    stage.inboundCommand(Command.Connected)
+
+    val prev = this._prevStage
+    this._prevStage._nextStage = null
+    this._prevStage = null
+
+    prev match {
+      case m: MidStage[_, I] => leafBuilder.prepend(m)
+      case h: HeadStage[I] => leafBuilder.base(h)
+    }
+
     this
   }
 }
@@ -152,8 +158,8 @@ sealed trait Head[O] extends Stage {
   }
 
   def outboundCommand(cmd: Command): Unit = cmd match {
-    case Connected => stageStartup()
-    case Shutdown  => stageShutdown()
+    case Connect => stageStartup()
+    case Disconnect  => stageShutdown()
     case _         => // NOOP
   }
 
@@ -204,9 +210,7 @@ trait MidStage[I, O] extends Tail[I] with Head[O] {
     this
   }
 
-  final def replaceNext(stage: Tail[O]): Tail[O] = {
-    _nextStage.replaceInline(stage)
-  }
+  final def replaceNext(stage: LeafBuilder[O]): Tail[O] = _nextStage.replaceInline(stage)
 
   final def removeStage(implicit ev: MidStage[I,O] =:= MidStage[I, I]): this.type = {
     stageShutdown()

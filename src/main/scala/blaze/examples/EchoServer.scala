@@ -1,7 +1,7 @@
 package blaze
 package examples
 
-import blaze.pipeline.{PipelineBuilder, TailStage}
+import blaze.pipeline.TailStage
 import java.nio.ByteBuffer
 import scala.util.{Failure, Success}
 import blaze.channel.{BufferPipeline, ServerChannel}
@@ -23,7 +23,7 @@ import blaze.channel.nio2.NIO2ServerChannelFactory
 class EchoServer extends Logging {
 
   def prepare(address: InetSocketAddress): ServerChannel = {
-    val f: BufferPipeline = () => PipelineBuilder(new EchoStage)
+    val f: BufferPipeline = () => new EchoStage
 
     val factory = new NIO2ServerChannelFactory(f)
     factory.bind(address)

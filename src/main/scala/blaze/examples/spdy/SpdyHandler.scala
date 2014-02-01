@@ -56,7 +56,7 @@ class SpdyHandler(eng: SSLEngine) extends TailStage[SpdyFrame] {
 
       case Failure(t) =>
         logger.error("Stream failure. Shutting down", t)
-        sendOutboundCommand(Command.Shutdown)
+        sendOutboundCommand(Command.Disconnect)
         stageShutdown()
     }
   }

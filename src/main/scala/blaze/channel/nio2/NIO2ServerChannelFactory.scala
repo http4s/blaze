@@ -12,7 +12,7 @@ import java.nio.ByteBuffer
 import com.typesafe.scalalogging.slf4j.Logging
 import java.util.Date
 import blaze.channel._
-import blaze.pipeline.Command.Connected
+import blaze.pipeline.Command.Connect
 
 
 /**
@@ -48,7 +48,7 @@ class NIO2ServerChannelFactory(pipeFactory: () => LeafBuilder[ByteBuffer], group
           }
           else {
             logger.trace(s"Connection to ${ch.getRemoteAddress} accepted at ${new Date}")
-            pipeFactory().base(new ByteBufferHead(ch)).sendInboundCommand(Connected)
+            pipeFactory().base(new ByteBufferHead(ch)).sendInboundCommand(Connect)
           }
 
         } catch {

@@ -68,12 +68,12 @@ abstract class HttpStage(maxReqBody: Int) extends Http1Parser with TailStage[Byt
               val hdrs = headers.result()
               headers.clear()
               runRequest(b, hdrs)
-            case Failure(t) => sendOutboundCommand(Cmd.Shutdown)
+            case Failure(t) => sendOutboundCommand(Cmd.Disconnect)
           }
         }
-        catch { case t: Throwable   => sendOutboundCommand(Cmd.Shutdown) }
+        catch { case t: Throwable   => sendOutboundCommand(Cmd.Disconnect) }
 
-      case Failure(Cmd.EOF)    => sendOutboundCommand(Cmd.Shutdown)
+      case Failure(Cmd.EOF)    => sendOutboundCommand(Cmd.Disconnect)
       case Failure(t)          =>
         stageShutdown()
         sendOutboundCommand(Cmd.Error(t))
@@ -96,13 +96,13 @@ abstract class HttpStage(maxReqBody: Int) extends Http1Parser with TailStage[Byt
       case WSResponse(stage) => handleWebSocket(reqHeaders, stage)
     }.onComplete {       // See if we should restart the loop
       case Success(Reload)          => resetStage(); requestLoop()
-      case Success(Close)           => sendOutboundCommand(Cmd.Shutdown)
+      case Success(Close)           => sendOutboundCommand(Cmd.Disconnect)
       case Success(Upgrade)         => // NOOP don't need to do anything
       case Failure(t: BadRequest)   => badRequest(t)
-      case Failure(t)               => sendOutboundCommand(Cmd.Shutdown)
+      case Failure(t)               => sendOutboundCommand(Cmd.Disconnect)
       case Success(other) =>
         logger.error("Shouldn't get here: " + other)
-        sendOutboundCommand(Cmd.Shutdown)
+        sendOutboundCommand(Cmd.Disconnect)
     }
   }
 
@@ -159,7 +159,7 @@ abstract class HttpStage(maxReqBody: Int) extends Http1Parser with TailStage[Byt
       .append(' ').append("Bad Request").append('\r').append('\n').append('\r').append('\n')
 
     channelWrite(ByteBuffer.wrap(sb.result().getBytes(ASCII)))
-      .onComplete(_ => sendOutboundCommand(Cmd.Shutdown))
+      .onComplete(_ => sendOutboundCommand(Cmd.Disconnect))
   }
 
   private def renderHeaders(sb: StringBuilder, headers: Traversable[(String, String)], length: Int) {

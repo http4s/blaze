@@ -32,8 +32,8 @@ abstract class HubStage[I, O, K](nodeBuilder: () => LeafBuilder[O]) extends Tail
   protected def newHead(key: K): NodeHead = new NodeHead(key)
 
   override def inboundCommand(cmd: Command): Unit = cmd match{
-    case Connected => stageStartup()
-    case Shutdown => stageShutdown()
+    case Connect => stageStartup()
+    case Disconnect => stageShutdown()
     case _ => nodeMap.synchronized {
       val keys = nodeMap.keys()
       while(keys.hasMoreElements) sendNodeCommand(keys.nextElement(), cmd)
@@ -84,7 +84,7 @@ abstract class HubStage[I, O, K](nodeBuilder: () => LeafBuilder[O]) extends Tail
   
   protected def removeNode(key: K): Unit = nodeMap.synchronized {
     val node = nodeMap.remove(key)
-    if (node != null) node.sendInboundCommand(Shutdown)
+    if (node != null) node.sendInboundCommand(Disconnect)
     else logger.warn(s"Tried to remove non-existent node with key $key")
   }
 
@@ -153,7 +153,7 @@ abstract class HubStage[I, O, K](nodeBuilder: () => LeafBuilder[O]) extends Tail
     override def stageStartup(): Unit = {
       connected = true
       initialized = true
-      sendInboundCommand(Connected)
+      sendInboundCommand(Connect)
     }
 
     override protected def stageShutdown(): Unit = {

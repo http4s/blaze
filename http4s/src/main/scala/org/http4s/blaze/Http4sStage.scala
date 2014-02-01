@@ -153,7 +153,7 @@ class Http4sStage(route: HttpService) extends Http1Parser with BaseStage[ByteBuf
 
   private def closeConnection() {
     stageShutdown()
-    sendOutboundCommand(Cmd.Shutdown)
+    sendOutboundCommand(Cmd.Disconnect)
   }
 
 
