@@ -19,7 +19,7 @@ object ApplicationBuild extends Build {
 
     mainClass in Revolver.reStart := Some("blaze.examples.NIO1HttpServer"),
     fork := true,
-//    javaOptions in run += "-Djavax.net.debug=all",
+//    javaOptions in run += "-Djavax.net.debug=all",    // SSL Debugging
 
       // Adds NPN to the boot classpath for Spdy support
     javaOptions in run <++= (managedClasspath in Runtime) map { attList =>
@@ -34,7 +34,7 @@ object ApplicationBuild extends Build {
   lazy val main = Project("blaze",
                     new File("."),
                     settings = buildSettings
-    )
+                  )
     
   lazy val http4s = Project("http4s",
                       new File("http4s"),
