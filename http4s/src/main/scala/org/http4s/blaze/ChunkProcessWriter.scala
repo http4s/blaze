@@ -4,8 +4,8 @@ import java.nio.ByteBuffer
 import blaze.pipeline.TailStage
 import scala.concurrent.{Future, ExecutionContext}
 import org.http4s.{TrailerChunk, BodyChunk}
-import com.typesafe.scalalogging.slf4j.Logging
 import java.nio.charset.Charset
+import org.http4s.util.StringWriter
 
 /**
  * @author Bryce Anderson
@@ -16,37 +16,58 @@ final class ChunkProcessWriter(private var buffer: ByteBuffer, pipe: TailStage[B
 
   import ChunkProcessWriter._
 
-  private val CRLFBytes = "\r\n".getBytes(ASCII)
-
   private def CRLF = ByteBuffer.wrap(CRLFBytes).asReadOnlyBuffer()
 
   private val lengthBuffer = ByteBuffer.allocate(15)    // Should be enough
+
+
+
+  protected def writeBodyChunk(chunk: BodyChunk, flush: Boolean): Future[Any] = {
+    pipe.channelWrite(encodeChunk(chunk, Nil))
+  }
+
+
+  protected def writeEnd(chunk: BodyChunk, t: Option[TrailerChunk]): Future[Any] = {
+    println(s"Writing last chunk: $chunk, $t")
+    val tailbuffer = t match {
+      case Some(t) =>
+        val rr = new StringWriter(256)
+        rr ~ '0' ~ '\r' ~ '\n'             // Last chunk
+        t.headers.foreach( h =>  rr ~ h.name.toString ~ ": " ~ h ~ '\r' ~ '\n')   // trailers
+        rr ~ '\r' ~ '\n'          // end of chunks
+        ByteBuffer.wrap(rr.result().getBytes(ASCII))
+
+      case None => ByteBuffer.wrap(ChunkEndBytes)
+    }
+
+    val all = if (!chunk.isEmpty) encodeChunk(chunk, tailbuffer::Nil) else tailbuffer::Nil
+    pipe.channelWrite(all)
+  }
 
   private def writeLength(buffer: ByteBuffer, length: Int) {
     buffer.put(Integer.toHexString(length).getBytes(ASCII)).put(CRLFBytes)
   }
 
-  protected def writeBodyChunk(chunk: BodyChunk, flush: Boolean): Future[Any] = {
+  private def encodeChunk(chunk: BodyChunk, last: List[ByteBuffer]): List[ByteBuffer] = {
     lengthBuffer.clear()
     writeLength(lengthBuffer, chunk.length)
+    lengthBuffer.flip()
+
     val c = ByteBuffer.wrap(chunk.toArray)
 
-    val list = lengthBuffer::c::CRLF::Nil
+    val list = lengthBuffer::c::CRLF::last
 
     if (buffer != null) {
+      println("Writing very first chunk!")
       val i = buffer
       buffer = null
-      pipe.channelWrite(i::list)
-    }
-    else pipe.channelWrite(list)
-  }
-
-
-  protected def writeEnd(chunk: BodyChunk, t: Option[TrailerChunk]): Future[Any] = {
-    writeBodyChunk(chunk, true)
+      i::list
+    } else list
   }
 }
 
 object ChunkProcessWriter {
   val ASCII = Charset.forName("US-ASCII")
+  private val CRLFBytes = "\r\n".getBytes(ASCII)
+  private val ChunkEndBytes = "0\r\n\r\n".getBytes(ASCII)
 }

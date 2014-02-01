@@ -17,6 +17,8 @@ import Process._
 import scalaz.{\/-, -\/}
 import org.http4s.util.StringWriter
 import org.http4s.Status.{InternalServerError, NotFound}
+import java.nio.charset.StandardCharsets
+import org.http4s.Header.`Content-Length`
 
 /**
  * @author Bryce Anderson
@@ -74,11 +76,9 @@ class Http4sStage(route: HttpService) extends Http1Parser with TailStage[ByteBuf
   private def runRequest(buffer: ByteBuffer): Unit = {
     val h = HeaderCollection(headers.result())
     headers.clear()
-    
-    val connectionHeader = Header.Connection.from(h)
 
     // Do we expect a body?
-    val body = mkBody(buffer)
+    val body = collectBodyFromParser(buffer)
 
     val req = Request(Method.resolve(this.method),
                       Uri.fromString(this.uri),
@@ -93,60 +93,88 @@ class Http4sStage(route: HttpService) extends Http1Parser with TailStage[ByteBuf
     }
 
     result.runAsync {
-      case \/-(resp) =>
-        val rr = new StringWriter(512)
-        rr ~ req.protocol.value.toString ~ ' ' ~ resp.status.code ~ ' ' ~ resp.status.reason ~ '\r' ~ '\n'
-
-        var closeOnFinish = minor == 0
-
-        resp.headers.foreach( header => rr ~ header.name.toString ~ ": " ~ header ~ '\r' ~ '\n' )
-      
-        // Should we add a keepalive header?
-        connectionHeader.map{ h =>
-          if (h.values.head.equalsIgnoreCase("Keep-Alive")) {
-            logger.trace("Found Keep-Alive header")
-            closeOnFinish = false
-            rr ~ Header.Connection.name.toString ~ ':' ~ "Keep-Alive" ~ '\r' ~ '\n'
-          } else if (h.values.head.equalsIgnoreCase("close")) closeOnFinish = true
-          else sys.error("Unknown Connection header")
-        }
-      
-        rr ~ '\r' ~ '\n'
-      
-        val b = ByteBuffer.wrap(rr.result().getBytes("US-ASCII"))
-
-        // Write the headers and then start writing the body
-        val bodyEncoder = {
-          if (minor == 0) {
-            val length = Header.`Content-Length`.from(resp.headers).map(_.length).getOrElse(-1)
-            new StaticWriter(b, length, this)
-          } else {
-            Header.`Transfer-Encoding`.from(resp.headers).map{ h =>
-              if (h.values.head != TransferCoding.chunked) sys.error("Unknown transfer encoding")
-              new ChunkProcessWriter(b, this)
-            }.orElse(Header.`Content-Length`.from(resp.headers).map{ c => new StaticWriter(b, c.length, this)})
-              .getOrElse(new ChunkProcessWriter(b, this))
-          }
-        }
-
-        bodyEncoder.writeProcess(resp.body).runAsync {
-          case \/-(_) =>
-            if (closeOnFinish) {
-              closeConnection()
-              logger.trace("Request/route requested closing connection.")
-            }
-            else {
-              reset()
-              requestLoop()
-            }  // Serve another connection
-
-
-          case -\/(t) => logger.error("Error writing body", t)
-        }
+      case \/-(resp) => renderResponse(req, resp)
 
       case -\/(t) =>
         logger.error("Error running route", t)
         closeConnection() // TODO: We need to deal with these errors properly
+    }
+  }
+
+  private def renderResponse(req: Request, resp: Response) {
+    val rr = new StringWriter(512)
+    rr ~ req.protocol.value.toString ~ ' ' ~ resp.status.code ~ ' ' ~ resp.status.reason ~ '\r' ~ '\n'
+
+    var closeOnFinish = minor == 0
+
+    resp.headers.foreach( header => rr ~ header.name.toString ~ ": " ~ header ~ '\r' ~ '\n' )
+
+    val connectionHeader = Header.Connection.from(req.headers)
+    val lengthHeader = `Content-Length`.from(resp.headers)
+
+    // Should we add a keep-alive header?
+    connectionHeader.map{ h =>
+      if (h.values.head.equalsIgnoreCase("Keep-Alive")) {
+        logger.trace("Found Keep-Alive header")
+
+        // Only add keep-alive header if we are http1.1 or we have a known length
+        if (minor != 0 || lengthHeader.isDefined) {
+          closeOnFinish = false
+          rr ~ Header.Connection.name.toString ~ ':' ~ "Keep-Alive" ~ '\r' ~ '\n'
+        }
+
+      } else if (h.values.head.equalsIgnoreCase("close")) closeOnFinish = true
+      else sys.error("Unknown Connection header")
+    }
+
+    // choose a body encoder. Will add a Transfer-Encoding header if necessary
+    val bodyEncoder = chooseEncoder(rr, resp, lengthHeader)
+
+    bodyEncoder.writeProcess(resp.body).runAsync {
+      case \/-(_) =>
+        if (closeOnFinish) {
+          closeConnection()
+          logger.trace("Request/route requested closing connection.")
+        }
+        else {
+          reset()
+          requestLoop()
+        }  // Serve another connection
+
+
+      case -\/(t) => logger.error("Error writing body", t)
+    }
+
+  }
+
+  private def chooseEncoder(rr: StringWriter, resp: Response, lengthHeader: Option[`Content-Length`]): ProcessWriter = {
+    if (minor == 0) {        // we are replying to a HTTP 1.0 request. Only do StaticWriters
+      val length = lengthHeader.map(_.length).getOrElse(-1)
+      rr ~ '\r' ~ '\n'
+      val b = ByteBuffer.wrap(rr.result().getBytes(StandardCharsets.US_ASCII))
+      new StaticWriter(b, length, this)
+    }
+    else {                 // HTTP 1.1 request, can do chunked
+      Header.`Transfer-Encoding`.from(resp.headers) match {
+        case Some(h) =>
+        if (h.values.head != TransferCoding.chunked) sys.error("Unknown transfer encoding")
+        rr ~ '\r' ~ '\n'
+        val b = ByteBuffer.wrap(rr.result().getBytes(StandardCharsets.US_ASCII))
+        new ChunkProcessWriter(b, this)
+
+        case None =>     // Transfer-Encoding not set
+          lengthHeader match {
+            case Some(c) =>
+              rr ~ '\r' ~ '\n'
+              val b = ByteBuffer.wrap(rr.result().getBytes(StandardCharsets.US_ASCII))
+              new StaticWriter(b, c.length, this)
+
+            case None =>    // Need to write the Transfer-Encoding Header and go
+              rr ~ "Transfer-Encoding: chunked\r\n\r\n"
+              val b = ByteBuffer.wrap(rr.result().getBytes(StandardCharsets.US_ASCII))
+              new ChunkProcessWriter(b, this)
+          }
+      }
     }
   }
 
@@ -155,8 +183,8 @@ class Http4sStage(route: HttpService) extends Http1Parser with TailStage[ByteBuf
     sendOutboundCommand(Cmd.Disconnect)
   }
 
-
-  private def mkBody(buffer: ByteBuffer): HttpBody = {
+  // TODO: what should be the behavior for determining if we have some body coming?
+  private def collectBodyFromParser(buffer: ByteBuffer): HttpBody = {
     if (contentComplete()) return HttpBody.empty
 
     var currentbuffer = buffer.asReadOnlyBuffer()
@@ -207,6 +235,7 @@ class Http4sStage(route: HttpService) extends Http1Parser with TailStage[ByteBuf
     super.stageShutdown()
   }
 
+  /////////////////// Methods for the HTTP parser ///////////////////
   def headerComplete(name: String, value: String) = {
     logger.trace(s"Received header '$name: $value'")
     headers += Header(name, value)
