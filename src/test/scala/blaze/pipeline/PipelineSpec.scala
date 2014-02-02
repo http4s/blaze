@@ -6,7 +6,6 @@ import scala.concurrent.{Future, Await}
 import scala.concurrent.ExecutionContext.Implicits.global
 
 import scala.concurrent.duration._
-import blaze.pipeline.Command.EOF
 
 /**
  * @author Bryce Anderson
@@ -51,9 +50,7 @@ class PipelineSpec extends WordSpec with Matchers {
       val head = new IntHead
       val tail = new StringEnd
 
-      val p = LeafBuilder(tail)
-      p.prepend(new IntToString)
-        .base(head)
+      TrunkBuilder(new IntToString).cap(tail).base(head)
 
       val r = tail.channelRead()
       Await.result(r, 1.second) should equal("54")
@@ -74,20 +71,15 @@ class PipelineSpec extends WordSpec with Matchers {
       }
 
       val noop = new Noop
-//      val p = PipelineBuilder(new IntHead)
-//                  .append(noop)
-//                  .append(new IntToString)
-//                  .cap(new StringEnd)
-      val p = LeafBuilder(new StringEnd)
-                        .prepend(new IntToString)
-                        .prepend(noop)
-                        .base(new IntHead)
+
+      val p = TrunkBuilder(noop).append(new IntToString).cap(new StringEnd).base(new IntHead)
 
       p.findInboundStage(classOf[Noop]).get should equal(noop)
       p.findInboundStage(noop.name).get should equal(noop)
       noop.removeStage
       p.findInboundStage(classOf[Noop]).isDefined should equal(false)
     }
+
   }
 
 

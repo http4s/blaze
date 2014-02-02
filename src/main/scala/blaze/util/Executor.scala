@@ -3,6 +3,7 @@ package blaze.util
 import scala.concurrent.ExecutionContext
 import com.typesafe.scalalogging.slf4j.Logging
 import java.util
+import java.util.concurrent.{Executors, ScheduledExecutorService}
 
 /**
  * @author Bryce Anderson
@@ -52,4 +53,7 @@ object Execution extends Logging {
       throw t
     }
   }
+
+  // Should only be used for scheduling timeouts for channel writes
+  lazy val scheduler: ScheduledExecutorService = Executors.newScheduledThreadPool(1)
 }

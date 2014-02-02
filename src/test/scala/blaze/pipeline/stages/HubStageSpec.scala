@@ -28,7 +28,6 @@ class HubStageSpec extends WordSpec with Matchers {
   class TestHubStage(builder: () => LeafBuilder[Msg]) extends HubStage[Msg, Msg, Int](builder) {
 
     override protected def stageStartup(): Unit = {
-      println("@@@@@@@@@@@@@@@@@@@@@@ HubStage startup")
       super.stageStartup()
       reqLoop()
     }
@@ -71,7 +70,6 @@ class HubStageSpec extends WordSpec with Matchers {
     def name: String = "EchoTest"
 
     override protected def stageStartup(): Unit = {
-      println("STARTING %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%")
       readLoop()
     }
 

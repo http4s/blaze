@@ -2,10 +2,15 @@ package blaze.pipeline
 
 import java.util.Date
 
-import scala.concurrent.Future
+import scala.concurrent.{Promise, Future}
 import Command._
 import com.typesafe.scalalogging.slf4j.Logging
 import blaze.util.Execution.directec
+import scala.concurrent.duration.Duration
+import blaze.util.Execution
+import sun.org.mozilla.javascript.internal.Callable
+import java.util.concurrent.{TimeUnit, TimeoutException}
+import scala.util.control.NoStackTrace
 
 /**
  * @author Bryce Anderson
@@ -53,27 +58,53 @@ sealed trait Tail[I] extends Stage {
   
   private[pipeline] var _prevStage: Head[I] = null
 
-  final def channelRead(size: Int = -1): Future[I] = {
-    logger.debug(s"Stage ${getClass.getName} sending read request.")
+  final def channelRead(size: Int = -1, timeout: Duration = Duration.Inf): Future[I] = {
+    try {
+      val f = _prevStage.readRequest(size)
+      if (timeout.isFinite()) {
+        val p = Promise[I]
 
-    try _prevStage.readRequest(size)
+        p.tryCompleteWith(f)
+        scheduleTimeout(p, timeout)
+        p.future
+      }
+      else f
+    }  catch { case t: Throwable => return Future.failed(t) }
+  }
+
+  final def channelWrite(data: I): Future[Any] = channelWrite(data, Duration.Inf)
+
+  final def channelWrite(data: I, timeout: Duration): Future[Any] = {
+    logger.debug(s"Stage ${getClass.getName} sending write request with timeout $timeout")
+    try {
+      val f = _prevStage.writeRequest(data)
+      if (timeout.isFinite()) {
+        val p = Promise[Any]
+        p.tryCompleteWith(f)
+        scheduleTimeout(p, timeout)
+        p.future
+      }
+      else f
+    }
     catch { case t: Throwable => Future.failed(t) }
   }
 
-    final def channelWrite(data: I): Future[Any] = {
-      logger.debug(s"Stage ${getClass.getName} sending write request.")
+  final def channelWrite(data: Seq[I]): Future[Any] = channelWrite(data, Duration.Inf)
 
-      if (this.isInstanceOf[HeadStage[_]]) sys.error("HeadStage cannot write downstream")
+  final def channelWrite(data: Seq[I], timeout: Duration): Future[Any] = {
+    logger.debug(s"Stage ${getClass.getName} sending multiple write request with timeout $timeout")
+    try {
+      val f = _prevStage.writeRequest(data)
 
-      try _prevStage.writeRequest(data)
-      catch { case t: Throwable => Future.failed(t) }
-    }
+      if (timeout.isFinite()) {
+        val p = Promise[Any]
+        p.tryCompleteWith(f)
+        scheduleTimeout(p, timeout)
+        p.future
+      }
+      else f
+    } catch { case t: Throwable => Future.failed(t) }
 
-  final def channelWrite(data: Seq[I]): Future[Any] = {
-    logger.debug(s"Stage ${getClass.getName} sending multiple write request.")
-
-    try _prevStage.writeRequest(data)
-    catch { case t: Throwable => Future.failed(t) }
   }
 
   final def sendOutboundCommand(cmd: Command): Unit = {
@@ -124,6 +155,20 @@ sealed trait Tail[I] extends Stage {
     }
 
     this
+  }
+
+  ///////////////////////////////////////////////////////////////////
+  private def scheduleTimeout(p: Promise[_], timeout: Duration) {
+    val r = new Runnable {
+      def run() {
+        if (!p.isCompleted) {
+          val a = new TimeoutException("Read request timed out")
+          p.tryFailure(a)
+        }
+      }
+    }
+
+    Execution.scheduler.schedule(r, timeout.toNanos, TimeUnit.NANOSECONDS)
   }
 }
 
@@ -204,7 +249,8 @@ trait MidStage[I, O] extends Tail[I] with Head[O] {
   final def replaceInline(stage: MidStage[I, O]): this.type = {
     stageShutdown()
     _nextStage._prevStage = stage
-    if (!this.isInstanceOf[HeadStage[_]]) _prevStage._nextStage = stage
+    _prevStage._nextStage = stage
+
     this._nextStage = null
     this._prevStage = null
     this
