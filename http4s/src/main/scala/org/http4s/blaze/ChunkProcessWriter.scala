@@ -28,7 +28,7 @@ final class ChunkProcessWriter(private var buffer: ByteBuffer, pipe: TailStage[B
 
 
   protected def writeEnd(chunk: BodyChunk, t: Option[TrailerChunk]): Future[Any] = {
-    println(s"Writing last chunk: $chunk, $t")
+
     val tailbuffer = t match {
       case Some(t) =>
         val rr = new StringWriter(256)
@@ -58,7 +58,6 @@ final class ChunkProcessWriter(private var buffer: ByteBuffer, pipe: TailStage[B
     val list = lengthBuffer::c::CRLF::last
 
     if (buffer != null) {
-      println("Writing very first chunk!")
       val i = buffer
       buffer = null
       i::list
