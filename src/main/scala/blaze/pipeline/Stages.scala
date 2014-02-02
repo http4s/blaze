@@ -9,7 +9,7 @@ import blaze.util.Execution.directec
 import scala.concurrent.duration.Duration
 import blaze.util.Execution
 import sun.org.mozilla.javascript.internal.Callable
-import java.util.concurrent.{TimeUnit, TimeoutException}
+import java.util.concurrent.{ScheduledFuture, TimeUnit, TimeoutException}
 import scala.util.control.NoStackTrace
 
 /**
@@ -64,8 +64,7 @@ sealed trait Tail[I] extends Stage {
       if (timeout.isFinite()) {
         val p = Promise[I]
 
-        p.tryCompleteWith(f)
-        scheduleTimeout(p, timeout)
+        scheduleTimeout(p, f, timeout)
         p.future
       }
       else f
@@ -80,8 +79,7 @@ sealed trait Tail[I] extends Stage {
       val f = _prevStage.writeRequest(data)
       if (timeout.isFinite()) {
         val p = Promise[Any]
-        p.tryCompleteWith(f)
-        scheduleTimeout(p, timeout)
+        scheduleTimeout(p, f, timeout)
         p.future
       }
       else f
@@ -98,8 +96,7 @@ sealed trait Tail[I] extends Stage {
 
       if (timeout.isFinite()) {
         val p = Promise[Any]
-        p.tryCompleteWith(f)
-        scheduleTimeout(p, timeout)
+        scheduleTimeout(p, f, timeout)
         p.future
       }
       else f
@@ -158,17 +155,20 @@ sealed trait Tail[I] extends Stage {
   }
 
   ///////////////////////////////////////////////////////////////////
-  private def scheduleTimeout(p: Promise[_], timeout: Duration) {
+  private def scheduleTimeout[T](p: Promise[T], f: Future[T], timeout: Duration) {
     val r = new Runnable {
       def run() {
-        if (!p.isCompleted) {
-          val a = new TimeoutException("Read request timed out")
-          p.tryFailure(a)
-        }
+        val a = new TimeoutException("Read request timed out")
+        p.tryFailure(a)
       }
     }
 
-    Execution.scheduler.schedule(r, timeout.toNanos, TimeUnit.NANOSECONDS)
+    val ecf = Execution.scheduler.schedule(r, timeout.toNanos, TimeUnit.NANOSECONDS)
+
+    f.onComplete { t =>
+      ecf.cancel(false)
+      p.tryComplete(t)
+    }(Execution.directec)
   }
 }
 
