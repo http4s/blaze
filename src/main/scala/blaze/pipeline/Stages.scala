@@ -155,6 +155,13 @@ sealed trait Tail[I] extends Stage {
   }
 
   ///////////////////////////////////////////////////////////////////
+  /** Schedules a timeout and sets it to race against the provided future
+    * @param p Promise[T] to be completed by whichever comes first:
+    *          the timeout or resolution of the Future[T] f
+    * @param f Future the timeout is racing against
+    * @param timeout time from now which is considered a timeout
+    * @tparam T type of result expected
+    */
   private def scheduleTimeout[T](p: Promise[T], f: Future[T], timeout: Duration) {
     val r = new Runnable {
       def run() {
@@ -163,10 +170,10 @@ sealed trait Tail[I] extends Stage {
       }
     }
 
-    val ecf = Execution.scheduler.schedule(r, timeout.toNanos, TimeUnit.NANOSECONDS)
+    val ecf = Execution.scheduler.schedule(r, timeout)
 
     f.onComplete { t =>
-      ecf.cancel(false)
+      ecf.cancel()
       p.tryComplete(t)
     }(Execution.directec)
   }

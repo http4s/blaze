@@ -55,5 +55,5 @@ object Execution extends Logging {
   }
 
   // Should only be used for scheduling timeouts for channel writes
-  lazy val scheduler: ScheduledExecutorService = Executors.newScheduledThreadPool(1)
+  private[blaze] lazy val scheduler: TickWheelExecutor = new TickWheelExecutor()
 }

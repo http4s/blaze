@@ -20,7 +20,7 @@ abstract class DelayHead[I](delay: Duration) extends HeadStage[I] {
     val p = Promise[I]
     Execution.scheduler.schedule(new Runnable {
       def run() { p.trySuccess(next()) }
-    }, delay.toNanos, TimeUnit.NANOSECONDS)
+    }, delay)
     p.future
   }
 
@@ -28,7 +28,7 @@ abstract class DelayHead[I](delay: Duration) extends HeadStage[I] {
     val p = Promise[Any]
     Execution.scheduler.schedule(new Runnable {
       def run() { p.trySuccess("done") }
-    }, delay.toNanos, TimeUnit.NANOSECONDS)
+    }, delay)
     p.future
   }
 }

@@ -23,7 +23,7 @@ class StageSpec extends WordSpec with Matchers {
   
   def slowPipeline = {
     val leaf = intTail
-    LeafBuilder(leaf).base(slow(100.milli))
+    LeafBuilder(leaf).base(slow(200.milli))
     leaf
   }
   
@@ -40,17 +40,17 @@ class StageSpec extends WordSpec with Matchers {
   "Support read timeouts" in {
 
     val leaf = slowPipeline
-    a[TimeoutException] should be thrownBy Await.result(leaf.channelRead(1, 20.milli), 150.milli)
+    a[TimeoutException] should be thrownBy Await.result(leaf.channelRead(1, 100.milli), 300.milli)
 
-    Await.result(leaf.channelRead(1, 250.milli), 300.milli) should equal(1)
+    Await.result(leaf.channelRead(1, 300.milli), 400.milli) should equal(1)
   }
   
   "Support write timeouts" in {
 
     val leaf = slowPipeline
-    a[TimeoutException] should be thrownBy Await.result(leaf.channelWrite(1, 20.milli), 150.milli)
+    a[TimeoutException] should be thrownBy Await.result(leaf.channelWrite(1, 100.milli), 300.milli)
 
-    Await.result(leaf.channelWrite(1, 250.milli), 300.milli) should equal("done")
+    Await.result(leaf.channelWrite(1, 300.milli), 400.milli) should equal("done")
 
   }
 
