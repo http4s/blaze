@@ -12,16 +12,6 @@ import java.util.concurrent.atomic.AtomicInteger
  */
 class TickWheelExecutorSpec extends WordSpec with Matchers {
 
-  def getPair(): (Future[Any], Runnable) = {
-    val p = Promise[Any]
-
-    val r = new Runnable {
-      def run() { p.success() }
-    }
-
-    (p.future, r)
-  }
-
   "TickWheelExecutor" should {
 
     val ec = new TickWheelExecutor()

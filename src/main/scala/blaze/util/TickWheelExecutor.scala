@@ -46,16 +46,20 @@ class TickWheelExecutor(wheelSize: Int = 512, resolution: Duration = 100.milli) 
   /////////////////////////////////////////////////////
   // new Thread that actually runs the execution.
 
-  new Thread {
+  private val thread = new Thread {
     override def run() {
       cycle()
     }
-  }.start()
+  }
+
+  thread.start()
 
 
   /////////////////////////////////////////////////////
 
-  def shutdown(): Unit = alive = false
+  def shutdown(): Unit = {
+    alive = false
+  }
 
   // Execute directly on this worker thread. ONLY for QUICK tasks...
   def schedule(r: Runnable, timeout: Duration): Cancellable = {
@@ -80,16 +84,16 @@ class TickWheelExecutor(wheelSize: Int = 512, resolution: Duration = 100.milli) 
   private def cycle(): Unit = {
     val i = currentTick
     val time = System.currentTimeMillis()
-
     currentTick = (i + 1) % wheelSize
 
-    clockFace(i).prune(time) // Will load all the expired tasks into the expiredTasks Dequeue
+    clockFace(i).prune(time) // Remove canceled and submit expired tasks
 
-    val left = tickMilli - (System.currentTimeMillis() - time)    // Make up for execution tome, all 0.1 ms probably
-
-    if (left > 0) Thread.sleep(left)
-
-    if (alive) cycle()
+    if (alive) {
+      // Make up for execution time, unlikely to be significant
+      val left = tickMilli - (System.currentTimeMillis() - time)
+      if (left > 0) Thread.sleep(left)
+      cycle()
+    }
     else {  // delete all our buckets so we don't hold any references
       for { i <- 0 until wheelSize} clockFace(i) = null
     }
@@ -100,10 +104,8 @@ class TickWheelExecutor(wheelSize: Int = 512, resolution: Duration = 100.milli) 
   }
   
   private def getBucket(duration: Long): Bucket = {
-    val i = ((duration*_tickInv).toInt + currentTick) % wheelSize
-    // Always have a positive number. If its so long as to make it 
-    // negative, it really doesn't matter
-    clockFace(math.abs(i))
+    val i = ((duration*_tickInv).toLong + currentTick) % wheelSize
+    clockFace(i.toInt)
   }
 
   private class Bucket {
@@ -112,7 +114,7 @@ class TickWheelExecutor(wheelSize: Int = 512, resolution: Duration = 100.milli) 
 
     /** Removes expired and canceled elements from this bucket, placing expired ones in the
       * expiredTasks variable for subsequent execution
-      * @param time
+      * @param time current system time (in milliseconds)
       */
     def prune(time: Long) {
       var expiredTasks: Node = null
@@ -157,14 +159,12 @@ class TickWheelExecutor(wheelSize: Int = 512, resolution: Duration = 100.milli) 
         try i.run()
         catch { case NonFatal(t) => onNonFatal(t) }
       }
-
     }
     
     def add(r: Runnable, ec: ExecutionContext, expiration: Long): Cancellable = lock.synchronized {
       nodes = new Node(r, ec, expiration, nodes)
       nodes
     }
-
   }
 
   /** A Link in a single linked list which can also be passed to the user as a Cancellable
