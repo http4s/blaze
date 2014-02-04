@@ -1,7 +1,6 @@
 package blaze.util
 
 import org.scalatest.{Matchers, WordSpec}
-import scala.concurrent.{Promise, Future}
 
 import scala.concurrent.duration._
 import java.util.concurrent.atomic.AtomicInteger
