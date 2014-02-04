@@ -55,7 +55,7 @@ class TickWheelExecutorSpec extends WordSpec with Matchers {
       Thread.sleep(85)
       i should equal(0)
 
-      Thread.sleep(60)
+      Thread.sleep(100)
       i should equal(1)
 
     }
@@ -67,11 +67,11 @@ class TickWheelExecutorSpec extends WordSpec with Matchers {
       0 until 1000 foreach { _ =>
         ec.schedule(new Runnable {
           def run() { i.incrementAndGet() }
-        }, 3.millis)
+        }, 13.millis)
         Thread.sleep(1)
       }
 
-      Thread.sleep(1010)
+      Thread.sleep(1020)
       i.get() should equal(1000)
 
     }
