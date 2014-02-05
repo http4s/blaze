@@ -144,7 +144,7 @@ public abstract class Http1Parser {
 
     /* ------------------------------------------------------------------ */
 
-    public final void reset() {
+    public void reset() {
 
         clearBuffer();
 
@@ -177,7 +177,7 @@ public abstract class Http1Parser {
     private int _bufferLen = 0;
     private byte[] _internalBuffer;
 
-    private void makeRoom(int size) {
+    final protected void makeRoom(int size) {
         // Resize the internal array
         int nextsize = Math.max(_bufferLen*2, _bufferLen + 2*size);
         this._bufferLen = nextsize;
@@ -187,36 +187,36 @@ public abstract class Http1Parser {
         _internalBuffer = next;
     }
 
-    private void putByte(byte c) {
+    final protected void putByte(byte c) {
         if (_internalBuffer.length == _bufferPosition) {
             makeRoom(1);
         }
         _internalBuffer[_bufferPosition++] = c;
     }
 
-    private int bufferPosition() {
+    final protected int bufferPosition() {
         return _bufferPosition;
     }
 
-    private void clearBuffer() {
+    final protected void clearBuffer() {
         _bufferPosition = 0;
     }
 
-    private String getString() {
+    final protected String getString() {
         return getString(0, _bufferPosition);
     }
 
-    private String getString(int end) {
+    final protected String getString(int end) {
         return getString(0, end);
     }
 
-    private String getString(int start, int end) {
+    final protected String getString(int start, int end) {
         String str = new String(_internalBuffer, start, end, ASCII);
         return str;
     }
 
     /** Returns the string in the buffer minus an leading or trailing whitespace or quotes */
-    private String getTrimmedString() throws BadRequest {
+    final protected String getTrimmedString() throws BadRequest {
 
         if (_bufferPosition == 0) return "";
 
@@ -249,7 +249,7 @@ public abstract class Http1Parser {
         return str;
     }
 
-    private boolean arrayMatches(final byte[] bytes) {
+    final protected boolean arrayMatches(final byte[] bytes) {
         if (bytes.length != _bufferPosition) return false;
 
         for (int i = 0; i < _bufferPosition; i++) {
@@ -310,13 +310,13 @@ public abstract class Http1Parser {
 
     /* ------------------------------------------------------------------ */
 
-    private void resetLimit(int limit) {
+    final protected void resetLimit(int limit) {
         _segmentByteLimit = limit;
         _segmentBytePosition = 0;
     }
 
     // Removes CRs but returns LFs
-    private byte next(final ByteBuffer buffer) throws BadRequest {
+    final protected byte next(final ByteBuffer buffer) throws BadRequest {
 
         if (!buffer.hasRemaining()) return 0;
 

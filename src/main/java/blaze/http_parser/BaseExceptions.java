@@ -30,6 +30,12 @@ public class BaseExceptions {
         }
     }
 
+    public static class BadResponse extends ParserException {
+        public BadResponse(String msg) {
+            super(msg);
+        }
+    }
+
     public static class InvalidState extends ParserException {
         public InvalidState(String msg) {
             super(msg);
