@@ -17,7 +17,7 @@ class JavaParserSpec extends WordSpec with Matchers {
 
 
 
-  class Parser(maxReq: Int = 1034, maxHeader: Int = 1024) extends Http1Parser(maxReq, maxHeader, 1) {
+  class Parser(maxReq: Int = 1034, maxHeader: Int = 1024) extends Http1ServerParser(maxReq, maxHeader, 1) {
 
     val sb = new StringBuilder
 
@@ -38,7 +38,7 @@ class JavaParserSpec extends WordSpec with Matchers {
     }
 
     def submitRequestLine(methodString: String, uri: String, scheme: String, majorversion: Int, minorversion: Int) {
-      println(s"$methodString, $uri, $scheme/$majorversion.$minorversion")
+//      println(s"$methodString, $uri, $scheme/$majorversion.$minorversion")
     }
 
     def headerComplete(name: String, value: String) {
@@ -88,7 +88,7 @@ class JavaParserSpec extends WordSpec with Matchers {
 
   val twoline = request + host
 
-  "Http1Parser" should {
+  "Http1ServerParser" should {
     "Parse the request line for HTTP" in {
       val p = new Parser()
       p.parseLine("POST /enlighten/calais.asmx HTTP/1.1\r\n") should equal(true)
@@ -175,8 +175,6 @@ class JavaParserSpec extends WordSpec with Matchers {
     "Parse a chunked request" in {
       val p = new Parser()
       val b = ByteBuffer.wrap(mockChunked.getBytes())
-
-      println(mockChunked)
 
       p.parseLine(b) should equal(true)
 

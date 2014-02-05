@@ -1,6 +1,6 @@
 package org.http4s.blaze
 
-import blaze.http_parser.Http1Parser
+import blaze.http_parser.Http1ServerParser
 import _root_.blaze.pipeline.{Command => Cmd, TailStage}
 import blaze.util.Execution._
 
@@ -24,7 +24,7 @@ import org.http4s.Header.`Content-Length`
  * @author Bryce Anderson
  *         Created on 1/10/14
  */
-class Http4sStage(route: HttpService) extends Http1Parser with TailStage[ByteBuffer] {
+class Http4sStage(route: HttpService) extends Http1ServerParser with TailStage[ByteBuffer] {
 
   protected implicit def ec = directec
 

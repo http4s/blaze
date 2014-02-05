@@ -6,8 +6,8 @@ import blaze.util.Execution._
 import scala.util.{Failure, Success}
 import scala.concurrent.Future
 import scala.collection.mutable.ListBuffer
-import blaze.http_parser.Http1Parser
-import Http1Parser.ASCII
+import blaze.http_parser.Http1ServerParser
+import Http1ServerParser.ASCII
 
 import blaze.http_parser.BaseExceptions.BadRequest
 import websocket.{WebSocketDecoder, ServerHandshaker}
@@ -20,7 +20,7 @@ import websocket.WebSocketDecoder.WebSocketFrame
  *         Created on 1/11/14
  */
 
-abstract class HttpStage(maxReqBody: Int) extends Http1Parser with TailStage[ByteBuffer] {
+abstract class HttpStage(maxReqBody: Int) extends Http1ServerParser with TailStage[ByteBuffer] {
   import HttpStage.RouteResult._
 
   private implicit def ec = directec

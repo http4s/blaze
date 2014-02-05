@@ -6,10 +6,10 @@ import java.nio.ByteBuffer;
  * @author Bryce Anderson
  *         Created on 2/4/14
  */
-public abstract class Http1ClientParser extends Http1Parser {
+public abstract class Http1ClientParser extends BodyAndHeaderParser {
 
     Http1ClientParser(int maxRequestLineSize, int maxHeaderLength, int initialBufferSize, int maxChunkSize) {
-        super(0, maxHeaderLength, initialBufferSize, maxChunkSize);
+        super(initialBufferSize, maxHeaderLength, maxChunkSize);
         this.maxRequestLineSize = maxRequestLineSize;
     }
 
@@ -17,7 +17,9 @@ public abstract class Http1ClientParser extends Http1Parser {
         this(2048, 40*1024, initialBufferSize, Integer.MAX_VALUE);
     }
 
-    Http1ClientParser() { this(10*1024); }
+    Http1ClientParser() {
+        this(10*1024);
+    }
 
     // Lets us call the shutdown hooks
     private class ParserBadResponse extends BaseExceptions.BadResponse {
@@ -28,8 +30,7 @@ public abstract class Http1ClientParser extends Http1Parser {
     }
 
     // Status-Line = HTTP-Version SP Status-Code SP Reason-Phrase CRLF
-
-    private enum LineState {
+    private enum RequestLineState {
         START,
         VERSION,
         SPACE1,
@@ -41,7 +42,7 @@ public abstract class Http1ClientParser extends Http1Parser {
 
     private final int maxRequestLineSize;
 
-    private LineState _requestLineState = LineState.START;
+    private RequestLineState _requestLineState = RequestLineState.START;
 
     private String _lineScheme = null;
     private int _majorVersion = 0;
@@ -51,23 +52,31 @@ public abstract class Http1ClientParser extends Http1Parser {
     public abstract void submitResponseLine(int code, String reason, String scheme, int majorversion, int minorversion);
 
     public final boolean responseLineComplete() {
-        return _requestLineState == LineState.END;
+        return _requestLineState == RequestLineState.END;
     }
 
     @Override
-    protected void shutdownParser() {
+    public void shutdownParser() {
         super.shutdownParser();    //To change body of overridden methods use File | Settings | File Templates.
-        _requestLineState = LineState.END;
+        _requestLineState = RequestLineState.END;
     }
 
     @Override
     public void reset() {
         super.reset();
-        _requestLineState = LineState.START;
+        _requestLineState = RequestLineState.START;
         _lineScheme = null;
         _majorVersion = 0;
         _minorVersion = 0;
         _statusCode = 0;
+    }
+
+    @Override
+    public boolean mayHaveBody() {
+        return contentComplete() ||
+            (_statusCode >= 200 &&
+             _statusCode != 204 &&
+             _statusCode != 304);
     }
 
     /** parses the request line. Returns true if completed successfully, false if needs input */
@@ -77,7 +86,7 @@ public abstract class Http1ClientParser extends Http1Parser {
                 byte ch;
                 switch (_requestLineState) {
                     case START:
-                        _requestLineState = LineState.VERSION;
+                        _requestLineState = RequestLineState.VERSION;
                         resetLimit(maxRequestLineSize);
 
                     case VERSION:
@@ -89,7 +98,7 @@ public abstract class Http1ClientParser extends Http1Parser {
                         _majorVersion = 1;
                         _minorVersion = 1;
 
-                        if (arrayMatches(HTTP11Bytes) || arrayMatches(HTTPS11Bytes)) {
+                        if (arrayMatches(HTTP11Bytes) || arrayMatches(BodyAndHeaderParser.HTTPS11Bytes)) {
                             // NOOP, already set to this
 //                        _majorversion = 1;
 //                        _minorversion = 1;
@@ -107,7 +116,7 @@ public abstract class Http1ClientParser extends Http1Parser {
                         clearBuffer();
 
                         // We are through parsing the request line
-                        _requestLineState = LineState.SPACE1;
+                        _requestLineState = RequestLineState.SPACE1;
 
                     case SPACE1:
                         // Eat whitespace
@@ -119,7 +128,7 @@ public abstract class Http1ClientParser extends Http1Parser {
                             throw new ParserBadResponse("Received invalid token when needed code: '" + (char)ch + "'");
                         }
                         _statusCode = 10*_statusCode + (ch - HttpTokens.ZERO);
-                        _requestLineState = LineState.STATUS_CODE;
+                        _requestLineState = RequestLineState.STATUS_CODE;
 
                     case STATUS_CODE:
                         for(ch = next(in); HttpTokens.isDigit(ch); ch = next(in)) {
@@ -136,7 +145,7 @@ public abstract class Http1ClientParser extends Http1Parser {
                                     _statusCode + "'. Must be between 100 and 599");
                         }
 
-                        _requestLineState = LineState.SPACE2;
+                        _requestLineState = RequestLineState.SPACE2;
 
                     case SPACE2:
                         // Eat whitespace
@@ -147,7 +156,7 @@ public abstract class Http1ClientParser extends Http1Parser {
                         if (ch == HttpTokens.LF) throw new ParserBadResponse("Response lacks status Reason");
 
                         putByte(ch);
-                        _requestLineState = LineState.REASON;
+                        _requestLineState = RequestLineState.REASON;
 
                     case REASON:
                         for(ch = next(in); ch != HttpTokens.LF; ch = next(in)) {
@@ -161,13 +170,13 @@ public abstract class Http1ClientParser extends Http1Parser {
                         clearBuffer();
 
                         // We are through parsing the request line
-                        _requestLineState = LineState.END;
+                        _requestLineState = RequestLineState.END;
                         submitResponseLine(_statusCode, reason, _lineScheme, _majorVersion, _minorVersion);
                         return true;
 
                     default:
                         throw new BaseExceptions.InvalidState("Attempted to parse Response line when already complete." +
-                                "LineState: '" + _requestLineState + "'");
+                                "RequestLineState: '" + _requestLineState + "'");
                 }    // switch
             }        // while loop
         } catch (BaseExceptions.BadRequest ex) {
@@ -176,9 +185,7 @@ public abstract class Http1ClientParser extends Http1Parser {
     }
 
     @Override
-    public final void submitRequestLine(String methodString,
-                                  String uri,
-                                  String scheme,
-                                  int majorversion,
-                                  int minorversion) { /* NOOP */ }
+    public final boolean hostRequired() {
+        return false;
+    }
 }

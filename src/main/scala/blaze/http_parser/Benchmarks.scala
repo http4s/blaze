@@ -33,7 +33,7 @@ class Benchmarks {
   def run(i: Int)(f: Int => Any) {
 
     // Do a warmup
-    var ii = math.min(i, 100000)
+    var ii = math.min(i, 1000000)
     while (ii > 0) {
       ii -= 1
       f(ii)
