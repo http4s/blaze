@@ -28,5 +28,5 @@ class BenchParser(maxReq: Int = 1034, maxHeader: Int = 1024) extends Http1Server
                    majorversion: Int,
                    minorversion: Int): Unit = {}
 
-  def headerComplete(name: String, value: String) { }
+  def headerComplete(name: String, value: String) = false
 }

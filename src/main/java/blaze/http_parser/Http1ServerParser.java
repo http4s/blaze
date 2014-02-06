@@ -1,11 +1,8 @@
 package blaze.http_parser;
 
 import java.nio.ByteBuffer;
-import java.nio.charset.Charset;
 
 import blaze.http_parser.BaseExceptions.*;
-
-import java.nio.charset.StandardCharsets;
 
 
 /**
@@ -13,8 +10,6 @@ import java.nio.charset.StandardCharsets;
  *         Created on 1/2/14
  */
 public abstract class Http1ServerParser extends BodyAndHeaderParser {
-
-    public final static Charset ASCII = StandardCharsets.US_ASCII;
 
     private enum LineState {
         START,
@@ -38,8 +33,6 @@ public abstract class Http1ServerParser extends BodyAndHeaderParser {
     private String _methodString;
     private String _uriString;
 
-    private boolean _hostRequired;
-
 
     /* ------------------------------------------------------------------ */
 
@@ -53,16 +46,11 @@ public abstract class Http1ServerParser extends BodyAndHeaderParser {
      */
     public abstract void submitRequestLine(String methodString, String uri, String scheme, int majorversion, int minorversion);
 
-
-
-
     /* ------------------------------------------------------------------ */
 
     public final boolean requestLineComplete() {
         return _lineState == LineState.END;
     }
-
-
 
     /* ------------------------------------------------------------------ */
 
@@ -70,8 +58,6 @@ public abstract class Http1ServerParser extends BodyAndHeaderParser {
     public void reset() {
         super.reset();
         _lineState = LineState.START;
-        _hostRequired = true;
-
     }
 
     /* ------------------------------------------------------------------ */
@@ -103,11 +89,6 @@ public abstract class Http1ServerParser extends BodyAndHeaderParser {
     public Http1ServerParser() { this(10*1024); }
 
     /* ------------------------------------------------------------------ */
-
-    @Override
-    public boolean hostRequired() {
-        return false;  //To change body of implemented methods use File | Settings | File Templates.
-    }
 
     @Override
     public boolean mayHaveBody() {
@@ -200,7 +181,6 @@ public abstract class Http1ServerParser extends BodyAndHeaderParser {
                     }
                     else if (arrayMatches(HTTP10Bytes) || arrayMatches(HTTPS10Bytes)) {
                         _minorversion = 0;
-                        _hostRequired = false;
                     }
                     else {
                         String reason =  "Bad HTTP version: " + getString();

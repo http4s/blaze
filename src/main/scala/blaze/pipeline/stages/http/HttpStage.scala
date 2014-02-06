@@ -1,17 +1,19 @@
 package blaze.pipeline.stages.http
 
-import java.nio.ByteBuffer
+
 import blaze.pipeline.{Command => Cmd, _}
 import blaze.util.Execution._
 import scala.util.{Failure, Success}
 import scala.concurrent.Future
 import scala.collection.mutable.ListBuffer
 import blaze.http_parser.Http1ServerParser
-import Http1ServerParser.ASCII
 
 import blaze.http_parser.BaseExceptions.BadRequest
 import websocket.{WebSocketDecoder, ServerHandshaker}
+
 import java.util.Date
+import java.nio.ByteBuffer
+import java.nio.charset.StandardCharsets.US_ASCII
 
 import websocket.WebSocketDecoder.WebSocketFrame
 
@@ -62,6 +64,9 @@ abstract class HttpStage(maxReqBody: Int) extends Http1ServerParser with TailSta
         try {
           if (!requestLineComplete() && !parseRequestLine(buff)) return requestLoop()
           if (!headersComplete() && !parseHeaders(buff)) return requestLoop()
+
+          // TODO: need to check if we need a Host header or otherwise validate the request
+
           // we have enough to start the request
           gatherBody(buff, emptyBuffer).onComplete{
             case Success(b) =>
@@ -120,7 +125,7 @@ abstract class HttpStage(maxReqBody: Int) extends Http1ServerParser with TailSta
 
     renderHeaders(sb, resp.headers, resp.body.remaining())
 
-    val messages = Array(ByteBuffer.wrap(sb.result().getBytes(ASCII)), resp.body)
+    val messages = Array(ByteBuffer.wrap(sb.result().getBytes(US_ASCII)), resp.body)
 
     channelWrite(messages).map(_ => if (keepAlive) Reload else Close)(directec)
   }
@@ -134,7 +139,7 @@ abstract class HttpStage(maxReqBody: Int) extends Http1ServerParser with TailSta
         sb.append("HTTP/1.1 ").append(i).append(' ').append(msg).append('\r').append('\n')
           .append('\r').append('\n')
 
-        channelWrite(ByteBuffer.wrap(sb.result().getBytes(ASCII))).map(_ => Close)
+        channelWrite(ByteBuffer.wrap(sb.result().getBytes(US_ASCII))).map(_ => Close)
 
       case Right(hdrs) =>
         logger.trace("Starting websocket request")
@@ -143,7 +148,7 @@ abstract class HttpStage(maxReqBody: Int) extends Http1ServerParser with TailSta
         sb.append('\r').append('\n')
 
         // write the accept headers and reform the pipeline
-        channelWrite(ByteBuffer.wrap(sb.result().getBytes(ASCII))).map{_ =>
+        channelWrite(ByteBuffer.wrap(sb.result().getBytes(US_ASCII))).map{_ =>
           logger.trace("Switching segments.")
           val segment = wsBuilder.prepend(new WebSocketDecoder(false))
           this.replaceInline(segment)
@@ -158,7 +163,7 @@ abstract class HttpStage(maxReqBody: Int) extends Http1ServerParser with TailSta
       .append(minor).append(' ').append(400)
       .append(' ').append("Bad Request").append('\r').append('\n').append('\r').append('\n')
 
-    channelWrite(ByteBuffer.wrap(sb.result().getBytes(ASCII)))
+    channelWrite(ByteBuffer.wrap(sb.result().getBytes(US_ASCII)))
       .onComplete(_ => sendOutboundCommand(Cmd.Disconnect))
   }
 
@@ -216,9 +221,10 @@ abstract class HttpStage(maxReqBody: Int) extends Http1ServerParser with TailSta
     shutdownParser()
   }
 
-  def headerComplete(name: String, value: String) = {
+  def headerComplete(name: String, value: String): Boolean = {
     logger.trace(s"Received header '$name: $value'")
     headers += ((name, value))
+    false
   }
 
   def submitRequestLine(methodString: String, uri: String, scheme: String, majorversion: Int, minorversion: Int) {

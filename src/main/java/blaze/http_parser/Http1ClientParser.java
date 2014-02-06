@@ -183,9 +183,4 @@ public abstract class Http1ClientParser extends BodyAndHeaderParser {
             throw new ParserBadResponse(ex.msg());
         }
     }
-
-    @Override
-    public final boolean hostRequired() {
-        return false;
-    }
 }

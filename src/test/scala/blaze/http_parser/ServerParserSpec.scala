@@ -3,7 +3,7 @@ package http_parser
 
 import org.scalatest.{Matchers, WordSpec}
 import java.nio.ByteBuffer
-import http_parser.HttpTokens.EndOfContent
+import http_parser.BodyAndHeaderParser.EndOfContent
 import blaze.http_parser.BaseExceptions.BadRequest
 import scala.collection.mutable.ListBuffer
 
@@ -11,7 +11,7 @@ import scala.collection.mutable.ListBuffer
  * @author Bryce Anderson
  *         Created on 1/2/14
  */
-class JavaParserSpec extends WordSpec with Matchers {
+class ServerParserSpec extends WordSpec with Matchers {
 
   implicit def strToBuffer(str: String) = ByteBuffer.wrap(str.getBytes())
 
@@ -41,9 +41,10 @@ class JavaParserSpec extends WordSpec with Matchers {
 //      println(s"$methodString, $uri, $scheme/$majorversion.$minorversion")
     }
 
-    def headerComplete(name: String, value: String) {
+    def headerComplete(name: String, value: String) = {
       //println(s"Found header: '$name': '$value'")
       h += ((name, value))
+      false
     }
   }
 
@@ -184,7 +185,7 @@ class JavaParserSpec extends WordSpec with Matchers {
       p.parsecontent(b) should not equal(null)
       p.parsecontent(b) should not equal(null)
       // two real messages
-      p.parsecontent(b) should equal(null)
+      p.parsecontent(b).remaining() should equal(0)
       p.sb.result() should equal(body + body + " again!")
 
       p.reset()
@@ -206,7 +207,7 @@ class JavaParserSpec extends WordSpec with Matchers {
       p.parsecontent(b) should not equal(null)
       p.parsecontent(b) should not equal(null)
       // two real messages
-      p.parsecontent(b) should equal(null)
+      p.parsecontent(b).remaining() should equal(0)
       p.h.result should equal(("Foo","")::Nil)
       p.sb.result() should equal(body + body + " again!")
 

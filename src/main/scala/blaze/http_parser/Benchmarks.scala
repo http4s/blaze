@@ -66,7 +66,7 @@ class Benchmarks {
         b
       }
 
-      override def headerComplete(name: String, value: String): Unit = {
+      override def headerComplete(name: String, value: String): Boolean = {
         //println(s"Header($name, $value)")
         super.headerComplete(name, value)
       }
@@ -147,8 +147,9 @@ class Benchmarks {
     val p = new BenchParser() {
       val headers = new ListBuffer[(String, String)]
 
-      override def headerComplete(name: String, value: String): Unit = {
+      override def headerComplete(name: String, value: String): Boolean = {
         headers += ((name, value))
+        false
       }
 
       def clear() {

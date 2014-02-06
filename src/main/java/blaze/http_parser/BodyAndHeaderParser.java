@@ -30,6 +30,14 @@ public abstract class BodyAndHeaderParser extends ParserBase {
         END
     }
 
+    public enum EndOfContent { UNKNOWN_CONTENT,
+        NO_CONTENT,
+        CONTENT_LENGTH,
+        CHUNKED_CONTENT,
+        SELF_DEFINING_CONTENT,
+        EOF_CONTENT,
+    }
+
 
     private final int headerSizeLimit;
     private final int maxChunkSize;
@@ -44,9 +52,7 @@ public abstract class BodyAndHeaderParser extends ParserBase {
     private int _chunkPosition;
 
     private String _headerName;
-    private HttpTokens.EndOfContent _endOfContent;
-
-    private boolean _hostRequired;
+    private EndOfContent _endOfContent;
 
     /* --------------------------------------------------------------------- */
 
@@ -55,6 +61,8 @@ public abstract class BodyAndHeaderParser extends ParserBase {
 
     protected static byte[] HTTPS10Bytes = "HTTPS/1.0".getBytes(StandardCharsets.US_ASCII);
     protected static byte[] HTTPS11Bytes = "HTTPS/1.1".getBytes(StandardCharsets.US_ASCII);
+
+    private static ByteBuffer emptyBuffer = ByteBuffer.allocate(0);
 
     /* Constructor --------------------------------------------------------- */
 
@@ -70,14 +78,10 @@ public abstract class BodyAndHeaderParser extends ParserBase {
      * @param value The value of the header
      * @return True if the parser should return to its caller
      */
-    public abstract void headerComplete(String name, String value) throws BaseExceptions.BadRequest;
-
-    /** determines if a Host header is required while parsing */
-    public abstract boolean hostRequired();
+    public abstract boolean headerComplete(String name, String value) throws BaseExceptions.BadRequest;
 
     /** determines if a body may follow the headers */
     public abstract boolean mayHaveBody();
-
 
     /* Status methods ---------------------------------------------------- */
 
@@ -86,12 +90,12 @@ public abstract class BodyAndHeaderParser extends ParserBase {
     }
 
     public final boolean contentComplete() {
-        return _endOfContent == HttpTokens.EndOfContent.EOF_CONTENT ||
-               _endOfContent == HttpTokens.EndOfContent.NO_CONTENT;
+        return _endOfContent == EndOfContent.EOF_CONTENT ||
+               _endOfContent == EndOfContent.NO_CONTENT;
     }
 
     public final boolean isChunked() {
-        return _endOfContent == HttpTokens.EndOfContent.CHUNKED_CONTENT;
+        return _endOfContent == EndOfContent.CHUNKED_CONTENT;
     }
 
     public final boolean inChunkedHeaders() {
@@ -99,10 +103,10 @@ public abstract class BodyAndHeaderParser extends ParserBase {
     }
 
     public final boolean definedContentLength() {
-        return _endOfContent == HttpTokens.EndOfContent.CONTENT_LENGTH;
+        return _endOfContent == EndOfContent.CONTENT_LENGTH;
     }
 
-    public final HttpTokens.EndOfContent getContentType() {
+    public final EndOfContent getContentType() {
         return _endOfContent;
     }
 
@@ -115,19 +119,18 @@ public abstract class BodyAndHeaderParser extends ParserBase {
         _hstate = HeaderState.START;
         _chunkState = ChunkState.START;
 
-        _endOfContent = HttpTokens.EndOfContent.UNKNOWN_CONTENT;
+        _endOfContent = EndOfContent.UNKNOWN_CONTENT;
 
         _contentLength = 0;
         _contentPosition = 0;
         _chunkLength = 0;
         _chunkPosition = 0;
-        _hostRequired = true;
     }
 
     public void shutdownParser() {
         _hstate = HeaderState.END;
         _chunkState = ChunkState.END;
-        _endOfContent = HttpTokens.EndOfContent.EOF_CONTENT;
+        _endOfContent = EndOfContent.EOF_CONTENT;
     }
 
     protected final boolean parseHeaders(ByteBuffer in) throws BaseExceptions.BadRequest, BaseExceptions.InvalidState {
@@ -148,19 +151,13 @@ public abstract class BodyAndHeaderParser extends ParserBase {
                     // Must be done with headers
                     if (bufferPosition() == 0) {
 
-                        if (hostRequired()) {
-                            // If we didn't get our host header, we have a problem.
-                            shutdownParser();
-                            throw new BadRequest("Missing host header");
-                        }
-
                         _hstate = HeaderState.END;
 
                         // Finished with the whole request
                         if (_chunkState == ChunkState.CHUNK_TRAILERS) shutdownParser();
 
                             // TODO: perhaps we should test against if it is GET, OPTION, or HEAD.
-                        else if ((_endOfContent == HttpTokens.EndOfContent.UNKNOWN_CONTENT &&
+                        else if ((_endOfContent == EndOfContent.UNKNOWN_CONTENT &&
                                 !mayHaveBody())) shutdownParser();
 
                         // Done parsing headers
@@ -171,7 +168,9 @@ public abstract class BodyAndHeaderParser extends ParserBase {
                         String name = getString();
                         clearBuffer();
 
-                        headerComplete(name, "");
+                        if (headerComplete(name, "")) {
+                            return true;
+                        }
 
                         continue headerLoop;    // Still parsing Header name
                     }
@@ -210,21 +209,15 @@ public abstract class BodyAndHeaderParser extends ParserBase {
                     // If we are not parsing trailer headers, look for some that are of interest to the request
                     if (_chunkState != ChunkState.CHUNK_TRAILERS) {
 
-                        // Check for host if it is still needed
-                        if (hostRequired() && _headerName.equalsIgnoreCase("Host")) {
-                            _hostRequired = false;  // Don't search for the host header anymore
-//                            _host = value;
-                        }
-
                         // Check for submitContent type if its still not determined
-                        if (_endOfContent == HttpTokens.EndOfContent.UNKNOWN_CONTENT) {
+                        if (_endOfContent == EndOfContent.UNKNOWN_CONTENT) {
                             if (_headerName.equalsIgnoreCase("Transfer-Encoding")) {
                                 if (!value.equalsIgnoreCase("chunked")) {
                                     shutdownParser();
                                     throw new BadRequest("Unknown Transfer-Encoding: " + value);
                                 }
 
-                                _endOfContent = HttpTokens.EndOfContent.CHUNKED_CONTENT;
+                                _endOfContent = EndOfContent.CHUNKED_CONTENT;
                             }
                             else if (_headerName.equalsIgnoreCase("Content-Length")) {
                                 try {
@@ -236,14 +229,16 @@ public abstract class BodyAndHeaderParser extends ParserBase {
                                 }
 
                                 _endOfContent = _contentLength <= 0 ?
-                                        HttpTokens.EndOfContent.NO_CONTENT: HttpTokens.EndOfContent.CONTENT_LENGTH;
+                                        EndOfContent.NO_CONTENT: EndOfContent.CONTENT_LENGTH;
                             }
                         }
                     }
 
                     // Send off the header and see if we wish to continue
                     try {
-                        headerComplete(_headerName, value);
+                        if (headerComplete(_headerName, value)) {
+                            return true;
+                        }
                     } finally {
                         _hstate = HeaderState.HEADER_IN_NAME;
                     }
@@ -265,7 +260,7 @@ public abstract class BodyAndHeaderParser extends ParserBase {
                 // What about custom verbs which may have a body?
                 // We could also CONSIDER doing a BAD Request here.
 
-                _endOfContent = HttpTokens.EndOfContent.SELF_DEFINING_CONTENT;
+                _endOfContent = EndOfContent.SELF_DEFINING_CONTENT;
                 return parseContent(in);
 
             case CONTENT_LENGTH:
@@ -380,8 +375,13 @@ public abstract class BodyAndHeaderParser extends ParserBase {
 
 
                 case CHUNK_TRAILERS:    // more headers
-                    parseHeaders(in);
-                    return null;
+                    if (parseHeaders(in)) {
+                        // headers complete
+                        return emptyBuffer;
+                    }
+                    else {
+                        return null;
+                    }
             }
         }
     }

@@ -15,6 +15,7 @@ public abstract class ParserBase {
 
     ParserBase(int initialSize) {
         _internalBuffer = new byte[initialSize];
+        reset();
     }
 
     private int _bufferPosition = 0;
