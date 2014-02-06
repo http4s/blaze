@@ -8,6 +8,8 @@ import java.nio.ByteBuffer
  */
 object BufferTools {
 
+  val emptyBuffer: ByteBuffer = ByteBuffer.allocate(0)
+
   def concatBuffers(oldbuff: ByteBuffer, newbuff: ByteBuffer): ByteBuffer = {
     if (oldbuff != null && oldbuff.hasRemaining) {
       if (!oldbuff.isReadOnly && oldbuff.capacity() >= oldbuff.limit() + newbuff.remaining()) {

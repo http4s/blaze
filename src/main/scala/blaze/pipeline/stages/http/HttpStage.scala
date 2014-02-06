@@ -16,6 +16,7 @@ import java.nio.ByteBuffer
 import java.nio.charset.StandardCharsets.US_ASCII
 
 import websocket.WebSocketDecoder.WebSocketFrame
+import blaze.util.BufferTools
 
 /**
  * @author Bryce Anderson
@@ -28,8 +29,6 @@ abstract class HttpStage(maxReqBody: Int) extends Http1ServerParser with TailSta
   private implicit def ec = directec
 
   val name = "HttpStage"
-
-  val emptyBuffer = ByteBuffer.allocate(0)
 
   private var uri: String = null
   private var method: String = null
@@ -62,13 +61,20 @@ abstract class HttpStage(maxReqBody: Int) extends Http1ServerParser with TailSta
         }
 
         try {
-          if (!requestLineComplete() && !parseRequestLine(buff)) return requestLoop()
-          if (!headersComplete() && !parseHeaders(buff)) return requestLoop()
+          if (!requestLineComplete() && !parseRequestLine(buff)) {
+            return requestLoop()
+            return
+          }
+
+          if (!headersComplete() && !parseHeaders(buff)) {
+            requestLoop()
+            return
+          }
 
           // TODO: need to check if we need a Host header or otherwise validate the request
 
           // we have enough to start the request
-          gatherBody(buff, emptyBuffer).onComplete{
+          gatherBody(buff, BufferTools.emptyBuffer).onComplete{
             case Success(b) =>
               val hdrs = headers.result()
               headers.clear()
@@ -180,6 +186,7 @@ abstract class HttpStage(maxReqBody: Int) extends Http1ServerParser with TailSta
     sb.append('\r').append('\n')
   }
 
+  // TODO: this should really not try accumulating like this, but use something akin to ByteString
   private def gatherBody(buffer: ByteBuffer, cumulative: ByteBuffer): Future[ByteBuffer] = {
     if (!contentComplete()) {
       val next = parseContent(buffer)
@@ -200,7 +207,7 @@ abstract class HttpStage(maxReqBody: Int) extends Http1ServerParser with TailSta
     }
   }
 
-  def isKeepAlive(headers: Headers): Boolean = {
+  private def isKeepAlive(headers: Headers): Boolean = {
     val h = headers.find {
       case ("Connection", _) => true
       case _ => false
@@ -221,14 +228,20 @@ abstract class HttpStage(maxReqBody: Int) extends Http1ServerParser with TailSta
     shutdownParser()
   }
 
-  def headerComplete(name: String, value: String): Boolean = {
+  protected def headerComplete(name: String, value: String): Boolean = {
     logger.trace(s"Received header '$name: $value'")
     headers += ((name, value))
     false
   }
 
-  def submitRequestLine(methodString: String, uri: String, scheme: String, majorversion: Int, minorversion: Int) {
+  protected def submitRequestLine(methodString: String,
+                                  uri: String,
+                                  scheme: String,
+                                  majorversion: Int,
+                                  minorversion: Int) {
+
     logger.trace(s"Received request($methodString $uri $scheme/$majorversion.$minorversion)")
+
     this.uri = uri
     this.method = methodString
     this.major = majorversion

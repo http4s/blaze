@@ -8,16 +8,16 @@ import java.nio.ByteBuffer;
  */
 public abstract class Http1ClientParser extends BodyAndHeaderParser {
 
-    Http1ClientParser(int maxRequestLineSize, int maxHeaderLength, int initialBufferSize, int maxChunkSize) {
+    public Http1ClientParser(int maxRequestLineSize, int maxHeaderLength, int initialBufferSize, int maxChunkSize) {
         super(initialBufferSize, maxHeaderLength, maxChunkSize);
         this.maxRequestLineSize = maxRequestLineSize;
     }
 
-    Http1ClientParser(int initialBufferSize) {
+    public Http1ClientParser(int initialBufferSize) {
         this(2048, 40*1024, initialBufferSize, Integer.MAX_VALUE);
     }
 
-    Http1ClientParser() {
+    public Http1ClientParser() {
         this(10*1024);
     }
 

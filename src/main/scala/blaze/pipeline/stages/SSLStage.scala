@@ -13,7 +13,7 @@ import blaze.pipeline.MidStage
 import blaze.pipeline.Command.EOF
 import blaze.util.Execution._
 import com.typesafe.scalalogging.slf4j.Logging
-import blaze.util.ScratchBuffer
+import blaze.util.{BufferTools, ScratchBuffer}
 
 
 /**
@@ -29,8 +29,6 @@ class SSLStage(engine: SSLEngine, maxSubmission: Int = -1) extends MidStage[Byte
   private val maxNetSize = engine.getSession.getPacketBufferSize
 
   private val maxBuffer = math.max(maxNetSize, engine.getSession.getApplicationBufferSize)
-  
-  val empty = { val b = ByteBuffer.allocate(0); b.flip(); b }
   
   private var readLeftover: ByteBuffer = null
 
@@ -83,7 +81,7 @@ class SSLStage(engine: SSLEngine, maxSubmission: Int = -1) extends MidStage[Byte
           runTasks()
 
         case HandshakeStatus.NEED_WRAP =>
-          assert(engine.wrap(empty, o).bytesProduced() > 0)
+          assert(engine.wrap(BufferTools.emptyBuffer, o).bytesProduced() > 0)
           o.flip()
 
           channelWrite(copyBuffer(o)).onComplete {
@@ -168,7 +166,7 @@ class SSLStage(engine: SSLEngine, maxSubmission: Int = -1) extends MidStage[Byte
 
           channelRead().onComplete {
             case Success(b) =>
-              engine.unwrap(b, empty)
+              engine.unwrap(b, BufferTools.emptyBuffer)
 
               // TODO: this will almost certainly corrupt the state if we have some stream data...
               //storeRead(b)

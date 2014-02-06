@@ -358,7 +358,8 @@ public abstract class BodyAndHeaderParser extends ParserBase {
                     }
                     else {
                         _chunkPosition += chunk_size;
-                        return submitBuffer(in);
+                        if (in.remaining() > 0) return submitBuffer(in);
+                        else return null;
                     }
 
                 case CHUNK_LF:

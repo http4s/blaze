@@ -131,7 +131,6 @@ class ClientParserSpec extends WordSpec with Matchers {
       p.contentComplete() should equal(true)
 
       US_ASCII.decode(out).toString should equal(body)
-
     }
 
   }
