@@ -12,7 +12,7 @@ import blaze.pipeline.LeafBuilder
  */
 class HttpServer(port: Int) {
 
-  private val f: BufferPipeline = () => LeafBuilder(new ExampleHttpStage(10*1024))
+  private val f: BufferPipeline = () => LeafBuilder(new ExampleHttpServerStage(10*1024))
 
   val group = AsynchronousChannelGroup.withFixedThreadPool(10, java.util.concurrent.Executors.defaultThreadFactory())
 

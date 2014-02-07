@@ -16,9 +16,7 @@ package object http {
   type Headers = Seq[(String, String)]
 
   sealed trait Response
-  case class HttpResponse(status: String, code: Int, headers: Headers, body: ByteBuffer) extends Response {
-    def withHeaders(h: Seq[(String, String)]) = copy(headers = h)
-  }
+  case class HttpResponse(status: String, code: Int, headers: Headers, body: ByteBuffer) extends Response
 
   object HttpResponse {
     def Ok(body: Array[Byte]): HttpResponse = HttpResponse("OK", 200, Nil, ByteBuffer.wrap(body))

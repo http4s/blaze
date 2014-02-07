@@ -23,8 +23,8 @@ import blaze.util.BufferTools
  *         Created on 1/11/14
  */
 
-abstract class HttpStage(maxReqBody: Int) extends Http1ServerParser with TailStage[ByteBuffer] {
-  import HttpStage.RouteResult._
+abstract class HttpServerStage(maxReqBody: Int) extends Http1ServerParser with TailStage[ByteBuffer] {
+  import HttpServerStage.RouteResult._
 
   private implicit def ec = directec
 
@@ -249,7 +249,7 @@ abstract class HttpStage(maxReqBody: Int) extends Http1ServerParser with TailSta
   }
 }
 
-private object HttpStage {
+private object HttpServerStage {
 
   object RouteResult extends Enumeration {
     type RouteResult = Value

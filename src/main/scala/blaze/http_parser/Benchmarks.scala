@@ -133,7 +133,7 @@ class Benchmarks {
 
       assert(p.parsecontent(b) != null)
       assert(p.parsecontent(b) != null)
-      assert(p.parsecontent(b) == null && p.contentComplete())
+      assert(p.parsecontent(b).remaining() == 0 && p.contentComplete())
 
       p.reset()
 

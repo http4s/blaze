@@ -5,6 +5,7 @@ import java.nio.charset.StandardCharsets;
 
 import blaze.http_parser.BaseExceptions.BadRequest;
 import blaze.http_parser.BaseExceptions.InvalidState;
+import blaze.util.BufferTools;
 
 /**
  * @author Bryce Anderson
@@ -12,7 +13,7 @@ import blaze.http_parser.BaseExceptions.InvalidState;
  */
 public abstract class BodyAndHeaderParser extends ParserBase {
 
-    private enum HeaderState {
+    private static enum HeaderState {
         START,
         HEADER_IN_NAME,
         HEADER_SPACE,
@@ -20,7 +21,7 @@ public abstract class BodyAndHeaderParser extends ParserBase {
         END
     }
 
-    private enum ChunkState {
+    private static enum ChunkState {
         START,
         CHUNK_SIZE,
         CHUNK_PARAMS,
@@ -30,7 +31,8 @@ public abstract class BodyAndHeaderParser extends ParserBase {
         END
     }
 
-    public enum EndOfContent { UNKNOWN_CONTENT,
+    public static enum EndOfContent {
+        UNKNOWN_CONTENT,
         NO_CONTENT,
         CONTENT_LENGTH,
         CHUNKED_CONTENT,
@@ -61,8 +63,6 @@ public abstract class BodyAndHeaderParser extends ParserBase {
 
     protected static byte[] HTTPS10Bytes = "HTTPS/1.0".getBytes(StandardCharsets.US_ASCII);
     protected static byte[] HTTPS11Bytes = "HTTPS/1.1".getBytes(StandardCharsets.US_ASCII);
-
-    private static ByteBuffer emptyBuffer = ByteBuffer.allocate(0);
 
     /* Constructor --------------------------------------------------------- */
 
@@ -378,7 +378,7 @@ public abstract class BodyAndHeaderParser extends ParserBase {
                 case CHUNK_TRAILERS:    // more headers
                     if (parseHeaders(in)) {
                         // headers complete
-                        return emptyBuffer;
+                        return BufferTools.emptyBuffer();
                     }
                     else {
                         return null;

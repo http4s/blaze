@@ -3,7 +3,7 @@ package blaze.examples
 import blaze.channel._
 import java.nio.channels.AsynchronousChannelGroup
 import java.net.InetSocketAddress
-import blaze.pipeline.stages.http.{WSResponse, HttpResponse, Response, HttpStage}
+import blaze.pipeline.stages.http.{WSResponse, HttpResponse, Response, HttpServerStage}
 import java.nio.ByteBuffer
 import scala.concurrent.Future
 import blaze.pipeline.{LeafBuilder, Command}
@@ -17,7 +17,7 @@ import blaze.channel.nio2.NIO2ServerChannelFactory
  *         Created on 1/18/14
  */
 class WebSocketServer(port: Int) {
-  private val f: BufferPipeline = () => LeafBuilder(new ExampleWebSocketHttpStage)
+  private val f: BufferPipeline = () => LeafBuilder(new ExampleWebSocketHttpServerStage)
 
   val group = AsynchronousChannelGroup.withFixedThreadPool(10, java.util.concurrent.Executors.defaultThreadFactory())
 
@@ -31,7 +31,7 @@ object WebSocketServer {
 }
 
 /** this stage can be seen as the "route" of the example. It handles requests and returns responses */
-class ExampleWebSocketHttpStage extends HttpStage(10*1024) {
+class ExampleWebSocketHttpServerStage extends HttpServerStage(10*1024) {
   def handleRequest(method: String, uri: String, headers: Seq[(String, String)], body: ByteBuffer): Future[Response] = {
     if (ServerHandshaker.isWebSocketRequest(headers)) {
       logger.info(s"Received a websocket request at $uri")

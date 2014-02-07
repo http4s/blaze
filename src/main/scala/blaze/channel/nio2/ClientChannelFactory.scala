@@ -1,9 +1,11 @@
 package blaze.channel.nio2
 
-import blaze.pipeline.{Command, TailStage, HeadStage, LeafBuilder}
+import blaze.pipeline.HeadStage
+
 import java.nio.ByteBuffer
 import java.nio.channels.{CompletionHandler, AsynchronousSocketChannel, AsynchronousChannelGroup}
 import java.net.SocketAddress
+
 import scala.concurrent.{Future, Promise}
 
 /**
@@ -11,7 +13,7 @@ import scala.concurrent.{Future, Promise}
  *         Created on 2/4/14
  */
 
-/** A factory for opening TCP connetions to remote sockets
+/** A factory for opening TCP connections to remote sockets
   *
   * Provides a way to easily make TCP connections which can then serve as the Head for a pipeline
   *
@@ -35,47 +37,5 @@ class ClientChannelFactory(bufferSize: Int = 8*1024, group: AsynchronousChannelG
     })
 
     p.future
-  }
-
-}
-
-object ClientChannelFactory {
-
-  import java.nio.charset.StandardCharsets.US_ASCII
-
-  def msg = {
-      ByteBuffer.wrap("""GET / HTTP/1.1
-        |Host: www.google.com
-        |
-      """.stripMargin.replace("\n", "\r\n").getBytes(US_ASCII))
-  }
-
-  def test() {
-    import scala.concurrent.ExecutionContext.Implicits.global
-    import scala.concurrent.Await
-    import scala.concurrent.duration._
-    import scala.util.{Failure, Success}
-    import java.net.InetSocketAddress
-
-    val addr = new InetSocketAddress("www.google.com", 80)
-    val f = new ClientChannelFactory()
-    val stg = f.connect(addr)
-
-    val h = Await.result(stg, 4.seconds)
-    val t = new TailStage[ByteBuffer] { def name = ""}
-    LeafBuilder(t).base(h)
-
-    t.channelWrite(msg).onSuccess{
-      case _ => t.channelRead().onComplete{
-        case Success(b) =>
-          println(US_ASCII.decode(b))
-          t.inboundCommand(Command.Disconnect)
-
-        case Failure(_) =>
-          println("Failed.")
-          t.inboundCommand(Command.Disconnect)
-      }
-    }
-
   }
 }
