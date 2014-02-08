@@ -3,7 +3,7 @@ package blaze.examples
 import blaze.channel._
 import java.nio.channels.AsynchronousChannelGroup
 import java.net.InetSocketAddress
-import blaze.pipeline.stages.http.{WSResponse, HttpResponse, Response, HttpServerStage}
+import blaze.pipeline.stages.http.{WSResponse, SimpleHttpResponse, Response, HttpServerStage}
 import java.nio.ByteBuffer
 import scala.concurrent.Future
 import blaze.pipeline.{LeafBuilder, Command}
@@ -39,7 +39,7 @@ class ExampleWebSocketHttpServerStage extends HttpServerStage(10*1024) {
       // Note the use of WSStage.segment. This makes a pipeline segment that includes a serializer so we
       // can safely write as many messages we want without worrying about clashing with pending writes
       Future.successful(WSResponse(WSStage.bufferingSegment(new SocketStage)))
-    } else Future.successful(HttpResponse.Ok("Use a websocket!\n" + uri))
+    } else Future.successful(SimpleHttpResponse.Ok("Use a websocket!\n" + uri))
   }
 }
 

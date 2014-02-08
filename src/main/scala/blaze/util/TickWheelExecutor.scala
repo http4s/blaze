@@ -99,7 +99,7 @@ class TickWheelExecutor(wheelSize: Int = 512, resolution: Duration = 100.milli) 
     }
   }
 
-  private def onNonFatal(t: Throwable) {
+  protected def onNonFatal(t: Throwable) {
     logger.warn("Non-Fatal Exception caught while executing scheduled task", t)
   }
   

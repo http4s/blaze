@@ -3,7 +3,6 @@ package blaze.util
 import scala.concurrent.ExecutionContext
 import com.typesafe.scalalogging.slf4j.Logging
 import java.util
-import java.util.concurrent.{Executors, ScheduledExecutorService}
 
 /**
  * @author Bryce Anderson

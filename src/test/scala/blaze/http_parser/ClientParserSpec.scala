@@ -4,6 +4,7 @@ import org.scalatest.{Matchers, WordSpec}
 import java.nio.charset.StandardCharsets.US_ASCII
 import scala.collection.mutable.ListBuffer
 import java.nio.ByteBuffer
+import blaze.http_parser.BaseExceptions.{InvalidState, BadResponse}
 
 /**
  * @author Bryce Anderson
@@ -67,7 +68,57 @@ class ClientParserSpec extends WordSpec with Matchers {
       p.minorversion should equal(1)
 
       p.mayHaveBody() should equal(true)
+
+      //
+      p.reset()
+      val line = "HTTP/1.0 200 OK\r\n"
+      p.parseResponse(wrap(line.getBytes(US_ASCII))) should equal (true)
+      p.responseLineComplete() should equal (true)
+      p.minorversion should equal(0)
     }
+
+    "throw BadResponse on invalid response lines" in {
+      val p = new TestParser
+
+      val badVerison = "HTTP/1.7 200 OK\r\n"
+      a [BadResponse] should be thrownBy p.parseResponse(wrap(badVerison.getBytes(US_ASCII)))
+
+      p.reset()
+      val weirdCode = "HTTP/1.1 200 OK\r\n"
+      p.parseResponse(wrap(weirdCode.getBytes(US_ASCII)))
+
+      p.reset()
+      val badCodeChar = "HTTP/1.1 T200 OK\r\n"
+      a [BadResponse] should be thrownBy p.parseResponse(wrap(badCodeChar.getBytes(US_ASCII)))
+
+      p.reset()
+      val missingSpace = "HTTP/1.1 200OK\r\n"
+      a [BadResponse] should be thrownBy p.parseResponse(wrap(missingSpace.getBytes(US_ASCII)))
+
+      p.reset()
+      val noSpace = "HTTP/1.1 200OK\r\n"
+      a [BadResponse] should be thrownBy p.parseResponse(wrap(noSpace.getBytes(US_ASCII)))
+
+      p.reset()
+      val badCode = "HTTP/1.1 20 OK\r\n"
+      a [BadResponse] should be thrownBy p.parseResponse(wrap(badCode.getBytes(US_ASCII)))
+
+      p.reset()
+      val badCode2 = "HTTP/1.1 600 OK\r\n"
+      a [BadResponse] should be thrownBy p.parseResponse(wrap(badCode2.getBytes(US_ASCII)))
+
+      p.reset()
+      val badLf = "HTTP/1.1 200 OK\r\r\n"
+      a [BadResponse] should be thrownBy p.parseResponse(wrap(badLf.getBytes(US_ASCII)))
+    }
+
+    "throw invalid state if trying to parse the response line more than once" in {
+      val p = new TestParser
+      p.parseResponse(wrap(resp.getBytes(US_ASCII))) should equal (true)
+
+      an [InvalidState] should be thrownBy p.parseResponse(wrap(resp.getBytes(US_ASCII)))
+    }
+
 
     "Parse headers" in {
       val p = new TestParser

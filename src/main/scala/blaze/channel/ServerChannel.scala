@@ -20,9 +20,11 @@ abstract class ServerChannel extends Runnable with Logging {
 
   def close(): Unit = channel.close()
 
-  def runAsync(): Unit = {
+  def runAsync(): Thread = {
     logger.trace("Starting server loop on new thread")
-    new Thread(this).start()
+    val t = new Thread(this)
+    t.start()
+    t
   }
 
 }

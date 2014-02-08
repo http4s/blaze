@@ -103,7 +103,7 @@ abstract class HttpServerStage(maxReqBody: Int) extends Http1ServerParser with T
   private def runRequest(buffer: ByteBuffer, reqHeaders: Headers): Unit = {
 
     handleRequest(method, uri, reqHeaders, buffer).flatMap {
-      case r: HttpResponse => handleHttpResponse(r, reqHeaders)
+      case r: SimpleHttpResponse => handleHttpResponse(r, reqHeaders)
       case WSResponse(stage) => handleWebSocket(reqHeaders, stage)
     }.onComplete {       // See if we should restart the loop
       case Success(Reload)          => resetStage(); requestLoop()
@@ -118,7 +118,7 @@ abstract class HttpServerStage(maxReqBody: Int) extends Http1ServerParser with T
   }
 
   /** Deal with route responses of standard HTTP form */
-  private def handleHttpResponse(resp: HttpResponse, reqHeaders: Headers): Future[RouteResult] = {
+  private def handleHttpResponse(resp: SimpleHttpResponse, reqHeaders: Headers): Future[RouteResult] = {
     val sb = new StringBuilder(512)
     sb.append("HTTP/").append(1).append('.')
       .append(minor).append(' ').append(resp.code)

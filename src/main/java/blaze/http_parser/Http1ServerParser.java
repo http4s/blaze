@@ -57,6 +57,10 @@ public abstract class Http1ServerParser extends BodyAndHeaderParser {
     @Override
     public void reset() {
         super.reset();
+        _internalReset();
+    }
+
+    private void _internalReset() {
         _lineState = LineState.START;
     }
 
@@ -75,7 +79,7 @@ public abstract class Http1ServerParser extends BodyAndHeaderParser {
         super(initialBufferSize, maxHeaderLength, maxChunkSize);
 
         this.maxRequestLineSize = maxReqLen;
-        reset();
+        _internalReset();
     }
 
     public Http1ServerParser(int maxReqLen, int maxHeaderLength, int initialBufferSize) {
@@ -142,12 +146,6 @@ public abstract class Http1ServerParser extends BodyAndHeaderParser {
 
                     _uriString = getString();
                     clearBuffer();
-
-                    if (!HttpTokens.isWhiteSpace(ch)) {
-                        String baduri = _uriString + (char)ch;
-                        shutdownParser();
-                        throw new BadRequest("Invalid request URI: '" + baduri + "'");
-                    }
 
                     _lineState = LineState.SPACE2;
 

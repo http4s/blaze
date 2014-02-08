@@ -15,7 +15,7 @@ public abstract class ParserBase {
 
     ParserBase(int initialSize) {
         _internalBuffer = new byte[initialSize];
-        reset();
+        clearBuffer();
     }
 
     private int _bufferPosition = 0;
@@ -27,7 +27,9 @@ public abstract class ParserBase {
     private int _segmentBytePosition;
 
     /** for shutting down the parser and its state */
-    public abstract void shutdownParser();
+    public void shutdownParser() {
+        clearBuffer();
+    }
 
     void reset() {
        clearBuffer();

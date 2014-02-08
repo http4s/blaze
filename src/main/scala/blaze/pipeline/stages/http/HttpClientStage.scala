@@ -42,7 +42,7 @@ class HttpClientStage(timeout: Duration = Duration.Inf)
     reason = null
     recvHdrs = null
     bodyBuffers = Vector.empty
-    if (hdrs != null) hdrs.clear()
+    hdrs.clear()
   }
 
   // Methods for the Http1ClientParser -----------------------------------------------
@@ -160,7 +160,7 @@ class HttpClientStage(timeout: Duration = Duration.Inf)
             }
           }
 
-          val r = HttpResponse(this.reason, this.code, this.recvHdrs, b)
+          val r = SimpleHttpResponse(this.reason, this.code, this.recvHdrs, b)
           reset()
 
           p.success(r)

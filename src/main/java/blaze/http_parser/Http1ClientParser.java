@@ -1,6 +1,7 @@
 package blaze.http_parser;
 
 import java.nio.ByteBuffer;
+import blaze.http_parser.BaseExceptions.*;
 
 /**
  * @author Bryce Anderson
@@ -11,6 +12,8 @@ public abstract class Http1ClientParser extends BodyAndHeaderParser {
     public Http1ClientParser(int maxRequestLineSize, int maxHeaderLength, int initialBufferSize, int maxChunkSize) {
         super(initialBufferSize, maxHeaderLength, maxChunkSize);
         this.maxRequestLineSize = maxRequestLineSize;
+
+        _internalReset();
     }
 
     public Http1ClientParser(int initialBufferSize) {
@@ -19,14 +22,6 @@ public abstract class Http1ClientParser extends BodyAndHeaderParser {
 
     public Http1ClientParser() {
         this(10*1024);
-    }
-
-    // Lets us call the shutdown hooks
-    private class ParserBadResponse extends BaseExceptions.BadResponse {
-        private ParserBadResponse(String msg) {
-            super(msg);
-            shutdownParser();
-        }
     }
 
     // Status-Line = HTTP-Version SP Status-Code SP Reason-Phrase CRLF
@@ -64,6 +59,10 @@ public abstract class Http1ClientParser extends BodyAndHeaderParser {
     @Override
     public void reset() {
         super.reset();
+        _internalReset();
+    }
+
+    private void _internalReset() {
         _requestLineState = RequestLineState.START;
         _lineScheme = null;
         _majorVersion = 0;
@@ -99,17 +98,18 @@ public abstract class Http1ClientParser extends BodyAndHeaderParser {
                         _minorVersion = 1;
 
                         if (arrayMatches(HTTP11Bytes) || arrayMatches(BodyAndHeaderParser.HTTPS11Bytes)) {
-                            // NOOP, already set to this
-//                        _majorversion = 1;
-//                        _minorversion = 1;
+                            _majorVersion = 1;
+                            _minorVersion = 1;
                         }
                         else if (arrayMatches(HTTP10Bytes) || arrayMatches(HTTPS10Bytes)) {
+                            _majorVersion = 1;
                             _minorVersion = 0;
                         }
                         else {
                             String reason =  "Bad HTTP version: " + getString();
                             clearBuffer();
-                            throw new ParserBadResponse(reason);
+                            shutdownParser();
+                            throw new BadResponse(reason);
                         }
 
                         _lineScheme = getString(bufferPosition() - 4);
@@ -125,7 +125,8 @@ public abstract class Http1ClientParser extends BodyAndHeaderParser {
                         if (ch == 0) return false;
 
                         if (!HttpTokens.isDigit(ch)) {
-                            throw new ParserBadResponse("Received invalid token when needed code: '" + (char)ch + "'");
+                            shutdownParser();
+                            throw new BadResponse("Received invalid token when needed code: '" + (char)ch + "'");
                         }
                         _statusCode = 10*_statusCode + (ch - HttpTokens.ZERO);
                         _requestLineState = RequestLineState.STATUS_CODE;
@@ -137,11 +138,15 @@ public abstract class Http1ClientParser extends BodyAndHeaderParser {
                         }
 
                         if (ch == 0) return false;  // Need more data
+
                         if (!HttpTokens.isWhiteSpace(ch)) {
-                            throw new ParserBadResponse("Invalid request: Expected SPACE but found '" + (char)ch + "'");
+                            shutdownParser();
+                            throw new BadResponse("Invalid request: Expected SPACE but found '" + (char)ch + "'");
                         }
+
                         if (_statusCode < 100 || _statusCode >= 600) {
-                            throw new ParserBadResponse("Invalid status code '" +
+                            shutdownParser();
+                            throw new BadResponse("Invalid status code '" +
                                     _statusCode + "'. Must be between 100 and 599");
                         }
 
@@ -153,7 +158,10 @@ public abstract class Http1ClientParser extends BodyAndHeaderParser {
 
                         if (ch == 0) return false;
 
-                        if (ch == HttpTokens.LF) throw new ParserBadResponse("Response lacks status Reason");
+                        if (ch == HttpTokens.LF) {
+                            shutdownParser();
+                            throw new BadResponse("Response lacks status Reason");
+                        }
 
                         putByte(ch);
                         _requestLineState = RequestLineState.REASON;
@@ -180,7 +188,8 @@ public abstract class Http1ClientParser extends BodyAndHeaderParser {
                 }    // switch
             }        // while loop
         } catch (BaseExceptions.BadRequest ex) {
-            throw new ParserBadResponse(ex.msg());
+            shutdownParser();
+            throw new BadResponse(ex.msg());
         }
     }
 }

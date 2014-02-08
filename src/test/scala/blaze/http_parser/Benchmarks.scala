@@ -1,22 +1,22 @@
-package blaze
-package http_parser
+package blaze.http_parser
 
 import java.nio.ByteBuffer
 import scala.collection.mutable.ListBuffer
+import org.scalatest.WordSpec
 
 /**
  * @author Bryce Anderson
- *         Created on 1/5/14
+ *         Created on 2/8/14
  */
-class Benchmarks {
+class Benchmarks extends WordSpec {
 
   val request = "POST /enlighten/calais.asmx HTTP/1.1\r\n"
 
   val header =  "From: someuser@jmarshall.com  \r\n" +
-                "HOST: www.foo.com\r\n" +
-                "User-Agent: HTTPTool/1.0  \r\n" +
-                "Some-Header\r\n" +
-                "\r\n"
+    "HOST: www.foo.com\r\n" +
+    "User-Agent: HTTPTool/1.0  \r\n" +
+    "Some-Header\r\n" +
+    "\r\n"
 
   val body    = "hello world"
   val chunked = "Transfer-Encoding: chunked\r\n"
@@ -49,10 +49,10 @@ class Benchmarks {
     val end = System.currentTimeMillis()
 
     if (end - start > 0) println(s"Parsed ${i/(end - start)}K req/sec")
-    else println("Unable to bench result")
+    else println("Result to fast to give accurate performance measurement")
   }
-  
-  def checkingBenchmark() {
+
+  def checkingBenchmark(iterations: Int) {
     val p = new BenchParser() {
       val sb = new StringBuilder
 
@@ -71,10 +71,10 @@ class Benchmarks {
         super.headerComplete(name, value)
       }
 
-//      override def submitRequestLine(methodString: String, uri: String, scheme: String, majorversion: Int, minorversion: Int): Unit = {
-//        println(s"Request($methodString, $uri, $scheme/$majorversion.$minorversion)")
-//        super.submitRequestLine(methodString, uri, scheme, majorversion, minorversion)
-//      }
+      //      override def submitRequestLine(methodString: String, uri: String, scheme: String, majorversion: Int, minorversion: Int): Unit = {
+      //        println(s"Request($methodString, $uri, $scheme/$majorversion.$minorversion)")
+      //        super.submitRequestLine(methodString, uri, scheme, majorversion, minorversion)
+      //      }
     }
 
 
@@ -106,7 +106,7 @@ class Benchmarks {
       p.parsecontent(b)
       p.parsecontent(b)
       assert(p.contentComplete())
-//      println(p.sb.result())
+      //      println(p.sb.result())
       assert(p.sb.result() == reconstructed)
 
       p.sb.clear()
@@ -115,10 +115,10 @@ class Benchmarks {
       assert(!p.requestLineComplete())
     }
 
-    run(1000000)(iteration(_))
+    run(iterations)(iteration(_))
   }
-  
-  def rawBenchmark() {
+
+  def rawBenchmark(iterations: Int) {
     val p = new BenchParser()
     val b = ByteBuffer.wrap(mockChunked.getBytes())
 
@@ -140,10 +140,10 @@ class Benchmarks {
       assert(!p.requestLineComplete())
     }
 
-    run(1000000)(iteration(_))
+    run(iterations)(iteration(_))
   }
 
-  def headerCounterBenchmark() {
+  def headerCounterBenchmark(iterations: Int) {
     val p = new BenchParser() {
       val headers = new ListBuffer[(String, String)]
 
@@ -170,17 +170,16 @@ class Benchmarks {
       assert(!p.requestLineComplete())
     }
 
-    run(10)(iteration(_))
+    run(iterations)(iteration(_))
 
   }
 
-}
-
-object Benchmarks {
-  def main(args: Array[String]) {
-    val b = new Benchmarks
-//    b.headerCounterBenchmark()
-    b.checkingBenchmark()
-    b.rawBenchmark()
+  "Benchmark" should {
+    "work" in {
+      checkingBenchmark(3)
+      rawBenchmark(3)
+      headerCounterBenchmark(3)
+    }
   }
+
 }

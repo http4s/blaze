@@ -61,11 +61,17 @@ class SerializingStageSpec extends WordSpec with Matchers {
     }
 
     "serialize writes" in {
-      val f = 0 until 200 map { i =>
+      val f = 0 until 100 map { i =>
         tail.channelWrite(i)
       } last
 
-      Await.result(f, 20.seconds)
+      val f2 = f.flatMap{ _ =>
+        100 until 200 by 2 map { j =>
+          tail.channelWrite(List(j, j+1))
+        } last
+      }
+
+      Await.result(f2, 20.seconds)
       head.ints.result() should equal(ints)
     }
   }

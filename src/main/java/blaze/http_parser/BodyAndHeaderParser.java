@@ -70,6 +70,8 @@ public abstract class BodyAndHeaderParser extends ParserBase {
         super(initialBufferSize);
         this.headerSizeLimit = headerSizeLimit;
         this.maxChunkSize = maxChunkSize;
+
+        _internalReset();
     }
 
     /**
@@ -115,7 +117,10 @@ public abstract class BodyAndHeaderParser extends ParserBase {
     @Override
     void reset() {
         super.reset();
+        _internalReset();
+    }
 
+    private void _internalReset() {
         _hstate = HeaderState.START;
         _chunkState = ChunkState.START;
 
@@ -127,7 +132,9 @@ public abstract class BodyAndHeaderParser extends ParserBase {
         _chunkPosition = 0;
     }
 
+    @Override
     public void shutdownParser() {
+        super.shutdownParser();
         _hstate = HeaderState.END;
         _chunkState = ChunkState.END;
         _endOfContent = EndOfContent.EOF_CONTENT;

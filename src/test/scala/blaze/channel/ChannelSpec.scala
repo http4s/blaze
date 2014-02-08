@@ -15,8 +15,8 @@ class ChannelSpec extends WordSpec with Matchers {
 
   "Channels" should {
 
-    "Bind the port and the close" in {
-      val server = new EchoServer().prepare(new InetSocketAddress(8080))
+    "Bind the port and then be closed" in {
+      val server = new EchoServer().prepare(new InetSocketAddress(8086))
       server.close()
     }
   }

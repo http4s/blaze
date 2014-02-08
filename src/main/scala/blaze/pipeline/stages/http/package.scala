@@ -16,12 +16,12 @@ package object http {
   type Headers = Seq[(String, String)]
 
   sealed trait Response
-  case class HttpResponse(status: String, code: Int, headers: Headers, body: ByteBuffer) extends Response
+  case class SimpleHttpResponse(status: String, code: Int, headers: Headers, body: ByteBuffer) extends Response
 
-  object HttpResponse {
-    def Ok(body: Array[Byte]): HttpResponse = HttpResponse("OK", 200, Nil, ByteBuffer.wrap(body))
-    def Ok(body: String): HttpResponse = Ok(body.getBytes(UTF_8))
-    def Ok(body: Node): HttpResponse = Ok(body.toString())
+  object SimpleHttpResponse {
+    def Ok(body: Array[Byte]): SimpleHttpResponse = SimpleHttpResponse("OK", 200, Nil, ByteBuffer.wrap(body))
+    def Ok(body: String): SimpleHttpResponse = Ok(body.getBytes(UTF_8))
+    def Ok(body: Node): SimpleHttpResponse = Ok(body.toString())
   }
 
   case class WSResponse(stage: LeafBuilder[WebSocketFrame]) extends Response

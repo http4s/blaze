@@ -1,13 +1,11 @@
-package blaze
-package http_parser
+package blaze.http_parser
 
 import java.nio.ByteBuffer
 
 /**
  * @author Bryce Anderson
- *         Created on 1/5/14
+ *         Created on 2/8/14
  */
-
 
 class BenchParser(maxReq: Int = 1034, maxHeader: Int = 1024) extends Http1ServerParser(maxReq, maxHeader, 1) {
 
@@ -23,10 +21,10 @@ class BenchParser(maxReq: Int = 1034, maxHeader: Int = 1024) extends Http1Server
 
 
   def submitRequestLine(methodString: String,
-                   uri: String,
-                   scheme: String,
-                   majorversion: Int,
-                   minorversion: Int): Unit = {}
+                        uri: String,
+                        scheme: String,
+                        majorversion: Int,
+                        minorversion: Int): Unit = {}
 
   def headerComplete(name: String, value: String) = false
 }

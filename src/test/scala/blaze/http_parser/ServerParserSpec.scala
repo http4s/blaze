@@ -4,7 +4,7 @@ package http_parser
 import org.scalatest.{Matchers, WordSpec}
 import java.nio.ByteBuffer
 import http_parser.BodyAndHeaderParser.EndOfContent
-import blaze.http_parser.BaseExceptions.BadRequest
+import blaze.http_parser.BaseExceptions.{InvalidState, BadRequest}
 import scala.collection.mutable.ListBuffer
 
 /**
@@ -37,8 +37,11 @@ class ServerParserSpec extends WordSpec with Matchers {
       c
     }
 
+    var minorv = -1
+
     def submitRequestLine(methodString: String, uri: String, scheme: String, majorversion: Int, minorversion: Int) {
 //      println(s"$methodString, $uri, $scheme/$majorversion.$minorversion")
+      minorv = minorversion
     }
 
     def headerComplete(name: String, value: String) = {
@@ -111,6 +114,31 @@ class ServerParserSpec extends WordSpec with Matchers {
     "Parse the request line for HTTPS" in {
       val p = new Parser()
       p.parseLine("POST /enlighten/calais.asmx HTTPS/1.1\r\n") should equal(true)
+      p.minorv should equal(1)
+    }
+
+    "Give bad request on invalid request line" in {
+      val p = new Parser()
+      a [BadRequest] should be thrownBy  p.parseLine("POST /enlighten/calais.asmx KTTPS/1.1\r\n")
+
+      p.reset()
+      a [BadRequest] should be thrownBy  p.parseLine("POST /enlighten/calais.asmx HKTTPS/1.1\r\n")
+
+      p.reset()
+      a [BadRequest] should be thrownBy  p.parseLine("POST=/enlighten/calais.asmx HKTTPS/1.1\r\n")
+    }
+
+    "Match Http1.0 requests" in {
+      val p = new Parser()
+      p.parseLine("POST /enlighten/calais.asmx HTTPS/1.0\r\n")
+      p.minorv should equal (0)
+    }
+
+    "throw an invalid state if the request line is already parsed" in {
+      val p = new Parser()
+      val line = "POST /enlighten/calais.asmx HTTPS/1.0\r\n"
+      p.parseLine(line)
+      a [InvalidState] should be thrownBy p.parseLine(line)
     }
 
     "Parse headers" in {
@@ -284,14 +312,15 @@ class ServerParserSpec extends WordSpec with Matchers {
         "Some-Header\r\n"
 
       val p = new Parser(maxHeader = header.length - 1)
-      an [BadRequest] should be thrownBy p.parseheaders(header)
+      a [BadRequest] should be thrownBy p.parseheaders(header)
     }
 
     "throw an error if the request line is too long" in {
 
       val p = new Parser(maxReq = request.length - 1)
-      an [BadRequest] should be thrownBy p.parseLine(request)
+      a [BadRequest] should be thrownBy p.parseLine(request)
     }
+
   }
 }
 
