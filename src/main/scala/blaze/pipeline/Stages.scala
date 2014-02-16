@@ -60,15 +60,21 @@ sealed trait Tail[I] extends Stage {
 
   final def channelRead(size: Int = -1, timeout: Duration = Duration.Inf): Future[I] = {
     try {
-      val f = _prevStage.readRequest(size)
-      if (timeout.isFinite()) {
-        val p = Promise[I]
+      if (_prevStage != null) {
+        val f = _prevStage.readRequest(size)
+        if (timeout.isFinite()) {
+          val p = Promise[I]
 
-        scheduleTimeout(p, f, timeout)
-        p.future
-      }
-      else f
+          scheduleTimeout(p, f, timeout)
+          p.future
+        }
+        else f
+      } else stageDisconnected
     }  catch { case t: Throwable => return Future.failed(t) }
+  }
+
+  private def stageDisconnected: Future[Nothing] = {
+    Future.failed(new Exception(s"This stage '${this}' isn't connected!"))
   }
 
   final def channelWrite(data: I): Future[Any] = channelWrite(data, Duration.Inf)
@@ -76,13 +82,15 @@ sealed trait Tail[I] extends Stage {
   final def channelWrite(data: I, timeout: Duration): Future[Any] = {
     logger.debug(s"Stage ${getClass.getName} sending write request with timeout $timeout")
     try {
-      val f = _prevStage.writeRequest(data)
-      if (timeout.isFinite()) {
-        val p = Promise[Any]
-        scheduleTimeout(p, f, timeout)
-        p.future
-      }
-      else f
+      if (_prevStage != null) {
+        val f = _prevStage.writeRequest(data)
+        if (timeout.isFinite()) {
+          val p = Promise[Any]
+          scheduleTimeout(p, f, timeout)
+          p.future
+        }
+        else f
+      } else stageDisconnected
     }
     catch { case t: Throwable => Future.failed(t) }
   }
@@ -92,27 +100,36 @@ sealed trait Tail[I] extends Stage {
   final def channelWrite(data: Seq[I], timeout: Duration): Future[Any] = {
     logger.debug(s"Stage ${getClass.getName} sending multiple write request with timeout $timeout")
     try {
-      val f = _prevStage.writeRequest(data)
+      if (_prevStage != null) {
+        val f = _prevStage.writeRequest(data)
 
-      if (timeout.isFinite()) {
-        val p = Promise[Any]
-        scheduleTimeout(p, f, timeout)
-        p.future
-      }
-      else f
+        if (timeout.isFinite()) {
+          val p = Promise[Any]
+          scheduleTimeout(p, f, timeout)
+          p.future
+        }
+        else f
+      } else stageDisconnected
     } catch { case t: Throwable => Future.failed(t) }
 
   }
 
   final def sendOutboundCommand(cmd: Command): Unit = {
     logger.debug(s"Stage ${getClass.getName} sending outbound command")
+    if (_prevStage != null) {
+      try _prevStage.outboundCommand(cmd)
+      catch { case t: Throwable => inboundCommand(Error(t)) }
+    } else {
+      val e = new Exception("cannot send outbound command on disconnected stage")
+      logger.error("", e)
+      throw e
+    }
 
-    try _prevStage.outboundCommand(cmd)
-    catch { case t: Throwable => inboundCommand(Error(t)) }
   }
 
   final def findOutboundStage(name: String): Option[Stage] = {
     if (this.name == name) Some(this)
+    else if (_prevStage == null) None
     else _prevStage match {
       case s: Tail[_] => s.findOutboundStage(name)
       case t          => if (t.name == name) Some(t) else None
@@ -122,7 +139,7 @@ sealed trait Tail[I] extends Stage {
 
   final def findOutboundStage[C <: Stage](clazz: Class[C]): Option[C] = {
     if (clazz.isAssignableFrom(this.getClass)) Some(this.asInstanceOf[C])
-
+    else if (_prevStage == null) None
     else _prevStage match {
       case s: Tail[_] => s.findOutboundStage[C](clazz)
       case t =>
@@ -133,6 +150,8 @@ sealed trait Tail[I] extends Stage {
 
   final def replaceInline(leafBuilder: LeafBuilder[I]): this.type = {
     stageShutdown()
+
+    if (this._prevStage == null) return this
 
     this match {
       case m: MidStage[_, _] =>
@@ -199,8 +218,14 @@ sealed trait Head[O] extends Stage {
   }
 
   final def sendInboundCommand(cmd: Command): Unit = {
-    try _nextStage.inboundCommand(cmd)
-    catch { case t: Throwable => outboundCommand(Error(t)) }
+    if (_nextStage != null) {
+      try _nextStage.inboundCommand(cmd)
+      catch { case t: Throwable => outboundCommand(Error(t)) }
+    } else {
+      val e = new Exception("cannot send inbound command on disconnected stage")
+      logger.error("", e)
+      throw e
+    }
   }
 
   // Overrides to propagate commands.
@@ -216,13 +241,20 @@ sealed trait Head[O] extends Stage {
   }
 
   final def spliceAfter(stage: MidStage[O, O]): stage.type = {
-    _nextStage._prevStage = stage
-    _nextStage = stage
-    stage
+    if (_nextStage != null) {
+      _nextStage._prevStage = stage
+      _nextStage = stage
+      stage
+    } else {
+      val e = new Exception("cannot send outbound command on disconnected stage")
+      logger.error("", e)
+      throw e
+    }
   }
 
   final def findInboundStage(name: String): Option[Stage] = {
     if (this.name == name) Some(this)
+    else if (_nextStage == null) None
     else _nextStage match {
       case s: MidStage[_, _] => s.findInboundStage(name)
       case t: TailStage[_]   => if (t.name == name) Some(t) else None
@@ -231,6 +263,7 @@ sealed trait Head[O] extends Stage {
 
   final def findInboundStage[C <: Stage](clazz: Class[C]): Option[C] = {
     if (clazz.isAssignableFrom(this.getClass)) Some(this.asInstanceOf[C])
+    else if (_nextStage == null) None
     else _nextStage match {
       case s: MidStage[_, _] => s.findInboundStage[C](clazz)
       case t: TailStage[_] =>
@@ -255,6 +288,9 @@ trait MidStage[I, O] extends Tail[I] with Head[O] {
 
   final def replaceInline(stage: MidStage[I, O]): this.type = {
     stageShutdown()
+
+    if (_nextStage == null || _prevStage == null) return this
+
     _nextStage._prevStage = stage
     _prevStage._nextStage = stage
 
@@ -267,6 +303,8 @@ trait MidStage[I, O] extends Tail[I] with Head[O] {
 
   final def removeStage(implicit ev: MidStage[I,O] =:= MidStage[I, I]): this.type = {
     stageShutdown()
+
+    if (_prevStage == null || _nextStage == null) return this
 
     val me: MidStage[I, I] = ev(this)
     _prevStage._nextStage = me._nextStage

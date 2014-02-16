@@ -23,7 +23,8 @@ import blaze.channel.nio1.ChannelOps.WriteError
  *         Created on 1/20/14
  */
 
-final class SelectorLoop(selector: Selector, bufferSize: Int) extends Thread("SelectorLoop") with StrictLogging { thisLoop =>
+final class SelectorLoop(selector: Selector, bufferSize: Int)
+            extends Thread("SelectorLoop") with StrictLogging { thisLoop =>
 
   private class Node(val runnable: Runnable) extends AtomicReference[Node]
 
