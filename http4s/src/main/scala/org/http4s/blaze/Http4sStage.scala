@@ -59,8 +59,14 @@ class Http4sStage(route: HttpService) extends Http1ServerParser with TailStage[B
         }
 
         try {
-          if (!requestLineComplete() && !parseRequestLine(buff)) return requestLoop()
-          if (!headersComplete() && !parseHeaders(buff)) return requestLoop()
+          if (!requestLineComplete() && !parseRequestLine(buff)) {
+            requestLoop()
+            return
+          }
+          if (!headersComplete() && !parseHeaders(buff)) {
+            requestLoop()
+            return
+          }
           // we have enough to start the request
           runRequest(buff)
         }
@@ -70,7 +76,7 @@ class Http4sStage(route: HttpService) extends Http1ServerParser with TailStage[B
       case Failure(t)          =>
         stageShutdown()
         sendOutboundCommand(Cmd.Error(t))
-    }
+    }(trampoline)
   }
 
   private def runRequest(buffer: ByteBuffer): Unit = {
@@ -86,7 +92,7 @@ class Http4sStage(route: HttpService) extends Http1ServerParser with TailStage[B
                       h, body)
 
     val result = try route(req) catch {
-      case _: MatchError => NotFound("404 Not found: " + req.pathInfo)
+      case _: MatchError => NotFound(req)
       case t: Throwable =>
         logger.error("Error running route", t)
         InternalServerError("500 Internal Service Error\n" + t.getMessage)
@@ -94,7 +100,6 @@ class Http4sStage(route: HttpService) extends Http1ServerParser with TailStage[B
 
     result.runAsync {
       case \/-(resp) => renderResponse(req, resp)
-
       case -\/(t) =>
         logger.error("Error running route", t)
         closeConnection() // TODO: We need to deal with these errors properly
@@ -135,8 +140,7 @@ class Http4sStage(route: HttpService) extends Http1ServerParser with TailStage[B
         if (closeOnFinish) {
           closeConnection()
           logger.trace("Request/route requested closing connection.")
-        }
-        else {
+        } else {
           reset()
           requestLoop()
         }  // Serve another connection
@@ -198,10 +202,10 @@ class Http4sStage(route: HttpService) extends Http1ServerParser with TailStage[B
             Future.successful(BodyChunk.fromArray(result.array(), result.position, result.remaining))
           }
           else if (contentComplete()) Future.failed(End)
-          else channelRead().flatMap{ b =>
+          else channelRead().flatMap{ b =>       // Need more data...
             currentbuffer = b
             go()
-          }
+          }(trampoline)
         }
 
         go().onComplete{
@@ -239,13 +243,15 @@ class Http4sStage(route: HttpService) extends Http1ServerParser with TailStage[B
   def headerComplete(name: String, value: String) = {
     logger.trace(s"Received header '$name: $value'")
     headers += Header(name, value)
+    false
   }
 
-  def submitRequestLine(methodString: String, uri: String, scheme: String, majorversion: Int, minorversion: Int) {
+  def submitRequestLine(methodString: String, uri: String, scheme: String, majorversion: Int, minorversion: Int) = {
     logger.trace(s"Received request($methodString $uri $scheme/$majorversion.$minorversion)")
     this.uri = uri
     this.method = methodString
     this.major = majorversion
     this.minor = minorversion
+    false
   }
 }

@@ -62,7 +62,7 @@ abstract class HttpServerStage(maxReqBody: Int) extends Http1ServerParser with T
 
         try {
           if (!requestLineComplete() && !parseRequestLine(buff)) {
-            return requestLoop()
+            requestLoop()
             return
           }
 
@@ -238,7 +238,7 @@ abstract class HttpServerStage(maxReqBody: Int) extends Http1ServerParser with T
                                   uri: String,
                                   scheme: String,
                                   majorversion: Int,
-                                  minorversion: Int) {
+                                  minorversion: Int): Boolean = {
 
     logger.trace(s"Received request($methodString $uri $scheme/$majorversion.$minorversion)")
 
@@ -246,6 +246,7 @@ abstract class HttpServerStage(maxReqBody: Int) extends Http1ServerParser with T
     this.method = methodString
     this.major = majorversion
     this.minor = minorversion
+    false
   }
 }
 

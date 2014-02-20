@@ -44,7 +44,7 @@ public abstract class Http1ServerParser extends BodyAndHeaderParser {
      * @param minorversion minor version
      * @return true if handling parsing should return.
      */
-    public abstract void submitRequestLine(String methodString, String uri, String scheme, int majorversion, int minorversion);
+    public abstract boolean submitRequestLine(String methodString, String uri, String scheme, int majorversion, int minorversion);
 
     /* ------------------------------------------------------------------ */
 
@@ -192,8 +192,7 @@ public abstract class Http1ServerParser extends BodyAndHeaderParser {
 
                     // We are through parsing the request line
                     _lineState = LineState.END;
-                    submitRequestLine(_methodString, _uriString, scheme, _majorversion, _minorversion);
-                    return true;
+                    return !submitRequestLine(_methodString, _uriString, scheme, _majorversion, _minorversion);
 
                 default:
                     throw new InvalidState("Attempted to parse Request line when already complete." +

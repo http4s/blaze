@@ -39,9 +39,10 @@ class ServerParserSpec extends WordSpec with Matchers {
 
     var minorv = -1
 
-    def submitRequestLine(methodString: String, uri: String, scheme: String, majorversion: Int, minorversion: Int) {
+    def submitRequestLine(methodString: String, uri: String, scheme: String, majorversion: Int, minorversion: Int) = {
 //      println(s"$methodString, $uri, $scheme/$majorversion.$minorversion")
       minorv = minorversion
+      false
     }
 
     def headerComplete(name: String, value: String) = {
