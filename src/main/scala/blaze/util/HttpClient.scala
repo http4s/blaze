@@ -6,7 +6,7 @@ import java.nio.ByteBuffer
 import scala.concurrent.{ExecutionContext, Future}
 import scala.concurrent.duration.Duration
 import java.net.InetSocketAddress
-import blaze.pipeline.stages.http.{HttpClientStage, Response}
+import blaze.pipeline.stages.http.{SimpleHttpResponse, HttpClientStage, Response}
 
 /**
  * @author Bryce Anderson
@@ -17,10 +17,13 @@ object HttpClient {
 
   private lazy val connManager = new ClientChannelFactory()
 
-  // TODO: perhaps we should really parse the URL
+  // TODO: the robustness of this method to varying input is highly questionable
   private def parseURL(url: String): (String, Int, String, String) = {
-    //("www.google.com", 80, "http", "/")
-    ???
+    val uri = java.net.URI.create(if (url.startsWith("http")) url else "http://" + url)
+
+    val port = if (uri.getPort > 0) uri.getPort else (if (uri.getScheme == "http") 80 else 443)
+
+    (uri.getHost, port, uri.getScheme, uri.getPath)
   }
 
   private def runReq(method: String,
@@ -29,7 +32,7 @@ object HttpClient {
                      body: ByteBuffer,
                      timeout: Duration)(implicit ec: ExecutionContext): Future[Response] = {
 
-    val (host, port, scheme, uri) = parseURL(url)
+    val (host, port, _, uri) = parseURL(url)
 
     val fhead = connManager.connect(new InetSocketAddress(host, port))
 
@@ -45,8 +48,12 @@ object HttpClient {
     }
   }
 
-  def GET(url: String, headers: Seq[(String, String)], timeout: Duration = Duration.Inf)
-         (implicit ec: ExecutionContext = Execution.trampoline): Future[Response] = {
-    runReq("GET", url, headers, BufferTools.emptyBuffer, timeout)
+  def GET(url: String, headers: Seq[(String, String)] = Nil, timeout: Duration = Duration.Inf)
+         (implicit ec: ExecutionContext = Execution.trampoline): Future[SimpleHttpResponse] = {
+    val r = runReq("GET", url, headers, BufferTools.emptyBuffer, timeout)
+    r.flatMap {
+      case r: SimpleHttpResponse => Future.successful(r)
+      case r => Future.failed(new Exception(s"Received invalid response type: ${r.getClass}"))
+    }(Execution.directec)
   }
 }

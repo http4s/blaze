@@ -6,6 +6,7 @@ import blaze.pipeline.stages.http.websocket.WebSocketDecoder.WebSocketFrame
 
 import java.nio.charset.StandardCharsets.UTF_8
 import scala.xml.Node
+import java.nio.charset.{StandardCharsets, Charset}
 
 /**
  * @author Bryce Anderson
@@ -16,7 +17,12 @@ package object http {
   type Headers = Seq[(String, String)]
 
   sealed trait Response
-  case class SimpleHttpResponse(status: String, code: Int, headers: Headers, body: ByteBuffer) extends Response
+
+  case class SimpleHttpResponse(status: String, code: Int, headers: Headers, body: ByteBuffer) extends Response {
+    def stringBody(charset: Charset = StandardCharsets.UTF_8): String = {
+      charset.decode(body.asReadOnlyBuffer()).toString
+    }
+  }
 
   object SimpleHttpResponse {
     def Ok(body: Array[Byte]): SimpleHttpResponse = SimpleHttpResponse("OK", 200, Nil, ByteBuffer.wrap(body))
@@ -25,5 +31,4 @@ package object http {
   }
 
   case class WSResponse(stage: LeafBuilder[WebSocketFrame]) extends Response
-
 }

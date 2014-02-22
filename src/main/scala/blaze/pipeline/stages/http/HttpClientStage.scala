@@ -114,7 +114,7 @@ class HttpClientStage(timeout: Duration = Duration.Inf)
   }
 
   private def parserLoop(p: Promise[Response]): Unit = {
-    channelRead(-1, timeout).onComplete {
+    channelRead(timeout = timeout).onComplete {
       case Success(b) => parseBuffer(b, p)
       case Failure(t) => p.failure(t)
     }
