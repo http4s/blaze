@@ -8,7 +8,6 @@ import com.typesafe.scalalogging.slf4j.Logging
 import blaze.util.Execution.directec
 import scala.concurrent.duration.Duration
 import blaze.util.Execution
-import sun.org.mozilla.javascript.internal.Callable
 import java.util.concurrent.{ScheduledFuture, TimeUnit, TimeoutException}
 import scala.util.control.NoStackTrace
 
