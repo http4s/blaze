@@ -1,11 +1,12 @@
 import sbt._
 import Keys._
 
-import spray.revolver.RevolverPlugin._
+//import spray.revolver.RevolverPlugin._
 
 object ApplicationBuild extends Build {
 
-  lazy val buildSettings = Defaults.defaultSettings ++ Revolver.settings ++ Seq(
+  //lazy val buildSettings = Defaults.defaultSettings ++ Revolver.settings ++ Seq(
+  lazy val buildSettings = Defaults.defaultSettings ++ Seq(
     organization := "brycea",
     version := "0.0.1-SNAPSHOT",
     scalaVersion in ThisBuild := "2.10.3",
@@ -17,9 +18,9 @@ object ApplicationBuild extends Build {
     libraryDependencies += npn_api,
     libraryDependencies += npn_boot,
 
-    mainClass in Revolver.reStart := Some("blaze.examples.NIO1HttpServer"),
+    //mainClass in Revolver.reStart := Some("blaze.examples.NIO1HttpServer"),
     fork := true,
-//    javaOptions in run += "-Djavax.net.debug=all",    // SSL Debugging
+    javaOptions in (Test,run) += "-Djavax.net.debug=all",    // SSL Debugging
 
       // Adds NPN to the boot classpath for Spdy support
     javaOptions in run <++= (managedClasspath in Runtime) map { attList =>
@@ -36,10 +37,10 @@ object ApplicationBuild extends Build {
                     settings = buildSettings
                   )
     
-  lazy val http4s = Project("http4s",
-                      new File("http4s"),
-                      settings = buildSettings
-              ).dependsOn(main, http4score, http4sdsl)
+//  lazy val http4s = Project("http4s",
+//                      new File("http4s"),
+//                      settings = buildSettings
+//              ).dependsOn(main, http4score, http4sdsl)
    
    lazy val scalatest  = "org.scalatest"  %% "scalatest" % "2.0.RC3"
    lazy val scalameter = "com.github.axel22" % "scalameter_2.10" % "0.4"

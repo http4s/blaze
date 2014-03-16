@@ -7,6 +7,9 @@ import scala.concurrent.{ExecutionContext, Future}
 import scala.concurrent.duration.Duration
 import java.net.InetSocketAddress
 import blaze.pipeline.stages.http.{SimpleHttpResponse, HttpClientStage, Response}
+import javax.net.ssl.{KeyManagerFactory, SSLContext}
+import java.security.KeyStore
+import blaze.pipeline.stages.SSLStage
 
 /**
  * @author Bryce Anderson
@@ -16,6 +19,20 @@ object HttpClient {
 
 
   private lazy val connManager = new ClientChannelFactory()
+
+  private lazy val sslContext = {
+    val ksStream = BogusKeystore.asInputStream()
+    val ks = KeyStore.getInstance("JKS")
+    ks.load(ksStream, BogusKeystore.getKeyStorePassword)
+
+    val kmf = KeyManagerFactory.getInstance(KeyManagerFactory.getDefaultAlgorithm())
+    kmf.init(ks, BogusKeystore.getCertificatePassword)
+
+    val context = SSLContext.getInstance("SSL")
+
+    context.init(kmf.getKeyManagers(), null, null)
+    context
+  }
 
   // TODO: the robustness of this method to varying input is highly questionable
   private def parseURL(url: String): (String, Int, String, String) = {
@@ -32,13 +49,20 @@ object HttpClient {
                      body: ByteBuffer,
                      timeout: Duration)(implicit ec: ExecutionContext): Future[Response] = {
 
-    val (host, port, _, uri) = parseURL(url)
+    val (host, port, scheme, uri) = parseURL(url)
 
     val fhead = connManager.connect(new InetSocketAddress(host, port))
 
     fhead.flatMap { head =>
       val t = new HttpClientStage()
-      LeafBuilder(t).base(head)
+
+      if (scheme == "https") {
+        val eng = sslContext.createSSLEngine()
+        eng.setUseClientMode(true)
+        LeafBuilder(t).prepend(new SSLStage(eng)).base(head)
+      }
+      else LeafBuilder(t).base(head)
+
       head.sendInboundCommand(Command.Connect)
       val f = t.makeRequest(method, host, uri, headers, body)
       // Shutdown our connection
