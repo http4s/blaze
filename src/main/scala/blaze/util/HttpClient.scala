@@ -20,6 +20,7 @@ object HttpClient {
 
   private lazy val connManager = new ClientChannelFactory()
 
+  // TODO: is there a better way to make a dummy context? Clients shouldn't need a certificate I would think
   private lazy val sslContext = {
     val ksStream = BogusKeystore.asInputStream()
     val ks = KeyStore.getInstance("JKS")
