@@ -14,11 +14,16 @@ import blaze.pipeline.Command.EOF
 import blaze.util.Execution._
 import com.typesafe.scalalogging.slf4j.Logging
 import blaze.util.{BufferTools, ScratchBuffer}
+import scala.annotation.tailrec
 
 
 /**
  * @author Bryce Anderson
  *         Created on 1/11/14
+ *
+ *    TODO: right now this is best described as a monstrosity. It needs fixing, particularly the
+ *          handshaking. That code should be sharable between readRequestLoop and writeLoop.
+ *          Any why shouldn't the naming be consistent?
  */
 class SSLStage(engine: SSLEngine, maxSubmission: Int = -1) extends MidStage[ByteBuffer, ByteBuffer] {
 
@@ -142,12 +147,22 @@ class SSLStage(engine: SSLEngine, maxSubmission: Int = -1) extends MidStage[Byte
     p.future
   }
 
+  @tailrec
+  private def areEmpty(buffers: Array[ByteBuffer], index: Int): Boolean = {
+    if (buffers(index).hasRemaining) false
+    else if (buffers.length > index + 1) areEmpty(buffers, index + 1)
+    else true
+  }
+
+  private var writeHandshakeBytes: ByteBuffer = null
+
   private def writeLoop(written: Int, buffers: Array[ByteBuffer], out: ListBuffer[ByteBuffer], p: Promise[Any]) {
 
     val o = ScratchBuffer.getScratchBuffer(maxBuffer)
     var wr = written
 
     while (true) {
+      o.clear()
       val r = engine.wrap(buffers, o)
 
       logger.debug(s"Write request result: $r, $o")
@@ -156,21 +171,33 @@ class SSLStage(engine: SSLEngine, maxSubmission: Int = -1) extends MidStage[Byte
         case HandshakeStatus.NEED_TASK =>
           runTasks()
 
+        case HandshakeStatus.NEED_WRAP =>
+          if (o.position() > 0) {
+            o.flip()
+            channelWrite(copyBuffer(o)).onComplete {
+              case Success(_) => writeLoop(wr, buffers, out, p)
+              case Failure(t) => p.failure(t)
+            }(trampoline)
+            return
+          }
+          else sys.error("Shouldn't get here.")
+
+
         case HandshakeStatus.NEED_UNWRAP =>
           if (o.position() > 0) {
             o.flip()
-            wr += o.remaining()
-            out += copyBuffer(o)
-            o.clear()
+            channelWrite(copyBuffer(o)).onComplete {
+              case Success(_) => writeLoop(wr, buffers, out, p)
+              case Failure(t) => p.failure(t)
+            }(trampoline)
+            return
           }
 
-          channelRead().onComplete {
+          (if (writeHandshakeBytes != null) Future.successful(writeHandshakeBytes)
+          else channelRead()).onComplete {
             case Success(b) =>
-              engine.unwrap(b, BufferTools.emptyBuffer)
-
-              // TODO: this will almost certainly corrupt the state if we have some stream data...
-              //storeRead(b)
-              assert(!b.hasRemaining)
+              engine.unwrap(b, o)
+              writeHandshakeBytes = if (b.hasRemaining) b else null
 
               writeLoop(wr, buffers, out, p)
 
@@ -178,7 +205,7 @@ class SSLStage(engine: SSLEngine, maxSubmission: Int = -1) extends MidStage[Byte
           }(trampoline)
           return
 
-        case _ => // NOOP   FINISHED, NEED_WRAP, NOT_HANDSHAKING
+        case _ => // NOOP ->  FINISHED, NOT_HANDSHAKING
       }
 
       r.getStatus match {
@@ -222,7 +249,7 @@ class SSLStage(engine: SSLEngine, maxSubmission: Int = -1) extends MidStage[Byte
           return
       }
 
-      if (!buffers(buffers.length - 1).hasRemaining) {
+      if (areEmpty(buffers, 0)) {
         if (o != null && o.position() > 0) {
           o.flip()
           out += copyBuffer(o)

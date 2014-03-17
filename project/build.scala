@@ -19,16 +19,18 @@ object ApplicationBuild extends Build {
     libraryDependencies += npn_boot,
 
     //mainClass in Revolver.reStart := Some("blaze.examples.NIO1HttpServer"),
-    fork := true,
-    javaOptions in (Test,run) += "-Djavax.net.debug=all",    // SSL Debugging
+//    javaOptions in run += "-Djavax.net.debug=all",    // SSL Debugging
+//    javaOptions in run += "-Dcom.sun.net.ssl.enableECC=false",
+//    javaOptions in run += "-Djsse.enableSNIExtension=false",
+    fork in run := true
 
       // Adds NPN to the boot classpath for Spdy support
-    javaOptions in run <++= (managedClasspath in Runtime) map { attList =>
-      for {
-        file <- attList.map(_.data)
-        path = file.getAbsolutePath if path.contains("jetty.npn")
-      } yield { println(path); "-Xbootclasspath/p:" + path}
-    }
+//    javaOptions in run <++= (managedClasspath in Runtime) map { attList =>
+//      for {
+//        file <- attList.map(_.data)
+//        path = file.getAbsolutePath if path.contains("jetty.npn")
+//      } yield { println(path); "-Xbootclasspath/p:" + path}
+//    }
 
   )
 

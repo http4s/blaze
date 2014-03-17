@@ -22,7 +22,7 @@ class HttpClientSpec extends WordSpec with Matchers {
     "Make https requests" in {
       val f = HttpClient.GET("https://www.google.com/")
 
-      val r = Await.result(f, 3.seconds)
+      val r = Await.result(f, 1.seconds)
 
       r.code should equal(200)
     }
