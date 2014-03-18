@@ -3,7 +3,7 @@ package blaze.pipeline.stages
 import java.nio.ByteBuffer
 import javax.net.ssl.SSLEngineResult.Status
 import javax.net.ssl.SSLEngineResult.HandshakeStatus
-import javax.net.ssl.{SSLEngineResult, SSLEngine}
+import javax.net.ssl.{SSLException, SSLEngineResult, SSLEngine}
 
 import scala.collection.mutable.ListBuffer
 import scala.concurrent.{Promise, Future}
@@ -12,7 +12,6 @@ import scala.util.{Failure, Success}
 import blaze.pipeline.MidStage
 import blaze.pipeline.Command.EOF
 import blaze.util.Execution._
-import com.typesafe.scalalogging.slf4j.Logging
 import blaze.util.{BufferTools, ScratchBuffer}
 import scala.annotation.tailrec
 
@@ -20,10 +19,6 @@ import scala.annotation.tailrec
 /**
  * @author Bryce Anderson
  *         Created on 1/11/14
- *
- *    TODO: right now this is best described as a monstrosity. It needs fixing, particularly the
- *          handshaking. That code should be sharable between readRequestLoop and writeLoop.
- *          Any why shouldn't the naming be consistent?
  */
 class SSLStage(engine: SSLEngine, maxSubmission: Int = -1) extends MidStage[ByteBuffer, ByteBuffer] {
 
@@ -56,39 +51,69 @@ class SSLStage(engine: SSLEngine, maxSubmission: Int = -1) extends MidStage[Byte
           channelRead().onComplete {
             case Success(b) =>
               val sum = concatBuffers(data, b)
-              val rr = engine.unwrap(sum, o)
-              sslHandshake(sum, rr, f, ex)
+              try {
+                val rr = engine.unwrap(sum, o)
+                sslHandshake(sum, rr, f, ex)
+              } catch {
+                case t: SSLException =>
+                  logger.warn("SSL Error", t)
+                  stageShutdown()
+                  ex(t)
+              }
+
 
             case Failure(t) => ex(t)
           }(trampoline)
           return
         }
 
-        val rr = engine.unwrap(data, o)
-        if (o.position() > 0) {
-          logger.warn("Unwrapped and returned some data: " + o + "\n" + new String(o.array(), 0, o.position()))
-        }
+        try {
+          val rr = engine.unwrap(data, o)
 
-        sslHandshake(data, rr, f, ex)
+          if (o.position() > 0) {
+            logger.warn("Unwrapped and returned some data: " + o + "\n" + new String(o.array(), 0, o.position()))
+          }
+
+          sslHandshake(data, rr, f, ex)
+        } catch {
+          case t: SSLException =>
+            logger.warn("SSL Error", t)
+            stageShutdown()
+            ex(t)
+        }
 
 
       case HandshakeStatus.NEED_TASK =>
         runTasks()
-        val rr = engine.unwrap(data, o)  // just kind of bump it along
-        sslHandshake(data, rr, f, ex)
+        try {
+          val rr = engine.unwrap(data, o)  // just kind of bump it along
+          sslHandshake(data, rr, f, ex)
+        } catch {
+          case t: SSLException =>
+            logger.warn("SSL Error", t)
+            stageShutdown()
+            ex(t)
+        }
 
       case HandshakeStatus.NEED_WRAP =>
-        val r = engine.wrap(BufferTools.emptyBuffer, o)
-        assert(r.bytesProduced() > 0)
-        o.flip()
+        try {
+          val r = engine.wrap(BufferTools.emptyBuffer, o)
+          assert(r.bytesProduced() > 0)
+          o.flip()
 
-        channelWrite(copyBuffer(o)).onComplete {
-          case Success(_) => sslHandshake(data, r, f, ex)
+          channelWrite(copyBuffer(o)).onComplete {
+            case Success(_) => sslHandshake(data, r, f, ex)
 
-          case Failure(t) => ex(t)
-        }(trampoline)
+            case Failure(t) => ex(t)
+          }(trampoline)
 
-        return
+          return
+        } catch {
+          case t: SSLException =>
+            logger.warn("SSL Error", t)
+            stageShutdown()
+            ex(t)
+        }
 
       case _ => f(r, data)
     }
@@ -105,55 +130,60 @@ class SSLStage(engine: SSLEngine, maxSubmission: Int = -1) extends MidStage[Byte
     val o = ScratchBuffer.getScratchBuffer(maxBuffer)
 
     while(true) {
+      try {
+        val r = engine.unwrap(b, o)
 
-      val r = engine.unwrap(b, o)
+        if (r.bytesProduced() > 0) {
+          bytesRead += r.bytesProduced()
+          o.flip()
+          out += copyBuffer(o)
+          o.clear()
+        }
 
-      if (r.bytesProduced() > 0) {
-        bytesRead += r.bytesProduced()
-        o.flip()
-        out += copyBuffer(o)
-        o.clear()
-      }
+        logger.debug(s"SSL Read Request Status: $r, $o")
 
-      logger.debug(s"SSL Read Request Status: $r, $o")
-
-      r.getHandshakeStatus match {
-        case HandshakeStatus.NOT_HANDSHAKING | HandshakeStatus.NOT_HANDSHAKING => // noop
-        case _ => // must be handshaking.
-          sslHandshake(emptyBuffer, r, (_, _) => readLoop(b, size - bytesRead, out, p),
-                                            t => {stageShutdown(); p.failure(t)} )
-          return
-
-      }
-
-      r.getStatus() match {
-        case Status.OK => // NOOP -> Just wait continue the loop processing data
-
-        case Status.BUFFER_OVERFLOW =>  // resize and go again
-          sys.error("Shouldn't have gotten here")
-
-        case Status.BUFFER_UNDERFLOW => // Need more data
-          readLeftover = b
-
-          if ((r.getHandshakeStatus == HandshakeStatus.NOT_HANDSHAKING ||
-               r.getHandshakeStatus == HandshakeStatus.FINISHED) && !out.isEmpty) {          // We got some data so send it
-            p.success(joinBuffers(out))
+        r.getHandshakeStatus match {
+          case HandshakeStatus.NOT_HANDSHAKING | HandshakeStatus.NOT_HANDSHAKING => // noop
+          case _ => // must be handshaking.
+            sslHandshake(emptyBuffer, r, (_, _) => readLoop(b, size - bytesRead, out, p),
+              t => {stageShutdown(); p.tryFailure(t)} )
             return
-          }
-          else {
-            val readsize = if (size > 0) size - bytesRead else size
-            channelRead(math.max(readsize, maxNetSize)).onComplete {
-              case Success(b) => readLoop(b, readsize, out, p)
-              case f: Failure[_] => p.tryComplete(f.asInstanceOf[Failure[ByteBuffer]])
-            }(trampoline)
+
+        }
+
+        r.getStatus() match {
+          case Status.OK => // NOOP -> Just wait continue the loop processing data
+
+          case Status.BUFFER_OVERFLOW =>  // resize and go again
+            sys.error("Shouldn't have gotten here")
+
+          case Status.BUFFER_UNDERFLOW => // Need more data
+            readLeftover = b
+
+            if ((r.getHandshakeStatus == HandshakeStatus.NOT_HANDSHAKING ||
+              r.getHandshakeStatus == HandshakeStatus.FINISHED) && !out.isEmpty) {          // We got some data so send it
+              p.success(joinBuffers(out))
+            }
+            else {
+              val readsize = if (size > 0) size - bytesRead else size
+              channelRead(math.min(readsize, maxNetSize)).onComplete {
+                case Success(b) => readLoop(b, readsize, out, p)
+                case Failure(f) => p.tryFailure(f)
+              }(trampoline)
+            }
             return
-          }
 
           // It is up to the next stage to call shutdown, if that is what they want
-        case Status.CLOSED =>
-          if (!out.isEmpty) p.success(joinBuffers(out))
-          else p.failure(EOF)
-          return
+          case Status.CLOSED =>
+            if (!out.isEmpty) p.success(joinBuffers(out))
+            else p.failure(EOF)
+            return
+        }
+      } catch {
+        case t: SSLException =>
+          logger.warn("SSL Error", t)
+          stageShutdown()
+          p.failure(t)
       }
     }
 
@@ -179,7 +209,7 @@ class SSLStage(engine: SSLEngine, maxSubmission: Int = -1) extends MidStage[Byte
     val o = ScratchBuffer.getScratchBuffer(maxBuffer)
     var wr = written
 
-    while (true) {
+    try while (true) {
       o.clear()
       val r = engine.wrap(buffers, o)
 
@@ -252,6 +282,11 @@ class SSLStage(engine: SSLEngine, maxSubmission: Int = -1) extends MidStage[Byte
         p.completeWith(channelWrite(out))
         return
       }
+    } catch {
+      case t: SSLException =>
+        logger.warn("SSL Error", t)
+        stageShutdown()
+        p.failure(t)
     }
 
     sys.error("Shouldn't get here.")
