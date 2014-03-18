@@ -75,14 +75,18 @@ public abstract class ParserBase {
 
     /** Returns the string in the buffer minus an leading or trailing whitespace or quotes */
     final protected String getTrimmedString() throws BaseExceptions.BadRequest {
-
         if (_bufferPosition == 0) return "";
 
         int start = 0;
+        boolean quoted = false;
         // Look for start
         while (start < _bufferPosition) {
             final byte ch = _internalBuffer[start];
-            if (ch != HttpTokens.SPACE && ch != HttpTokens.TAB && ch != '"') {
+            if (ch == '"') {
+                quoted = true;
+                break;
+            }
+            else if (ch != HttpTokens.SPACE && ch != HttpTokens.TAB) {
                 break;
             }
             start++;
@@ -93,14 +97,14 @@ public abstract class ParserBase {
         // Look for end
         while(end > start) {
             final byte ch = _internalBuffer[end];
-            if (ch != HttpTokens.SPACE && ch != HttpTokens.TAB && ch != '"') {
-                break;
+            if (quoted) {
+                if (ch == '"') break;
+                else if (ch != HttpTokens.SPACE && ch != HttpTokens.TAB) {
+                    throw new BaseExceptions.BadRequest("String might not quoted correctly: '" + getString() + "'");
+                }
             }
+            else if (ch != HttpTokens.SPACE && ch != HttpTokens.TAB) break;
             end--;
-        }
-
-        if (end == start) {
-            throw new BaseExceptions.BadRequest("String might not quoted correctly: '" + getString() + "'");
         }
 
         String str = new String(_internalBuffer, start, end + 1, StandardCharsets.US_ASCII);

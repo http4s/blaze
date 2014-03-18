@@ -15,8 +15,7 @@ import blaze.pipeline.stages.SSLStage
  * @author Bryce Anderson
  *         Created on 2/6/14
  */
-object HttpClient {
-
+trait HttpClient {
 
   private lazy val connManager = new ClientChannelFactory()
 
@@ -41,10 +40,14 @@ object HttpClient {
 
     val port = if (uri.getPort > 0) uri.getPort else (if (uri.getScheme == "http") 80 else 443)
 
-    (uri.getHost, port, uri.getScheme, uri.getPath)
+    (uri.getHost,
+      port,
+      uri.getScheme,
+      if (uri.getQuery != null) uri.getPath + "?" + uri.getQuery else uri.getPath
+    )
   }
 
-  private def runReq(method: String,
+  protected def runReq(method: String,
                      url: String,
                      headers: Seq[(String, String)],
                      body: ByteBuffer,
@@ -82,3 +85,5 @@ object HttpClient {
     }(Execution.directec)
   }
 }
+
+object HttpClient extends HttpClient
