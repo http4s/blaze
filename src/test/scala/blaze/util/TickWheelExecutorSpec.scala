@@ -4,12 +4,13 @@ import org.scalatest.{Matchers, WordSpec}
 
 import scala.concurrent.duration._
 import java.util.concurrent.atomic.AtomicInteger
+import org.scalatest.concurrent.Eventually
 
 /**
  * @author Bryce Anderson
  *         Created on 2/3/14
  */
-class TickWheelExecutorSpec extends WordSpec with Matchers {
+class TickWheelExecutorSpec extends WordSpec with Matchers with Eventually {
 
   "TickWheelExecutor" should {
 
@@ -72,12 +73,12 @@ class TickWheelExecutorSpec extends WordSpec with Matchers {
       val cancels = 0 until 1000 map { j =>
         val c = ec.schedule(new Runnable {
           def run() { i.incrementAndGet() }
-        }, ((j+1)*10).millis)
+        }, ((j+5)*10).millis)
         c
       }
       cancels.foreach(_.cancel())
 
-      Thread.sleep(100)
+      Thread.sleep(700)
       i.get() should equal(0)
 
     }
