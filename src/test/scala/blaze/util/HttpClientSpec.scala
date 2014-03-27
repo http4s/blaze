@@ -11,18 +11,10 @@ class HttpClientSpec extends WordSpec with Matchers {
 
   "HttpClient" should {
 
-//    "Make http requests" in {
-//      val f = HttpClient.GET("http://brycepc.dyndns.org/")
-//
-//      val r = Await.result(f, 3.seconds)
-//
-//      r.code should equal(200)
-//    }
-
     "Make https requests" in {
       val f = HttpClient.GET("https://www.google.com/")
 
-      val r = Await.result(f, 1.seconds)
+      val r = Await.result(f, 5.seconds)
 
       r.code should equal(200)
     }

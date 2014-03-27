@@ -40,4 +40,4 @@ The structure of this project is heavily influenced by the Netty Project, and ou
 Bryce Anderson <bryce.anderson22@gmail.com>
 
 ### Licence
-Blaze is licensed under the Apache 2.0 license. See the license file in the root project directory for more information.
+Blaze is licensed under a BSD license. See the license file in the root project directory for more information.

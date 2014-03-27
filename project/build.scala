@@ -5,18 +5,40 @@ import Keys._
 
 object ApplicationBuild extends Build {
 
-  //lazy val buildSettings = Defaults.defaultSettings ++ Revolver.settings ++ Seq(
-  lazy val buildSettings = Defaults.defaultSettings ++ Seq(
-    organization := "brycea",
-    version := "0.0.1-SNAPSHOT",
-    scalaVersion in ThisBuild := "2.10.3",
+  /* Projects */
+  lazy val main = Project("blaze",
+                    new File("."),
+                    settings = buildSettings
+                  )
 
-    libraryDependencies += scalatest % "test",
-    libraryDependencies += scalameter,
-    libraryDependencies += scalaloggingSlf4j,
-    libraryDependencies += logbackClassic,
-    libraryDependencies += npn_api,
-    libraryDependencies += npn_boot,
+  /* global build settings */
+  //lazy val buildSettings = Defaults.defaultSettings ++  publishing ++ Revolver.settings ++ Seq(
+  lazy val buildSettings = Defaults.defaultSettings ++ 
+                           dependencies ++
+                           publishing ++ Seq(
+    organization := "org.http4s",
+
+    version := "0.1.0-SNAPSHOT",
+
+    scalaVersion in ThisBuild := "2.10.4",
+
+    description := "NIO Framework for Scala",
+
+    homepage in ThisBuild := Some(url("https://github.com/http4s/blaze")),
+
+    startYear in ThisBuild := Some(2014),
+
+    licenses in ThisBuild := Seq(
+      ("BSD 2-clause", url("https://raw.github.com/http4s/http4s/develop/LICENSE"))
+    ),
+
+    scmInfo in ThisBuild := Some(
+      ScmInfo(
+        url("https://github.com/http4s/blaze"),
+        "scm:git:https://github.com/http4s/blaze.git",
+        Some("scm:git:git@github.com:http4s/blaze.git")
+      )
+    ),
 
     //mainClass in Revolver.reStart := Some("blaze.examples.NIO1HttpServer"),
 //    javaOptions in run += "-Djavax.net.debug=all",    // SSL Debugging
@@ -34,24 +56,21 @@ object ApplicationBuild extends Build {
 
   )
 
-  lazy val main = Project("blaze",
-                    new File("."),
-                    settings = buildSettings
-                  )
-    
-//  lazy val http4s = Project("http4s",
-//                      new File("http4s"),
-//                      settings = buildSettings
-//              ).dependsOn(main, http4score, http4sdsl)
+  /* dependencies */
+  lazy val dependencies = Seq(
+    libraryDependencies += scalatest % "test",
+    libraryDependencies += scalameter,
+    libraryDependencies += scalaloggingSlf4j,
+    libraryDependencies += logbackClassic,
+    libraryDependencies += npn_api,
+    libraryDependencies += npn_boot
+  )
    
    lazy val scalatest  = "org.scalatest"  %% "scalatest" % "2.0.RC3"
    lazy val scalameter = "com.github.axel22" % "scalameter_2.10" % "0.4"
    
    lazy val scalaloggingSlf4j   = "com.typesafe"   %% "scalalogging-slf4j" % "1.0.1"
    lazy val logbackClassic      = "ch.qos.logback" %  "logback-classic"    % "1.0.9"
-   
-   lazy val http4score = ProjectRef(uri("git://github.com/http4s/http4s.git"), "core")
-   lazy val http4sdsl = ProjectRef(uri("git://github.com/http4s/http4s.git"), "dsl")
 
 
   // Needed for Spdy Support. Perhaps it should be a sub-project?
@@ -61,5 +80,30 @@ object ApplicationBuild extends Build {
   lazy val npn_boot            = "org.mortbay.jetty.npn"     % "npn-boot" % npn_version
 
   lazy val npn_version = "8.1.2.v20120308"
+
+  /* publishing */
+  lazy val publishing = Seq(
+    publishMavenStyle in ThisBuild := true,
+    publishTo in ThisBuild <<= version { (v: String) =>
+      val nexus = "https://oss.sonatype.org/"
+      if (v.trim.endsWith("SNAPSHOT")) Some(
+        "snapshots" at nexus + "content/repositories/snapshots"
+      )
+      else Some("releases" at nexus + "service/local/staging/deploy/maven2")
+    },
+    publishArtifact in (ThisBuild, Test) := false,
+    pomIncludeRepository in ThisBuild := { _ => false },
+
+    pomExtra in ThisBuild := (
+      <developers>
+        <developer>
+          <id>bryce-anderson</id>
+          <name>Bryce L. Anderson</name>
+          <email>bryce.anderson22@gamil.com</email>
+          <!-- <url></url> -->
+        </developer>
+      </developers>
+    )
+  )
             
 }
