@@ -20,19 +20,19 @@ object ApplicationBuild extends Build {
 
     version := "0.1.0-SNAPSHOT",
 
-    scalaVersion in ThisBuild := "2.10.4",
+    scalaVersion := "2.10.4",
 
     description := "NIO Framework for Scala",
 
-    homepage in ThisBuild := Some(url("https://github.com/http4s/blaze")),
+    homepage := Some(url("https://github.com/http4s/blaze")),
 
-    startYear in ThisBuild := Some(2014),
+    startYear := Some(2014),
 
-    licenses in ThisBuild := Seq(
+    licenses := Seq(
       ("BSD 2-clause", url("https://raw.github.com/http4s/http4s/develop/LICENSE"))
     ),
 
-    scmInfo in ThisBuild := Some(
+    scmInfo := Some(
       ScmInfo(
         url("https://github.com/http4s/blaze"),
         "scm:git:https://github.com/http4s/blaze.git",
@@ -83,23 +83,29 @@ object ApplicationBuild extends Build {
 
   /* publishing */
   lazy val publishing = Seq(
-    publishMavenStyle in ThisBuild := true,
-    publishTo in ThisBuild <<= version { (v: String) =>
+    publishMavenStyle := true,
+    publishTo <<= version { (v: String) =>
       val nexus = "https://oss.sonatype.org/"
       if (v.trim.endsWith("SNAPSHOT")) Some(
         "snapshots" at nexus + "content/repositories/snapshots"
       )
       else Some("releases" at nexus + "service/local/staging/deploy/maven2")
     },
-    publishArtifact in (ThisBuild, Test) := false,
-    pomIncludeRepository in ThisBuild := { _ => false },
+    publishArtifact in Test := false,
+    pomIncludeRepository := { _ => false },
 
-    pomExtra in ThisBuild := (
+    pomExtra := (
       <developers>
         <developer>
           <id>bryce-anderson</id>
           <name>Bryce L. Anderson</name>
           <email>bryce.anderson22@gamil.com</email>
+          <!-- <url></url> -->
+        </developer>
+        <developer>
+          <id>rossabaker</id>
+          <name>Ross A. Baker</name>
+          <email>baker@alumni.indiana.edu</email>
           <!-- <url></url> -->
         </developer>
       </developers>
