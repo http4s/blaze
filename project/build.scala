@@ -40,7 +40,7 @@ object ApplicationBuild extends Build {
       )
     ),
 
-    //mainClass in Revolver.reStart := Some("blaze.examples.NIO1HttpServer"),
+    //mainClass in Revolver.reStart := Some("org.http4s.blaze.examples.NIO1HttpServer"),
 //    javaOptions in run += "-Djavax.net.debug=all",    // SSL Debugging
 //    javaOptions in run += "-Dcom.sun.net.ssl.enableECC=false",
 //    javaOptions in run += "-Djsse.enableSNIExtension=false",

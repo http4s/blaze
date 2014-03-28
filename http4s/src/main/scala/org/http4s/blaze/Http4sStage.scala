@@ -1,8 +1,8 @@
 package org.http4s.blaze
 
-import blaze.http_parser.Http1ServerParser
-import _root_.blaze.pipeline.{Command => Cmd, TailStage}
-import blaze.util.Execution._
+import org.http4s.blaze.http_parser.Http1ServerParser
+import org.http4s.blaze.pipeline.{Command => Cmd, TailStage}
+import org.http4s.blaze.util.Execution._
 
 import java.nio.ByteBuffer
 import scala.concurrent.Future

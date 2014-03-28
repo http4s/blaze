@@ -6,19 +6,19 @@ package org.http4s.examples.blaze
  */
 
 
-import blaze.channel._
+import org.http4s.blaze.channel._
 import java.nio.channels.AsynchronousChannelGroup
 import java.net.InetSocketAddress
 import org.http4s.blaze.Http4sStage
 import org.http4s.examples.ExampleRoute
 import org.http4s.util.middleware.URITranslation
-import blaze.util.BogusKeystore
+import org.http4s.blaze.util.BogusKeystore
 import java.security.KeyStore
 import javax.net.ssl.{SSLContext, KeyManagerFactory}
-import blaze.pipeline.stages.SSLStage
-import blaze.channel.nio1.{SocketServerChannelFactory, NIOServerChannelFactory}
+import org.http4s.blaze.pipeline.stages.SSLStage
+import org.http4s.blaze.channel.nio1.{SocketServerChannelFactory, NIOServerChannelFactory}
 import java.nio.ByteBuffer
-import blaze.pipeline.LeafBuilder
+import org.http4s.blaze.pipeline.LeafBuilder
 
 /**
  * @author Bryce Anderson
@@ -57,6 +57,6 @@ class BlazeExample(port: Int) {
 }
 
 object BlazeExample {
-  println("Starting Http4s-blaze example")
+  println("Starting Http4s-org.http4s.blaze example")
   def main(args: Array[String]): Unit = new BlazeExample(8080).run()
 }
