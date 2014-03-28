@@ -7,7 +7,7 @@ package org.http4s.blaze.http_parser;
  */
 public class BaseExceptions {
 
-    static abstract class ParserException extends Exception {
+    public static abstract class ParserException extends Exception {
 
         public ParserException(String msg) {
             super(msg);
