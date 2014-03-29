@@ -157,7 +157,7 @@ public abstract class Http1ServerParser extends BodyAndHeaderParser {
 
                     if (ch != 'H') {
                         shutdownParser();
-                        throw new BadRequest("Http version started with illegal character: " + 'c');
+                        throw new BadRequest("Http version started with illegal character: " + ch);
                     }
 
                     putByte(ch);
