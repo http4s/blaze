@@ -1,5 +1,6 @@
 import sbt._
 import Keys._
+import scala.util.Properties
 
 //import spray.revolver.RevolverPlugin._
 
@@ -97,8 +98,8 @@ object ApplicationBuild extends Build {
     Seq("SONATYPE_USER", "SONATYPE_PASS") map Properties.envOrNone match {
       case Seq(Some(user), Some(pass)) =>
         credentials += Credentials("Sonatype Nexus Repository Manager", "oss.sonatype.org", user, pass)
-      case _ =>
-    }
+      case _ => credentials in ThisBuild ~= identity
+    },
 
     pomExtra := (
       <developers>
