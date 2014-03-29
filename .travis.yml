@@ -1,1 +1,5 @@
 language: scala
+env:
+  global:
+    secure: irOi2r3fey1ecrQOgaTzUredRTY7vafdcBc+nY6eJRtwN/U3qnmgbbXlmj9QIa2mLmWPpumv1nQjHcNS5XMp+Vluu6y1HAv4wPiOs4FCzqNav4yBWt6LFGRmXV/yatgj4Gzm1sFqmJRg80RfNdc5kuvmxpyOnCJAPPSfh6pBH3k=
+script: sbt test publish
