@@ -37,7 +37,7 @@ class ExampleWebSocketHttpServerStage extends HttpServerStage(10*1024) {
       logger.info(s"Received a websocket request at $uri")
 
       // Note the use of WSStage.segment. This makes a pipeline segment that includes a serializer so we
-      // can safely write as many messages we want without worrying about clashing with pending writes
+      // can safely write as many messages as we want without worrying about clashing with pending writes
       Future.successful(WSResponse(WSStage.bufferingSegment(new SocketStage)))
     } else Future.successful(SimpleHttpResponse.Ok("Use a websocket!\n" + uri))
   }
@@ -50,6 +50,9 @@ class SocketStage extends WSStage {
     case Text(msg, _) =>
       channelWrite(Text("You sent: " + msg))
       channelWrite(Text("this is a second message which will get queued safely!"))
+
+    case Binary(msg, _) =>
+
 
     case Close(_) => sendOutboundCommand(Command.Disconnect)
 

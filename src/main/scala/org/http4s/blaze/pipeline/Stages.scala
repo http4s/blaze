@@ -147,7 +147,7 @@ sealed trait Tail[I] extends Stage {
     }
   }
 
-  final def replaceInline(leafBuilder: LeafBuilder[I]): this.type = {
+  final def replaceInline(leafBuilder: LeafBuilder[I], startup: Boolean = true): this.type = {
     stageShutdown()
 
     if (this._prevStage == null) return this
@@ -168,6 +168,8 @@ sealed trait Tail[I] extends Stage {
       case m: MidStage[_, I] => leafBuilder.prepend(m)
       case h: HeadStage[I] => leafBuilder.base(h)
     }
+
+    if (startup) prev.sendInboundCommand(Command.Connect)
 
     this
   }

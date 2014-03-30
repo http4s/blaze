@@ -22,7 +22,7 @@ object ServerHandshaker {
     } else headers.find{case (k, v) =>
       k.equalsIgnoreCase("Sec-WebSocket-Key") && keyLength(v) == 16
     }.map { case (_, v) =>
-      Right(("Upgrade", "websocket")::("Connection", "Upgrade")::("Sec-WebSocket-Accept", genAcceptKey(v))::Nil)
+      Right(Seq(("Upgrade", "websocket"),("Connection", "Upgrade"),("Sec-WebSocket-Accept", genAcceptKey(v))))
     }.getOrElse(Left(-1, "Bad Sec-WebSocket-Key header"))
   }
 
