@@ -43,7 +43,7 @@ trait ChannelOps {
   /** Don't close until the next cycle */
   def close(): Unit = loop.enqueTask(new Runnable {
     def run() = {
-      key.interestOps(0)
+      if (key.isValid) key.interestOps(0)
       key.attach(null)
       ch.close()
     }
