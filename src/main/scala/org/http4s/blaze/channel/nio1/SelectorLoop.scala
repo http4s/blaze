@@ -177,12 +177,10 @@ final class SelectorLoop(selector: Selector, bufferSize: Int)
     })
   }
 
-  private class NIOHeadStage(ops: ChannelOps) extends HeadStage[ByteBuffer] {
+  private class NIOHeadStage(ops: ChannelOps) extends AtomicReference[Promise[ByteBuffer]] with HeadStage[ByteBuffer] {
     def name: String = "NIO1 ByteBuffer Head Stage"
 
     ///  channel reading bits //////////////////////////////////////////////
-
-    @volatile private var _readPromise: Promise[ByteBuffer] = null
 
     def readReady(scratch: ByteBuffer) {
       val r = ops.performRead(scratch)
@@ -190,22 +188,20 @@ final class SelectorLoop(selector: Selector, bufferSize: Int)
       // if we successfully read some data, unset the interest and complete the promise
       if (r != null) {
         ops.unsetOp(SelectionKey.OP_READ)
-        val p = _readPromise
-        _readPromise = null
+        val p = getAndSet(null)
         p.complete(r)
       }
     }
 
     def readRequest(size: Int): Future[ByteBuffer] = {
       logger.trace("NIOHeadStage received a read request")
+      val p = Promise[ByteBuffer]
 
-      if (_readPromise != null) Future.failed(new IndexOutOfBoundsException("Cannot have more than one pending read request"))
-      else {
-        _readPromise = Promise[ByteBuffer]
+      if (compareAndSet(null, p)) {
         ops.setRead()
-
-        _readPromise.future
+        p.future
       }
+      else Future.failed(new IndexOutOfBoundsException("Cannot have more than one pending read request"))
     }
     
     /// channel write bits /////////////////////////////////////////////////
