@@ -177,10 +177,12 @@ final class SelectorLoop(selector: Selector, bufferSize: Int)
     })
   }
 
-  private class NIOHeadStage(ops: ChannelOps) extends AtomicReference[Promise[ByteBuffer]] with HeadStage[ByteBuffer] {
+  private class NIOHeadStage(ops: ChannelOps) extends HeadStage[ByteBuffer] {
     def name: String = "NIO1 ByteBuffer Head Stage"
 
     ///  channel reading bits //////////////////////////////////////////////
+
+    private val readPromise = new AtomicReference[Promise[ByteBuffer]]
 
     def readReady(scratch: ByteBuffer) {
       val r = ops.performRead(scratch)
@@ -188,7 +190,7 @@ final class SelectorLoop(selector: Selector, bufferSize: Int)
       // if we successfully read some data, unset the interest and complete the promise
       if (r != null) {
         ops.unsetOp(SelectionKey.OP_READ)
-        val p = getAndSet(null)
+        val p = readPromise.getAndSet(null)
         p.complete(r)
       }
     }
@@ -197,7 +199,7 @@ final class SelectorLoop(selector: Selector, bufferSize: Int)
       logger.trace("NIOHeadStage received a read request")
       val p = Promise[ByteBuffer]
 
-      if (compareAndSet(null, p)) {
+      if (readPromise.compareAndSet(null, p)) {
         ops.setRead()
         p.future
       }

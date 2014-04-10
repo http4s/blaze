@@ -1,4 +1,5 @@
-package org.http4s.blaze.channel.nio1
+package org.http4s.blaze
+package channel.nio1
 
 import org.http4s.blaze.channel.BufferPipeline
 import java.nio.channels._
@@ -67,8 +68,8 @@ class SocketServerChannelFactory(pipeFactory: BufferPipeline, pool: SelectorLoop
       logger.trace("Performing write: " + buffers)
       try {
         ch.write(buffers)
-        if (buffers(buffers.length - 1).hasRemaining) Incomplete
-        else Complete
+        if (util.BufferTools.checkEmpty(buffers)) Complete
+        else Incomplete
       }
       catch {
         case e: ClosedChannelException =>

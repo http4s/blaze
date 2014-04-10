@@ -10,6 +10,7 @@ object BufferTools {
 
   val emptyBuffer: ByteBuffer = ByteBuffer.allocate(0)
 
+  /** Join the two buffers into a single ByteBuffer */
   def concatBuffers(oldbuff: ByteBuffer, newbuff: ByteBuffer): ByteBuffer = {
     if (oldbuff != null && oldbuff.hasRemaining) {
       if (!oldbuff.isReadOnly && oldbuff.capacity() >= oldbuff.limit() + newbuff.remaining()) {
@@ -32,6 +33,20 @@ object BufferTools {
         n
       }
     } else newbuff
+  }
+
+  /** Check the array of buffers to ensure they are all empty
+    *
+    * @param buffers ByteBuffers to check for data
+    * @return true if they are empty, false if there is data remaining
+    */
+  def checkEmpty(buffers: Array[ByteBuffer]): Boolean = {
+    def checkEmpty(i: Int): Boolean = {
+      if (i < 0) true
+      else if (buffers(i).remaining == 0) checkEmpty(i - 1)
+      else false
+    }
+    checkEmpty(buffers.length - 1)
   }
 
 }
