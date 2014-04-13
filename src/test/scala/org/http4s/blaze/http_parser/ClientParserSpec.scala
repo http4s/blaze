@@ -165,8 +165,6 @@ class ClientParserSpec extends WordSpec with Matchers {
                   "0\r\n" +
                   "\r\n"
 
-      //      println(full.replace("\r\n", "\\r\\n\r\n"))
-
       val bts = wrap(full.getBytes(US_ASCII))
 
       p.parseResponse(bts) should equal (true)
@@ -180,6 +178,25 @@ class ClientParserSpec extends WordSpec with Matchers {
       p.contentComplete() should equal(false)
       p.parsebody(bts).remaining() should equal(0)
       p.contentComplete() should equal(true)
+
+      US_ASCII.decode(out).toString should equal(body)
+    }
+
+    "Parse a body with without Content-Length or Transfer-Encoding" in {
+      val p = new TestParser
+      val full = resp + l_headersstr + body
+
+      val bts = wrap(full.getBytes(US_ASCII))
+
+      p.parseResponse(bts) should equal (true)
+      p.parseheaders(bts) should equal (true)
+
+      p.contentComplete() should equal(false)
+
+      val out = p.parsebody(bts)
+      out.remaining() should equal(body.length)
+
+      p.contentComplete() should equal(false)
 
       US_ASCII.decode(out).toString should equal(body)
     }

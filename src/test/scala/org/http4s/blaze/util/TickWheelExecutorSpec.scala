@@ -14,39 +14,39 @@ class TickWheelExecutorSpec extends WordSpec with Matchers with Eventually {
 
   "TickWheelExecutor" should {
 
-    val ec = new TickWheelExecutor()
+    val ec = new TickWheelExecutor(resolution = 100.millis)
 
     "Execute a simple task with no delay" in {
-      @volatile var i = 0
+      val i = new AtomicInteger(0)
       ec.schedule(new Runnable {
-        def run() { i = 1 }
+        def run() { i.set(1) }
       }, Duration.Zero)
 
-      i should equal(1)
+      i.get() should equal(1)
 
     }
 
     "Execute a simple task with a short delay" in {
-      @volatile var i = 0
+      val i = new AtomicInteger(0)
       ec.schedule(new Runnable {
-        def run() { i = 1 }
-      }, 100.millis)
-      Thread.sleep(200)
-      i should equal(1)
+        def run() { i.set(1) }
+      }, 200.millis)
+      Thread.sleep(400)
+      i.get() should equal(1)
     }
 
     "Execute a simple task with a multi clock revolution delay" in {
       val ec = new TickWheelExecutor(3, 20.millis)
-      @volatile var i = 0
+      val i = new AtomicInteger(0)
       ec.schedule(new Runnable {
-        def run() { i = 1 }
+        def run() { i.set(1) }
       }, 119.millis)
 
       Thread.sleep(85)
-      i should equal(0)
+      i.get should equal(0)
 
       Thread.sleep(100)
-      i should equal(1)
+      i.get should equal(1)
 
     }
 

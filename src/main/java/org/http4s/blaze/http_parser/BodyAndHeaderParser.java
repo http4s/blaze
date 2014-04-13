@@ -38,6 +38,7 @@ public abstract class BodyAndHeaderParser extends ParserBase {
         CHUNKED_CONTENT,
         SELF_DEFINING_CONTENT,
         EOF_CONTENT,
+        END,
     }
 
 
@@ -58,11 +59,11 @@ public abstract class BodyAndHeaderParser extends ParserBase {
 
     /* --------------------------------------------------------------------- */
 
-    protected static byte[] HTTP10Bytes  = "HTTP/1.0".getBytes(StandardCharsets.US_ASCII);
-    protected static byte[] HTTP11Bytes  = "HTTP/1.1".getBytes(StandardCharsets.US_ASCII);
+    final protected static byte[] HTTP10Bytes  = "HTTP/1.0".getBytes(StandardCharsets.US_ASCII);
+    final protected static byte[] HTTP11Bytes  = "HTTP/1.1".getBytes(StandardCharsets.US_ASCII);
 
-    protected static byte[] HTTPS10Bytes = "HTTPS/1.0".getBytes(StandardCharsets.US_ASCII);
-    protected static byte[] HTTPS11Bytes = "HTTPS/1.1".getBytes(StandardCharsets.US_ASCII);
+    final protected static byte[] HTTPS10Bytes = "HTTPS/1.0".getBytes(StandardCharsets.US_ASCII);
+    final protected static byte[] HTTPS11Bytes = "HTTPS/1.1".getBytes(StandardCharsets.US_ASCII);
 
     /* Constructor --------------------------------------------------------- */
 
@@ -92,7 +93,7 @@ public abstract class BodyAndHeaderParser extends ParserBase {
     }
 
     public final boolean contentComplete() {
-        return _endOfContent == EndOfContent.EOF_CONTENT ||
+        return _endOfContent == EndOfContent.END ||
                _endOfContent == EndOfContent.NO_CONTENT;
     }
 
@@ -134,10 +135,10 @@ public abstract class BodyAndHeaderParser extends ParserBase {
 
     @Override
     public void shutdownParser() {
-        super.shutdownParser();
         _hstate = HeaderState.END;
         _chunkState = ChunkState.END;
-        _endOfContent = EndOfContent.EOF_CONTENT;
+        _endOfContent = EndOfContent.END;
+        super.shutdownParser();
     }
 
     protected final boolean parseHeaders(ByteBuffer in) throws BaseExceptions.BadRequest, BaseExceptions.InvalidState {
@@ -157,13 +158,12 @@ public abstract class BodyAndHeaderParser extends ParserBase {
 
                     // Must be done with headers
                     if (bufferPosition() == 0) {
-
                         _hstate = HeaderState.END;
 
                         // Finished with the whole request
                         if (_chunkState == ChunkState.CHUNK_TRAILERS) shutdownParser();
 
-                            // TODO: perhaps we should test against if it is GET, OPTION, or HEAD.
+                            // TODO: perhaps we should check if method is GET, OPTION, or HEAD.
                         else if ((_endOfContent == EndOfContent.UNKNOWN_CONTENT &&
                                 !mayHaveBody())) shutdownParser();
 
@@ -217,9 +217,12 @@ public abstract class BodyAndHeaderParser extends ParserBase {
                     if (_chunkState != ChunkState.CHUNK_TRAILERS) {
 
                         // Check for submitContent type if its still not determined
-                        if (_endOfContent == EndOfContent.UNKNOWN_CONTENT) {
+                        // or if a Content-Length is present, it can be overridden by
+                        // a Transfer encoding header
+                        if (_endOfContent == EndOfContent.UNKNOWN_CONTENT ||
+                            _endOfContent == EndOfContent.CONTENT_LENGTH) {
                             if (_headerName.equalsIgnoreCase("Transfer-Encoding")) {
-                                if (!value.equalsIgnoreCase("chunked")) {
+                                if (!value.equalsIgnoreCase("chunked") && !value.equalsIgnoreCase("identity")) {
                                     shutdownParser();
                                     throw new BadRequest("Unknown Transfer-Encoding: " + value);
                                 }
@@ -259,6 +262,12 @@ public abstract class BodyAndHeaderParser extends ParserBase {
         }   // while loop
     }
 
+    /** Parses the buffer into body content
+     * @param in ByteBuffer to parse
+     * @return a ByteBuffer with the parsed body content. Buffer in may not be depleted. If more data is
+     *         needed, null is returned. In the case of content complete, an empty ByteBuffer is returned.
+     * @throws BaseExceptions.ParserException
+     */
     protected final ByteBuffer parseContent(ByteBuffer in) throws BaseExceptions.ParserException {
         switch (_endOfContent) {
             case UNKNOWN_CONTENT:
@@ -267,14 +276,25 @@ public abstract class BodyAndHeaderParser extends ParserBase {
                 // What about custom verbs which may have a body?
                 // We could also CONSIDER doing a BAD Request here.
 
-                _endOfContent = EndOfContent.SELF_DEFINING_CONTENT;
-                return parseContent(in);
+                if (mayHaveBody()) {
+                    _endOfContent = EndOfContent.EOF_CONTENT;
+                    _contentLength = Long.MAX_VALUE;    // Its up to the user to limit a body size
+                    return parseContent(in);
+                }
+                else {
+                    _endOfContent = EndOfContent.END;
+                    return BufferTools.emptyBuffer();
+                }
 
             case CONTENT_LENGTH:
+            case EOF_CONTENT:
                 return nonChunkedContent(in);
 
             case CHUNKED_CONTENT:
                 return chunkedContent(in);
+
+            case END:
+                return BufferTools.emptyBuffer();
 
             case SELF_DEFINING_CONTENT:
 

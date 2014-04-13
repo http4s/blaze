@@ -3,6 +3,7 @@ package org.http4s.blaze.util
 import scala.concurrent.ExecutionContext
 import com.typesafe.scalalogging.slf4j.Logging
 import java.util
+import scala.util.control.NonFatal
 
 /**
  * @author Bryce Anderson
@@ -29,6 +30,10 @@ object Execution extends Logging {
             val runnable = queue.removeFirst()
             runnable.run()
           }
+        } catch {
+          case t: Throwable =>
+            reportFailure(t)
+            if (!NonFatal(t)) throw t // rethrow a fatal exception
         } finally {
           // We've emptied the queue, so tidy up.
           local.set(null)
@@ -40,7 +45,7 @@ object Execution extends Logging {
       }
     }
 
-    def reportFailure(t: Throwable): Unit = t.printStackTrace()
+    def reportFailure(t: Throwable): Unit = logger.error("Trampoline EC Exception caught", t)
   }
 
   val directec: ExecutionContext = new ExecutionContext {

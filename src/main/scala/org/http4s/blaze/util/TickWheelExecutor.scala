@@ -54,7 +54,6 @@ class TickWheelExecutor(wheelSize: Int = 512, resolution: Duration = 100.milli) 
 
   thread.start()
 
-
   /////////////////////////////////////////////////////
 
   def shutdown(): Unit = {
@@ -84,9 +83,11 @@ class TickWheelExecutor(wheelSize: Int = 512, resolution: Duration = 100.milli) 
   private def cycle(): Unit = {
     val i = currentTick
     val time = System.currentTimeMillis()
+
+    clockFace(i).prune(time) // Remove canceled and submit expired tasks from the current spoke
     currentTick = (i + 1) % wheelSize
 
-    clockFace(i).prune(time) // Remove canceled and submit expired tasks
+    clockFace(i).prune(time) // Remove canceled and submit expired tasks from the next spoke
 
     if (alive) {
       // Make up for execution time, unlikely to be significant
@@ -100,7 +101,7 @@ class TickWheelExecutor(wheelSize: Int = 512, resolution: Duration = 100.milli) 
   }
 
   protected def onNonFatal(t: Throwable) {
-    logger.warn("Non-Fatal Exception caught while executing scheduled task", t)
+    logger.error("Non-Fatal Exception caught while executing scheduled task", t)
   }
   
   private def getBucket(duration: Long): Bucket = {
@@ -121,34 +122,26 @@ class TickWheelExecutor(wheelSize: Int = 512, resolution: Duration = 100.milli) 
 
       // we lock the Bucket and collect expired elements
       lock.synchronized {
-        var prev: Node = null   // Need to keep track of the previous node
-        var current: Node = nodes
+        val i = nodes
         nodes = null
 
-        while (current != null) {
-          val i = current
-          current = i.next
-
-          if (i.cancelled()) {
-            if (prev != null) {
-              prev.next = i.next
-            }
-            i.next = null  // Remove the reference
-          }
+        @tailrec
+        def go(tail: Node, i: Node): Unit = if (i != null) {
+          val n = i.next
+          i.next = null
+          if (i.cancelled()) go(tail, n)
           else if (i.expiresBy(time)) {
-            if (prev != null) {
-              prev.next = i.next
-            }
-            i.next = expiredTasks  // Remove the reference
+            i.next = expiredTasks
             expiredTasks = i
+            go(tail, n)
           }
-          else {   // Didn't get popped, so its now the previous node
-            if (prev == null) {   // Need to reset the head
-              nodes = i
-            }
-            prev = i
+          else {  // still valid
+            if (tail == null) nodes = i // first element
+            else tail.next = i
+            go(i, n)
           }
         }
+        go(null, i)
       }
 
       // All done pruning and the lock is released. Now we need to execute the expiredTasks
