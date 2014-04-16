@@ -29,9 +29,7 @@ object ApplicationBuild extends Build {
 
     startYear := Some(2014),
 
-    licenses := Seq(
-      ("BSD 2-clause", url("https://raw.github.com/http4s/http4s/develop/LICENSE"))
-    ),
+    licenses := Seq(("Apache 2.0", url("http://www.apache.org/licenses/LICENSE-2.0"))),
 
     scmInfo := Some(
       ScmInfo(
@@ -60,18 +58,17 @@ object ApplicationBuild extends Build {
   /* dependencies */
   lazy val dependencies = Seq(
     libraryDependencies += scalatest % "test",
-    libraryDependencies += scalameter,
     libraryDependencies += scalaloggingSlf4j,
     libraryDependencies += logbackClassic,
     libraryDependencies += npn_api,
     libraryDependencies += npn_boot
   )
    
-   lazy val scalatest  = "org.scalatest"  %% "scalatest" % "2.0.RC3"
-   lazy val scalameter = "com.github.axel22" % "scalameter_2.10" % "0.4"
-   
-   lazy val scalaloggingSlf4j   = "com.typesafe"   %% "scalalogging-slf4j" % "1.0.1"
-   lazy val logbackClassic      = "ch.qos.logback" %  "logback-classic"    % "1.0.9"
+  lazy val scalatest = "org.scalatest" %% "scalatest" % "2.1.2"
+
+
+  lazy val scalaloggingSlf4j   = "com.typesafe"   %% "scalalogging-slf4j" % "1.0.1"
+  lazy val logbackClassic      = "ch.qos.logback" %  "logback-classic"    % "1.0.9"
 
 
   // Needed for Spdy Support. Perhaps it should be a sub-project?

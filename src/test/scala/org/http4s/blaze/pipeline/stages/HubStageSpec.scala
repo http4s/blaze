@@ -79,6 +79,7 @@ class HubStageSpec extends WordSpec with Matchers {
           .onSuccess{ case _ => readLoop() }
 
       case Failure(EOF) => logger.debug("Received EOF")
+      case _ => sys.error("Shouldn't get here!")
     }
   }
 
