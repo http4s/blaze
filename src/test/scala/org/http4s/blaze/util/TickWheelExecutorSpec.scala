@@ -73,7 +73,7 @@ class TickWheelExecutorSpec extends WordSpec with Matchers with Eventually {
       val cancels = 0 until 1000 map { j =>
         val c = ec.schedule(new Runnable {
           def run() { i.incrementAndGet() }
-        }, ((j+5)*10).millis)
+        }, ((j+20)*10).millis)
         c
       }
       cancels.foreach(_.cancel())

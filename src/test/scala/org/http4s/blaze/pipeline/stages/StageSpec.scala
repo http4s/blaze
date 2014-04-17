@@ -23,7 +23,7 @@ class StageSpec extends WordSpec with Matchers {
   
   def slowPipeline = {
     val leaf = intTail
-    LeafBuilder(leaf).base(slow(200.milli))
+    LeafBuilder(leaf).base(slow(400.milli))
     leaf
   }
   
