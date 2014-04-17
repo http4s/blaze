@@ -75,8 +75,9 @@ class SocketServerChannelFactory(pipeFactory: BufferPipeline, pool: SelectorLoop
         case e: ClosedChannelException =>
           ChannelClosed
 
-        // Weird problem with windows
-        case e: IOException if e.getMessage == "An existing connection was forcibly closed by the remote host" =>
+        // Unexpected close
+        case e: IOException =>
+          logger.info("Channel closed unexpectedly", e)
           ChannelClosed
       }
     }

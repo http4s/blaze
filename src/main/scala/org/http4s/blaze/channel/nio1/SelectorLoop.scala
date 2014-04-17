@@ -99,7 +99,8 @@ final class SelectorLoop(selector: Selector, bufferSize: Int)
               val head = k.attachment().asInstanceOf[NIOHeadStage]
 
               if (head != null) {
-                logger.debug{"selection key interests: " +
+                logger.debug{
+                  "selection key interests: " +
                   "write: " +  k.isWritable +
                   ", read: " + k.isReadable }
 
@@ -114,13 +115,18 @@ final class SelectorLoop(selector: Selector, bufferSize: Int)
               }
 
             }
-          } catch { case e: CancelledKeyException => /* NOOP */ }
+          } catch {
+            case e: CancelledKeyException => /* NOOP */
+            case e: IOException =>
+              logger.error("IOException in SelectorLoop while performing channel operations", e)
+              k.attach(null)
+              k.cancel()
+          }
         }
       }
 
     } catch {
-      case e: IOException =>
-        logger.error("IOException in SelectorLoop", e)
+      case e: IOException => logger.error("IOException in SelectorLoop while acquiring selector", e)
 
       case e: ClosedSelectorException =>
         _isClosed = true
@@ -222,7 +228,7 @@ final class SelectorLoop(selector: Selector, bufferSize: Int)
       def go(node: WriteNode): Unit = {
         assert(node.data != null)
 
-        ops.performWrite(scratch, node.data) match {
+        try ops.performWrite(scratch, node.data) match {
           case Complete =>
             val tail = node.get()
             if (tail eq null) {   // could be last loop
@@ -276,6 +282,14 @@ final class SelectorLoop(selector: Selector, bufferSize: Int)
             logger.error("Serious error while performing write. Shutting down Loop", t)
             ops.close()
             thisLoop.close()
+        } catch {
+          // Errors shouldn't get to this point, so if they do, close the connection and report it.
+          case NonFatal(t) =>
+            logger.error("Uncaught exception while performing channel write", t)
+            val p = writePromise.get()
+            p.tryFailure(t)
+            try ops.close()
+            catch { case t: Throwable => /* NOOP */ }
         }
       }
 

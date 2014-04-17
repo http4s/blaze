@@ -5,6 +5,7 @@ import scala.annotation.tailrec
 import java.net.SocketAddress
 import com.typesafe.scalalogging.slf4j.Logging
 import org.http4s.blaze.channel._
+import scala.util.control.NonFatal
 
 /**
  * @author Bryce Anderson
@@ -43,8 +44,12 @@ abstract class NIOServerChannelFactory[Channel <: NetworkChannel](pool: Selector
     // The accept thread just accepts connections and pawns them off on the SelectorLoop pool
     final def run(): Unit = {
       while (channel.isOpen && !closed) {
-        val p = pool.nextLoop()
-        acceptConnection(channel, p)
+        try {
+          val p = pool.nextLoop()
+          acceptConnection(channel, p)
+        } catch {
+          case NonFatal(t) => logger.error("Error accepting connection", t)
+        }
       }
     }
 

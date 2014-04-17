@@ -72,7 +72,6 @@ class ByteBufferHead(channel: AsynchronousSocketChannel,
         def failed(exc: Throwable, attachment: Null) {
           if (exc.isInstanceOf[ClosedChannelException]) logger.trace("Channel closed, dropping packet")
           else logger.error("Failure writing to channel", exc)
-
           f.tryFailure(exc)
         }
 
