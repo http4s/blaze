@@ -17,6 +17,7 @@ import org.http4s.blaze.pipeline._
 import org.http4s.blaze.channel.nio1.ChannelOps.{ChannelClosed, Incomplete, Complete}
 import org.http4s.blaze.pipeline.Command.EOF
 import org.http4s.blaze.channel.nio1.ChannelOps.WriteError
+import org.http4s.blaze.util.BufferTools
 
 /**
  * @author Bryce Anderson
@@ -214,110 +215,72 @@ final class SelectorLoop(selector: Selector, bufferSize: Int)
     
     /// channel write bits /////////////////////////////////////////////////
 
-    private class WriteNode(val data: Array[ByteBuffer]) extends AtomicReference[WriteNode]
-
-    private val writeHead = new AtomicReference[WriteNode](null)
-    private val writeTail = new AtomicReference[WriteNode](null)
-
+    @volatile private var writeData: Array[ByteBuffer] = null
     private val writePromise = new AtomicReference[Promise[Any]](null)
 
     // Will always be called from the SelectorLoop thread
     def writeReady(scratch: ByteBuffer) {
 
-      @tailrec
-      def go(node: WriteNode): Unit = {
-        assert(node.data != null)
-
-        try ops.performWrite(scratch, node.data) match {
+        try ops.performWrite(scratch, writeData) match {
           case Complete =>
-            val tail = node.get()
-            if (tail eq null) {   // could be last loop
+            val p = writePromise.get
+            writePromise.set(null)
+            ops.unsetOp(SelectionKey.OP_WRITE)
+            writeData = null
+            p.success()
 
-              // Need to wait for a real Promise, in the off world chance we enter this loop before the
-              // first write has had time to set the promise into the atomic, we must spin
-              var p = writePromise.getAndSet(null)
-              while (p == null) p = writePromise.getAndSet(null)
-
-              if (writeHead.compareAndSet(node, null)) { // successfully set the completion
-                // Don't need to worry about races with this, we are in the selector loop already and
-                // all ops setting and un-setting is processed on this thread, so this is guaranteed to
-                // execute before another call to set a write interest
-                ops.unsetOp(SelectionKey.OP_WRITE)
-                p.success()
-              }
-              else {
-              // Waiting for the node to link. Need to reset the promise and continue the writing process
-                writePromise.set(p)
-
-                // Wait for the next node to resolve
-                var n = node.get()
-                while (n == null) n = node.get()
-                go(n)
-              }                                // waiting to resolve tail
-            }
-            else go(tail)
-
-          case Incomplete => writeTail.set(node)
+          case Incomplete => /* Need to wait for another go around to try and send more data */
 
           case ChannelClosed =>
-            writeTail.set(null) // further write requests will be gc accessible without holding the tail
-
-            var p = writePromise.get()
-            while (p == null) p = writePromise.get()
-
-            p.failure(EOF)
+            val p = writePromise.get
+            writePromise.set(null)
+            writeData = null
+            p.tryFailure(EOF)
             ops.close()
 
           case WriteError(NonFatal(t)) =>
             // seems the channel needs to be shut down
-            var p = writePromise.get()
-            while (p == null) p = writePromise.get()
-
-            queueTail.set(null)
-            queueHead.set(null)
-            p.failure(t)
+            val p = writePromise.get
+            writePromise.set(null)
+            writeData = null
+            p.tryFailure(t)
             ops.close()
 
           case WriteError(t) =>
             logger.error("Serious error while performing write. Shutting down Loop", t)
+            val p = writePromise.get
+            writePromise.set(null)
+            writeData = null
+            p.tryFailure(t)
             ops.close()
-            thisLoop.close()
         } catch {
           // Errors shouldn't get to this point, so if they do, close the connection and report it.
           case NonFatal(t) =>
             logger.error("Uncaught exception while performing channel write", t)
-            val p = writePromise.get()
+            val p = writePromise.getAndSet(null)
             p.tryFailure(t)
             try ops.close()
             catch { case t: Throwable => /* NOOP */ }
         }
-      }
-
-      go(writeTail.get())
     }
 
     def writeRequest(data: ByteBuffer): Future[Any] = writeRequest(data::Nil)
 
     override def writeRequest(data: Seq[ByteBuffer]): Future[Any] = {
-      val writes = data.toArray
-
-      val node = new WriteNode(writes)
-      val last = writeHead.getAndSet(node)
-      if (last eq null) {
-      // We just set the head. Need to set the tail, fix the Promise, and set the interest
-        val p = Promise[Any]
-        writePromise.set(p)
-        writeTail.set(node)
-        ops.setWrite()
-        p.future
+      val p = Promise[Any]
+      if (writePromise.compareAndSet(null, p)) {
+        val writes = data.toArray
+        if (!BufferTools.checkEmpty(writes)) {  // Non-empty buffer
+          writeData = writes
+          ops.setWrite()
+          p.future
+        } else {                                // Empty buffer, just return success
+          writePromise.set(null)
+          writeData = null
+          Future.successful()
+        }
       } else {
-      // queue already going so link the node and get the promise
-        last.lazySet(node)
-        // Get the already set promise. The first write is guaranteed
-        // to have set it, so if its not there we need to spin
-        var p = writePromise.get()
-        while (p == null) p = writePromise.get()
-        p.future
+        Future.failed(new IndexOutOfBoundsException("Cannot have more than one pending write request"))
       }
     }
     
