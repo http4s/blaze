@@ -4,7 +4,7 @@ package examples
 import org.http4s.blaze.pipeline.TailStage
 import java.nio.ByteBuffer
 import scala.util.{Failure, Success}
-import org.http4s.blaze.channel.{BufferPipeline, ServerChannel}
+import org.http4s.blaze.channel.{BufferPipelineBuilder, ServerChannel}
 import java.net.InetSocketAddress
 import com.typesafe.scalalogging.slf4j.Logging
 import java.util.Date
@@ -23,7 +23,7 @@ import org.http4s.blaze.channel.nio2.NIO2ServerChannelFactory
 class EchoServer extends Logging {
 
   def prepare(address: InetSocketAddress): ServerChannel = {
-    val f: BufferPipeline = () => new EchoStage
+    val f: BufferPipelineBuilder = () => new EchoStage
 
     val factory = new NIO2ServerChannelFactory(f)
     factory.bind(address)

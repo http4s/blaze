@@ -1,7 +1,7 @@
 package org.http4s.blaze
 package channel.nio1
 
-import org.http4s.blaze.channel.BufferPipeline
+import org.http4s.blaze.channel.BufferPipelineBuilder
 import java.nio.channels._
 import java.net.SocketAddress
 import java.io.IOException
@@ -14,10 +14,12 @@ import org.http4s.blaze.channel.nio1.ChannelOps._
  * @author Bryce Anderson
  *         Created on 1/21/14
  */
-class SocketServerChannelFactory(pipeFactory: BufferPipeline, pool: SelectorLoopPool)
+class SocketServerChannelFactory(pipeFactory: BufferPipelineBuilder, pool: SelectorLoopPool)
                 extends NIOServerChannelFactory[ServerSocketChannel](pool) {
 
-  def this(pipeFactory: BufferPipeline, workerThreads: Int = 8, bufferSize: Int = 4*1024) = {
+  import SocketServerChannelFactory.brokePipeMessages
+
+  def this(pipeFactory: BufferPipelineBuilder, workerThreads: Int = 8, bufferSize: Int = 4*1024) = {
     this(pipeFactory, new FixedArraySelectorPool(workerThreads, bufferSize))
   }
 
@@ -35,13 +37,6 @@ class SocketServerChannelFactory(pipeFactory: BufferPipeline, pool: SelectorLoop
 
   private class SocketChannelOps(val ch: SocketChannel, val loop: SelectorLoop, val key: SelectionKey)
               extends ChannelOps {
-
-    // If the connection is forcibly closed, we might get an IOException with one of the following messages
-    private val brokePipeMessages = Seq(
-      "Connection reset by peer",   // Found on Linux
-      "An existing connection was forcibly closed by the remote host",    // Found on windows
-      "Broken pipe"   // Found also on Linux
-    )
 
     def performRead(scratch: ByteBuffer): Try[ByteBuffer] = {
       try {
@@ -81,4 +76,14 @@ class SocketServerChannelFactory(pipeFactory: BufferPipeline, pool: SelectorLoop
       }
     }
   }
+}
+
+object SocketServerChannelFactory {
+
+  // If the connection is forcibly closed, we might get an IOException with one of the following messages
+  private [SocketServerChannelFactory] val brokePipeMessages = Seq(
+    "Connection reset by peer",   // Found on Linux
+    "An existing connection was forcibly closed by the remote host",    // Found on windows
+    "Broken pipe"   // Found also on Linux
+  )
 }

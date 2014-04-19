@@ -17,7 +17,7 @@ import org.http4s.blaze.channel.nio2.NIO2ServerChannelFactory
  *         Created on 1/18/14
  */
 class WebSocketServer(port: Int) {
-  private val f: BufferPipeline = () => LeafBuilder(new ExampleWebSocketHttpServerStage)
+  private val f: BufferPipelineBuilder = () => LeafBuilder(new ExampleWebSocketHttpServerStage)
 
   val group = AsynchronousChannelGroup.withFixedThreadPool(10, java.util.concurrent.Executors.defaultThreadFactory())
 

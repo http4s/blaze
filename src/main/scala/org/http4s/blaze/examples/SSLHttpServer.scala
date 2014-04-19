@@ -32,7 +32,7 @@ class SSLHttpServer(port: Int) {
   }
 
 
-  private val f: BufferPipeline = { () =>
+  private val f: BufferPipelineBuilder = { () =>
     val eng = sslContext.createSSLEngine()
     eng.setUseClientMode(false)
 
