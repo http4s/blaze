@@ -8,10 +8,9 @@ import com.typesafe.scalalogging.slf4j.Logging
 import org.http4s.blaze.util.Execution.directec
 import scala.concurrent.duration.Duration
 import org.http4s.blaze.util.Execution
-import java.util.concurrent.{ScheduledFuture, TimeUnit, TimeoutException}
-import scala.util.control.NoStackTrace
+import java.util.concurrent.TimeoutException
 
-/**
+/*
  * @author Bryce Anderson
  *         Created on 1/4/14
  *

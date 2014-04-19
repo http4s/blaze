@@ -100,7 +100,7 @@ final class SelectorLoop(selector: Selector, bufferSize: Int)
               val head = k.attachment().asInstanceOf[NIOHeadStage]
 
               if (head != null) {
-                logger.debug{
+                logger.debug {
                   "selection key interests: " +
                   "write: " +  k.isWritable +
                   ", read: " + k.isReadable }
@@ -118,8 +118,20 @@ final class SelectorLoop(selector: Selector, bufferSize: Int)
             }
           } catch {
             case e: CancelledKeyException => /* NOOP */
-            case e: IOException =>
-              logger.error("IOException in SelectorLoop while performing channel operations", e)
+            case t: Throwable =>
+              logger.error(
+                if (t.isInstanceOf[IOException]) "IOException while performing channel operations. Closing channel."
+                else "Error performing channel operations. Closing channel.",
+                t)
+
+              try {
+                val head = k.attachment().asInstanceOf[NIOHeadStage]
+                head.closeWithError(t)
+                head.inboundCommand(Command.Error(t))
+              } catch {
+                case NonFatal(_) => /* NOOP */
+                case t: Throwable => logger.error("Fatal error shutting down pipeline", t)
+              }
               k.attach(null)
               k.cancel()
           }
@@ -128,7 +140,6 @@ final class SelectorLoop(selector: Selector, bufferSize: Int)
 
     } catch {
       case e: IOException => logger.error("IOException in SelectorLoop while acquiring selector", e)
-
       case e: ClosedSelectorException =>
         _isClosed = true
         logger.error("Selector unexpectedly closed", e)
@@ -218,50 +229,37 @@ final class SelectorLoop(selector: Selector, bufferSize: Int)
     @volatile private var writeData: Array[ByteBuffer] = null
     private val writePromise = new AtomicReference[Promise[Any]](null)
 
+    // Cancel the promises and close the channel
+    private def writeFailAndClose(t: Throwable) {
+      val w = writePromise.get
+      writePromise.set(null)
+      writeData = null
+      if (w != null) w.tryFailure(t)
+
+      try ops.close()
+      catch { case NonFatal(t) => logger.warn("Caught exception while closing channel", t) }
+    }
+
     // Will always be called from the SelectorLoop thread
-    def writeReady(scratch: ByteBuffer) {
+    def writeReady(scratch: ByteBuffer): Unit = ops.performWrite(scratch, writeData) match {
+      case Complete =>
+        val p = writePromise.get
+        writeData = null
+        writePromise.set(null)
+        ops.unsetOp(SelectionKey.OP_WRITE)
+        p.success()
 
-        try ops.performWrite(scratch, writeData) match {
-          case Complete =>
-            val p = writePromise.get
-            writePromise.set(null)
-            ops.unsetOp(SelectionKey.OP_WRITE)
-            writeData = null
-            p.success()
+      case Incomplete => /* Need to wait for another go around to try and send more data */
 
-          case Incomplete => /* Need to wait for another go around to try and send more data */
+      case ChannelClosed => writeFailAndClose(EOF)
 
-          case ChannelClosed =>
-            val p = writePromise.get
-            writePromise.set(null)
-            writeData = null
-            p.tryFailure(EOF)
-            ops.close()
+      case WriteError(NonFatal(t)) =>
+        logger.warn("Error performing write", t)
+        writeFailAndClose(t)
 
-          case WriteError(NonFatal(t)) =>
-            // seems the channel needs to be shut down
-            val p = writePromise.get
-            writePromise.set(null)
-            writeData = null
-            p.tryFailure(t)
-            ops.close()
-
-          case WriteError(t) =>
-            logger.error("Serious error while performing write. Shutting down Loop", t)
-            val p = writePromise.get
-            writePromise.set(null)
-            writeData = null
-            p.tryFailure(t)
-            ops.close()
-        } catch {
-          // Errors shouldn't get to this point, so if they do, close the connection and report it.
-          case NonFatal(t) =>
-            logger.error("Uncaught exception while performing channel write", t)
-            val p = writePromise.getAndSet(null)
-            p.tryFailure(t)
-            try ops.close()
-            catch { case t: Throwable => /* NOOP */ }
-        }
+      case WriteError(t) =>
+        logger.error("Serious error while performing write. Shutting down connector", t)
+        writeFailAndClose(t)
     }
 
     def writeRequest(data: ByteBuffer): Future[Any] = writeRequest(data::Nil)
@@ -284,12 +282,18 @@ final class SelectorLoop(selector: Selector, bufferSize: Int)
       }
     }
     
-    /// set the channel interests //////////////////////////////////////////
+    ///////////////////////////////// Shutdown methods ///////////////////////////////////
+
+    // Cleanup any read or write requests with an exception
+    def closeWithError(t: Throwable): Unit = {
+      val r = readPromise.getAndSet(null)
+      if (r != null) r.tryFailure(t)
+      writeFailAndClose(t)
+    }
 
     override protected def stageShutdown(): Unit = {
       super.stageShutdown()
-      ops.close()
+      closeWithError(EOF)
     }
   }
-
 }

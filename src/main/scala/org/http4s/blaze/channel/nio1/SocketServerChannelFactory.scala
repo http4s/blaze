@@ -8,7 +8,7 @@ import java.io.IOException
 import java.nio.ByteBuffer
 import scala.util.{Failure, Success, Try}
 import org.http4s.blaze.pipeline.Command.EOF
-import org.http4s.blaze.channel.nio1.ChannelOps.{ChannelClosed, Complete, Incomplete, WriteResult}
+import org.http4s.blaze.channel.nio1.ChannelOps._
 
 /**
  * @author Bryce Anderson
@@ -36,6 +36,13 @@ class SocketServerChannelFactory(pipeFactory: BufferPipeline, pool: SelectorLoop
   private class SocketChannelOps(val ch: SocketChannel, val loop: SelectorLoop, val key: SelectionKey)
               extends ChannelOps {
 
+    // If the connection is forcibly closed, we might get an IOException with one of the following messages
+    private val brokePipeMessages = Seq(
+      "Connection reset by peer",   // Found on Linux
+      "An existing connection was forcibly closed by the remote host",    // Found on windows
+      "Broken pipe"   // Found also on Linux
+    )
+
     def performRead(scratch: ByteBuffer): Try[ByteBuffer] = {
       try {
         scratch.clear()
@@ -53,13 +60,7 @@ class SocketServerChannelFactory(pipeFactory: BufferPipeline, pool: SelectorLoop
 
       } catch {
         case e: ClosedChannelException => Failure(EOF)
-          // Weird problem with windows
-        case e: IOException if e.getMessage == "An existing connection was forcibly closed by the remote host" =>
-          Failure(EOF)
-
-        case e: IOException if e.getMessage == "Connection reset by peer" =>
-          Failure(EOF)
-
+        case e: IOException if brokePipeMessages.contains(e.getMessage) => Failure(EOF)
         case e: IOException => Failure(e)
       }
     }
@@ -72,13 +73,11 @@ class SocketServerChannelFactory(pipeFactory: BufferPipeline, pool: SelectorLoop
         else Incomplete
       }
       catch {
-        case e: ClosedChannelException =>
-          ChannelClosed
-
-        // Unexpected close
+        case e: ClosedChannelException => ChannelClosed
+        case e: IOException if brokePipeMessages.contains(e.getMessage) => ChannelClosed
         case e: IOException =>
-          logger.info("Channel closed unexpectedly", e)
-          ChannelClosed
+          logger.warn("Error writing to channel", e)
+          WriteError(e)
       }
     }
   }

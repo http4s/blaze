@@ -12,6 +12,7 @@ import org.http4s.blaze.channel.nio1.ChannelOps.WriteResult
 
 object ChannelOps {
   sealed trait WriteResult
+
   case object Complete extends WriteResult
   case object Incomplete extends WriteResult
   case object ChannelClosed extends WriteResult

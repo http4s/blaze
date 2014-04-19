@@ -54,7 +54,6 @@ class ByteBufferHead(channel: AsynchronousSocketChannel,
     f.future
   }
 
-
   override def writeRequest(data: Seq[ByteBuffer]): Future[Unit] = {
 
     val f = Promise[Unit]
