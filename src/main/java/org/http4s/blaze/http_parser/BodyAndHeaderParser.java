@@ -54,8 +54,7 @@ public abstract class BodyAndHeaderParser extends ParserBase {
     private long _contentPosition;
 
     private ChunkState _chunkState;
-    private int _chunkLength;
-    private int _chunkPosition;
+    private long _chunkLength;
 
     private String _headerName;
     private EndOfContent _endOfContent;
@@ -133,7 +132,6 @@ public abstract class BodyAndHeaderParser extends ParserBase {
         _contentLength = 0;
         _contentPosition = 0;
         _chunkLength = 0;
-        _chunkPosition = 0;
     }
 
     @Override
@@ -317,8 +315,11 @@ public abstract class BodyAndHeaderParser extends ParserBase {
             return result;
         }
         else {
-            _contentPosition += buf_size;
-            return submitBuffer(in);
+            if (buf_size > 0) {
+                _contentPosition += buf_size;
+                return submitBuffer(in);
+            }
+            else return null;
         }
     }
 
@@ -332,7 +333,7 @@ public abstract class BodyAndHeaderParser extends ParserBase {
                     resetLimit(256);
 
                 case CHUNK_SIZE:
-                    assert _chunkPosition == 0;
+                    assert _contentPosition == 0;
 
                     while (true) {
 
@@ -377,18 +378,20 @@ public abstract class BodyAndHeaderParser extends ParserBase {
                     break;
 
                 case CHUNK:
-                    final int remaining_chunk_size =  _chunkLength - _chunkPosition;
-                    final int chunk_size = in.remaining();
+                    final long remaining_chunk_size =  _chunkLength - _contentPosition;
+                    final int buff_size = in.remaining();
 
-                    if (remaining_chunk_size <= chunk_size) {
-                        ByteBuffer result = submitPartialBuffer(in, remaining_chunk_size);
-                        _chunkPosition = _chunkLength = 0;
+                    if (remaining_chunk_size <= buff_size) {
+                        ByteBuffer result = submitPartialBuffer(in, (int)remaining_chunk_size);
+                        _contentPosition = _chunkLength = 0;
                         _chunkState = ChunkState.CHUNK_LF;
                         return result;
                     }
                     else {
-                        _chunkPosition += chunk_size;
-                        if (in.remaining() > 0) return submitBuffer(in);
+                        if (buff_size > 0) {
+                            _contentPosition += buff_size;
+                            return submitBuffer(in);
+                        }
                         else return null;
                     }
 

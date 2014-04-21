@@ -192,8 +192,7 @@ class ServerParserSpec extends WordSpec with Matchers {
       }
 
       while (!p.contentComplete()) {
-        p.parsecontent(b) should not equal (null)
-        if (b.limit() < blim) b.limit(b.limit() + 1)
+        if (null == p.parsecontent(b)) b.limit(b.limit() + 1)
       }
 
       p.sb.result() should equal(body)
