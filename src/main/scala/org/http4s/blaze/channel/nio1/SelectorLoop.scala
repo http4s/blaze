@@ -5,7 +5,6 @@ import com.typesafe.scalalogging.slf4j.StrictLogging
 
 import scala.annotation.tailrec
 import scala.util.control.NonFatal
-import scala.concurrent.{Future, Promise}
 
 import java.nio.channels._
 import java.nio.ByteBuffer
@@ -14,10 +13,6 @@ import java.util.concurrent.atomic.AtomicReference
 import java.util.concurrent.RejectedExecutionException
 
 import org.http4s.blaze.pipeline._
-import org.http4s.blaze.channel.nio1.ChannelOps.{ChannelClosed, Incomplete, Complete}
-import org.http4s.blaze.pipeline.Command.EOF
-import org.http4s.blaze.channel.nio1.ChannelOps.WriteError
-import org.http4s.blaze.util.BufferTools
 
 /**
  * @author Bryce Anderson
@@ -97,7 +92,7 @@ final class SelectorLoop(selector: Selector, bufferSize: Int)
 
           try {
             if (k.isValid) {
-              val head = k.attachment().asInstanceOf[NIOHeadStage]
+              val head = k.attachment().asInstanceOf[NIO1HeadStage]
 
               if (head != null) {
                 logger.debug {
@@ -125,7 +120,7 @@ final class SelectorLoop(selector: Selector, bufferSize: Int)
                 t)
 
               try {
-                val head = k.attachment().asInstanceOf[NIOHeadStage]
+                val head = k.attachment().asInstanceOf[NIO1HeadStage]
                 head.closeWithError(t)
                 head.inboundCommand(Command.Error(t))
               } catch {
@@ -175,14 +170,14 @@ final class SelectorLoop(selector: Selector, bufferSize: Int)
 
   def wakeup(): Unit = selector.wakeup()
 
-  def initChannel(builder: () => LeafBuilder[ByteBuffer], ch: SelectableChannel, ops: SelectionKey => ChannelOps) {
+  def initChannel(builder: () => LeafBuilder[ByteBuffer], ch: SelectableChannel, mkStage: SelectionKey => NIO1HeadStage) {
    enqueTask( new Runnable {
       def run() {
         try {
           ch.configureBlocking(false)
           val key = ch.register(selector, 0)
 
-          val head = new NIOHeadStage(ops(key))
+          val head = mkStage(key)
           key.attach(head)
 
           // construct the pipeline
@@ -193,107 +188,5 @@ final class SelectorLoop(selector: Selector, bufferSize: Int)
         } catch { case e: Throwable => logger.error("Caught error during channel init.", e) }
       }
     })
-  }
-
-  private class NIOHeadStage(ops: ChannelOps) extends HeadStage[ByteBuffer] {
-    def name: String = "NIO1 ByteBuffer Head Stage"
-
-    ///  channel reading bits //////////////////////////////////////////////
-
-    private val readPromise = new AtomicReference[Promise[ByteBuffer]]
-
-    def readReady(scratch: ByteBuffer) {
-      val r = ops.performRead(scratch)
-
-      // if we successfully read some data, unset the interest and complete the promise
-      if (r != null) {
-        ops.unsetOp(SelectionKey.OP_READ)
-        val p = readPromise.getAndSet(null)
-        p.complete(r)
-      }
-    }
-
-    def readRequest(size: Int): Future[ByteBuffer] = {
-      logger.trace("NIOHeadStage received a read request")
-      val p = Promise[ByteBuffer]
-
-      if (readPromise.compareAndSet(null, p)) {
-        ops.setRead()
-        p.future
-      }
-      else Future.failed(new IndexOutOfBoundsException("Cannot have more than one pending read request"))
-    }
-    
-    /// channel write bits /////////////////////////////////////////////////
-
-    @volatile private var writeData: Array[ByteBuffer] = null
-    private val writePromise = new AtomicReference[Promise[Any]](null)
-
-    // Cancel the promises and close the channel
-    private def writeFailAndClose(t: Throwable) {
-      val w = writePromise.get
-      writePromise.set(null)
-      writeData = null
-      if (w != null) w.tryFailure(t)
-
-      try ops.close()
-      catch { case NonFatal(t) => logger.warn("Caught exception while closing channel", t) }
-    }
-
-    // Will always be called from the SelectorLoop thread
-    def writeReady(scratch: ByteBuffer): Unit = ops.performWrite(scratch, writeData) match {
-      case Complete =>
-        val p = writePromise.get
-        writeData = null
-        writePromise.set(null)
-        ops.unsetOp(SelectionKey.OP_WRITE)
-        p.success()
-
-      case Incomplete => /* Need to wait for another go around to try and send more data */
-
-      case ChannelClosed => writeFailAndClose(EOF)
-
-      case WriteError(NonFatal(t)) =>
-        logger.warn("Error performing write", t)
-        writeFailAndClose(t)
-
-      case WriteError(t) =>
-        logger.error("Serious error while performing write. Shutting down connector", t)
-        writeFailAndClose(t)
-    }
-
-    def writeRequest(data: ByteBuffer): Future[Any] = writeRequest(data::Nil)
-
-    override def writeRequest(data: Seq[ByteBuffer]): Future[Any] = {
-      val p = Promise[Any]
-      if (writePromise.compareAndSet(null, p)) {
-        val writes = data.toArray
-        if (!BufferTools.checkEmpty(writes)) {  // Non-empty buffer
-          writeData = writes
-          ops.setWrite()
-          p.future
-        } else {                                // Empty buffer, just return success
-          writePromise.set(null)
-          writeData = null
-          Future.successful()
-        }
-      } else {
-        Future.failed(new IndexOutOfBoundsException("Cannot have more than one pending write request"))
-      }
-    }
-    
-    ///////////////////////////////// Shutdown methods ///////////////////////////////////
-
-    // Cleanup any read or write requests with an exception
-    def closeWithError(t: Throwable): Unit = {
-      val r = readPromise.getAndSet(null)
-      if (r != null) r.tryFailure(t)
-      writeFailAndClose(t)
-    }
-
-    override protected def stageShutdown(): Unit = {
-      super.stageShutdown()
-      closeWithError(EOF)
-    }
   }
 }

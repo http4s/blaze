@@ -8,7 +8,7 @@ import java.io.IOException
 import java.nio.ByteBuffer
 import scala.util.{Failure, Success, Try}
 import org.http4s.blaze.pipeline.Command.EOF
-import org.http4s.blaze.channel.nio1.ChannelOps._
+import NIO1HeadStage._
 
 /**
  * @author Bryce Anderson
@@ -29,15 +29,16 @@ class SocketServerChannelFactory(pipeFactory: BufferPipelineBuilder, pool: Selec
     try {
       val ch = serverChannel.accept()
       ch.setOption(java.net.StandardSocketOptions.TCP_NODELAY, java.lang.Boolean.FALSE)
-      loop.initChannel(pipeFactory, ch, key => new SocketChannelOps(ch, loop, key))
+      loop.initChannel(pipeFactory, ch, key => new SocketChannelHead(ch, loop, key))
       true
     }
     catch {case e: IOException => false }
   }
 
-  private class SocketChannelOps(val ch: SocketChannel, val loop: SelectorLoop, val key: SelectionKey)
-              extends ChannelOps {
+  private class SocketChannelHead(val ch: SocketChannel, val loop: SelectorLoop, val key: SelectionKey)
+              extends NIO1HeadStage {
 
+    // TODO: these methods may be better rewritten to throw to the underlying NIO1HeadStage instead of catching internally
     def performRead(scratch: ByteBuffer): Try[ByteBuffer] = {
       try {
         scratch.clear()
