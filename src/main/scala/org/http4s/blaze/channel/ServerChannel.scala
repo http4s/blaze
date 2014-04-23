@@ -1,6 +1,6 @@
 package org.http4s.blaze.channel
 
-import com.typesafe.scalalogging.slf4j.Logging
+import org.http4s.blaze.util.Logging
 import java.nio.channels.NetworkChannel
 
 /**

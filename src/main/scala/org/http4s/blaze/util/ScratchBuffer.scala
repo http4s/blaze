@@ -1,6 +1,5 @@
 package org.http4s.blaze.util
 
-import com.typesafe.scalalogging.slf4j.Logging
 import java.nio.ByteBuffer
 
 /**

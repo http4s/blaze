@@ -23,6 +23,8 @@ object ApplicationBuild extends Build {
 
     scalaVersion := "2.10.4",
 
+    crossScalaVersions := Seq("2.10.4", "2.11.0"),
+
     description := "NIO Framework for Scala",
 
     homepage := Some(url("https://github.com/http4s/blaze")),
@@ -58,18 +60,27 @@ object ApplicationBuild extends Build {
   /* dependencies */
   lazy val dependencies = Seq(
     libraryDependencies += scalatest % "test",
-    libraryDependencies += scalaloggingSlf4j,
+    libraryDependencies += (scalaBinaryVersion.value match {
+      case "2.10" => scalaloggingSlf4j_2_10
+      case "2.11" => scalaloggingSlf4j_2_11
+    }),
+    libraryDependencies ++= (scalaBinaryVersion.value match {
+      case "2.10" => Seq.empty
+      case "2.11" => Seq(scalaXml)
+    }),
     libraryDependencies += logbackClassic,
     libraryDependencies += npn_api,
     libraryDependencies += npn_boot
   )
    
-  lazy val scalatest = "org.scalatest" %% "scalatest" % "2.1.2"
+  lazy val scalatest = "org.scalatest" %% "scalatest" % "2.1.3"
 
 
-  lazy val scalaloggingSlf4j   = "com.typesafe"   %% "scalalogging-slf4j" % "1.0.1"
+  lazy val scalaloggingSlf4j_2_10 = "com.typesafe"          %% "scalalogging-slf4j"      % "1.1.0"
+  lazy val scalaloggingSlf4j_2_11 = "com.typesafe.scala-logging" %% "scala-logging-slf4j" % "2.1.0"
   lazy val logbackClassic      = "ch.qos.logback" %  "logback-classic"    % "1.0.9"
 
+  lazy val scalaXml = "org.scala-lang.modules" %% "scala-xml" % "1.0.1"
 
   // Needed for Spdy Support. Perhaps it should be a sub-project?
   // Interesting note: Http2.0 will use the TSLALPN extension which, unfortunately,

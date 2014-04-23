@@ -4,7 +4,7 @@ import java.util.Date
 
 import scala.concurrent.{Promise, Future}
 import Command._
-import com.typesafe.scalalogging.slf4j.Logging
+import org.http4s.blaze.util.Logging
 import org.http4s.blaze.util.Execution.directec
 import scala.concurrent.duration.Duration
 import org.http4s.blaze.util.Execution

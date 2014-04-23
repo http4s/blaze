@@ -1,6 +1,6 @@
 package org.http4s.blaze.pipeline.stages.spdy
 
-import com.typesafe.scalalogging.slf4j.Logging
+import org.http4s.blaze.util.Logging
 
 /**
  * @author Bryce Anderson

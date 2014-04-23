@@ -5,9 +5,6 @@ import scala.util.control.NonFatal
 import scala.concurrent.ExecutionContext
 import scala.concurrent.duration._
 
-import com.typesafe.scalalogging.slf4j.Logging
-
-
 /**
  * @author Bryce Anderson
  *         Created on 2/2/14
