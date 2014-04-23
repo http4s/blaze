@@ -2,7 +2,7 @@ package org.http4s.blaze.examples.spdy
 
 import org.eclipse.jetty.npn.NextProtoNego
 import java.util
-import com.typesafe.scalalogging.slf4j.Logging
+import org.http4s.blaze.util.Logging
 
 /**
  * @author Bryce Anderson

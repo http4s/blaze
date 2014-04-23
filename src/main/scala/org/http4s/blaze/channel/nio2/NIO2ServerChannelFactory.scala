@@ -9,7 +9,7 @@ import java.nio.channels.{AsynchronousServerSocketChannel,
 import scala.annotation.tailrec
 import org.http4s.blaze.pipeline.LeafBuilder
 import java.nio.ByteBuffer
-import com.typesafe.scalalogging.slf4j.Logging
+import org.http4s.blaze.util.Logging
 import java.util.Date
 import org.http4s.blaze.channel._
 import org.http4s.blaze.pipeline.Command.Connect

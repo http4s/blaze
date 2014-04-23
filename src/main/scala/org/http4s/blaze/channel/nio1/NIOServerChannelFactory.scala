@@ -3,7 +3,7 @@ package org.http4s.blaze.channel.nio1
 import java.nio.channels._
 import scala.annotation.tailrec
 import java.net.SocketAddress
-import com.typesafe.scalalogging.slf4j.Logging
+import org.http4s.blaze.util.Logging
 import org.http4s.blaze.channel._
 import scala.util.control.NonFatal
 

@@ -1,7 +1,6 @@
 package org.http4s.blaze.util
 
 import scala.concurrent.ExecutionContext
-import com.typesafe.scalalogging.slf4j.Logging
 import java.util
 import scala.util.control.NonFatal
 

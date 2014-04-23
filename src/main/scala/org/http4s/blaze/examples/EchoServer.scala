@@ -6,7 +6,7 @@ import java.nio.ByteBuffer
 import scala.util.{Failure, Success}
 import org.http4s.blaze.channel.{BufferPipelineBuilder, ServerChannel}
 import java.net.InetSocketAddress
-import com.typesafe.scalalogging.slf4j.Logging
+import org.http4s.blaze.util.Logging
 import java.util.Date
 
 import scala.concurrent.ExecutionContext.Implicits.global
