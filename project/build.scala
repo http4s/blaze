@@ -7,16 +7,26 @@ import scala.util.Properties
 object ApplicationBuild extends Build {
 
   /* Projects */
-  lazy val main = Project("blaze",
-                    new File("."),
-                    settings = buildSettings
+
+  lazy val blaze = Project("blaze",
+                    new File("core"),
+                    settings = buildSettings ++ publishing
                   )
+
+  lazy val http = Project("http",
+                    new File("http"),
+                    settings = buildSettings ++ publishing
+                  ).dependsOn(blaze % "test->test;compile->compile")
+
+  lazy val examples = Project("examples",
+                    new File("examples"),
+                    settings = buildSettings
+                  ).dependsOn(http)
 
   /* global build settings */
   //lazy val buildSettings = Defaults.defaultSettings ++  publishing ++ Revolver.settings ++ Seq(
   lazy val buildSettings = Defaults.defaultSettings ++ 
-                           dependencies ++
-                           publishing ++ Seq(
+                           dependencies ++ Seq(
     organization := "org.http4s",
 
     version := "0.2.0-SNAPSHOT",
