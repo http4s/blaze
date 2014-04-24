@@ -25,7 +25,7 @@ class SeqHead[O](private var data: Seq[O]) extends HeadStage[O] {
     else Future.failed(EOF)
   }
 
-  def writeRequest(data: O): Future[Any] = lock.synchronized {
+  def writeRequest(data: O): Future[Unit] = lock.synchronized {
     results :+= data
     Future.successful()
   }

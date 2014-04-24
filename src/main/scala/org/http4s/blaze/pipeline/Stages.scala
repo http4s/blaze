@@ -75,15 +75,15 @@ sealed trait Tail[I] extends Stage {
     Future.failed(new Exception(s"This stage '${this}' isn't connected!"))
   }
 
-  final def channelWrite(data: I): Future[Any] = channelWrite(data, Duration.Inf)
+  final def channelWrite(data: I): Future[Unit] = channelWrite(data, Duration.Inf)
 
-  final def channelWrite(data: I, timeout: Duration): Future[Any] = {
+  final def channelWrite(data: I, timeout: Duration): Future[Unit] = {
     logger.debug(s"Stage ${getClass.getName} sending write request with timeout $timeout")
     try {
       if (_prevStage != null) {
         val f = _prevStage.writeRequest(data)
         if (timeout.isFinite()) {
-          val p = Promise[Any]
+          val p = Promise[Unit]
           scheduleTimeout(p, f, timeout)
           p.future
         }
@@ -93,16 +93,16 @@ sealed trait Tail[I] extends Stage {
     catch { case t: Throwable => Future.failed(t) }
   }
 
-  final def channelWrite(data: Seq[I]): Future[Any] = channelWrite(data, Duration.Inf)
+  final def channelWrite(data: Seq[I]): Future[Unit] = channelWrite(data, Duration.Inf)
 
-  final def channelWrite(data: Seq[I], timeout: Duration): Future[Any] = {
+  final def channelWrite(data: Seq[I], timeout: Duration): Future[Unit] = {
     logger.debug(s"Stage ${getClass.getName} sending multiple write request with timeout $timeout")
     try {
       if (_prevStage != null) {
         val f = _prevStage.writeRequest(data)
 
         if (timeout.isFinite()) {
-          val p = Promise[Any]
+          val p = Promise[Unit]
           scheduleTimeout(p, f, timeout)
           p.future
         }
@@ -204,15 +204,15 @@ sealed trait Head[O] extends Stage {
 
   def readRequest(size: Int): Future[O]
 
-  def writeRequest(data: O): Future[Any]
+  def writeRequest(data: O): Future[Unit]
 
   /** A simple default that serializes the write requests into the
     * single element form. It almost certainly should be overwritten
     * @param data sequence of elements which are to be written
     * @return Future which will resolve when pipeline is ready for more data or fails
     */
-  def writeRequest(data: Seq[O]): Future[Any] = {
-    data.foldLeft[Future[Any]](Future.successful()){ (f, d) =>
+  def writeRequest(data: Seq[O]): Future[Unit] = {
+    data.foldLeft[Future[Unit]](Future.successful()){ (f, d) =>
       f.flatMap(_ => writeRequest(d))(directec)
     }
   }

@@ -33,7 +33,7 @@ class PipelineSpec extends WordSpec with Matchers {
 
     def readRequest(size: Int): Future[String] = channelRead(1) map (_.toString)
 
-    def writeRequest(data: String): Future[Any] = {
+    def writeRequest(data: String): Future[Unit] = {
       try channelWrite(data.toInt)
       catch { case t: NumberFormatException => Future.failed(t) }
     }
@@ -67,7 +67,7 @@ class PipelineSpec extends WordSpec with Matchers {
 
         def readRequest(size: Int): Future[Int] = channelRead(size)
 
-        def writeRequest(data: Int): Future[Any] = channelWrite(data)
+        def writeRequest(data: Int): Future[Unit] = channelWrite(data)
       }
 
       val noop = new Noop

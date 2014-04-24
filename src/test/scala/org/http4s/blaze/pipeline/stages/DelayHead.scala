@@ -24,10 +24,10 @@ abstract class DelayHead[I](delay: Duration) extends HeadStage[I] {
     p.future
   }
 
-  override def writeRequest(data: I): Future[Any] = {
-    val p = Promise[Any]
+  override def writeRequest(data: I): Future[Unit] = {
+    val p = Promise[Unit]
     Execution.scheduler.schedule(new Runnable {
-      def run() { p.trySuccess("done") }
+      def run() { p.trySuccess() }
     }, delay)
     p.future
   }

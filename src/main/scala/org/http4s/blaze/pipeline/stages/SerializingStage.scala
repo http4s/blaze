@@ -19,8 +19,8 @@ final class SerializingStage[I](val name: String = "BufferHeadStage",
 abstract class PassThrough[I] extends MidStage[I, I] {
   def readRequest(size: Int): Future[I] = channelRead(size)
 
-  def writeRequest(data: I): Future[Any] = channelWrite(data)
+  def writeRequest(data: I): Future[Unit] = channelWrite(data)
 
-  override def writeRequest(data: Seq[I]): Future[Any] = channelWrite(data)
+  override def writeRequest(data: Seq[I]): Future[Unit] = channelWrite(data)
 }
 

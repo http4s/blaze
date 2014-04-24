@@ -37,11 +37,11 @@ trait SlowHead[O] extends HeadStage[O] {
     }
   }
 
-  def writeRequest(data: O): Future[Any] = {
+  def writeRequest(data: O): Future[Unit] = {
     if (writeGuard.getAndSet(true)) Future(sys.error("Write guard breached!"))
     else {
       write(data)
-      val p = Promise[Any]
+      val p = Promise[Unit]
       new Thread {
         override def run() {
           val delay = Random.nextFloat()*20

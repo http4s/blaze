@@ -22,7 +22,7 @@ abstract class BufferingStage[T](bufferSize: Int, val name: String = "BufferingS
   // Just forward read requests
   def readRequest(size: Int): Future[T] = channelRead(size)
 
-  def writeRequest(data: T): Future[Any] = {
+  def writeRequest(data: T): Future[Unit] = {
 
     val dsize = measure(data)
     buffer += data
@@ -34,7 +34,7 @@ abstract class BufferingStage[T](bufferSize: Int, val name: String = "BufferingS
     }
   }
 
-  private def flush(): Future[Any] = {
+  private def flush(): Future[Unit] = {
     val f = writeRequest(buffer.result)
     buffer.clear()
     size = 0

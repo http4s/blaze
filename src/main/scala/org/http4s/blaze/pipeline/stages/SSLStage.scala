@@ -190,21 +190,21 @@ class SSLStage(engine: SSLEngine, maxSubmission: Int = -1) extends MidStage[Byte
     sys.error("Shouldn't get here")
   }
 
-  override def writeRequest(data: Seq[ByteBuffer]): Future[Any] = {
-    val p = Promise[Any]
+  override def writeRequest(data: Seq[ByteBuffer]): Future[Unit] = {
+    val p = Promise[Unit]
     writeLoop(0, data.toArray, new ListBuffer, p)
     p.future
   }
 
-  def writeRequest(data: ByteBuffer): Future[Any] = {
+  def writeRequest(data: ByteBuffer): Future[Unit] = {
     val arr = new Array[ByteBuffer](1)
     arr(0) = data
-    val p = Promise[Any]
+    val p = Promise[Unit]
     writeLoop(0, arr, new ListBuffer, p)
     p.future
   }
 
-  private def writeLoop(written: Int, buffers: Array[ByteBuffer], out: ListBuffer[ByteBuffer], p: Promise[Any]) {
+  private def writeLoop(written: Int, buffers: Array[ByteBuffer], out: ListBuffer[ByteBuffer], p: Promise[Unit]) {
 
     val o = ScratchBuffer.getScratchBuffer(maxBuffer)
     var wr = written

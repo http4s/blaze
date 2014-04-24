@@ -53,9 +53,9 @@ class HubStageSpec extends WordSpec with Matchers {
 
     protected def nodeReadRequest(key: Int, size: Int): Unit = {}
 
-    protected def onNodeWrite(key: Int, data: Msg): Future[Any] = channelWrite(data)
+    protected def onNodeWrite(key: Int, data: Msg): Future[Unit] = channelWrite(data)
 
-    protected def onNodeWrite(key: Int, data: Seq[Msg]): Future[Any] = channelWrite(data)
+    protected def onNodeWrite(key: Int, data: Seq[Msg]): Future[Unit] = channelWrite(data)
 
     protected def onNodeCommand(key: Int, cmd: Command): Unit = {
       logger.trace(s"Received command $cmd")

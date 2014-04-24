@@ -64,7 +64,7 @@ private[nio1] abstract class NIO1HeadStage extends HeadStage[ByteBuffer] {
   /// channel write bits /////////////////////////////////////////////////
 
   @volatile private var writeData: Array[ByteBuffer] = null
-  private val writePromise = new AtomicReference[Promise[Any]](null)
+  private val writePromise = new AtomicReference[Promise[Unit]](null)
 
   // Will always be called from the SelectorLoop thread
   def writeReady(scratch: ByteBuffer): Unit = performWrite(scratch, writeData) match {
@@ -88,10 +88,10 @@ private[nio1] abstract class NIO1HeadStage extends HeadStage[ByteBuffer] {
       writeFailAndClose(t)
   }
 
-  def writeRequest(data: ByteBuffer): Future[Any] = writeRequest(data::Nil)
+  def writeRequest(data: ByteBuffer): Future[Unit] = writeRequest(data::Nil)
 
-  override def writeRequest(data: Seq[ByteBuffer]): Future[Any] = {
-    val p = Promise[Any]
+  override def writeRequest(data: Seq[ByteBuffer]): Future[Unit] = {
+    val p = Promise[Unit]
     if (writePromise.compareAndSet(null, p)) {
       val writes = data.toArray
       if (!BufferTools.checkEmpty(writes)) {  // Non-empty buffer

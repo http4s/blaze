@@ -44,7 +44,7 @@ trait ByteToObjectStage[O] extends MidStage[ByteBuffer, O] {
 
   /////////////////////////////////////////////////////////////////////////////
 
-  override def writeRequest(data: Seq[O]): Future[Any] = {
+  override def writeRequest(data: Seq[O]): Future[Unit] = {
     try channelWrite(data.flatMap(messageToBuffer))
     catch { case NonFatal(t) =>
       logger.error("Encoding failure", t)
@@ -52,7 +52,7 @@ trait ByteToObjectStage[O] extends MidStage[ByteBuffer, O] {
     }
   }
 
-  def writeRequest(data: O): Future[Any] = {
+  def writeRequest(data: O): Future[Unit] = {
     try channelWrite(messageToBuffer(data))
     catch { case NonFatal(t) =>
       logger.error("Encoding failure", t)

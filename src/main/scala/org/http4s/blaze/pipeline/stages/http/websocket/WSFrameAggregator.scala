@@ -92,6 +92,6 @@ class WSFrameAggregator extends MidStage[WebSocketFrame, WebSocketFrame] {
   }
 
   // Just forward write requests
-  def writeRequest(data: WebSocketFrame): Future[Any] = channelWrite(data)
-  override def writeRequest(data: Seq[WebSocketFrame]): Future[Any] = channelWrite(data)
+  def writeRequest(data: WebSocketFrame): Future[Unit] = channelWrite(data)
+  override def writeRequest(data: Seq[WebSocketFrame]): Future[Unit] = channelWrite(data)
 }

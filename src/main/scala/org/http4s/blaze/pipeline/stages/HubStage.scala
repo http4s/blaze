@@ -23,9 +23,9 @@ abstract class HubStage[I, O, K](nodeBuilder: () => LeafBuilder[O]) extends Tail
 
   protected def nodeReadRequest(key: K, size: Int): Unit
 
-  protected def onNodeWrite(key: K, data: O): Future[Any]
+  protected def onNodeWrite(key: K, data: O): Future[Unit]
 
-  protected def onNodeWrite(key: K, data: Seq[O]): Future[Any]
+  protected def onNodeWrite(key: K, data: Seq[O]): Future[Unit]
 
   protected def onNodeCommand(key: K, cmd: Command): Unit
 
@@ -130,7 +130,7 @@ abstract class HubStage[I, O, K](nodeBuilder: () => LeafBuilder[O]) extends Tail
       else Future.failed(EOF)
     }
 
-    def writeRequest(data: O): Future[Any] = {
+    def writeRequest(data: O): Future[Unit] = {
       if (connected) onNodeWrite(key, data)
       else if (!initialized) {
         logger.error(s"Disconnected node with key $key attempting write request")
@@ -139,7 +139,7 @@ abstract class HubStage[I, O, K](nodeBuilder: () => LeafBuilder[O]) extends Tail
       else Future.failed(EOF)
     }
 
-    override def writeRequest(data: Seq[O]): Future[Any] = {
+    override def writeRequest(data: Seq[O]): Future[Unit] = {
       if (connected) onNodeWrite(key, data)
       else if (!initialized) {
         logger.error(s"Disconnected node with key $key attempting write request")

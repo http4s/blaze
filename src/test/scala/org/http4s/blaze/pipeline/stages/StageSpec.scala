@@ -34,7 +34,7 @@ class StageSpec extends WordSpec with Matchers {
 
   "Support writes" in {
     val leaf = regPipeline
-    Await.result(leaf.channelWrite(12), 800.milli) should equal("done")
+    Await.result(leaf.channelWrite(12), 800.milli) should equal(())
   }
 
   "Support read timeouts" in {
@@ -50,7 +50,7 @@ class StageSpec extends WordSpec with Matchers {
     val leaf = slowPipeline
     a[TimeoutException] should be thrownBy Await.result(leaf.channelWrite(1, 100.milli), 800.milli)
 
-    Await.result(leaf.channelWrite(1, 700.milli), 800.milli) should equal("done")
+    Await.result(leaf.channelWrite(1, 700.milli), 800.milli) should equal(())
 
   }
 

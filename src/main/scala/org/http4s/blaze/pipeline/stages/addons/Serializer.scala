@@ -24,7 +24,7 @@ trait Serializer[I, O] extends MidStage[I, O] {
 
   private val _writeLock = new AnyRef
   private var _serializerWriteQueue: Queue[O] = new Queue
-  private var _serializerWritePromise: Promise[Any] = null
+  private var _serializerWritePromise: Promise[Unit] = null
 
   private val _serializerReadRef = new AtomicReference[Future[O]](null)
   private val _serializerWaitingReads  = if (maxReadQueue > 0) new AtomicInteger(0) else null
@@ -58,13 +58,13 @@ trait Serializer[I, O] extends MidStage[I, O] {
 
   ///  channel writing bits //////////////////////////////////////////////
 
-  abstract override def writeRequest(data: O): Future[Any] = _writeLock.synchronized {
+  abstract override def writeRequest(data: O): Future[Unit] = _writeLock.synchronized {
     if (maxWriteQueue > 0 && _serializerWriteQueue.length > maxWriteQueue) {
       Future.failed(new Exception(s"$name Stage max write queue exceeded: $maxReadQueue"))
     }
     else {
       if (_serializerWritePromise == null) {   // there is no queue!
-        _serializerWritePromise = Promise[Any]
+        _serializerWritePromise = Promise[Unit]
         val f = super.writeRequest(data)
 
         f.onComplete {
@@ -81,13 +81,13 @@ trait Serializer[I, O] extends MidStage[I, O] {
     }
   }
 
-  abstract override def writeRequest(data: Seq[O]): Future[Any] = _writeLock.synchronized {
+  abstract override def writeRequest(data: Seq[O]): Future[Unit] = _writeLock.synchronized {
     if (maxWriteQueue > 0 && _serializerWriteQueue.length > maxWriteQueue) {
       Future.failed(new Exception(s"$name Stage max write queue exceeded: $maxReadQueue"))
     }
     else {
       if (_serializerWritePromise == null) {   // there is no queue!
-        _serializerWritePromise = Promise[Any]
+        _serializerWritePromise = Promise[Unit]
         val f = super.writeRequest(data)
         f.onComplete( _ => _checkQueue())(directec)
         f
@@ -113,7 +113,7 @@ trait Serializer[I, O] extends MidStage[I, O] {
       }
 
       val p = _serializerWritePromise
-      _serializerWritePromise = Promise[Any]
+      _serializerWritePromise = Promise[Unit]
 
       f.onComplete { t =>
         _checkQueue()
