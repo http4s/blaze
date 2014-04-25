@@ -212,7 +212,7 @@ sealed trait Head[O] extends Stage {
     * @return Future which will resolve when pipeline is ready for more data or fails
     */
   def writeRequest(data: Seq[O]): Future[Unit] = {
-    data.foldLeft[Future[Unit]](Future.successful()){ (f, d) =>
+    data.foldLeft[Future[Unit]](Future.successful(())){ (f, d) =>
       f.flatMap(_ => writeRequest(d))(directec)
     }
   }

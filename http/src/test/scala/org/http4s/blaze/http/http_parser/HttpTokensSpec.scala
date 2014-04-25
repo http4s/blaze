@@ -1,5 +1,7 @@
 package org.http4s.blaze.http.http_parser
 
+import scala.language.postfixOps
+
 import org.scalatest.{Matchers, WordSpec}
 import org.http4s.blaze.http.http_parser.BaseExceptions.BadRequest
 

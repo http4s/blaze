@@ -73,7 +73,7 @@ private[nio1] abstract class NIO1HeadStage extends HeadStage[ByteBuffer] {
       writeData = null
       writePromise.set(null)
       unsetOp(SelectionKey.OP_WRITE)
-      p.success()
+      p.success(())
 
     case Incomplete => /* Need to wait for another go around to try and send more data */
 
@@ -102,7 +102,7 @@ private[nio1] abstract class NIO1HeadStage extends HeadStage[ByteBuffer] {
       } else {                                // Empty buffer, just return success
         writePromise.set(null)
         writeData = null
-        Future.successful()
+        Future.successful(())
       }
     } else {
       Future.failed(new IndexOutOfBoundsException("Cannot have more than one pending write request"))

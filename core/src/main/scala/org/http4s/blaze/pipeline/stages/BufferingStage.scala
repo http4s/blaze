@@ -30,7 +30,7 @@ abstract class BufferingStage[T](bufferSize: Int, val name: String = "BufferingS
     if (dsize + size >= bufferSize) flush()
     else {
       size = size + dsize
-      Future.successful()
+      Future.successful(())
     }
   }
 

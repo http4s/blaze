@@ -1,6 +1,7 @@
 package org.http4s.blaze.pipeline
 package stages
 
+
 import org.scalatest.{Matchers, WordSpec}
 import java.util.concurrent.atomic.AtomicInteger
 import scala.collection.mutable.ListBuffer
@@ -61,14 +62,14 @@ class SerializingStageSpec extends WordSpec with Matchers {
     }
 
     "serialize writes" in {
-      val f = 0 until 100 map { i =>
+      val f = (0 until 100).map{ i =>
         tail.channelWrite(i)
-      } last
+      }.last
 
       val f2 = f.flatMap{ _ =>
-        100 until 200 by 2 map { j =>
+        (100 until 200 by 2).map{ j =>
           tail.channelWrite(List(j, j+1))
-        } last
+        }.last
       }
 
       Await.result(f2, 20.seconds)

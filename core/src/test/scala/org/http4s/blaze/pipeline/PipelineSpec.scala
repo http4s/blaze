@@ -21,7 +21,7 @@ class PipelineSpec extends WordSpec with Matchers {
 
     def writeRequest(data: Int): Future[Unit] = {
       lastWrittenInt = data
-      Future.successful()
+      Future.successful(())
     }
 
     def readRequest(size: Int): Future[Int] = Future(54)

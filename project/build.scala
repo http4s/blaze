@@ -7,26 +7,36 @@ import scala.util.Properties
 object ApplicationBuild extends Build {
 
   /* Projects */
+  lazy val blaze = project
+                    .in(file("."))
+                    .settings(buildSettings :+ dontPublish:_*)
+                    .aggregate(core, http, examples)
 
-  lazy val blaze = Project("blaze",
-                    new File("core"),
-                    settings = buildSettings ++ publishing
-                  )
+  lazy val core = Project("blaze-core",
+                      file("core"),
+                    settings = buildSettings ++ dependencies ++ publishing)
 
-  lazy val http = Project("http",
-                    new File("http"),
-                    settings = buildSettings ++ publishing
-                  ).dependsOn(blaze % "test->test;compile->compile")
 
-  lazy val examples = Project("examples",
+  lazy val http = Project("blaze-http",
+                    file("http"),
+                    settings = buildSettings ++ publishing ++ dependencies ++ Seq(
+                      libraryDependencies ++= (scalaBinaryVersion.value match {
+                        case "2.10" => Seq.empty
+                        case "2.11" => Seq(scalaXml)
+                      })
+                    )
+                  ).dependsOn(core % "test->test;compile->compile")
+
+  lazy val examples = Project("blaze-examples",
                     new File("examples"),
-                    settings = buildSettings
+                    settings = buildSettings :+ dontPublish
                   ).dependsOn(http)
 
+  /* Don't publish setting */
+  val dontPublish = packagedArtifacts := Map.empty
+
   /* global build settings */
-  //lazy val buildSettings = Defaults.defaultSettings ++  publishing ++ Revolver.settings ++ Seq(
-  lazy val buildSettings = Defaults.defaultSettings ++ 
-                           dependencies ++ Seq(
+  lazy val buildSettings = Defaults.defaultSettings ++ Seq(
     organization := "org.http4s",
 
     version := "0.2.0-SNAPSHOT",
@@ -51,6 +61,13 @@ object ApplicationBuild extends Build {
       )
     ),
 
+    scalacOptions in ThisBuild ++= Seq(
+      "-feature",
+      "-deprecation",
+      "-unchecked",
+      "-language:implicitConversions"
+    ),
+
     //mainClass in Revolver.reStart := Some("org.http4s.blaze.examples.NIO1HttpServer"),
 //    javaOptions in run += "-Djavax.net.debug=all",    // SSL Debugging
 //    javaOptions in run += "-Dcom.sun.net.ssl.enableECC=false",
@@ -73,10 +90,6 @@ object ApplicationBuild extends Build {
     libraryDependencies += (scalaBinaryVersion.value match {
       case "2.10" => scalaloggingSlf4j_2_10
       case "2.11" => scalaloggingSlf4j_2_11
-    }),
-    libraryDependencies ++= (scalaBinaryVersion.value match {
-      case "2.10" => Seq.empty
-      case "2.11" => Seq(scalaXml)
     }),
     libraryDependencies += logbackClassic,
     libraryDependencies += npn_api,

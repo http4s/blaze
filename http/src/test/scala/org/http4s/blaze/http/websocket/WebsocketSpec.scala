@@ -1,5 +1,7 @@
 package org.http4s.blaze.http.websocket
 
+import scala.language.postfixOps
+
 import org.scalatest.{Matchers, WordSpec}
 import java.nio.ByteBuffer
 

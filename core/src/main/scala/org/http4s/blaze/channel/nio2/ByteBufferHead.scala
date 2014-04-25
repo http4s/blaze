@@ -29,7 +29,7 @@ class ByteBufferHead(channel: AsynchronousSocketChannel,
     if (!data.hasRemaining() && data.position > 0) {
       logger.warn("Received write request with non-zero position but ZERO available" +
                  s"bytes at ${new Date} on org.http4s.blaze.channel $channel: $data")
-      return Future.successful()
+      return Future.successful(())
     }
 
     val f = Promise[Unit]
@@ -45,7 +45,7 @@ class ByteBufferHead(channel: AsynchronousSocketChannel,
 
         def completed(result: Integer, attachment: Null) {
           if (result.intValue < i) go(i - result.intValue)  // try to write again
-          else f.trySuccess()      // All done
+          else f.trySuccess(())      // All done
         }
       })
     }
@@ -76,7 +76,7 @@ class ByteBufferHead(channel: AsynchronousSocketChannel,
 
         def completed(result: JLong, attachment: Null) {
           if (result.longValue < i) go(i - result.longValue)  // try to write again
-          else f.trySuccess()      // All done
+          else f.trySuccess(())      // All done
         }
       })
     }

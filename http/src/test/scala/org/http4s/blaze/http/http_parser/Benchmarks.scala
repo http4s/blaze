@@ -1,5 +1,7 @@
 package org.http4s.blaze.http.http_parser
 
+import scala.language.reflectiveCalls
+
 import java.nio.ByteBuffer
 import scala.collection.mutable.ListBuffer
 import org.scalatest.WordSpec
