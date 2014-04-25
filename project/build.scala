@@ -14,12 +14,12 @@ object ApplicationBuild extends Build {
 
   lazy val core = Project("blaze-core",
                       file("core"),
-                    settings = buildSettings ++ dependencies ++ publishing)
+                    settings = buildSettings ++ dependencies)
 
 
   lazy val http = Project("blaze-http",
                     file("http"),
-                    settings = buildSettings ++ publishing ++ dependencies ++ Seq(
+                    settings = buildSettings ++ dependencies ++ Seq(
                       libraryDependencies ++= (scalaBinaryVersion.value match {
                         case "2.10" => Seq.empty
                         case "2.11" => Seq(scalaXml)
@@ -28,7 +28,7 @@ object ApplicationBuild extends Build {
                   ).dependsOn(core % "test->test;compile->compile")
 
   lazy val examples = Project("blaze-examples",
-                    new File("examples"),
+                    file("examples"),
                     settings = buildSettings :+ dontPublish
                   ).dependsOn(http)
 
@@ -36,7 +36,7 @@ object ApplicationBuild extends Build {
   val dontPublish = packagedArtifacts := Map.empty
 
   /* global build settings */
-  lazy val buildSettings = Defaults.defaultSettings ++ Seq(
+  lazy val buildSettings = Defaults.defaultSettings ++ publishing ++ Seq(
     organization := "org.http4s",
 
     version := "0.2.0-SNAPSHOT",
