@@ -79,21 +79,25 @@ class SpdyFrameCodecSpec extends Specification {
       buffs.tail.head should_== data
     }
 
-//    "encode SynStreamFrames" in {
-//      val buffs = encode(synStreamFrame)
-//    }
-//
-//    "encode SynReplyFrames" in {
-//      val buffs = encode(synReplyFrame)
-//    }
-//
-//    "encode RstFrame" in {
-//      val buffs = encode(rstFrame)
-//    }
-//
-//    "encode a SettingsFrame" in {
-//      val buffs = encode(settingsFrame)
-//    }
+    "encode SynStreamFrames" in {
+      val buffs = encode(synStreamFrame)
+      buffs should_!= null
+    }
+
+    "encode SynReplyFrames" in {
+      val buffs = encode(synReplyFrame)
+      buffs should_!= null
+    }
+
+    "encode RstFrame" in {
+      val buffs = encode(rstFrame)
+      buffs should_!= null
+    }
+
+    "encode a SettingsFrame" in {
+      val buffs = encode(settingsFrame)
+      buffs should_!= null
+    }
     
     
   }
