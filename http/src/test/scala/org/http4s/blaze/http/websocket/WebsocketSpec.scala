@@ -1,8 +1,7 @@
 package org.http4s.blaze.http.websocket
 
-import scala.language.postfixOps
+import org.specs2.mutable._
 
-import org.scalatest.{Matchers, WordSpec}
 import java.nio.ByteBuffer
 
 import java.nio.charset.StandardCharsets.UTF_8
@@ -13,7 +12,7 @@ import org.http4s.blaze.http.websocket.WebSocketDecoder._
  * @author Bryce Anderson
  *         Created on 1/16/14
  */
-class WebsocketSpec extends WordSpec with Matchers {
+class WebsocketSpec extends Specification {
 
   def helloTxtMasked = Array(0x81, 0x85, 0x37, 0xfa,
                              0x21, 0x3d, 0x7f, 0x9f,
@@ -44,52 +43,52 @@ class WebsocketSpec extends WordSpec with Matchers {
       val f3 = Text(Array(0x2.toByte, 0x3.toByte), true)
       val f4 = Binary(Array(0x2.toByte, 0x4.toByte), true)
 
-      f1 should equal(f1)
-      f1 should equal(f11)
-      f1 should not equal(f2)
-      f1 should not equal(f3)
-      f1 should not equal(f4)
+      f1 should_== f1
+      f1 should_== f11
+      f1 should_!= f2
+      f1 should_!= f3
+      f1 should_!= f4
     }
 
     "decode a hello world message" in {
 
       val result = decode(helloTxtMasked, false)
-      result.last should equal (true)
-      new String(result.data, UTF_8) should equal ("Hello")
+      result.last should_== true
+      new String(result.data, UTF_8) should_== "Hello"
 
       val result2 = decode(helloTxt, true)
-      result2.last should equal (true)
-      new String(result2.data, UTF_8) should equal ("Hello")
+      result2.last should_== true
+      new String(result2.data, UTF_8) should_== "Hello"
     }
 
     "encode a hello world message" in {
       val frame = Text("Hello".getBytes(UTF_8), false)
       val msg = decode(encode(frame, true), false)
-      msg should equal (frame)
-      msg.last should equal (false)
-      new String(msg.data, UTF_8) should equal ("Hello")
+      msg should_== frame
+      msg.last should_== false
+      new String(msg.data, UTF_8) should_== "Hello"
     }
 
     "encode and decode a message with 125 < len <= 0xffff" in {
-      val bytes = 0 until 0xfff map(_.toByte) toArray
+      val bytes = (0 until 0xfff).map(_.toByte).toArray
       val frame = Binary(bytes, false)
 
       val msg = decode(encode(frame, true), false)
       val msg2 = decode(encode(frame, false), true)
 
-      msg should equal(frame)
-      msg should equal(msg2)
+      msg should_== frame
+      msg should_== msg2
     }
 
     "encode and decode a message len > 0xffff" in {
-      val bytes = 0 until (0xffff + 1) map(_.toByte) toArray
+      val bytes = (0 until (0xffff + 1)).map(_.toByte).toArray
       val frame = Binary(bytes, false)
 
       val msg = decode(encode(frame, true), false)
       val msg2 = decode(encode(frame, false), true)
 
-      msg should equal(frame)
-      msg should equal(msg2)
+      msg should_== frame
+      msg should_== msg2
     }
   }
 

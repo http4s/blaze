@@ -1,16 +1,18 @@
 package org.http4s.blaze.pipeline.stages
 
-import org.scalatest.{Matchers, WordSpec}
+import org.specs2.mutable._
+
 import java.nio.ByteBuffer
 import scala.concurrent.Await
 import scala.concurrent.duration._
 import org.http4s.blaze.pipeline.LeafBuilder
+import org.specs2.time.NoTimeConversions
 
 /**
  * @author Bryce Anderson
  *         Created on 1/27/14
  */
-class ByteToObjectStageSpec extends WordSpec with Matchers {
+class ByteToObjectStageSpec extends Specification with NoTimeConversions {
 
   sealed trait Msg { def tag: Byte }
   case class One(byte: Byte) extends Msg { def tag = 0 }
@@ -76,24 +78,24 @@ class ByteToObjectStageSpec extends WordSpec with Matchers {
 
     "Encode One frame" in {
       val msg = new MsgCodec().messageToBuffer(One(1)).head
-      msg.get should equal(0)
-      msg.get should equal(1)
+      msg.get should_== 0
+      msg.get should_== 1
     }
 
     "Encode Two frame" in {
       val msg = new MsgCodec().messageToBuffer(Two(2)).head
-      msg.get should equal(1)
-      msg.getShort should equal(2)
+      msg.get should_== 1
+      msg.getShort should_== 2
     }
 
     "Decode One frame" in {
       val one = new MsgCodec().bufferToMessage(oneBuffer)
-      one should equal (Some(One(1)))
+      one should_== Some(One(1))
     }
 
     "Decode Two frame" in {
       val two = new MsgCodec().bufferToMessage(twoBuffer)
-      two should equal (Some(Two(2)))
+      two should_== Some(Two(2))
     }
 
     "Hault on partial Two frame" in {
@@ -101,16 +103,16 @@ class ByteToObjectStageSpec extends WordSpec with Matchers {
       buff.limit(2)
       val codec = new MsgCodec()
       val two = codec.bufferToMessage(buff)
-      two should equal (None)
+      two should_== None
 
       buff.limit(3)
-      codec.bufferToMessage(buff) should equal(Some(Two(2)))
+      codec.bufferToMessage(buff) should_== Some(Two(2))
     }
 
     "Decode a series of buffers" in {
       val c = buildPipeline(oneBuffer::twoBuffer::Nil)
-      Await.result(c.readRequest(-1), 2.seconds) should equal (One(1))
-      Await.result(c.readRequest(-1), 2.seconds) should equal (Two(2))
+      Await.result(c.readRequest(-1), 2.seconds) should_== One(1)
+      Await.result(c.readRequest(-1), 2.seconds) should_== Two(2)
     }
 
     "Decode one large buffer" in {
@@ -119,8 +121,8 @@ class ByteToObjectStageSpec extends WordSpec with Matchers {
       b.flip()
 
       val c = buildPipeline(b::Nil)
-      Await.result(c.readRequest(-1), 2.seconds) should equal (One(1))
-      Await.result(c.readRequest(-1), 2.seconds) should equal (Two(2))
+      Await.result(c.readRequest(-1), 2.seconds) should_== One(1)
+      Await.result(c.readRequest(-1), 2.seconds) should_== Two(2)
     }
 
     "Decode a series of one byte buffers" in {
@@ -134,8 +136,8 @@ class ByteToObjectStageSpec extends WordSpec with Matchers {
       }
 
       val c = buildPipeline(buffs)
-      Await.result(c.readRequest(-1), 2.seconds) should equal (One(1))
-      Await.result(c.readRequest(-1), 2.seconds) should equal (Two(2))
+      Await.result(c.readRequest(-1), 2.seconds) should_== One(1)
+      Await.result(c.readRequest(-1), 2.seconds) should_== Two(2)
     }
 
   }

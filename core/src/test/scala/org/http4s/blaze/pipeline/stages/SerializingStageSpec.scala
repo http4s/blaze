@@ -2,7 +2,7 @@ package org.http4s.blaze.pipeline
 package stages
 
 
-import org.scalatest.{Matchers, WordSpec}
+import org.specs2.mutable._
 import java.util.concurrent.atomic.AtomicInteger
 import scala.collection.mutable.ListBuffer
 
@@ -10,12 +10,13 @@ import scala.concurrent.Future
 import scala.concurrent.duration._
 import scala.concurrent.Await
 import scala.concurrent.ExecutionContext.Implicits.global
+import org.specs2.time.NoTimeConversions
 
 /**
  * @author Bryce Anderson
  *         Created on 1/7/14
  */
-class SerializingStageSpec extends WordSpec with Matchers {
+class SerializingStageSpec extends Specification with NoTimeConversions {
 
   class SlowIntHead extends SlowHead[Int] {
 
@@ -58,7 +59,7 @@ class SerializingStageSpec extends WordSpec with Matchers {
       }
 
       val numbers = Future.sequence(results)
-      Await.result(numbers, 10.seconds) should equal(ints)
+      Await.result(numbers, 10.seconds) should_== ints
     }
 
     "serialize writes" in {
@@ -73,7 +74,7 @@ class SerializingStageSpec extends WordSpec with Matchers {
       }
 
       Await.result(f2, 20.seconds)
-      head.ints.result() should equal(ints)
+      head.ints.result() should_== ints
     }
   }
 

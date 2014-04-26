@@ -1,6 +1,6 @@
 package org.http4s.blaze.util
 
-import org.scalatest.{Matchers, WordSpec}
+import org.specs2.mutable._
 import java.nio.ByteBuffer
 
 
@@ -8,7 +8,7 @@ import java.nio.ByteBuffer
  * @author Bryce Anderson
  *         Created on 1/28/14
  */
-class BufferToolsSpec extends WordSpec with Matchers {
+class BufferToolsSpec extends Specification {
 
   def b(i: Int = 1) = {
     val b = ByteBuffer.allocate(4)
@@ -19,21 +19,21 @@ class BufferToolsSpec extends WordSpec with Matchers {
   "BufferTools" should {
     "discard null old buffers" in {
       val bb = b()
-      BufferTools.concatBuffers(null, bb) should equal(bb)
+      BufferTools.concatBuffers(null, bb) should_== bb
     }
 
     "discard empty buffers" in {
       val b1 = b(); val b2 = b()
       b1.getInt()
-      BufferTools.concatBuffers(b1, b2) should equal(b2)
+      BufferTools.concatBuffers(b1, b2) should_== b2
     }
 
     "concat two buffers" in {
       val b1 = b(1); val b2 = b(2)
       val a = BufferTools.concatBuffers(b1, b2)
-      a.remaining() should equal(8)
-      a.getInt() should equal(1)
-      a.getInt() should equal(2)
+      a.remaining() should_== 8
+      a.getInt() should_== 1
+      a.getInt() should_== 2
     }
 
     "append the result of one to the end of another if there is room" in {
@@ -43,10 +43,10 @@ class BufferToolsSpec extends WordSpec with Matchers {
       val b2 = b(2)
 
       val bb = BufferTools.concatBuffers(b1, b2)
-      bb should equal(b1)
-      bb.position() should equal(1)
-      bb.getInt() should equal(1)
-      bb.getInt() should equal(2)
+      bb should_== b1
+      bb.position() should_== 1
+      bb.getInt() should_== 1
+      bb.getInt() should_== 2
     }
 
     "compact a buffer to fit the second" in {
@@ -56,9 +56,9 @@ class BufferToolsSpec extends WordSpec with Matchers {
       val b2 = b(2)
 
       val bb = BufferTools.concatBuffers(b1, b2)
-      bb should equal(b1)
-      bb.getInt() should equal(1)
-      bb.getInt() should equal(2)
+      bb should_== b1
+      bb.getInt() should_== 1
+      bb.getInt() should_== 2
     }
   }
 

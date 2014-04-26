@@ -86,7 +86,7 @@ object ApplicationBuild extends Build {
 
   /* dependencies */
   lazy val dependencies = Seq(
-    libraryDependencies += scalatest % "test",
+    libraryDependencies += specs2 % "test",
     libraryDependencies += (scalaBinaryVersion.value match {
       case "2.10" => scalaloggingSlf4j_2_10
       case "2.11" => scalaloggingSlf4j_2_11
@@ -97,6 +97,7 @@ object ApplicationBuild extends Build {
   )
    
   lazy val scalatest = "org.scalatest" %% "scalatest" % "2.1.3"
+  lazy val specs2 =    "org.specs2"    %% "specs2"    % "2.3.11"
 
 
   lazy val scalaloggingSlf4j_2_10 = "com.typesafe"          %% "scalalogging-slf4j"      % "1.1.0"

@@ -1,17 +1,16 @@
 package org.http4s.blaze.pipeline
 
-import org.scalatest.{Matchers, WordSpec}
+import org.specs2.mutable._
 import scala.concurrent.{Future, Await}
 
-import scala.concurrent.ExecutionContext.Implicits.global
-
 import scala.concurrent.duration._
+import org.specs2.time.NoTimeConversions
 
 /**
  * @author Bryce Anderson
  *         Created on 1/4/14
  */
-class PipelineSpec extends WordSpec with Matchers {
+class PipelineSpec extends Specification with NoTimeConversions {
 
   class IntHead extends HeadStage[Int] {
 
@@ -53,10 +52,10 @@ class PipelineSpec extends WordSpec with Matchers {
       TrunkBuilder(new IntToString).cap(tail).base(head)
 
       val r = tail.channelRead()
-      Await.result(r, 1.second) should equal("54")
+      Await.result(r, 1.second) should_== "54"
       Await.ready(tail.channelWrite("32"), 1.second)
 
-      head.lastWrittenInt should equal(32)
+      head.lastWrittenInt should_== 32
 
     }
 
@@ -74,10 +73,10 @@ class PipelineSpec extends WordSpec with Matchers {
 
       val p = TrunkBuilder(noop).append(new IntToString).cap(new StringEnd).base(new IntHead)
 
-      p.findInboundStage(classOf[Noop]).get should equal(noop)
-      p.findInboundStage(noop.name).get should equal(noop)
+      p.findInboundStage(classOf[Noop]).get should_== noop
+      p.findInboundStage(noop.name).get should_== noop
       noop.removeStage
-      p.findInboundStage(classOf[Noop]).isDefined should equal(false)
+      p.findInboundStage(classOf[Noop]).isDefined should_== false
     }
 
   }

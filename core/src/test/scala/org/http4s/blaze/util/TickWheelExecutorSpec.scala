@@ -1,16 +1,17 @@
 package org.http4s.blaze.util
 
-import org.scalatest.{Matchers, WordSpec}
+import org.specs2.mutable._
 
-import scala.concurrent.duration._
+
 import java.util.concurrent.atomic.AtomicInteger
-import org.scalatest.concurrent.Eventually
+import org.specs2.time.NoTimeConversions
 
 /**
  * @author Bryce Anderson
  *         Created on 2/3/14
  */
-class TickWheelExecutorSpec extends WordSpec with Matchers with Eventually {
+class TickWheelExecutorSpec extends Specification with NoTimeConversions {
+  import scala.concurrent.duration._
 
   "TickWheelExecutor" should {
 
@@ -22,7 +23,7 @@ class TickWheelExecutorSpec extends WordSpec with Matchers with Eventually {
         def run() { i.set(1) }
       }, Duration.Zero)
 
-      i.get() should equal(1)
+      i.get() should_== 1
 
     }
 
@@ -32,7 +33,7 @@ class TickWheelExecutorSpec extends WordSpec with Matchers with Eventually {
         def run() { i.set(1) }
       }, 200.millis)
       Thread.sleep(400)
-      i.get() should equal(1)
+      i.get() should_== 1
     }
 
     "Execute a simple task with a multi clock revolution delay" in {
@@ -43,10 +44,10 @@ class TickWheelExecutorSpec extends WordSpec with Matchers with Eventually {
       }, 119.millis)
 
       Thread.sleep(85)
-      i.get should equal(0)
+      i.get should_== 0
 
       Thread.sleep(100)
-      i.get should equal(1)
+      i.get should_== 1
 
     }
 
@@ -62,7 +63,7 @@ class TickWheelExecutorSpec extends WordSpec with Matchers with Eventually {
       }
 
       Thread.sleep(1020)
-      i.get() should equal(1000)
+      i.get() should_== 1000
 
     }
 
@@ -79,7 +80,7 @@ class TickWheelExecutorSpec extends WordSpec with Matchers with Eventually {
       cancels.foreach(_.cancel())
 
       Thread.sleep(700)
-      i.get() should equal(0)
+      i.get() should_== 0
 
     }
 
@@ -105,18 +106,16 @@ class TickWheelExecutorSpec extends WordSpec with Matchers with Eventually {
       }, Duration.Zero)
 
       Thread.sleep(10)
-      failed should equal(2)
+      failed should_== 2
     }
 
     "Shutdown" in {
       val ec = new TickWheelExecutor(3, 10.millis)
       ec.shutdown()
 
-      a [RuntimeException] should be thrownBy ec.schedule(new Runnable{
-                                              def run() {
-                                                sys.error("Woops!")
-                                              }
-                                            }, Duration.Zero)
+      ec.schedule(new Runnable{
+         def run() { sys.error("Woops!")}
+      }, Duration.Zero) must throwA[RuntimeException]
     }
   }
 

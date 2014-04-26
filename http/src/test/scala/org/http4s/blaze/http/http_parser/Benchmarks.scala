@@ -4,13 +4,14 @@ import scala.language.reflectiveCalls
 
 import java.nio.ByteBuffer
 import scala.collection.mutable.ListBuffer
-import org.scalatest.WordSpec
+
+import org.specs2.mutable._
 
 /**
  * @author Bryce Anderson
  *         Created on 2/8/14
  */
-class Benchmarks extends WordSpec {
+class Benchmarks extends Specification {
 
   val request = "POST /enlighten/calais.asmx HTTP/1.1\r\n"
 
@@ -181,6 +182,7 @@ class Benchmarks extends WordSpec {
       checkingBenchmark(3)
       rawBenchmark(3)
       headerCounterBenchmark(3)
+      true should_== true
     }
   }
 

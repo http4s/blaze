@@ -1,6 +1,7 @@
 package org.http4s.blaze.pipeline.stages
 
-import org.scalatest.{Matchers, WordSpec}
+import org.specs2.mutable._
+
 import org.http4s.blaze.pipeline.Command._
 import scala.concurrent.Future
 import org.http4s.blaze.pipeline._
@@ -17,7 +18,7 @@ import org.http4s.blaze.pipeline.Command.Command
  *
  *         What a mess. Its almost a full blown implementation of something to test this
  */
-class HubStageSpec extends WordSpec with Matchers {
+class HubStageSpec extends Specification {
 
   implicit val ec = Execution.directec
 
@@ -85,9 +86,10 @@ class HubStageSpec extends WordSpec with Matchers {
 
   def nodeBuilder(): LeafBuilder[Msg] = LeafBuilder(new Echo)
 
-    def rootBuilder(): LeafBuilder[Msg] = LeafBuilder(new TestHubStage(nodeBuilder))
+  def rootBuilder(): LeafBuilder[Msg] = LeafBuilder(new TestHubStage(nodeBuilder))
 
   "HubStage" should {
+
     "Initialize" in {
       val h = new SeqHead(msgs)
 
@@ -97,10 +99,7 @@ class HubStageSpec extends WordSpec with Matchers {
       h.inboundCommand(Disconnect)
       // All the business should have finished because it was done using the directec
 
-      h.results should equal(Vector(Msg(1, "Echoing: one"), Msg(2, "Echoing: two")))
-
-
-
+      h.results should_== Vector(Msg(1, "Echoing: one"), Msg(2, "Echoing: two"))
     }
   }
 

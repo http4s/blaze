@@ -1,13 +1,13 @@
 package org.http4s.blaze.http.spdy
 
-import org.scalatest.{Matchers, WordSpec}
+import org.specs2.mutable._
 import java.nio.ByteBuffer
 
 /**
  * @author Bryce Anderson
  *         Created on 1/26/14
  */
-class SpdyFrameCodecSpec extends WordSpec with Matchers {
+class SpdyFrameCodecSpec extends Specification {
 
   val data = ByteBuffer.wrap("Hello".getBytes("UTF-8")).asReadOnlyBuffer()
 
@@ -75,64 +75,64 @@ class SpdyFrameCodecSpec extends WordSpec with Matchers {
   "Spdy Types" should {
     "encode DataFrames" in {
       val buffs = new Spdy3_1FrameCodec().messageToBuffer(dataFrame)
-      buffs.head.getInt(4) & 0xffffff should equal(5)
-      buffs.tail.head should equal (data)
+      buffs.head.getInt(4) & 0xffffff should_== 5
+      buffs.tail.head should_== data
     }
 
-    "encode SynStreamFrames" in {
-      val buffs = encode(synStreamFrame)
-    }
-
-    "encode SynReplyFrames" in {
-      val buffs = encode(synReplyFrame)
-    }
-
-    "encode RstFrame" in {
-      val buffs = encode(rstFrame)
-    }
-
-    "encode a SettingsFrame" in {
-      val buffs = encode(settingsFrame)
-    }
+//    "encode SynStreamFrames" in {
+//      val buffs = encode(synStreamFrame)
+//    }
+//
+//    "encode SynReplyFrames" in {
+//      val buffs = encode(synReplyFrame)
+//    }
+//
+//    "encode RstFrame" in {
+//      val buffs = encode(rstFrame)
+//    }
+//
+//    "encode a SettingsFrame" in {
+//      val buffs = encode(settingsFrame)
+//    }
     
     
   }
 
   "SpdyFrameCodec" should {
     "Decode a Data frame" in {
-      decode(encode(dataFrame)) should equal(dataFrame)
+      decode(encode(dataFrame)) should_== dataFrame
     }
 
     "Decode a SynFrame" in {
-      decode(encode(synStreamFrame)) should equal(synStreamFrame)
+      decode(encode(synStreamFrame)) should_== synStreamFrame
     }
 
     "Decode a SynReplyFrame" in {
-      decode(encode(synReplyFrame)) should equal(synReplyFrame)
+      decode(encode(synReplyFrame)) should_== synReplyFrame
     }
 
     "Decode a RstFrame" in {
-      decode(encode(rstFrame)) should equal(rstFrame)
+      decode(encode(rstFrame)) should_== rstFrame
     }
 
     "Decode a SettingsFrame" in {
-      decode(encode(settingsFrame)) should equal(settingsFrame)
+      decode(encode(settingsFrame)) should_== settingsFrame
     }
 
     "Decode a PingFrame" in {
-      decode(encode(pingFrame)) should equal(pingFrame)
+      decode(encode(pingFrame)) should_== pingFrame
     }
 
     "Decode a GoAwayFrame" in {
-      decode(encode(goAwayFrame)) should equal(goAwayFrame)
+      decode(encode(goAwayFrame)) should_== goAwayFrame
     }
 
     "Decode a HeadersFrame" in {
-      decode(encode(headersFrame)) should equal(headersFrame)
+      decode(encode(headersFrame)) should_== headersFrame
     }
     
     "Decode a WindowUpdate frame" in {
-      decode(encode(windowUpdateFrame)) should equal(windowUpdateFrame)
+      decode(encode(windowUpdateFrame)) should_== windowUpdateFrame
     }
   }
 

@@ -1,6 +1,6 @@
 package org.http4s.blaze.http.websocket
 
-import org.scalatest.{Matchers, WordSpec}
+import org.specs2.mutable._
 
 import org.http4s.blaze.http.websocket.WebSocketDecoder._
 import org.http4s.blaze.pipeline.{TrunkBuilder, TailStage}
@@ -9,12 +9,13 @@ import org.http4s.blaze.pipeline.stages.SeqHead
 import scala.concurrent.Await
 import scala.concurrent.duration._
 import java.net.ProtocolException
+import org.specs2.time.NoTimeConversions
 
 /**
  * @author Bryce Anderson
  *         Created on 1/19/14
  */
-class FrameAggregatorSpec extends WordSpec with Matchers {
+class FrameAggregatorSpec extends Specification with NoTimeConversions {
 
   case class Sequencer(frames: Seq[WebSocketFrame]) {
     val h = new TailStage[WebSocketFrame] {
@@ -35,31 +36,31 @@ class FrameAggregatorSpec extends WordSpec with Matchers {
 
     "Pass pure frames" in {
       val s = Sequencer(fooFrames:::Text("bar")::Nil)
-      s.next should equal(Text("foobar"))
-      s.next should equal(Text("bar"))
+      s.next should_== Text("foobar")
+      s.next should_== Text("bar")
     }
 
     "Aggregate frames" in {
-      Sequencer(fooFrames).next should equal(Text("foobar"))
+      Sequencer(fooFrames).next should_== Text("foobar")
 
       val s = Sequencer(fooFrames:::barFrames)
-      s.next should equal(Text("foobar"))
-      s.next should equal(Binary("bazboo".getBytes()))
+      s.next should_== Text("foobar")
+      s.next should_== Binary("bazboo".getBytes())
     }
 
     "Allow intermingled control frames" in {
       val s = Sequencer(wControl)
-      s.next should equal (Ping())
-      s.next should equal (Text("foobar"))
+      s.next should_== Ping()
+      s.next should_== Text("foobar")
     }
 
     "Give a ProtocolException on unheaded Continuation frame" in {
-      a[ProtocolException] should be thrownBy Sequencer(Continuation(Array.empty, true)::Nil).next
+      Sequencer(Continuation(Array.empty, true)::Nil).next should throwA[ProtocolException]
     }
 
     "Give a ProtocolException on Head frame before Continuation end" in {
       val msgs = Text("foo", false)::Text("bar", true)::Nil
-      a[ProtocolException] should be thrownBy Sequencer(msgs).next
+      Sequencer(msgs).next should throwA[ProtocolException]
     }
   }
 

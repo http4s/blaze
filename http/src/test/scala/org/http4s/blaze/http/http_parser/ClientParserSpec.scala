@@ -1,6 +1,7 @@
 package org.http4s.blaze.http.http_parser
 
-import org.scalatest.{Matchers, WordSpec}
+import org.specs2.mutable._
+
 import java.nio.charset.StandardCharsets.US_ASCII
 import scala.collection.mutable.ListBuffer
 import java.nio.ByteBuffer
@@ -10,7 +11,7 @@ import org.http4s.blaze.http.http_parser.BaseExceptions.{InvalidState, BadRespon
  * @author Bryce Anderson
  *         Created on 2/4/14
  */
-class ClientParserSpec extends WordSpec with Matchers {
+class ClientParserSpec extends Specification {
 
   val resp = "HTTP/1.1 200 OK\r\n"
 
@@ -60,28 +61,28 @@ class ClientParserSpec extends WordSpec with Matchers {
     "Parse the response line" in {
       val p = new TestParser
 
-      p.parseResponse(wrap(resp.getBytes(US_ASCII))) should equal (true)
-      p.responseLineComplete() should equal (true)
-      p.code should equal(200)
-      p.reason should equal("OK")
-      p.majorversion should equal(1)
-      p.minorversion should equal(1)
+      p.parseResponse(wrap(resp.getBytes(US_ASCII))) should_== true
+      p.responseLineComplete() should_== true
+      p.code should_== 200
+      p.reason should_== "OK"
+      p.majorversion should_== 1
+      p.minorversion should_== 1
 
-      p.mayHaveBody() should equal(true)
+      p.mayHaveBody() should_== true
 
       //
       p.reset()
       val line = "HTTP/1.0 200 OK\r\n"
-      p.parseResponse(wrap(line.getBytes(US_ASCII))) should equal (true)
-      p.responseLineComplete() should equal (true)
-      p.minorversion should equal(0)
+      p.parseResponse(wrap(line.getBytes(US_ASCII))) should_== true
+      p.responseLineComplete() should_== true
+      p.minorversion should_== 0
     }
 
     "throw BadResponse on invalid response lines" in {
       val p = new TestParser
 
       val badVerison = "HTTP/1.7 200 OK\r\n"
-      a [BadResponse] should be thrownBy p.parseResponse(wrap(badVerison.getBytes(US_ASCII)))
+      p.parseResponse(wrap(badVerison.getBytes(US_ASCII))) should throwA[BadResponse]
 
       p.reset()
       val weirdCode = "HTTP/1.1 200 OK\r\n"
@@ -89,34 +90,34 @@ class ClientParserSpec extends WordSpec with Matchers {
 
       p.reset()
       val badCodeChar = "HTTP/1.1 T200 OK\r\n"
-      a [BadResponse] should be thrownBy p.parseResponse(wrap(badCodeChar.getBytes(US_ASCII)))
+      p.parseResponse(wrap(badCodeChar.getBytes(US_ASCII))) should throwA[BadResponse]
 
       p.reset()
       val missingSpace = "HTTP/1.1 200OK\r\n"
-      a [BadResponse] should be thrownBy p.parseResponse(wrap(missingSpace.getBytes(US_ASCII)))
+      p.parseResponse(wrap(missingSpace.getBytes(US_ASCII))) should throwA[BadResponse]
 
       p.reset()
       val noSpace = "HTTP/1.1 200OK\r\n"
-      a [BadResponse] should be thrownBy p.parseResponse(wrap(noSpace.getBytes(US_ASCII)))
+      p.parseResponse(wrap(noSpace.getBytes(US_ASCII))) should throwA[BadResponse]
 
       p.reset()
       val badCode = "HTTP/1.1 20 OK\r\n"
-      a [BadResponse] should be thrownBy p.parseResponse(wrap(badCode.getBytes(US_ASCII)))
+      p.parseResponse(wrap(badCode.getBytes(US_ASCII))) should throwA[BadResponse]
 
       p.reset()
       val badCode2 = "HTTP/1.1 600 OK\r\n"
-      a [BadResponse] should be thrownBy p.parseResponse(wrap(badCode2.getBytes(US_ASCII)))
+      p.parseResponse(wrap(badCode2.getBytes(US_ASCII))) should throwA[BadResponse]
 
       p.reset()
       val badLf = "HTTP/1.1 200 OK\r\r\n"
-      a [BadResponse] should be thrownBy p.parseResponse(wrap(badLf.getBytes(US_ASCII)))
+      p.parseResponse(wrap(badLf.getBytes(US_ASCII))) should throwA[BadResponse]
     }
 
     "throw invalid state if trying to parse the response line more than once" in {
       val p = new TestParser
-      p.parseResponse(wrap(resp.getBytes(US_ASCII))) should equal (true)
+      p.parseResponse(wrap(resp.getBytes(US_ASCII))) should_== (true)
 
-      an [InvalidState] should be thrownBy p.parseResponse(wrap(resp.getBytes(US_ASCII)))
+      p.parseResponse(wrap(resp.getBytes(US_ASCII))) should throwA[InvalidState]
     }
 
 
@@ -127,14 +128,14 @@ class ClientParserSpec extends WordSpec with Matchers {
       //println(msg.replace("\r\n", "\\r\\n\r\n"))
 
       val bts = wrap(msg.getBytes(US_ASCII))
-      p.parseResponse(bts) should equal (true)
-      p.responseLineComplete() should equal (true)
+      p.parseResponse(bts) should_== (true)
+      p.responseLineComplete() should_== (true)
 
-      p.parseheaders(bts) should equal (true)
-      p.headersComplete() should equal (true)
+      p.parseheaders(bts) should_== (true)
+      p.headersComplete() should_== (true)
 
       val stripedh = l_headers.map{ case (a, b) => (a.trim, b.trim) }
-      p.headers.foldLeft(true){ (a, b) => a && stripedh.contains(b) } should equal(true)
+      p.headers.foldLeft(true){ (a, b) => a && stripedh.contains(b) } should_==(true)
     }
     
     "Parse a body with defined length" in {
@@ -145,15 +146,15 @@ class ClientParserSpec extends WordSpec with Matchers {
 
       val bts = wrap(full.getBytes(US_ASCII))
 
-      p.parseResponse(bts) should equal (true)
-      p.parseheaders(bts) should equal (true)
+      p.parseResponse(bts) should_== (true)
+      p.parseheaders(bts) should_== (true)
 
-      p.contentComplete() should equal(false)
+      p.contentComplete() should_==(false)
 
       val out = p.parsebody(bts)
-      out.remaining() should equal(body.length)
+      out.remaining() should_==(body.length)
 
-      US_ASCII.decode(out).toString should equal(body)
+      US_ASCII.decode(out).toString should_==(body)
     }
 
     "Parse a chunked body" in {
@@ -167,19 +168,19 @@ class ClientParserSpec extends WordSpec with Matchers {
 
       val bts = wrap(full.getBytes(US_ASCII))
 
-      p.parseResponse(bts) should equal (true)
-      p.parseheaders(bts) should equal (true)
+      p.parseResponse(bts) should_== (true)
+      p.parseheaders(bts) should_== (true)
 
-      p.contentComplete() should equal(false)
+      p.contentComplete() should_==(false)
 
       val out = p.parsebody(bts)
-      out.remaining() should equal(body.length)
+      out.remaining() should_==(body.length)
 
-      p.contentComplete() should equal(false)
-      p.parsebody(bts).remaining() should equal(0)
-      p.contentComplete() should equal(true)
+      p.contentComplete() should_==(false)
+      p.parsebody(bts).remaining() should_==(0)
+      p.contentComplete() should_==(true)
 
-      US_ASCII.decode(out).toString should equal(body)
+      US_ASCII.decode(out).toString should_==(body)
     }
 
     "Parse a body with without Content-Length or Transfer-Encoding" in {
@@ -188,17 +189,17 @@ class ClientParserSpec extends WordSpec with Matchers {
 
       val bts = wrap(full.getBytes(US_ASCII))
 
-      p.parseResponse(bts) should equal (true)
-      p.parseheaders(bts) should equal (true)
+      p.parseResponse(bts) should_== (true)
+      p.parseheaders(bts) should_== (true)
 
-      p.contentComplete() should equal(false)
+      p.contentComplete() should_==(false)
 
       val out = p.parsebody(bts)
-      out.remaining() should equal(body.length)
+      out.remaining() should_==(body.length)
 
-      p.contentComplete() should equal(false)
+      p.contentComplete() should_==(false)
 
-      US_ASCII.decode(out).toString should equal(body)
+      US_ASCII.decode(out).toString should_==(body)
     }
 
   }
