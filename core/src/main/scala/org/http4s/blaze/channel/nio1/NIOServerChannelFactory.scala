@@ -3,16 +3,16 @@ package org.http4s.blaze.channel.nio1
 import java.nio.channels._
 import scala.annotation.tailrec
 import java.net.SocketAddress
-import org.http4s.blaze.util.Logging
 import org.http4s.blaze.channel._
 import scala.util.control.NonFatal
+import com.typesafe.scalalogging.slf4j.LazyLogging
 
 /**
  * @author Bryce Anderson
  *         Created on 1/19/14
  */
 abstract class NIOServerChannelFactory[Channel <: NetworkChannel](pool: SelectorLoopPool)
-                extends ServerChannelFactory[Channel] with Logging {
+                extends ServerChannelFactory[Channel] with LazyLogging {
 
   def this(fixedPoolSize: Int, bufferSize: Int = 8*1024) = this(new FixedArraySelectorPool(fixedPoolSize, bufferSize))
 

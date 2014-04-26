@@ -2,13 +2,13 @@ package org.http4s.blaze.examples.spdy
 
 import org.eclipse.jetty.npn.NextProtoNego
 import java.util
-import org.http4s.blaze.util.Logging
+import com.typesafe.scalalogging.slf4j.LazyLogging
 
 /**
  * @author Bryce Anderson
  *         Created on 1/27/14
  */
-class ServerProvider extends NextProtoNego.ServerProvider with Logging {
+class ServerProvider extends NextProtoNego.ServerProvider with LazyLogging {
 
   var selected: String = "http/1.1"
 

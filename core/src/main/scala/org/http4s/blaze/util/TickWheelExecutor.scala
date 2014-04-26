@@ -4,6 +4,7 @@ import scala.annotation.tailrec
 import scala.util.control.NonFatal
 import scala.concurrent.ExecutionContext
 import scala.concurrent.duration._
+import com.typesafe.scalalogging.slf4j.LazyLogging
 
 /**
  * @author Bryce Anderson
@@ -26,7 +27,7 @@ import scala.concurrent.duration._
   * @param wheelSize number of spokes on the wheel. Each tick, the wheel will advance a spoke
   * @param resolution duration between ticks
   */
-class TickWheelExecutor(wheelSize: Int = 512, resolution: Duration = 100.milli) extends Logging {
+class TickWheelExecutor(wheelSize: Int = 512, resolution: Duration = 100.milli) extends LazyLogging {
 
   @volatile private var currentTick = 0
   @volatile private var alive = true

@@ -1,6 +1,7 @@
 package org.http4s.blaze.http.spdy
 
-import org.http4s.blaze.util.Logging
+import com.typesafe.scalalogging.slf4j.LazyLogging
+
 
 /**
  * @author Bryce Anderson
@@ -9,7 +10,7 @@ import org.http4s.blaze.util.Logging
 
 abstract class SpdyException(msg: String) extends Exception(msg)
 
-class ProtocolException(msg: String) extends SpdyException(msg) with Logging {
+class ProtocolException(msg: String) extends SpdyException(msg) with LazyLogging {
   logger.info(msg, this)
 }
 

@@ -6,12 +6,12 @@ import java.nio.ByteBuffer
 import scala.util.{Failure, Success}
 import org.http4s.blaze.channel.{BufferPipelineBuilder, ServerChannel}
 import java.net.InetSocketAddress
-import org.http4s.blaze.util.Logging
 import java.util.Date
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import org.http4s.blaze.pipeline.Command.EOF
 import org.http4s.blaze.channel.nio2.NIO2ServerChannelFactory
+import com.typesafe.scalalogging.slf4j.StrictLogging
 
 /**
  * @author Bryce Anderson
@@ -20,7 +20,7 @@ import org.http4s.blaze.channel.nio2.NIO2ServerChannelFactory
 
 
 
-class EchoServer extends Logging {
+class EchoServer extends StrictLogging {
 
   def prepare(address: InetSocketAddress): ServerChannel = {
     val f: BufferPipelineBuilder = () => new EchoStage

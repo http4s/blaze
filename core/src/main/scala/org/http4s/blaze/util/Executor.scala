@@ -3,6 +3,7 @@ package org.http4s.blaze.util
 import scala.concurrent.ExecutionContext
 import java.util
 import scala.util.control.NonFatal
+import com.typesafe.scalalogging.slf4j.StrictLogging
 
 /**
  * @author Bryce Anderson
@@ -10,7 +11,7 @@ import scala.util.control.NonFatal
  *
  *         Essentially directly copied from the Play2 framework
  */
-object Execution extends Logging {
+object Execution extends StrictLogging {
 
   val trampoline: ExecutionContext = new ExecutionContext {
 

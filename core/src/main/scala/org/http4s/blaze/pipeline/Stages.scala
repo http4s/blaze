@@ -4,11 +4,11 @@ import java.util.Date
 
 import scala.concurrent.{Promise, Future}
 import Command._
-import org.http4s.blaze.util.Logging
 import org.http4s.blaze.util.Execution.directec
 import scala.concurrent.duration.Duration
 import org.http4s.blaze.util.Execution
 import java.util.concurrent.TimeoutException
+import com.typesafe.scalalogging.slf4j.LazyLogging
 
 /*
  * @author Bryce Anderson
@@ -33,7 +33,7 @@ import java.util.concurrent.TimeoutException
  *
  */
 
-sealed trait Stage extends Logging {
+sealed trait Stage extends LazyLogging {
 
   def name: String
 

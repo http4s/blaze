@@ -87,21 +87,15 @@ object ApplicationBuild extends Build {
   /* dependencies */
   lazy val dependencies = Seq(
     libraryDependencies += specs2 % "test",
-    libraryDependencies += (scalaBinaryVersion.value match {
-      case "2.10" => scalaloggingSlf4j_2_10
-      case "2.11" => scalaloggingSlf4j_2_11
-    }),
+    libraryDependencies += scalaloggingSlf4j,
     libraryDependencies += logbackClassic,
     libraryDependencies += npn_api,
     libraryDependencies += npn_boot
   )
-   
-  lazy val scalatest = "org.scalatest" %% "scalatest" % "2.1.3"
+
   lazy val specs2 =    "org.specs2"    %% "specs2"    % "2.3.11"
 
-
-  lazy val scalaloggingSlf4j_2_10 = "com.typesafe"          %% "scalalogging-slf4j"      % "1.1.0"
-  lazy val scalaloggingSlf4j_2_11 = "com.typesafe.scala-logging" %% "scala-logging-slf4j" % "2.1.0"
+  lazy val scalaloggingSlf4j   = "com.typesafe.scala-logging" %% "scala-logging-slf4j"   % "2.1.2"
   lazy val logbackClassic      = "ch.qos.logback" %  "logback-classic"    % "1.0.9"
 
   lazy val scalaXml = "org.scala-lang.modules" %% "scala-xml" % "1.0.1"

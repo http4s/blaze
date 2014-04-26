@@ -2,7 +2,6 @@ package org.http4s.blaze.channel
 
 import java.nio.channels.NetworkChannel
 import java.net.SocketAddress
-import org.http4s.blaze.util.Logging
 
 /**
  * @author Bryce Anderson

@@ -1,7 +1,8 @@
 package org.http4s.blaze.http.spdy
 
 import java.nio.ByteBuffer
-import org.http4s.blaze.util.Logging
+
+import com.typesafe.scalalogging.Logging
 
 /**
  * @author Bryce Anderson

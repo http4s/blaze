@@ -37,7 +37,7 @@ class StageSpec extends Specification with NoTimeConversions {
 
   "Support writes" in {
     val leaf = regPipeline
-    Await.result(leaf.channelWrite(12), 800.milli) should_== ()
+    Await.result(leaf.channelWrite(12), 800.milli) should_==(())
   }
 
   "Support read timeouts" in {
@@ -53,7 +53,7 @@ class StageSpec extends Specification with NoTimeConversions {
     val leaf = slowPipeline
     Await.result(leaf.channelWrite(1, 100.milli), 800.milli) must throwA[TimeoutException]
 
-    Await.result(leaf.channelWrite(1, 700.milli), 800.milli) should_== ()
+    Await.result(leaf.channelWrite(1, 700.milli), 800.milli) should_==(())
 
   }
 

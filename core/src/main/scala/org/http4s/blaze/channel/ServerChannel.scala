@@ -1,7 +1,7 @@
 package org.http4s.blaze.channel
 
-import org.http4s.blaze.util.Logging
 import java.nio.channels.NetworkChannel
+import com.typesafe.scalalogging.slf4j.LazyLogging
 
 /**
  * @author Bryce Anderson
@@ -9,7 +9,7 @@ import java.nio.channels.NetworkChannel
  */
 
 
-abstract class ServerChannel extends Runnable with Logging {
+abstract class ServerChannel extends Runnable with LazyLogging {
 
   type C <: NetworkChannel
 

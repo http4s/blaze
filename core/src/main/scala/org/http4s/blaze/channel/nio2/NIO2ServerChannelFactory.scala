@@ -9,10 +9,10 @@ import java.nio.channels.{AsynchronousServerSocketChannel,
 import scala.annotation.tailrec
 import org.http4s.blaze.pipeline.LeafBuilder
 import java.nio.ByteBuffer
-import org.http4s.blaze.util.Logging
 import java.util.Date
 import org.http4s.blaze.channel._
 import org.http4s.blaze.pipeline.Command.Connect
+import com.typesafe.scalalogging.slf4j.LazyLogging
 
 
 /**
@@ -20,7 +20,7 @@ import org.http4s.blaze.pipeline.Command.Connect
  *         Created on 1/4/14
  */
 class NIO2ServerChannelFactory(pipeFactory: () => LeafBuilder[ByteBuffer], group: AsynchronousChannelGroup = null)
-        extends ServerChannelFactory[AsynchronousServerSocketChannel] with Logging {
+        extends ServerChannelFactory[AsynchronousServerSocketChannel] with LazyLogging {
 
   // Intended to be overridden in order to allow the reject of connections
   protected def acceptConnection(channel: AsynchronousSocketChannel): Boolean = true
