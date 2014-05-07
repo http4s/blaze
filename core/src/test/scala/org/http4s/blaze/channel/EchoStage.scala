@@ -1,0 +1,35 @@
+package org.http4s.blaze
+package channel
+
+import org.http4s.blaze.pipeline.TailStage
+import java.nio.ByteBuffer
+import scala.util.{Failure, Success}
+import org.http4s.blaze.pipeline.Command.EOF
+
+
+/**
+ * Created by Bryce Anderson on 5/6/14.
+ */
+
+
+class EchoStage extends TailStage[ByteBuffer] {
+  def name: String = "EchoStage"
+
+  val msg = "echo: ".getBytes
+
+  private implicit def ec = util.Execution.trampoline
+
+  final override def stageStartup(): Unit = {
+    channelRead().onComplete{
+      case Success(buff) =>
+        val b = ByteBuffer.allocate(buff.remaining() + msg.length)
+        b.put(msg).put(buff).flip()
+
+        // Write it, wait for conformation, and start again
+        channelWrite(b).onSuccess{ case _ => stageStartup() }
+
+      case Failure(EOF) => logger.trace("Channel closed.")
+      case Failure(t) => logger.error("Channel read failed: " + t)
+    }
+  }
+}

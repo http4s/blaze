@@ -159,6 +159,10 @@ final class SelectorLoop(selector: Selector, bufferSize: Int)
     try {
       selector.keys().foreach { k =>
         try {
+          val head = k.attachment()
+          if (head != null) {
+            head.asInstanceOf[NIO1HeadStage].sendInboundCommand(Command.Disconnect)
+          }
           k.channel().close()
           k.attach(null)
         } catch { case _: IOException => /* NOOP */ }

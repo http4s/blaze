@@ -1,6 +1,5 @@
 package org.http4s.blaze.pipeline
 
-import org.http4s.blaze.pipeline.Command.Command
 
 /**
  * @author Bryce Anderson

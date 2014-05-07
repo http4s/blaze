@@ -41,12 +41,12 @@ class TickWheelExecutorSpec extends Specification with NoTimeConversions {
       val i = new AtomicInteger(0)
       ec.schedule(new Runnable {
         def run() { i.set(1) }
-      }, 119.millis)
+      }, 200.millis)
 
-      Thread.sleep(85)
+      Thread.sleep(60)
       i.get should_== 0
 
-      Thread.sleep(100)
+      Thread.sleep(300)
       i.get should_== 1
 
     }
