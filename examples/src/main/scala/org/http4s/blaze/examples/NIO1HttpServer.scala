@@ -12,7 +12,7 @@ import org.http4s.blaze.pipeline.LeafBuilder
  */
 class NIO1HttpServer(port: Int) {
 
-  private val f: BufferPipelineBuilder = () => LeafBuilder(new ExampleHttpServerStage(10*1024))
+  private val f: BufferPipelineBuilder = _ => LeafBuilder(new ExampleHttpServerStage(10*1024))
 
   private val factory = new SocketServerChannelFactory(f, workerThreads = 6)
 

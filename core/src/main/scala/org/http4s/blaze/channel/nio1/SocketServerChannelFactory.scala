@@ -19,9 +19,10 @@ class SocketServerChannelFactory(pipeFactory: BufferPipelineBuilder, pool: Selec
 
   import SocketServerChannelFactory.brokePipeMessages
 
-  def this(pipeFactory: BufferPipelineBuilder, workerThreads: Int = 8, bufferSize: Int = 4*1024) = {
+  def this(pipeFactory: BufferPipelineBuilder, workerThreads: Int = 8, bufferSize: Int = 4*1024) =
     this(pipeFactory, new FixedArraySelectorPool(workerThreads, bufferSize))
-  }
+
+  //////////////// End of constructors /////////////////////////////////////////////////////////
 
   def doBind(address: SocketAddress): ServerSocketChannel = ServerSocketChannel.open().bind(address)
 

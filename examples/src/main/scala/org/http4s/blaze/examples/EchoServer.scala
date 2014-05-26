@@ -23,7 +23,7 @@ import com.typesafe.scalalogging.slf4j.StrictLogging
 class EchoServer extends StrictLogging {
 
   def prepare(address: InetSocketAddress): ServerChannel = {
-    val f: BufferPipelineBuilder = () => new EchoStage
+    val f: BufferPipelineBuilder = _ => new EchoStage
 
     val factory = new NIO2ServerChannelFactory(f)
     factory.bind(address)

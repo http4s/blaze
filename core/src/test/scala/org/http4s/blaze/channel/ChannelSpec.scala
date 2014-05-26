@@ -35,14 +35,14 @@ class ChannelSpec extends Specification {
   "Channels" should {
 
     "Bind the port and then be closed" in {
-      val channel = new BasicServer(() => new EchoStage).prepare(new InetSocketAddress(0))
+      val channel = new BasicServer(_ => new EchoStage).prepare(new InetSocketAddress(0))
       channel.close()
       true should_== true
     }
 
     "Execute shutdown hooks" in {
       val i = new AtomicInteger(0)
-      val channel = new BasicServer(() => new EchoStage).prepare(new InetSocketAddress(0))
+      val channel = new BasicServer(_ => new EchoStage).prepare(new InetSocketAddress(0))
       channel.addShutdownHook{ () => i.incrementAndGet() }
       val t = channel.runAsync()
       channel.close()
@@ -53,7 +53,7 @@ class ChannelSpec extends Specification {
 
     "Execute shutdown hooks when one throws an exception" in {
       val i = new AtomicInteger(0)
-      val channel = new BasicServer(() => new EchoStage).prepare(new InetSocketAddress(0))
+      val channel = new BasicServer(_ => new EchoStage).prepare(new InetSocketAddress(0))
       channel.addShutdownHook{ () => i.incrementAndGet() }
       channel.addShutdownHook{ () => sys.error("Foo") }
       channel.addShutdownHook{ () => i.incrementAndGet() }

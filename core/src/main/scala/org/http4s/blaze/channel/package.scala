@@ -8,5 +8,5 @@ import org.http4s.blaze.pipeline.LeafBuilder
  *         Created on 1/5/14
  */
 package object channel {
-    type BufferPipelineBuilder = () => LeafBuilder[ByteBuffer]
+    type BufferPipelineBuilder = SocketConnection => LeafBuilder[ByteBuffer]
 }

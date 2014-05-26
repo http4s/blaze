@@ -13,6 +13,7 @@ import java.util.concurrent.atomic.AtomicReference
 import java.util.concurrent.RejectedExecutionException
 
 import org.http4s.blaze.pipeline._
+import org.http4s.blaze.channel.BufferPipelineBuilder
 
 /**
  * @author Bryce Anderson
@@ -174,7 +175,7 @@ final class SelectorLoop(selector: Selector, bufferSize: Int)
 
   def wakeup(): Unit = selector.wakeup()
 
-  def initChannel(builder: () => LeafBuilder[ByteBuffer], ch: SelectableChannel, mkStage: SelectionKey => NIO1HeadStage) {
+  def initChannel(builder: BufferPipelineBuilder, ch: SelectableChannel, mkStage: SelectionKey => NIO1HeadStage) {
    enqueTask( new Runnable {
       def run() {
         try {
@@ -185,7 +186,7 @@ final class SelectorLoop(selector: Selector, bufferSize: Int)
           key.attach(head)
 
           // construct the pipeline
-          builder().base(head)
+          builder(NIO1Connection(ch)).base(head)
 
           head.inboundCommand(Command.Connect)
           logger.trace("Started channel.")

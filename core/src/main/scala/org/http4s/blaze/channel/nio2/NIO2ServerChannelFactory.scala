@@ -19,7 +19,7 @@ import com.typesafe.scalalogging.slf4j.LazyLogging
  * @author Bryce Anderson
  *         Created on 1/4/14
  */
-class NIO2ServerChannelFactory(pipeFactory: () => LeafBuilder[ByteBuffer], group: AsynchronousChannelGroup = null)
+class NIO2ServerChannelFactory(pipeFactory: BufferPipelineBuilder, group: AsynchronousChannelGroup = null)
         extends ServerChannelFactory[AsynchronousServerSocketChannel] with LazyLogging {
 
   // Intended to be overridden in order to allow the reject of connections
@@ -48,7 +48,7 @@ class NIO2ServerChannelFactory(pipeFactory: () => LeafBuilder[ByteBuffer], group
           }
           else {
             logger.trace(s"Connection to ${ch.getRemoteAddress} accepted at ${new Date}")
-            pipeFactory().base(new ByteBufferHead(ch)).sendInboundCommand(Connect)
+            pipeFactory(NIO2SocketConnection(ch)).base(new ByteBufferHead(ch)).sendInboundCommand(Connect)
           }
 
         } catch {
