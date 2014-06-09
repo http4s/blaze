@@ -127,7 +127,7 @@ class TickWheelExecutor(wheelSize: Int = 512, resolution: Duration = 100.milli) 
         def go(tail: Node, i: Node): Unit = if (i != null) {
           val n = i.next
           i.next = null
-          if (i.cancelled()) go(tail, n)
+          if (i.isCancelled()) go(tail, n)
           else if (i.expiresBy(time)) {
             i.next = expiredTasks
             expiredTasks = i
@@ -169,7 +169,7 @@ class TickWheelExecutor(wheelSize: Int = 512, resolution: Duration = 100.milli) 
 
     def expiresBy(now: Long): Boolean = now >= expiration
 
-    def cancelled(): Boolean = !alive
+    def isCancelled(): Boolean = !alive
 
     def cancel(): Unit = alive = false
 
@@ -181,13 +181,13 @@ trait Cancellable {
 
   def cancel(): Unit
 
-  def cancelled(): Boolean
+  def isCancelled(): Boolean
 
 }
 
 object Cancellable {
   val finished = new Cancellable {
     def cancel(): Unit = {}
-    def cancelled(): Boolean = false
+    def isCancelled(): Boolean = false
   }
 }
