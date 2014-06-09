@@ -9,7 +9,6 @@ import org.http4s.blaze.util.Execution
 import scala.util.Failure
 import scala.Some
 import scala.util.Success
-import org.http4s.blaze.pipeline.Command.Command
 
 
 /**
@@ -58,7 +57,7 @@ class HubStageSpec extends Specification {
 
     protected def onNodeWrite(key: Int, data: Seq[Msg]): Future[Unit] = channelWrite(data)
 
-    protected def onNodeCommand(key: Int, cmd: Command): Unit = {
+    protected def onNodeCommand(key: Int, cmd: OutboundCommand): Unit = {
       logger.trace(s"Received command $cmd")
       cmd match {
         case Disconnect => removeNode(key)
@@ -95,8 +94,8 @@ class HubStageSpec extends Specification {
 
       rootBuilder().base(h)
 
-      h.inboundCommand(Connect)
-      h.inboundCommand(Disconnect)
+      h.inboundCommand(Connected)
+      h.inboundCommand(Disconnected)
       // All the business should have finished because it was done using the directec
 
       h.results should_== Vector(Msg(1, "Echoing: one"), Msg(2, "Echoing: two"))

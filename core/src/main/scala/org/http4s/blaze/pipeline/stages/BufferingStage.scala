@@ -5,7 +5,7 @@ import org.http4s.blaze.util.Execution.directec
 
 import scala.concurrent.Future
 import scala.collection.immutable.VectorBuilder
-import org.http4s.blaze.pipeline.Command.Command
+import org.http4s.blaze.pipeline.Command.OutboundCommand
 
 /**
  * @author Bryce Anderson
@@ -47,7 +47,7 @@ abstract class BufferingStage[T](bufferSize: Int, val name: String = "BufferingS
     super.stageShutdown()
   }
 
-  override def outboundCommand(cmd: Command): Unit = {
+  override def outboundCommand(cmd: OutboundCommand): Unit = {
     cmd match {
       case Command.Flush => flush().onComplete(_ => super.outboundCommand(cmd))(directec)
       case cmd => super.outboundCommand(cmd)

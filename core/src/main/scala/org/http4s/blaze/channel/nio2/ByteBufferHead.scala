@@ -11,7 +11,8 @@ import java.util.concurrent.TimeUnit
 import java.lang.{Long => JLong}
 import scala.annotation.tailrec
 import org.http4s.blaze.pipeline.HeadStage
-import org.http4s.blaze.pipeline.Command.{Command, Error, Disconnect, EOF}
+import org.http4s.blaze.pipeline.Command._
+import org.http4s.blaze.pipeline.Command.Error
 
 
 /**
@@ -133,7 +134,7 @@ class ByteBufferHead(channel: AsynchronousSocketChannel,
 
   private def channelShutdown() {
     closeChannel()
-    sendInboundCommand(Disconnect)
+    sendInboundCommand(Disconnected)
   }
 
   private def channelError(e: Throwable) {
@@ -148,7 +149,7 @@ class ByteBufferHead(channel: AsynchronousSocketChannel,
     catch {  case e: IOException => /* Don't care */ }
   }
 
-  override def outboundCommand(cmd: Command): Unit = cmd match {
+  override def outboundCommand(cmd: OutboundCommand): Unit = cmd match {
     case Disconnect         => closeChannel()
     case Error(e)         => logger.error("ByteBufferHead received error command", e); channelError(e)
     case cmd              => // NOOP

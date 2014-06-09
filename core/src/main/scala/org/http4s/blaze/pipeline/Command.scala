@@ -9,17 +9,23 @@ import scala.util.control.NoStackTrace
  */
 object Command {
 
-  trait Command
+  trait InboundCommand
 
-  case object Connect extends Command
+  trait OutboundCommand
 
-  case object Disconnect extends Command
+  case object Connect extends OutboundCommand
 
-  case object Flush extends Command
+  case object Connected extends InboundCommand
 
-  case object EOF extends Exception("EOF") with Command with NoStackTrace {
+  case object Disconnect extends OutboundCommand
+
+  case object Disconnected extends InboundCommand
+
+  case object Flush extends OutboundCommand
+
+  case object EOF extends Exception("EOF") with InboundCommand with NoStackTrace {
     override def toString() = getMessage
   }
 
-  case class Error(e: Throwable) extends Exception(e) with Command
+  case class Error(e: Throwable) extends Exception(e) with InboundCommand with OutboundCommand
 }

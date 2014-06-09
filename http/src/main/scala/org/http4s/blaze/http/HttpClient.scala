@@ -68,7 +68,7 @@ trait HttpClient {
       }
       else LeafBuilder(t).base(head)
 
-      head.sendInboundCommand(Command.Connect)
+      head.sendInboundCommand(Command.Connected)
       val f = t.makeRequest(method, host, uri, headers, body)
       // Shutdown our connection
       f.onComplete( _ => t.sendOutboundCommand(Command.Disconnect))

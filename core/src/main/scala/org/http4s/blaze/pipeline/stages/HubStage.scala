@@ -27,13 +27,13 @@ abstract class HubStage[I, O, K](nodeBuilder: () => LeafBuilder[O]) extends Tail
 
   protected def onNodeWrite(key: K, data: Seq[O]): Future[Unit]
 
-  protected def onNodeCommand(key: K, cmd: Command): Unit
+  protected def onNodeCommand(key: K, cmd: OutboundCommand): Unit
 
   protected def newHead(key: K): NodeHead = new NodeHead(key)
 
-  override def inboundCommand(cmd: Command): Unit = cmd match{
-    case Connect => stageStartup()
-    case Disconnect => stageShutdown()
+  override def inboundCommand(cmd: InboundCommand): Unit = cmd match{
+    case Connected => stageStartup()
+    case Disconnected => stageShutdown()
     case _ => nodeMap.synchronized {
       val keys = nodeMap.keys()
       while(keys.hasMoreElements) sendNodeCommand(keys.nextElement(), cmd)
@@ -76,7 +76,7 @@ abstract class HubStage[I, O, K](nodeBuilder: () => LeafBuilder[O]) extends Tail
     }
   }
 
-  final protected def sendNodeCommand(key: K, cmd: Command) {
+  final protected def sendNodeCommand(key: K, cmd: InboundCommand) {
     val hub = nodeMap.get(key)
     if (hub != null) hub.sendInboundCommand(cmd)
     else logger.warn(s"Sent command $cmd to non-existent node with key $key")
@@ -84,7 +84,7 @@ abstract class HubStage[I, O, K](nodeBuilder: () => LeafBuilder[O]) extends Tail
   
   protected def removeNode(key: K): Unit = nodeMap.synchronized {
     val node = nodeMap.remove(key)
-    if (node != null) node.sendInboundCommand(Disconnect)
+    if (node != null) node.sendInboundCommand(Disconnected)
     else logger.warn(s"Tried to remove non-existent node with key $key")
   }
 
@@ -148,12 +148,12 @@ abstract class HubStage[I, O, K](nodeBuilder: () => LeafBuilder[O]) extends Tail
       else Future.failed(EOF)
     }
 
-    override def outboundCommand(cmd: Command): Unit = onNodeCommand(key, cmd)
+    override def outboundCommand(cmd: OutboundCommand): Unit = onNodeCommand(key, cmd)
 
     override def stageStartup(): Unit = {
       connected = true
       initialized = true
-      sendInboundCommand(Connect)
+      sendInboundCommand(Connected)
     }
 
     override protected def stageShutdown(): Unit = {

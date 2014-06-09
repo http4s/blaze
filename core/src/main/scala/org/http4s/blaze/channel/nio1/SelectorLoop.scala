@@ -162,7 +162,7 @@ final class SelectorLoop(selector: Selector, bufferSize: Int)
         try {
           val head = k.attachment()
           if (head != null) {
-            head.asInstanceOf[NIO1HeadStage].sendInboundCommand(Command.Disconnect)
+            head.asInstanceOf[NIO1HeadStage].sendInboundCommand(Command.Disconnected)
           }
           k.channel().close()
           k.attach(null)
@@ -188,7 +188,7 @@ final class SelectorLoop(selector: Selector, bufferSize: Int)
           // construct the pipeline
           builder(NIO1Connection(ch)).base(head)
 
-          head.inboundCommand(Command.Connect)
+          head.inboundCommand(Command.Connected)
           logger.trace("Started channel.")
         } catch { case e: Throwable => logger.error("Caught error during channel init.", e) }
       }

@@ -45,10 +45,10 @@ sealed trait Stage extends LazyLogging {
     *
     * @param cmd a command originating from the channel
     */
-  def inboundCommand(cmd: Command): Unit = cmd match {
-    case Connect => stageStartup()
-    case Disconnect  => stageShutdown()
-    case _         => // NOOP
+  def inboundCommand(cmd: InboundCommand): Unit = cmd match {
+    case Connected     => stageStartup()
+    case Disconnected  => stageShutdown()
+    case _             => // NOOP
   }
 }
 
@@ -112,7 +112,7 @@ sealed trait Tail[I] extends Stage {
 
   }
 
-  final def sendOutboundCommand(cmd: Command): Unit = {
+  final def sendOutboundCommand(cmd: OutboundCommand): Unit = {
     logger.debug(s"Stage ${getClass.getName} sending outbound command")
     if (_prevStage != null) {
       try _prevStage.outboundCommand(cmd)
@@ -153,7 +153,7 @@ sealed trait Tail[I] extends Stage {
 
     this match {
       case m: MidStage[_, _] =>
-        m.sendInboundCommand(Command.Disconnect)
+        m.sendInboundCommand(Command.Disconnected)
         m._nextStage = null
 
       case _ => // NOOP
@@ -168,7 +168,7 @@ sealed trait Tail[I] extends Stage {
       case h: HeadStage[I] => leafBuilder.base(h)
     }
 
-    if (startup) prev.sendInboundCommand(Command.Connect)
+    if (startup) prev.sendInboundCommand(Command.Connected)
 
     this
   }
@@ -217,7 +217,7 @@ sealed trait Head[O] extends Stage {
     }
   }
 
-  final def sendInboundCommand(cmd: Command): Unit = {
+  final def sendInboundCommand(cmd: InboundCommand): Unit = {
     if (_nextStage != null) {
       try _nextStage.inboundCommand(cmd)
       catch { case t: Throwable => outboundCommand(Error(t)) }
@@ -229,12 +229,12 @@ sealed trait Head[O] extends Stage {
   }
 
   // Overrides to propagate commands.
-  override def inboundCommand(cmd: Command): Unit = {
+  override def inboundCommand(cmd: InboundCommand): Unit = {
     super.inboundCommand(cmd)
     sendInboundCommand(cmd)
   }
 
-  def outboundCommand(cmd: Command): Unit = cmd match {
+  def outboundCommand(cmd: OutboundCommand): Unit = cmd match {
     case Connect => stageStartup()
     case Disconnect  => stageShutdown()
     case _         => // NOOP
@@ -281,7 +281,7 @@ trait HeadStage[O] extends Head[O]
 trait MidStage[I, O] extends Tail[I] with Head[O] {
 
   // Overrides to propagate commands.
-  override def outboundCommand(cmd: Command): Unit = {
+  override def outboundCommand(cmd: OutboundCommand): Unit = {
     super.outboundCommand(cmd)
     sendOutboundCommand(cmd)
   }
