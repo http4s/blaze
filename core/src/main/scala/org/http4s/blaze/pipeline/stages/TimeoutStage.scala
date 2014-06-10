@@ -35,6 +35,12 @@ class TimeoutStage[T](timeout: Duration, exec: TickWheelExecutor = scheduler) ex
     channelWrite(data)
   }
 
+  override protected def stageShutdown(): Unit = {
+    val prev = lastTimeout.getAndSet(null)
+    if (prev != null) prev.cancel()
+    super.stageShutdown()
+  }
+
   /////////// Private impl bits //////////////////////////////////////////
 
   private val lastTimeout = new AtomicReference[Cancellable](null)

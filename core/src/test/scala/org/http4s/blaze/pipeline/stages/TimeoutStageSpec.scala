@@ -50,6 +50,15 @@ class TimeoutStageSpec extends Specification with NoTimeConversions {
       val pipe = makePipeline(10.seconds, 100.milliseconds)
       checkFuture(pipe.channelRead(), 5.second) should throwA[Command.EOF.type]
     }
+
+    "not timeout if the delay stage is removed" in {
+      val pipe = makePipeline(2.seconds, 1.second)
+      val f = pipe.channelRead()
+      pipe.findOutboundStage(classOf[TimeoutStage[ByteBuffer]]).get.removeStage
+      val r = checkFuture(f, 5.second)
+      pipe.sendOutboundCommand(Command.Disconnect)
+      r
+    }
   }
 
 }

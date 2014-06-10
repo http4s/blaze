@@ -8,7 +8,7 @@ import org.http4s.blaze.util.Execution.directec
 import scala.concurrent.duration.Duration
 import org.http4s.blaze.util.Execution
 import java.util.concurrent.TimeoutException
-import com.typesafe.scalalogging.slf4j.LazyLogging
+import com.typesafe.scalalogging.slf4j.StrictLogging
 
 /*
  * @author Bryce Anderson
@@ -33,7 +33,7 @@ import com.typesafe.scalalogging.slf4j.LazyLogging
  *
  */
 
-sealed trait Stage extends LazyLogging {
+sealed trait Stage extends StrictLogging {
 
   def name: String
 
@@ -78,7 +78,7 @@ sealed trait Tail[I] extends Stage {
   final def channelWrite(data: I): Future[Unit] = channelWrite(data, Duration.Inf)
 
   final def channelWrite(data: I, timeout: Duration): Future[Unit] = {
-    logger.debug(s"Stage ${getClass.getName} sending write request with timeout $timeout")
+    logger.trace(s"Stage ${getClass.getName} sending write request with timeout $timeout")
     try {
       if (_prevStage != null) {
         val f = _prevStage.writeRequest(data)
@@ -96,7 +96,7 @@ sealed trait Tail[I] extends Stage {
   final def channelWrite(data: Seq[I]): Future[Unit] = channelWrite(data, Duration.Inf)
 
   final def channelWrite(data: Seq[I], timeout: Duration): Future[Unit] = {
-    logger.debug(s"Stage ${getClass.getName} sending multiple write request with timeout $timeout")
+    logger.trace(s"Stage ${getClass.getName} sending multiple write request with timeout $timeout")
     try {
       if (_prevStage != null) {
         val f = _prevStage.writeRequest(data)
@@ -113,7 +113,7 @@ sealed trait Tail[I] extends Stage {
   }
 
   final def sendOutboundCommand(cmd: OutboundCommand): Unit = {
-    logger.debug(s"Stage ${getClass.getName} sending outbound command")
+    logger.trace(s"Stage ${getClass.getName} sending outbound command: $cmd")
     if (_prevStage != null) {
       try _prevStage.outboundCommand(cmd)
       catch { case t: Throwable => inboundCommand(Error(t)) }
@@ -218,6 +218,7 @@ sealed trait Head[O] extends Stage {
   }
 
   final def sendInboundCommand(cmd: InboundCommand): Unit = {
+    logger.trace(s"Stage ${getClass.getName} sending inbound command: $cmd")
     if (_nextStage != null) {
       try _nextStage.inboundCommand(cmd)
       catch { case t: Throwable => outboundCommand(Error(t)) }
