@@ -5,6 +5,7 @@ import com.typesafe.scalalogging.slf4j.LazyLogging
 import java.io.Closeable
 import java.util.concurrent.atomic.AtomicReference
 import scala.annotation.tailrec
+import scala.compat.Platform.EOL
 import scala.util.control.NonFatal
 
 /**
@@ -51,7 +52,7 @@ abstract class ServerChannel extends Runnable with LazyLogging with Closeable { 
 
       // if there was an exception, rethrow them
       if (!exceptions.isEmpty) {
-        sys.error(s"Exceptions occurred during Channel shutdown: ${exceptions.map(_.getStackTraceString)}")
+        sys.error(s"Exceptions occurred during Channel shutdown: ${exceptions.map(_.getStackTrace.mkString("", EOL, EOL))}")
       }
     }
   }

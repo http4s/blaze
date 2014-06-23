@@ -2,7 +2,7 @@ package org.http4s.blaze.pipeline.stages
 
 import org.specs2.mutable.Specification
 import scala.concurrent.duration._
-import org.http4s.blaze.pipeline.{Command, LeafBuilder, TailStage}
+import org.http4s.blaze.pipeline.{LeafBuilder, TailStage}
 import java.nio.ByteBuffer
 import org.specs2.time.NoTimeConversions
 import scala.concurrent.{Future, Await}
@@ -10,7 +10,9 @@ import scala.concurrent.{Future, Await}
 /**
  * Created by Bryce Anderson on 6/9/14.
  */
-class TimeoutStageSpec extends Specification with NoTimeConversions {
+abstract class TimeoutHelpers extends Specification with NoTimeConversions {
+  
+  def genDelayStage(timeout: Duration): TimeoutStageBase[ByteBuffer]
 
   def newBuff = ByteBuffer.wrap("Foo".getBytes())
 
@@ -31,34 +33,9 @@ class TimeoutStageSpec extends Specification with NoTimeConversions {
   def makePipeline(delay: Duration, timeout: Duration): TailStage[ByteBuffer] = {
     val leaf = bufferTail
     LeafBuilder(leaf)
-      .prepend(new TimeoutStage[ByteBuffer](timeout))
+      .prepend(genDelayStage(timeout))
       .base(slow(delay))
 
     leaf
   }
-
-  "A TimeoutStage" should {
-    "not timeout with propper intervals" in {
-      val pipe = makePipeline(Duration.Zero, 10.seconds)
-
-      val r = checkFuture(pipe.channelRead())
-      pipe.sendOutboundCommand(Command.Disconnect)
-      r
-    }
-
-    "timeout properly" in {
-      val pipe = makePipeline(10.seconds, 100.milliseconds)
-      checkFuture(pipe.channelRead(), 5.second) should throwA[Command.EOF.type]
-    }
-
-    "not timeout if the delay stage is removed" in {
-      val pipe = makePipeline(2.seconds, 1.second)
-      val f = pipe.channelRead()
-      pipe.findOutboundStage(classOf[TimeoutStage[ByteBuffer]]).get.removeStage
-      val r = checkFuture(f, 5.second)
-      pipe.sendOutboundCommand(Command.Disconnect)
-      r
-    }
-  }
-
 }
