@@ -83,7 +83,7 @@ public abstract class BodyAndHeaderParser extends ParserBase {
      * @param value The value of the header
      * @return True if the parser should return to its caller
      */
-    public abstract boolean headerComplete(String name, String value) throws BaseExceptions.BadRequest;
+    protected abstract boolean headerComplete(String name, String value) throws BaseExceptions.BadRequest;
 
     /** determines if a body may follow the headers */
     public abstract boolean mayHaveBody();

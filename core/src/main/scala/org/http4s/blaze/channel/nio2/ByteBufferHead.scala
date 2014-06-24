@@ -37,12 +37,7 @@ class ByteBufferHead(channel: AsynchronousSocketChannel,
 
     def go(i: Int) {
       channel.write(data, null: Null, new CompletionHandler[Integer, Null] {
-        def failed(exc: Throwable, attachment: Null) {
-          if (exc.isInstanceOf[ClosedChannelException]) logger.trace("Channel closed, dropping packet")
-          else logger.error("Failure writing to channel", exc)
-
-          f.tryFailure(exc)
-        }
+        def failed(exc: Throwable, attachment: Null): Unit = f.tryFailure(checkError(exc))
 
         def completed(result: Integer, attachment: Null) {
           if (result.intValue < i) go(i - result.intValue)  // try to write again
@@ -96,23 +91,7 @@ class ByteBufferHead(channel: AsynchronousSocketChannel,
       buffer.limit(size)
 
     channel.read(buffer, null: Null, new CompletionHandler[Integer, Null] {
-      def failed(exc: Throwable, attachment: Null): Unit = {
-        exc match {
-          case e: IOException =>
-            logger.trace("Channel IO Error. Closing", e)
-            channelShutdown()
-            p.tryFailure(EOF)
-
-          case e: ShutdownChannelGroupException =>
-            logger.trace("Channel Group was shutdown", e)
-            channelShutdown()
-            p.tryFailure(EOF)
-
-          case e: Throwable =>  // Don't know what to do besides close
-            channelError(e)
-            p.tryFailure(e)
-        }
-      }
+      def failed(exc: Throwable, attachment: Null): Unit = p.tryFailure(checkError(exc))
 
       def completed(i: Integer, attachment: Null) {
         if (i.intValue() >= 0) {
@@ -132,6 +111,35 @@ class ByteBufferHead(channel: AsynchronousSocketChannel,
 
   override def stageShutdown(): Unit = closeChannel()
 
+  override def outboundCommand(cmd: OutboundCommand): Unit = cmd match {
+    case Disconnect         => closeChannel()
+    case Error(e)         => logger.error("ByteBufferHead received error command", e); channelError(e)
+    case cmd              => // NOOP
+  }
+
+  /////////////////////////// Private methods /////////////////////////////////////////
+
+  private def checkError(e: Throwable): Throwable = e match {
+    case e: ClosedChannelException =>
+      logger.trace("Channel closed, dropping packet")
+      channelShutdown()
+      EOF
+
+    case e: IOException =>
+      logger.trace("Channel IO Error. Closing", e)
+      channelShutdown()
+      EOF
+
+    case e: ShutdownChannelGroupException =>
+      logger.trace("Channel Group was shutdown", e)
+      channelShutdown()
+      EOF
+
+    case e: Throwable =>  // Don't know what to do besides close
+      channelError(e)
+      e
+  }
+
   private def channelShutdown() {
     closeChannel()
     sendInboundCommand(Disconnected)
@@ -149,9 +157,5 @@ class ByteBufferHead(channel: AsynchronousSocketChannel,
     catch {  case e: IOException => /* Don't care */ }
   }
 
-  override def outboundCommand(cmd: OutboundCommand): Unit = cmd match {
-    case Disconnect         => closeChannel()
-    case Error(e)         => logger.error("ByteBufferHead received error command", e); channelError(e)
-    case cmd              => // NOOP
-  }
+
 }

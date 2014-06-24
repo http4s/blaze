@@ -44,7 +44,7 @@ public abstract class Http1ClientParser extends BodyAndHeaderParser {
     private int _minorVersion = 0;
     private int _statusCode = 0;
 
-    public abstract void submitResponseLine(int code, String reason, String scheme, int majorversion, int minorversion);
+    protected abstract void submitResponseLine(int code, String reason, String scheme, int majorversion, int minorversion);
 
     public final boolean responseLineComplete() {
         return _requestLineState == RequestLineState.END;
