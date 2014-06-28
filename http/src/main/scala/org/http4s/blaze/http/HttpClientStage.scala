@@ -100,7 +100,7 @@ class HttpClientStage(timeout: Duration = Duration.Inf)
 
     sb.append("\r\n")
 
-    //      println(sb.result.replace("\r\n", "\\r\\n\r\n"))
+//    println(sb.result.replace("\r\n", "\\r\\n\r\n"))
 
     val hdr = ByteBuffer.wrap(sb.result().getBytes(StandardCharsets.US_ASCII))
 

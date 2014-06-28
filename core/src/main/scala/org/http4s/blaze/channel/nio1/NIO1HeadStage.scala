@@ -111,6 +111,12 @@ private[nio1] abstract class NIO1HeadStage extends HeadStage[ByteBuffer] {
 
   ///////////////////////////////// Shutdown methods ///////////////////////////////////
 
+  /** Shutdown the channel with an EOF for any pending OPs */
+  override protected def stageShutdown(): Unit = {
+    super.stageShutdown()
+    closeWithError(EOF)
+  }
+
   // Cleanup any read or write requests with an exception
   def closeWithError(t: Throwable): Unit = {
     val r = readPromise.getAndSet(null)
@@ -124,13 +130,8 @@ private[nio1] abstract class NIO1HeadStage extends HeadStage[ByteBuffer] {
     writeData = null
     if (w != null) w.tryFailure(t)
 
-    try close()
+    try closeChannel()
     catch { case NonFatal(t) => logger.warn("Caught exception while closing channel", t) }
-  }
-
-  override protected def stageShutdown(): Unit = {
-    super.stageShutdown()
-    closeWithError(EOF)
   }
 
   ///////////////////////////////// Channel Ops ////////////////////////////////////////
@@ -150,7 +151,7 @@ private[nio1] abstract class NIO1HeadStage extends HeadStage[ByteBuffer] {
   def performWrite(scratch: ByteBuffer, buffers: Array[ByteBuffer]): WriteResult
 
   /** Don't close until the next cycle */
-  def close(): Unit = loop.enqueTask(new Runnable {
+  def closeChannel(): Unit = loop.enqueTask(new Runnable {
     def run() = {
       if (key.isValid) key.interestOps(0)
       key.attach(null)

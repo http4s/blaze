@@ -38,6 +38,7 @@ sealed trait Stage extends StrictLogging {
   def name: String
 
   protected def stageStartup(): Unit = logger.trace(s"Starting up at ${new Date}")
+
   protected def stageShutdown(): Unit = logger.trace(s"Shutting down at ${new Date}")
 
   /** Handle basic startup and shutdown commands.

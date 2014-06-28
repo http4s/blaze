@@ -1,19 +1,19 @@
 package org.http4s.blaze.channel.nio2
 
-import java.nio.channels._
 
-import java.nio.ByteBuffer
-import scala.concurrent.{Promise, Future}
-import java.io.IOException
-import java.util.Date
-import java.util.concurrent.TimeUnit
-
-import java.lang.{Long => JLong}
-import scala.annotation.tailrec
 import org.http4s.blaze.pipeline.HeadStage
 import org.http4s.blaze.pipeline.Command._
 import org.http4s.blaze.pipeline.Command.Error
 
+import scala.concurrent.{Promise, Future}
+import scala.annotation.tailrec
+
+import java.nio.channels._
+import java.nio.ByteBuffer
+import java.io.IOException
+import java.util.Date
+import java.util.concurrent.TimeUnit
+import java.lang.{Long => JLong}
 
 /**
 * @author Bryce Anderson
@@ -156,6 +156,4 @@ class ByteBufferHead(channel: AsynchronousSocketChannel,
     try channel.close()
     catch {  case e: IOException => /* Don't care */ }
   }
-
-
 }
