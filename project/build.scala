@@ -35,15 +35,17 @@ object ApplicationBuild extends Build {
   /* Don't publish setting */
   val dontPublish = packagedArtifacts := Map.empty
 
+  val JvmTarget = "1.7"
+
   /* global build settings */
   lazy val buildSettings = Defaults.defaultSettings ++ publishing ++ Seq(
     organization := "org.http4s",
 
-    version := "0.2.0-SNAPSHOT",
+    version := "0.2.0",
 
     scalaVersion := "2.10.4",
 
-    crossScalaVersions := Seq("2.10.4", "2.11.0"),
+    crossScalaVersions := Seq("2.10.4", "2.11.1"),
 
     description := "NIO Framework for Scala",
 
@@ -65,7 +67,8 @@ object ApplicationBuild extends Build {
       "-feature",
       "-deprecation",
       "-unchecked",
-      "-language:implicitConversions"
+      "-language:implicitConversions",
+     s"-target:jvm-${JvmTarget}"
     ),
 
     //mainClass in Revolver.reStart := Some("org.http4s.blaze.examples.NIO1HttpServer"),
