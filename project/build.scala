@@ -41,7 +41,7 @@ object ApplicationBuild extends Build {
   lazy val buildSettings = Defaults.defaultSettings ++ publishing ++ Seq(
     organization := "org.http4s",
 
-    version := "0.2.0",
+    version := "0.3.0-SNAPSHOT",
 
     scalaVersion := "2.10.4",
 
