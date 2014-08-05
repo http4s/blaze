@@ -101,7 +101,7 @@ object ApplicationBuild extends Build {
   lazy val scalaloggingSlf4j   = "com.typesafe.scala-logging" %% "scala-logging-slf4j"   % "2.1.2"
   lazy val logbackClassic      = "ch.qos.logback" %  "logback-classic"    % "1.0.9"
 
-  lazy val scalaXml = "org.scala-lang.modules" %% "scala-xml" % "1.0.1"
+  lazy val scalaXml = "org.scala-lang.modules" %% "scala-xml" % "1.0.2"
 
   // Needed for Spdy Support. Perhaps it should be a sub-project?
   // Interesting note: Http2.0 will use the TSLALPN extension which, unfortunately,
