@@ -96,7 +96,7 @@ object ApplicationBuild extends Build {
     libraryDependencies += npn_boot
   )
 
-  lazy val specs2 =    "org.specs2"    %% "specs2"    % "2.3.11"
+  lazy val specs2 =    "org.specs2"    %% "specs2"    % "2.4"
 
   lazy val scalaloggingSlf4j   = "com.typesafe.scala-logging" %% "scala-logging-slf4j"   % "2.1.2"
   lazy val logbackClassic      = "ch.qos.logback" %  "logback-classic"    % "1.0.9"
