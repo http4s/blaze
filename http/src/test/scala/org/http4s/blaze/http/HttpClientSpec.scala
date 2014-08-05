@@ -14,7 +14,7 @@ class HttpClientSpec extends Specification with NoTimeConversions {
   "HttpClient" should {
 
     "Make https requests" in {
-      val f = HttpClient.GET("https://www.google.com/")
+      val f = HttpClient.GET("https://github.com/")
 
       val r = Await.result(f, 5.seconds)
 
