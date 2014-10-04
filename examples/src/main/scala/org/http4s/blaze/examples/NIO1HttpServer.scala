@@ -5,14 +5,15 @@ import org.http4s.blaze.channel._
 import java.net.InetSocketAddress
 import org.http4s.blaze.channel.nio1.SocketServerChannelFactory
 import org.http4s.blaze.pipeline.LeafBuilder
+import org.http4s.blaze.pipeline.stages.monitors.IntervalConnectionMonitor
 
-/**
- * @author Bryce Anderson
- *         Created on 1/21/14
- */
+import scala.concurrent.duration._
+
 class NIO1HttpServer(port: Int) {
 
-  private val f: BufferPipelineBuilder = _ => LeafBuilder(new ExampleHttpServerStage(10*1024))
+  private val status = new IntervalConnectionMonitor(2.seconds)
+  private val f: BufferPipelineBuilder =
+    status.wrapBuilder { _ => LeafBuilder(new ExampleHttpServerStage(Some(status), 10*1024)) }
 
   private val factory = new SocketServerChannelFactory(f, workerThreads = 6)
 

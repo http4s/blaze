@@ -11,10 +11,6 @@ import org.http4s.blaze.util.BogusKeystore
 import org.http4s.blaze.channel.nio2.NIO2ServerChannelFactory
 import org.http4s.blaze.pipeline.TrunkBuilder
 
-/**
- * @author Bryce Anderson
- *         Created on 1/5/14
- */
 class SSLHttpServer(port: Int) {
 
   val sslContext: SSLContext = {
@@ -31,12 +27,11 @@ class SSLHttpServer(port: Int) {
     context
   }
 
-
   private val f: BufferPipelineBuilder = { _ =>
     val eng = sslContext.createSSLEngine()
     eng.setUseClientMode(false)
 
-    TrunkBuilder(new SSLStage(eng)).cap(new ExampleHttpServerStage(10*1024))
+    TrunkBuilder(new SSLStage(eng)).cap(new ExampleHttpServerStage(None, 10*1024))
   }
 
   val group = AsynchronousChannelGroup.withFixedThreadPool(10, java.util.concurrent.Executors.defaultThreadFactory())
