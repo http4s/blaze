@@ -1,8 +1,11 @@
 package org.http4s.blaze.pipeline.stages.http
 
 
+import java.nio.charset.StandardCharsets
+
 import org.http4s.blaze.pipeline.{Command => Cmd, _}
 import org.http4s.blaze.util.Execution._
+import scala.util.control.NonFatal
 import scala.util.{Failure, Success}
 import scala.concurrent.Future
 import scala.collection.mutable.ListBuffer
@@ -74,7 +77,7 @@ abstract class HttpServerStage(maxReqBody: Int) extends Http1ServerParser with T
       // TODO: need to check if we need a Host header or otherwise validate the request
 
       // we have enough to start the request
-      gatherBody(buff, BufferTools.emptyBuffer).onComplete {
+      gatherBody(buff, new ListBuffer[ByteBuffer]).onComplete {
         case Success(b) =>
           val hdrs = headers.result()
           headers.clear()
@@ -95,8 +98,7 @@ abstract class HttpServerStage(maxReqBody: Int) extends Http1ServerParser with T
   }
 
   private def runRequest(buffer: ByteBuffer, reqHeaders: Headers): Unit = {
-
-    handleRequest(method, uri, reqHeaders, buffer).flatMap {
+    try handleRequest(method, uri, reqHeaders, buffer).flatMap {
       case r: SimpleHttpResponse => handleHttpResponse(r, reqHeaders)
       case WSResponse(stage) => handleWebSocket(reqHeaders, stage)
     }.onComplete {       // See if we should restart the loop
@@ -108,6 +110,14 @@ abstract class HttpServerStage(maxReqBody: Int) extends Http1ServerParser with T
       case Success(other) =>
         logger.error("Shouldn't get here: " + other)
         sendOutboundCommand(Cmd.Disconnect)
+    }
+    catch {
+      case NonFatal(e) =>
+        logger.error("Error during `handleRequest` of HttpServerStage", e)
+        val body = ByteBuffer.wrap("Internal Service Error".getBytes(StandardCharsets.UTF_8))
+        handleHttpResponse(SimpleHttpResponse("OK", 200, Nil, body), reqHeaders).onComplete { _ =>
+          sendOutboundCommand(Cmd.Disconnect)
+        }
     }
   }
 
@@ -180,24 +190,22 @@ abstract class HttpServerStage(maxReqBody: Int) extends Http1ServerParser with T
     sb.append('\r').append('\n')
   }
 
-  // TODO: this should really not try accumulating like this, but use something akin to ByteString
-  private def gatherBody(buffer: ByteBuffer, cumulative: ByteBuffer): Future[ByteBuffer] = {
+  private def gatherBody(buffer: ByteBuffer, buffers: ListBuffer[ByteBuffer]): Future[ByteBuffer] = {
     if (!contentComplete()) {
-      val next = parseContent(buffer)
-      if (cumulative.remaining() > next.remaining()) {     // Still room
-        cumulative.put(next)
-        channelRead().flatMap(gatherBody(_, cumulative))
+      buffers += parseContent(buffer)
+      channelRead().flatMap(gatherBody(_, buffers))
+    } else {
+      val total = buffers.result match {
+        case Nil     => BufferTools.emptyBuffer
+        case b::Nil  => b
+        case buffers =>
+          val sz = buffers.foldLeft(0)(_ + _.remaining())
+          val b = ByteBuffer.allocate(sz)
+          buffers.foreach(b.put)
+          b.flip()
+          b
       }
-      else {
-        cumulative.flip()
-        val n = ByteBuffer.allocate(2*(next.remaining() + cumulative.remaining()))
-        n.put(cumulative).put(next)
-        channelRead().flatMap(gatherBody(_, n))
-      }
-    }
-    else {
-      cumulative.flip()
-      Future.successful(cumulative)
+      Future.successful(total)
     }
   }
 
