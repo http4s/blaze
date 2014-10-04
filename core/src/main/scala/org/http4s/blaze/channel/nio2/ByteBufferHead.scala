@@ -15,10 +15,7 @@ import java.util.Date
 import java.util.concurrent.TimeUnit
 import java.lang.{Long => JLong}
 
-/**
-* @author Bryce Anderson
-*         Created on 1/4/14
-*/
+
 class ByteBufferHead(channel: AsynchronousSocketChannel,
                      val name: String = "ByteBufferHeadStage",
                      bufferSize: Int = 8*1024) extends HeadStage[ByteBuffer] {
@@ -101,7 +98,7 @@ class ByteBufferHead(channel: AsynchronousSocketChannel,
           p.trySuccess(b)
         } else {   // must be end of stream
           p.tryFailure(EOF)
-          channelShutdown()
+          closeChannel()
         }
       }
     })
@@ -122,17 +119,17 @@ class ByteBufferHead(channel: AsynchronousSocketChannel,
   private def checkError(e: Throwable): Throwable = e match {
     case e: ClosedChannelException =>
       logger.trace("Channel closed, dropping packet")
-      channelShutdown()
+      closeChannel()
       EOF
 
     case e: IOException =>
       logger.trace("Channel IO Error. Closing", e)
-      channelShutdown()
+      closeChannel()
       EOF
 
     case e: ShutdownChannelGroupException =>
       logger.trace("Channel Group was shutdown", e)
-      channelShutdown()
+      closeChannel()
       EOF
 
     case e: Throwable =>  // Don't know what to do besides close
@@ -140,15 +137,10 @@ class ByteBufferHead(channel: AsynchronousSocketChannel,
       e
   }
 
-  private def channelShutdown() {
-    closeChannel()
-    sendInboundCommand(Disconnected)
-  }
-
   private def channelError(e: Throwable) {
     logger.error("Unexpected fatal error", e)
     sendInboundCommand(Error(e))
-    channelShutdown()
+    closeChannel()
   }
 
   private def closeChannel() {

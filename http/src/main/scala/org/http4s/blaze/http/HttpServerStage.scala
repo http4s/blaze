@@ -18,15 +18,10 @@ import java.nio.charset.StandardCharsets.US_ASCII
 import org.http4s.blaze.http.websocket.WebSocketDecoder.WebSocketFrame
 import org.http4s.blaze.util.BufferTools
 
-/**
- * @author Bryce Anderson
- *         Created on 1/11/14
- */
-
 abstract class HttpServerStage(maxReqBody: Int) extends Http1ServerParser with TailStage[ByteBuffer] {
   import HttpServerStage.RouteResult._
 
-  private implicit def ec = directec
+  private implicit def ec = trampoline
 
   val name = "HttpStage"
 
@@ -46,49 +41,48 @@ abstract class HttpServerStage(maxReqBody: Int) extends Http1ServerParser with T
     requestLoop()
   }
 
-  private def requestLoop(): Unit = {
-    channelRead().onComplete {
-      case Success(buff) =>
+  private def requestLoop(): Unit = channelRead().onComplete {
+    case Success(buff)     => readLoop(buff)
+    case Failure(Cmd.EOF)  => sendOutboundCommand(Cmd.Disconnect)
+    case Failure(t)        =>
+      stageShutdown()
+      sendOutboundCommand(Cmd.Error(t))
+  }
 
-        logger.trace{
-          buff.mark()
-          val sb = new StringBuilder
+  private def readLoop(buff: ByteBuffer): Unit = {
+    logger.trace{
+      buff.mark()
+      val sb = new StringBuilder
 
-          while(buff.hasRemaining) sb.append(buff.get().toChar)
+      while(buff.hasRemaining) sb.append(buff.get().toChar)
 
-          buff.reset()
-          s"RequestLoop received buffer $buff. Request:\n${sb.result}"
-        }
-
-        try {
-          if (!requestLineComplete() && !parseRequestLine(buff)) {
-            requestLoop()
-            return
-          }
-
-          if (!headersComplete() && !parseHeaders(buff)) {
-            requestLoop()
-            return
-          }
-
-          // TODO: need to check if we need a Host header or otherwise validate the request
-
-          // we have enough to start the request
-          gatherBody(buff, BufferTools.emptyBuffer).onComplete{
-            case Success(b) =>
-              val hdrs = headers.result()
-              headers.clear()
-              runRequest(b, hdrs)
-            case Failure(t) => sendOutboundCommand(Cmd.Disconnect)
-          }
-        }
-        catch { case t: Throwable   => sendOutboundCommand(Cmd.Disconnect) }
-
-      case Failure(Cmd.EOF)    => sendOutboundCommand(Cmd.Disconnect)
-      case Failure(t)          =>
-        stageShutdown()
-        sendOutboundCommand(Cmd.Error(t))
+      buff.reset()
+      s"RequestLoop received buffer $buff. Request:\n${sb.result}"
     }
+
+    try {
+      if (!requestLineComplete() && !parseRequestLine(buff)) {
+        requestLoop()
+        return
+      }
+
+      if (!headersComplete() && !parseHeaders(buff)) {
+        requestLoop()
+        return
+      }
+
+      // TODO: need to check if we need a Host header or otherwise validate the request
+
+      // we have enough to start the request
+      gatherBody(buff, BufferTools.emptyBuffer).onComplete {
+        case Success(b) =>
+          val hdrs = headers.result()
+          headers.clear()
+          runRequest(b, hdrs)
+        case Failure(t) => sendOutboundCommand(Cmd.Disconnect)
+      }
+    }
+    catch { case t: Throwable   => sendOutboundCommand(Cmd.Disconnect) }
   }
 
   private def resetStage() {
