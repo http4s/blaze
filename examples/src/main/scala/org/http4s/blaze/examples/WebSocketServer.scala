@@ -6,10 +6,11 @@ import java.net.InetSocketAddress
 import org.http4s.blaze.pipeline.stages.http.{WSResponse, SimpleHttpResponse, Response, HttpServerStage}
 import java.nio.ByteBuffer
 import org.http4s.websocket.WebsocketBits._
+import org.http4s.websocket.WebsocketHandshake
 
 import scala.concurrent.Future
 import org.http4s.blaze.pipeline.{LeafBuilder, Command}
-import org.http4s.blaze.http.websocket.{ServerHandshaker, WSStage}
+import org.http4s.blaze.http.websocket.WSStage
 import org.http4s.blaze.channel.nio2.NIO2ServerChannelFactory
 
 
@@ -30,7 +31,7 @@ object WebSocketServer {
 /** this stage can be seen as the "route" of the example. It handles requests and returns responses */
 class ExampleWebSocketHttpServerStage extends HttpServerStage(10*1024) {
   def handleRequest(method: String, uri: String, headers: Seq[(String, String)], body: ByteBuffer): Future[Response] = {
-    if (ServerHandshaker.isWebSocketRequest(headers)) {
+    if (WebsocketHandshake.isWebSocketRequest(headers)) {
       logger.info(s"Received a websocket request at $uri")
 
       // Note the use of WSStage.segment. This makes a pipeline segment that includes a serializer so we

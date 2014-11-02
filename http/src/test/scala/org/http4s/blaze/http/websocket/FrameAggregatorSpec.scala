@@ -21,7 +21,7 @@ class FrameAggregatorSpec extends Specification with NoTimeConversions {
 
     TrunkBuilder(new WSFrameAggregator).cap(h).base(new SeqHead(frames))
 
-    def next = Await.result(h.channelRead(), 2.seconds)
+    def next = Await.result(h.channelRead(), 10.seconds)
   }
 
   "FrameAggregator" should {

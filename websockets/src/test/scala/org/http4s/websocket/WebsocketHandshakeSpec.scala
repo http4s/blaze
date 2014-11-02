@@ -1,4 +1,4 @@
-package org.http4s.blaze.http.websocket
+package org.http4s.websocket
 
 import org.specs2.mutable.Specification
 
@@ -11,8 +11,17 @@ class WebsocketHandshakeSpec extends Specification {
       val totalValue = "keep-alive, Upgrade"
       val values = List("upgrade",  "Upgrade", "keep-alive", "Keep-alive")
       values.foldLeft(true){ (b, v) =>
-        b && ServerHandshaker.valueContains(v, totalValue)
+        b && WebsocketHandshake.valueContains(v, totalValue)
       } should_== true
+    }
+
+    "Do a round trip" in {
+      val client = WebsocketHandshake.clientHandshaker("www.foo.com")
+      val valid = WebsocketHandshake.serverHandshake(client.initHeaders)
+      valid must beRight
+
+      val Right(headers) = valid
+      client.checkResponse(headers) must beRight
     }
 
   }

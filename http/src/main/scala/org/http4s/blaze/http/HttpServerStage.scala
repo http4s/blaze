@@ -6,6 +6,7 @@ import java.nio.charset.StandardCharsets
 import org.http4s.blaze.pipeline.{Command => Cmd, _}
 import org.http4s.blaze.util.Execution._
 import org.http4s.websocket.WebsocketBits.WebSocketFrame
+import org.http4s.websocket.WebsocketHandshake
 import scala.util.control.NonFatal
 import scala.util.{Failure, Success}
 import scala.concurrent.Future
@@ -13,7 +14,7 @@ import scala.collection.mutable.ListBuffer
 import org.http4s.blaze.http.http_parser.Http1ServerParser
 
 import org.http4s.blaze.http.http_parser.BaseExceptions.BadRequest
-import org.http4s.blaze.http.websocket.{WebSocketDecoder, ServerHandshaker}
+import org.http4s.blaze.http.websocket.WebSocketDecoder
 
 import java.util.Date
 import java.nio.ByteBuffer
@@ -143,7 +144,7 @@ abstract class HttpServerStage(maxReqBody: Int) extends Http1ServerParser with T
   /** Deal with route response of WebSocket form */
   private def handleWebSocket(reqHeaders: Headers, wsBuilder: LeafBuilder[WebSocketFrame]): Future[RouteResult] = {
     val sb = new StringBuilder(512)
-    ServerHandshaker.handshakeHeaders(reqHeaders) match {
+    WebsocketHandshake.serverHandshake(reqHeaders) match {
       case Left((i, msg)) =>
         logger.trace(s"Invalid handshake: $i: $msg")
         sb.append("HTTP/1.1 ").append(i).append(' ').append(msg).append('\r').append('\n')
