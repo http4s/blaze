@@ -2,16 +2,14 @@ package org.http4s.blaze.pipeline.stages
 
 import java.nio.ByteBuffer
 import org.http4s.blaze.pipeline.LeafBuilder
-import org.http4s.blaze.http.websocket.WebSocketDecoder.WebSocketFrame
+import org.http4s.websocket.WebsocketBits.WebSocketFrame
 
 import java.nio.charset.StandardCharsets.UTF_8
-import scala.xml.Node
 import java.nio.charset.{StandardCharsets, Charset}
 
-/**
- * @author Bryce Anderson
- *         Created on 1/18/14
- */
+import scala.xml.Node
+
+
 package object http {
 
   type Headers = Seq[(String, String)]

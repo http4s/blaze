@@ -5,6 +5,7 @@ import java.nio.charset.StandardCharsets
 
 import org.http4s.blaze.pipeline.{Command => Cmd, _}
 import org.http4s.blaze.util.Execution._
+import org.http4s.websocket.WebsocketBits.WebSocketFrame
 import scala.util.control.NonFatal
 import scala.util.{Failure, Success}
 import scala.concurrent.Future
@@ -18,7 +19,6 @@ import java.util.Date
 import java.nio.ByteBuffer
 import java.nio.charset.StandardCharsets.US_ASCII
 
-import org.http4s.blaze.http.websocket.WebSocketDecoder.WebSocketFrame
 import org.http4s.blaze.util.BufferTools
 
 abstract class HttpServerStage(maxReqBody: Int) extends Http1ServerParser with TailStage[ByteBuffer] {
@@ -178,7 +178,7 @@ abstract class HttpServerStage(maxReqBody: Int) extends Http1ServerParser with T
   }
 
   private def renderHeaders(sb: StringBuilder, headers: Traversable[(String, String)], length: Int) {
-    headers.foreach{ case (k, v) =>
+    headers.foreach { case (k, v) =>
       // We are not allowing chunked responses at the moment, strip our Chunked-Encoding headers
       if (!k.equalsIgnoreCase("Transfer-Encoding") && !k.equalsIgnoreCase("Content-Length")) {
         sb.append(k)

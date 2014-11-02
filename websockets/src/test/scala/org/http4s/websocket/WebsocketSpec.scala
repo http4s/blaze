@@ -1,33 +1,29 @@
 package org.http4s.blaze.http.websocket
 
-import org.specs2.mutable._
+import org.http4s.websocket.FrameTranscoder
+import org.http4s.websocket.WebsocketBits._
 
 import java.nio.ByteBuffer
 
 import java.nio.charset.StandardCharsets.UTF_8
-import org.http4s.blaze.http.websocket.WebSocketDecoder._
+
+import org.specs2.mutable.Specification
 
 
-/**
- * @author Bryce Anderson
- *         Created on 1/16/14
- */
 class WebsocketSpec extends Specification {
 
   def helloTxtMasked = Array(0x81, 0x85, 0x37, 0xfa,
-                             0x21, 0x3d, 0x7f, 0x9f,
-                             0x4d, 0x51, 0x58).map(_.toByte)
+    0x21, 0x3d, 0x7f, 0x9f,
+    0x4d, 0x51, 0x58).map(_.toByte)
 
   def helloTxt = Array(0x81, 0x05, 0x48, 0x65, 0x6c, 0x6c, 0x6f).map(_.toByte)
 
-  def decode(msg: Array[Byte], isClient: Boolean): WebSocketFrame = {
-    val buff = ByteBuffer.wrap(msg)
+  def decode(msg: Array[Byte], isClient: Boolean): WebSocketFrame =
+    new FrameTranscoder(isClient).bufferToFrame(ByteBuffer.wrap(msg))
 
-    new WebSocketDecoder(isClient).bufferToMessage(buff).get
-  }
 
   def encode(msg: WebSocketFrame, isClient: Boolean): Array[Byte] = {
-    val msgs = new WebSocketDecoder(isClient).messageToBuffer(msg)
+    val msgs = new FrameTranscoder(isClient).frameToBuffer(msg)
     val sz = msgs.foldLeft(0)((c, i) => c + i.remaining())
     val b = ByteBuffer.allocate(sz)
     msgs.foreach(b.put)

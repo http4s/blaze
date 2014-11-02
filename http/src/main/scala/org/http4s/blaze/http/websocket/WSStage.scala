@@ -1,17 +1,14 @@
 package org.http4s.blaze.http.websocket
 
 import org.http4s.blaze.pipeline._
-import org.http4s.blaze.http.websocket.WebSocketDecoder.WebSocketFrame
 import org.http4s.blaze.util.Execution.trampoline
-
 import org.http4s.blaze.pipeline.stages.SerializingStage
+import org.http4s.websocket.WebsocketBits.WebSocketFrame
+
 import scala.util.Failure
 import scala.util.Success
 
-/**
- * @author Bryce Anderson
- *         Created on 1/18/14
- */
+
 trait WSStage extends TailStage[WebSocketFrame] {
   def name: String = "WebSocket Stage"
 

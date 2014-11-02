@@ -10,11 +10,17 @@ object ApplicationBuild extends Build {
   lazy val blaze = project
                     .in(file("."))
                     .settings(buildSettings :+ dontPublish:_*)
-                    .aggregate(core, http, examples)
+                    .aggregate(core, websockets, http, examples)
 
   lazy val core = Project("blaze-core",
                       file("core"),
-                    settings = buildSettings ++ dependencies)
+                      settings = buildSettings ++ dependencies)
+
+  lazy val websockets = Project("blaze-websockets",
+                      file("websockets"),
+                      settings = buildSettings ++ Seq(
+                        libraryDependencies += specs2 % "test"
+                      ))
 
 
   lazy val http = Project("blaze-http",
@@ -25,7 +31,7 @@ object ApplicationBuild extends Build {
                         case "2.11" => Seq(scalaXml)
                       })
                     )
-                  ).dependsOn(core % "test->test;compile->compile")
+                  ).dependsOn(core % "test->test;compile->compile", websockets)
 
   lazy val examples = Project("blaze-examples",
                     file("examples"),

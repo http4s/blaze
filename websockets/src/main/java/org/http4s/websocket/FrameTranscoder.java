@@ -1,28 +1,24 @@
-package org.http4s.blaze.http.websocket;
+package org.http4s.websocket;
 
 import java.net.ProtocolException;
 import java.nio.ByteBuffer;
 
-/**
- * @author Bryce Anderson
- *         Created on 1/17/14
- */
-class FrameTranscoder {
+public class FrameTranscoder {
 
     // Masks for extracting fields
-    public final static int OP_CODE = WebsocketBits.OP_CODE();
-    public final static int FINISHED = WebsocketBits.FINISHED();
-    public final static int MASK = WebsocketBits.MASK();
-    public final static int LENGTH = WebsocketBits.LENGTH();
-//    public final static int RESERVED = 0xe;
+    final static int OP_CODE = WebsocketBits.OP_CODE();
+    final static int FINISHED = WebsocketBits.FINISHED();
+    final static int MASK = WebsocketBits.MASK();
+    final static int LENGTH = WebsocketBits.LENGTH();
+    //    public final static int RESERVED = 0xe;
 //
 //    // message op codes
 //    public final static int CONTINUATION = 0x0;
 //    public final static int TEXT = 0x1;
 //    public final static int BINARY = 0x2;
-    public final static int CLOSE = WebsocketBits.CLOSE();
-    public final static int PING = WebsocketBits.PING();
-    public final static int PONG = WebsocketBits.PONG();
+    final static int CLOSE = WebsocketBits.CLOSE();
+    final static int PING = WebsocketBits.PING();
+    final static int PONG = WebsocketBits.PONG();
 
     public final static class TranscodeError extends Exception {
         public TranscodeError(String message) {
@@ -36,7 +32,7 @@ class FrameTranscoder {
         isClient = client;
     }
 
-    protected ByteBuffer[] _messageToBuffer(WebSocketDecoder.WebSocketFrame in) throws TranscodeError {
+    public ByteBuffer[] frameToBuffer(WebsocketBits.WebSocketFrame in) throws TranscodeError {
         int size = 2;
 
         if (isClient) size += 4;   // for the mask
@@ -80,9 +76,9 @@ class FrameTranscoder {
         if (isClient && in.length() > 0) {  // need to mask outgoing bytes
             int mask = (int)(Math.random()*Integer.MAX_VALUE);
             byte[] maskBits = {(byte)((mask >>> 24) & 0xff),
-                               (byte)((mask >>> 16) & 0xff),
-                               (byte)((mask >>>  8) & 0xff),
-                               (byte)((mask >>>  0) & 0xff)};
+                    (byte)((mask >>> 16) & 0xff),
+                    (byte)((mask >>>  8) & 0xff),
+                    (byte)((mask >>>  0) & 0xff)};
 
             buff.put(maskBits);
 
@@ -104,7 +100,7 @@ class FrameTranscoder {
      * @param in ByteBuffer of immediately available data
      * @return optional message if enough data was available
      */
-    protected WebSocketDecoder.WebSocketFrame _bufferToMessage(final ByteBuffer in) throws TranscodeError, ProtocolException {
+    public WebsocketBits.WebSocketFrame bufferToFrame(final ByteBuffer in) throws TranscodeError, ProtocolException {
 
         if (in.remaining() < 2) return null;
 
@@ -138,10 +134,10 @@ class FrameTranscoder {
         in.position(in.limit());
         in.limit(oldLim);
 
-        return WebSocketDecoder.makeFrame(opcode, decodeBinary(slice, m), finished);
+        return WebsocketBits.makeFrame(opcode, decodeBinary(slice, m), finished);
     }
 
-    private byte[] decodeBinary(ByteBuffer in, byte[] mask) {
+    static private byte[] decodeBinary(ByteBuffer in, byte[] mask) {
 
         byte[] data = new byte[in.remaining()];
         in.get(data);
@@ -153,7 +149,7 @@ class FrameTranscoder {
         }
         return data;                                                                                               }
 
-    private int lengthOffset(ByteBuffer in) throws TranscodeError {
+    static private int lengthOffset(ByteBuffer in) throws TranscodeError {
         int len = in.get(1) & LENGTH;
 
         if (len < 126) return 2;
@@ -162,7 +158,7 @@ class FrameTranscoder {
         else throw new TranscodeError("Length error!");
     }
 
-    private byte[] getMask(ByteBuffer in) throws TranscodeError {
+    static private byte[] getMask(ByteBuffer in) throws TranscodeError {
         byte[] m = new byte[4];
         in.mark();
         in.position(lengthOffset(in));
@@ -171,7 +167,7 @@ class FrameTranscoder {
         return m;
     }
 
-    private int bodyLength(ByteBuffer in) throws TranscodeError {
+    static private int bodyLength(ByteBuffer in) throws TranscodeError {
         final int len = in.get(1) & LENGTH;
 
         if (len < 126)       return len;
@@ -184,7 +180,7 @@ class FrameTranscoder {
         else throw new TranscodeError("Length error");
     }
 
-    private int getMsgLength(ByteBuffer in) throws TranscodeError {
+    static private int getMsgLength(ByteBuffer in) throws TranscodeError {
         int totalLen = 2;
         if ((in.get(1) & MASK) != 0) totalLen += 4;
 

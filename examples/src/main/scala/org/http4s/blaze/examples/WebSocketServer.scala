@@ -5,17 +5,14 @@ import java.nio.channels.AsynchronousChannelGroup
 import java.net.InetSocketAddress
 import org.http4s.blaze.pipeline.stages.http.{WSResponse, SimpleHttpResponse, Response, HttpServerStage}
 import java.nio.ByteBuffer
+import org.http4s.websocket.WebsocketBits._
+
 import scala.concurrent.Future
 import org.http4s.blaze.pipeline.{LeafBuilder, Command}
-import org.http4s.blaze.http.websocket.WebSocketDecoder._
-import scala.util.{Failure, Success}
 import org.http4s.blaze.http.websocket.{ServerHandshaker, WSStage}
 import org.http4s.blaze.channel.nio2.NIO2ServerChannelFactory
 
-/**
- * @author Bryce Anderson
- *         Created on 1/18/14
- */
+
 class WebSocketServer(port: Int) {
   private val f: BufferPipelineBuilder = _ => LeafBuilder(new ExampleWebSocketHttpServerStage)
 

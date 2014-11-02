@@ -1,8 +1,8 @@
 package org.http4s.blaze.http.websocket
 
+import org.http4s.websocket.WebsocketBits._
 import org.specs2.mutable._
 
-import org.http4s.blaze.http.websocket.WebSocketDecoder._
 import org.http4s.blaze.pipeline.{TrunkBuilder, TailStage}
 import org.http4s.blaze.pipeline.stages.SeqHead
 
@@ -11,10 +11,7 @@ import scala.concurrent.duration._
 import java.net.ProtocolException
 import org.specs2.time.NoTimeConversions
 
-/**
- * @author Bryce Anderson
- *         Created on 1/19/14
- */
+
 class FrameAggregatorSpec extends Specification with NoTimeConversions {
 
   case class Sequencer(frames: Seq[WebSocketFrame]) {

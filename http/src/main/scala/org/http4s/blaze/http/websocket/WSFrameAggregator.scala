@@ -1,8 +1,8 @@
 package org.http4s.blaze.http.websocket
 
 import org.http4s.blaze.pipeline.MidStage
-import org.http4s.blaze.http.websocket.WebSocketDecoder._
 import org.http4s.blaze.util.Execution._
+import org.http4s.websocket.WebsocketBits._
 
 import scala.concurrent.{Promise, Future}
 import scala.collection.mutable.ListBuffer
