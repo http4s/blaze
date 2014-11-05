@@ -1,10 +1,7 @@
 package org.http4s.blaze.channel
 
-import java.net.{InetAddress, InetSocketAddress, SocketAddress}
+import java.net.{ InetAddress, InetSocketAddress, SocketAddress }
 
-/**
- * Created by Bryce Anderson on 5/26/14.
- */
 trait SocketConnection {
   /** Return the SocketAddress of the remote connection */
   def remote: SocketAddress

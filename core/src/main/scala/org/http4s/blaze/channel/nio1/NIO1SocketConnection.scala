@@ -4,10 +4,6 @@ import java.nio.channels.{SelectableChannel, SocketChannel}
 import org.http4s.blaze.channel.SocketConnection
 import java.net.SocketAddress
 
-/**
- * Created by Bryce Anderson on 5/26/14.
- */
-
 object NIO1Connection {
   def apply(connection: SelectableChannel): SocketConnection = connection match {
     case ch: SocketChannel => NIO1SocketConnection(ch)

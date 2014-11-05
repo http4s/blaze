@@ -6,9 +6,7 @@ import scala.concurrent.Await
 import scala.concurrent.duration._
 import org.specs2.time.NoTimeConversions
 
-/**
- * Created by Bryce Anderson on 3/16/14.
- */
+
 class HttpClientSpec extends Specification with NoTimeConversions {
 
   "HttpClient" should {
@@ -16,7 +14,7 @@ class HttpClientSpec extends Specification with NoTimeConversions {
     "Make https requests" in {
       val f = HttpClient.GET("https://github.com/")
 
-      val r = Await.result(f, 5.seconds)
+      val r = Await.result(f, 10.seconds)
 
       r.code should_== 200
     }

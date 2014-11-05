@@ -2,9 +2,6 @@ package org.http4s.blaze.http.websocket
 
 import org.specs2.mutable.Specification
 
-/**
- * Created by Bryce Anderson on 6/5/14.
- */
 class WebsocketHandshakeSpec extends Specification {
 
   "WebsocketHandshake" should {
