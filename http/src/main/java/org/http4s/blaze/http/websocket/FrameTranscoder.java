@@ -3,10 +3,6 @@ package org.http4s.blaze.http.websocket;
 import java.net.ProtocolException;
 import java.nio.ByteBuffer;
 
-/**
- * @author Bryce Anderson
- *         Created on 1/17/14
- */
 class FrameTranscoder {
 
     // Masks for extracting fields

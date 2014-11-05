@@ -9,10 +9,7 @@ import org.http4s.blaze.http.websocket.WebSocketDecoder.WebSocketFrame
 import org.http4s.blaze.http.websocket.FrameTranscoder.TranscodeError
 import java.net.ProtocolException
 
-/**
- * @author Bryce Anderson
- *         Created on 1/15/14
- */
+
 class WebSocketDecoder(isClient: Boolean, val maxBufferSize: Int = 0)
       extends FrameTranscoder(isClient) with ByteToObjectStage[WebSocketFrame] {
 

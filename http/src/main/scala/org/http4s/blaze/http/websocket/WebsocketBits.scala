@@ -1,9 +1,5 @@
 package org.http4s.blaze.http.websocket
 
-/**
- * @author Bryce Anderson
- *         Created on 1/15/14
- */
 object WebsocketBits {
 
   // Masks for extracting fields

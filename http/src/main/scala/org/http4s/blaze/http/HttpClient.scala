@@ -12,10 +12,6 @@ import java.security.KeyStore
 import org.http4s.blaze.pipeline.stages.SSLStage
 import org.http4s.blaze.util.{BufferTools, Execution, BogusKeystore}
 
-/**
- * @author Bryce Anderson
- *         Created on 2/6/14
- */
 trait HttpClient {
 
   private lazy val connManager = new ClientChannelFactory()

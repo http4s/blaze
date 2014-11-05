@@ -7,10 +7,6 @@ import org.http4s.blaze.http.http_parser.BodyAndHeaderParser.EndOfContent
 import org.http4s.blaze.http.http_parser.BaseExceptions.{InvalidState, BadRequest}
 import scala.collection.mutable.ListBuffer
 
-/**
- * @author Bryce Anderson
- *         Created on 1/2/14
- */
 class ServerParserSpec extends Specification {
 
   implicit def strToBuffer(str: String) = ByteBuffer.wrap(str.getBytes())

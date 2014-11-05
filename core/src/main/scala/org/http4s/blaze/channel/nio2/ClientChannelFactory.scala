@@ -8,10 +8,6 @@ import java.net.SocketAddress
 
 import scala.concurrent.{Future, Promise}
 
-/**
- * @author Bryce Anderson
- *         Created on 2/4/14
- */
 
 /** A factory for opening TCP connections to remote sockets
   *

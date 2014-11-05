@@ -7,10 +7,7 @@ import java.util.concurrent.atomic.AtomicBoolean
 
 import scala.concurrent.ExecutionContext.Implicits.global
 
-/**
- * @author Bryce Anderson
- *         Created on 1/7/14
- */
+
 trait SlowHead[O] extends HeadStage[O] {
 
   def get: O

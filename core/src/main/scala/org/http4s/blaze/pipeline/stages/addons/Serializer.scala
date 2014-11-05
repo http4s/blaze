@@ -10,10 +10,6 @@ import scala.collection.mutable.Queue
 import org.http4s.blaze.util.Execution._
 import scala.util.{Failure, Success}
 
-/**
- * @author Bryce Anderson
- *         Created on 1/7/14
- */
 trait Serializer[I, O] extends MidStage[I, O] {
 
   // These can be overridden to set the queue overflow size

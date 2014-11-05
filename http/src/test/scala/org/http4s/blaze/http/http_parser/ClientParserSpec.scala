@@ -7,10 +7,6 @@ import scala.collection.mutable.ListBuffer
 import java.nio.ByteBuffer
 import org.http4s.blaze.http.http_parser.BaseExceptions.{InvalidState, BadResponse}
 
-/**
- * @author Bryce Anderson
- *         Created on 2/4/14
- */
 class ClientParserSpec extends Specification {
 
   val resp = "HTTP/1.1 200 OK\r\n"

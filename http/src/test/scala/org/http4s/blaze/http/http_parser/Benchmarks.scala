@@ -7,10 +7,6 @@ import scala.collection.mutable.ListBuffer
 
 import org.specs2.mutable._
 
-/**
- * @author Bryce Anderson
- *         Created on 2/8/14
- */
 class Benchmarks extends Specification {
 
   val request = "POST /enlighten/calais.asmx HTTP/1.1\r\n"

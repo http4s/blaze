@@ -8,10 +8,6 @@ import java.nio.charset.StandardCharsets.UTF_8
 import org.http4s.blaze.http.websocket.WebSocketDecoder._
 
 
-/**
- * @author Bryce Anderson
- *         Created on 1/16/14
- */
 class WebsocketSpec extends Specification {
 
   def helloTxtMasked = Array(0x81, 0x85, 0x37, 0xfa,

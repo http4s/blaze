@@ -8,10 +8,6 @@ import java.util.concurrent.TimeUnit
 import scala.collection.mutable
 import java.nio.channels.ClosedChannelException
 
-/**
- * @author Bryce Anderson
- *         Created on 2/2/14
- */
 abstract class DelayHead[I](delay: Duration) extends HeadStage[I] {
 
   def next(): I

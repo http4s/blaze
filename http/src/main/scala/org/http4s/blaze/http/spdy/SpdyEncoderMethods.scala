@@ -2,10 +2,6 @@ package org.http4s.blaze.http.spdy
 
 import java.nio.ByteBuffer
 
-/**
- * @author Bryce Anderson
- *         Created on 1/29/14
- */
 private[spdy] trait SpdyEncoderMethods {
 
   protected def deflater: SpdyHeaderEncoder

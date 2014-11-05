@@ -6,10 +6,6 @@ import scala.annotation.tailrec
 import org.http4s.blaze.util.ScratchBuffer
 import java.util.zip.Deflater
 
-/**
- * @author Bryce Anderson
- *         Created on 1/27/14
- */
 class SpdyHeaderEncoder {
 
   private val deflater = new java.util.zip.Deflater

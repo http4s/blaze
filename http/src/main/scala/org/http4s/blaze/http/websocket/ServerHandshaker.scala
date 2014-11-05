@@ -4,10 +4,6 @@ import javax.xml.bind.DatatypeConverter.{parseBase64Binary, printBase64Binary}
 import java.nio.charset.StandardCharsets.US_ASCII
 import java.security.MessageDigest
 
-/**
- * @author Bryce Anderson
- *         Created on 1/18/14
- */
 object ServerHandshaker {
 
   def handshakeHeaders(headers: TraversableOnce[(String, String)]): Either[(Int, String), Seq[(String, String)]] = {

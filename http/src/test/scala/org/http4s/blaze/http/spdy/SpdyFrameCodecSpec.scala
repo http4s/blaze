@@ -3,10 +3,6 @@ package org.http4s.blaze.http.spdy
 import org.specs2.mutable._
 import java.nio.ByteBuffer
 
-/**
- * @author Bryce Anderson
- *         Created on 1/26/14
- */
 class SpdyFrameCodecSpec extends Specification {
 
   val data = ByteBuffer.wrap("Hello".getBytes("UTF-8")).asReadOnlyBuffer()

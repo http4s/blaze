@@ -10,11 +10,7 @@ import org.http4s.blaze.util.Execution
 import org.log4s.getLogger
 import java.util.concurrent.TimeoutException
 
-/*
- * @author Bryce Anderson
- *         Created on 1/4/14
- *
- *         Stages are formed from the three fundamental types. They essentially form a
+/*         Stages are formed from the three fundamental types. They essentially form a
  *         double linked list. Commands can be sent in both directions while data is only
  *         requested from the end of the list, or Tail sections and returned as Futures
  *         which can get transformed down the stages.

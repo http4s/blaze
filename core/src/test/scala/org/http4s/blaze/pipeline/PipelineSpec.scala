@@ -6,10 +6,6 @@ import scala.concurrent.{Future, Await}
 import scala.concurrent.duration._
 import org.specs2.time.NoTimeConversions
 
-/**
- * @author Bryce Anderson
- *         Created on 1/4/14
- */
 class PipelineSpec extends Specification with NoTimeConversions {
 
   class IntHead extends HeadStage[Int] {

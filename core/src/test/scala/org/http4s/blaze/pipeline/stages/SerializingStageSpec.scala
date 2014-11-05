@@ -12,10 +12,6 @@ import scala.concurrent.Await
 import scala.concurrent.ExecutionContext.Implicits.global
 import org.specs2.time.NoTimeConversions
 
-/**
- * @author Bryce Anderson
- *         Created on 1/7/14
- */
 class SerializingStageSpec extends Specification with NoTimeConversions {
 
   class SlowIntHead extends SlowHead[Int] {

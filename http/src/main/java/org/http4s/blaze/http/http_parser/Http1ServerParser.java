@@ -5,10 +5,6 @@ import java.nio.ByteBuffer;
 import org.http4s.blaze.http.http_parser.BaseExceptions.*;
 
 
-/**
- * @author Bryce Anderson
- *         Created on 1/2/14
- */
 public abstract class Http1ServerParser extends BodyAndHeaderParser {
 
     private enum LineState {

@@ -4,10 +4,6 @@ import org.http4s.blaze.pipeline.HeadStage
 import scala.concurrent.Future
 import org.http4s.blaze.pipeline.Command.EOF
 
-/**
- * @author Bryce Anderson
- *         Created on 1/19/14
- */
 class SeqHead[O](private var data: Seq[O]) extends HeadStage[O] {
 
   @volatile var results: Vector[O] = Vector.empty

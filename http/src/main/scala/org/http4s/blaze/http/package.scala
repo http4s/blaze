@@ -8,10 +8,6 @@ import java.nio.charset.StandardCharsets.UTF_8
 import scala.xml.Node
 import java.nio.charset.{StandardCharsets, Charset}
 
-/**
- * @author Bryce Anderson
- *         Created on 1/18/14
- */
 package object http {
 
   type Headers = Seq[(String, String)]

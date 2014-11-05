@@ -12,10 +12,6 @@ import org.http4s.blaze.http.websocket.{ServerHandshaker, WSStage}
 import org.http4s.blaze.channel.nio2.NIO2ServerChannelFactory
 import org.log4s.getLogger
 
-/**
- * @author Bryce Anderson
- *         Created on 1/18/14
- */
 class WebSocketServer(port: Int) {
   private val f: BufferPipelineBuilder = _ => LeafBuilder(new ExampleWebSocketHttpServerStage)
 

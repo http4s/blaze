@@ -8,10 +8,6 @@ import scala.concurrent.duration._
 import org.http4s.blaze.pipeline.LeafBuilder
 import org.specs2.time.NoTimeConversions
 
-/**
- * @author Bryce Anderson
- *         Created on 1/27/14
- */
 class ByteToObjectStageSpec extends Specification with NoTimeConversions {
 
   sealed trait Msg { def tag: Byte }
