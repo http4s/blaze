@@ -10,15 +10,15 @@ import scala.annotation.tailrec
 import java.util.Date
 import org.http4s.blaze.channel._
 import org.http4s.blaze.pipeline.Command.Connected
-import com.typesafe.scalalogging.slf4j.LazyLogging
-
+import org.log4s.getLogger
 
 /**
  * @author Bryce Anderson
  *         Created on 1/4/14
  */
 class NIO2ServerChannelFactory(pipeFactory: BufferPipelineBuilder, group: AsynchronousChannelGroup = null)
-        extends ServerChannelFactory[AsynchronousServerSocketChannel] with LazyLogging {
+        extends ServerChannelFactory[AsynchronousServerSocketChannel] {
+  private[this] val logger = getLogger
 
   // Intended to be overridden in order to allow the reject of connections
   protected def acceptConnection(channel: AsynchronousSocketChannel): Boolean = true

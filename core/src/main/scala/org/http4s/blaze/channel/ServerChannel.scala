@@ -1,12 +1,12 @@
 package org.http4s.blaze.channel
 
 import java.nio.channels.NetworkChannel
-import com.typesafe.scalalogging.slf4j.LazyLogging
 import java.io.Closeable
 import java.util.concurrent.atomic.AtomicReference
 import scala.annotation.tailrec
 import scala.compat.Platform.EOL
 import scala.util.control.NonFatal
+import org.log4s.getLogger
 
 /**
  * @author Bryce Anderson
@@ -14,7 +14,8 @@ import scala.util.control.NonFatal
  */
 
 
-abstract class ServerChannel extends Runnable with LazyLogging with Closeable { self =>
+abstract class ServerChannel extends Runnable with Closeable { self =>
+  private[this] val logger = getLogger
 
   private val shutdownHooks = new AtomicReference[Vector[()=> Unit]](Vector.empty)
 

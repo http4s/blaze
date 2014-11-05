@@ -5,14 +5,15 @@ import scala.annotation.tailrec
 import java.net.SocketAddress
 import org.http4s.blaze.channel._
 import scala.util.control.NonFatal
-import com.typesafe.scalalogging.slf4j.LazyLogging
+import org.log4s.getLogger
 
 /**
  * @author Bryce Anderson
  *         Created on 1/19/14
  */
 abstract class NIOServerChannelFactory[Channel <: NetworkChannel](pool: SelectorLoopPool)
-                extends ServerChannelFactory[Channel] with LazyLogging {
+                extends ServerChannelFactory[Channel] {
+  private[this] val logger = getLogger
 
   def this(fixedPoolSize: Int, bufferSize: Int = 8*1024) = this(new FixedArraySelectorPool(fixedPoolSize, bufferSize))
 
@@ -48,7 +49,7 @@ abstract class NIOServerChannelFactory[Channel <: NetworkChannel](pool: Selector
           val p = pool.nextLoop()
           acceptConnection(channel, p)
         } catch {
-          case NonFatal(t) => logger.error("Error accepting connection", t)
+          case NonFatal(t) => logger.error(t)("Error accepting connection")
         }
       }
     }

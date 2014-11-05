@@ -9,6 +9,7 @@ import org.http4s.blaze.util.Execution
 import scala.util.Failure
 import scala.Some
 import scala.util.Success
+import org.log4s.getLogger
 
 
 /**
@@ -18,6 +19,7 @@ import scala.util.Success
  *         What a mess. Its almost a full blown implementation of something to test this
  */
 class HubStageSpec extends Specification {
+  private[this] val logger = getLogger
 
   implicit val ec = Execution.directec
 

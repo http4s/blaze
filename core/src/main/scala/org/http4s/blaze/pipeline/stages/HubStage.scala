@@ -4,6 +4,7 @@ import org.http4s.blaze.pipeline.{LeafBuilder, TailStage, HeadStage}
 import java.util.concurrent.ConcurrentHashMap
 import scala.concurrent.{Promise, Future}
 import org.http4s.blaze.pipeline.Command._
+import org.log4s.getLogger
 import java.nio.channels.NotYetConnectedException
 
 /**
@@ -12,6 +13,7 @@ import java.nio.channels.NotYetConnectedException
  */
 
 abstract class HubStage[I, O, K](nodeBuilder: () => LeafBuilder[O]) extends TailStage[I] {
+  private[this] val logger = getLogger
 
   def name: String = "HubStage"
 

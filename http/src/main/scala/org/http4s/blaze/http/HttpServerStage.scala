@@ -20,8 +20,10 @@ import java.nio.charset.StandardCharsets.US_ASCII
 
 import org.http4s.blaze.http.websocket.WebSocketDecoder.WebSocketFrame
 import org.http4s.blaze.util.BufferTools
+import org.log4s.getLogger
 
 abstract class HttpServerStage(maxReqBody: Int) extends Http1ServerParser with TailStage[ByteBuffer] {
+  private[this] val logger = getLogger
   import HttpServerStage.RouteResult._
 
   private implicit def ec = trampoline
@@ -113,7 +115,7 @@ abstract class HttpServerStage(maxReqBody: Int) extends Http1ServerParser with T
     }
     catch {
       case NonFatal(e) =>
-        logger.error("Error during `handleRequest` of HttpServerStage", e)
+        logger.error(e)("Error during `handleRequest` of HttpServerStage")
         val body = ByteBuffer.wrap("Internal Service Error".getBytes(StandardCharsets.UTF_8))
         handleHttpResponse(SimpleHttpResponse("OK", 200, Nil, body), reqHeaders).onComplete { _ =>
           sendOutboundCommand(Cmd.Disconnect)
