@@ -13,6 +13,7 @@ import org.http4s.blaze.pipeline.MidStage
 import org.http4s.blaze.pipeline.Command.EOF
 import org.http4s.blaze.util.Execution._
 import org.http4s.blaze.util.{BufferTools, ScratchBuffer}
+import org.log4s.getLogger
 import scala.annotation.tailrec
 
 
@@ -21,6 +22,7 @@ import scala.annotation.tailrec
  *         Created on 1/11/14
  */
 class SSLStage(engine: SSLEngine, maxSubmission: Int = -1) extends MidStage[ByteBuffer, ByteBuffer] {
+  private[this] val logger = getLogger
 
   import org.http4s.blaze.util.BufferTools._
 
@@ -56,7 +58,7 @@ class SSLStage(engine: SSLEngine, maxSubmission: Int = -1) extends MidStage[Byte
                 sslHandshake(sum, rr, f, ex)
               } catch {
                 case t: SSLException =>
-                  logger.warn("SSL Error", t)
+                  logger.warn(t)("SSL Error")
                   stageShutdown()
                   ex(t)
               }
@@ -77,7 +79,7 @@ class SSLStage(engine: SSLEngine, maxSubmission: Int = -1) extends MidStage[Byte
           sslHandshake(data, rr, f, ex)
         } catch {
           case t: SSLException =>
-            logger.warn("SSL Error", t)
+            logger.warn(t)("SSL Error")
             stageShutdown()
             ex(t)
         }
@@ -90,7 +92,7 @@ class SSLStage(engine: SSLEngine, maxSubmission: Int = -1) extends MidStage[Byte
           sslHandshake(data, rr, f, ex)
         } catch {
           case t: SSLException =>
-            logger.warn("SSL Error", t)
+            logger.warn(t)("SSL Error")
             stageShutdown()
             ex(t)
         }
@@ -110,7 +112,7 @@ class SSLStage(engine: SSLEngine, maxSubmission: Int = -1) extends MidStage[Byte
           return
         } catch {
           case t: SSLException =>
-            logger.warn("SSL Error", t)
+            logger.warn(t)("SSL Error")
             stageShutdown()
             ex(t)
         }
@@ -181,7 +183,7 @@ class SSLStage(engine: SSLEngine, maxSubmission: Int = -1) extends MidStage[Byte
         }
       } catch {
         case t: SSLException =>
-          logger.warn("SSL Error", t)
+          logger.warn(t)("SSL Error")
           stageShutdown()
           p.failure(t)
       }
@@ -284,7 +286,7 @@ class SSLStage(engine: SSLEngine, maxSubmission: Int = -1) extends MidStage[Byte
       }
     } catch {
       case t: SSLException =>
-        logger.warn("SSL Error", t)
+        logger.warn(t)("SSL Error")
         stageShutdown()
         p.failure(t)
     }

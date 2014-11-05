@@ -9,6 +9,7 @@ import java.nio.ByteBuffer
 import scala.util.{Failure, Success, Try}
 import org.http4s.blaze.pipeline.Command.EOF
 import NIO1HeadStage._
+import org.log4s.getLogger
 
 /**
  * @author Bryce Anderson
@@ -16,6 +17,7 @@ import NIO1HeadStage._
  */
 class SocketServerChannelFactory(pipeFactory: BufferPipelineBuilder, pool: SelectorLoopPool)
                 extends NIOServerChannelFactory[ServerSocketChannel](pool) {
+  private[this] val logger = getLogger
 
   import SocketServerChannelFactory.brokePipeMessages
 
@@ -73,7 +75,7 @@ class SocketServerChannelFactory(pipeFactory: BufferPipelineBuilder, pool: Selec
         case e: ClosedChannelException => ChannelClosed
         case e: IOException if brokePipeMessages.contains(e.getMessage) => ChannelClosed
         case e: IOException =>
-          logger.warn("Error writing to channel", e)
+          logger.warn(e)("Error writing to channel")
           WriteError(e)
       }
     }

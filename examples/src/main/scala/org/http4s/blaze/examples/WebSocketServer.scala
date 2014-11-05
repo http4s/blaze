@@ -8,9 +8,9 @@ import java.nio.ByteBuffer
 import scala.concurrent.Future
 import org.http4s.blaze.pipeline.{LeafBuilder, Command}
 import org.http4s.blaze.http.websocket.WebSocketDecoder._
-import scala.util.{Failure, Success}
 import org.http4s.blaze.http.websocket.{ServerHandshaker, WSStage}
 import org.http4s.blaze.channel.nio2.NIO2ServerChannelFactory
+import org.log4s.getLogger
 
 /**
  * @author Bryce Anderson
@@ -32,6 +32,8 @@ object WebSocketServer {
 
 /** this stage can be seen as the "route" of the example. It handles requests and returns responses */
 class ExampleWebSocketHttpServerStage extends HttpServerStage(10*1024) {
+  private[this] val logger = getLogger
+
   def handleRequest(method: String, uri: String, headers: Seq[(String, String)], body: ByteBuffer): Future[Response] = {
     if (ServerHandshaker.isWebSocketRequest(headers)) {
       logger.info(s"Received a websocket request at $uri")
@@ -45,6 +47,7 @@ class ExampleWebSocketHttpServerStage extends HttpServerStage(10*1024) {
 
 /** This represents the actual web socket interactions */
 class SocketStage extends WSStage {
+  private[this] val logger = getLogger
 
   def onMessage(msg: WebSocketFrame): Unit = msg match {
     case Text(msg, _) =>

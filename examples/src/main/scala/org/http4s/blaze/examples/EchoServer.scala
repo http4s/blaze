@@ -11,7 +11,7 @@ import java.util.Date
 import scala.concurrent.ExecutionContext.Implicits.global
 import org.http4s.blaze.pipeline.Command.EOF
 import org.http4s.blaze.channel.nio2.NIO2ServerChannelFactory
-import com.typesafe.scalalogging.slf4j.StrictLogging
+import org.log4s.getLogger
 
 /**
  * @author Bryce Anderson
@@ -20,7 +20,8 @@ import com.typesafe.scalalogging.slf4j.StrictLogging
 
 
 
-class EchoServer extends StrictLogging {
+class EchoServer {
+  private[this] val logger = getLogger
 
   def prepare(address: InetSocketAddress): ServerChannel = {
     val f: BufferPipelineBuilder = _ => new EchoStage

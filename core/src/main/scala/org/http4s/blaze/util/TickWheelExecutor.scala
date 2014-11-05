@@ -4,7 +4,7 @@ import scala.annotation.tailrec
 import scala.util.control.NonFatal
 import scala.concurrent.ExecutionContext
 import scala.concurrent.duration._
-import com.typesafe.scalalogging.slf4j.LazyLogging
+import org.log4s.getLogger
 
 /**
  * @author Bryce Anderson
@@ -27,7 +27,8 @@ import com.typesafe.scalalogging.slf4j.LazyLogging
   * @param wheelSize number of spokes on the wheel. Each tick, the wheel will advance a spoke
   * @param resolution duration between ticks
   */
-class TickWheelExecutor(wheelSize: Int = 512, resolution: Duration = 100.milli) extends LazyLogging {
+class TickWheelExecutor(wheelSize: Int = 512, resolution: Duration = 100.milli) {
+  private[this] val logger = getLogger
 
   @volatile private var currentTick = 0
   @volatile private var alive = true
@@ -99,7 +100,7 @@ class TickWheelExecutor(wheelSize: Int = 512, resolution: Duration = 100.milli) 
   }
 
   protected def onNonFatal(t: Throwable) {
-    logger.error("Non-Fatal Exception caught while executing scheduled task", t)
+    logger.error(t)("Non-Fatal Exception caught while executing scheduled task")
   }
   
   private def getBucket(duration: Long): Bucket = {

@@ -5,6 +5,7 @@ import org.http4s.blaze.pipeline.TailStage
 import java.nio.ByteBuffer
 import scala.util.{Failure, Success}
 import org.http4s.blaze.pipeline.Command.EOF
+import org.log4s.getLogger
 
 
 /**
@@ -13,6 +14,8 @@ import org.http4s.blaze.pipeline.Command.EOF
 
 
 class EchoStage extends TailStage[ByteBuffer] {
+  private[this] val logger = getLogger
+
   def name: String = "EchoStage"
 
   val msg = "echo: ".getBytes
@@ -29,7 +32,7 @@ class EchoStage extends TailStage[ByteBuffer] {
         channelWrite(b).onSuccess{ case _ => stageStartup() }
 
       case Failure(EOF) => logger.trace("Channel closed.")
-      case Failure(t) => logger.error("Channel read failed: " + t)
+      case Failure(t) => logger.error(t)("Channel read failed")
     }
   }
 }
