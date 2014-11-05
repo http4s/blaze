@@ -17,12 +17,7 @@ class ActorSpec extends Specification with NoTimeConversions {
 
   val spinTime = 5.seconds
 
-  def spin(finished: => Boolean): Unit = {
-    val start = System.nanoTime()
-    while(!finished && System.nanoTime() - start < spinTime.toNanos) {
-      Thread.sleep(1) /* spin up to 5 seconds */
-    }
-  }
+  def spin(finished: => Boolean) = TimingTools.spin(spinTime)(finished)
 
   case class E(msg: String) extends Exception(msg)
 

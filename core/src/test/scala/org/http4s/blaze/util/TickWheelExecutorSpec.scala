@@ -6,16 +6,13 @@ import org.specs2.mutable._
 import java.util.concurrent.atomic.AtomicInteger
 import org.specs2.time.NoTimeConversions
 
-/**
- * @author Bryce Anderson
- *         Created on 2/3/14
- */
+
 class TickWheelExecutorSpec extends Specification with NoTimeConversions {
   import scala.concurrent.duration._
 
   "TickWheelExecutor" should {
 
-    val ec = new TickWheelExecutor(resolution = 100.millis)
+    val ec = new TickWheelExecutor(tick = 100.millis)
 
     "Execute a simple task with no delay" in {
       val i = new AtomicInteger(0)
@@ -32,21 +29,21 @@ class TickWheelExecutorSpec extends Specification with NoTimeConversions {
       ec.schedule(new Runnable {
         def run() { i.set(1) }
       }, 200.millis)
-      Thread.sleep(400)
+      TimingTools.spin(5.seconds)(i.get == 1)
       i.get() should_== 1
     }
 
     "Execute a simple task with a multi clock revolution delay" in {
-      val ec = new TickWheelExecutor(3, 20.millis)
+      val ec = new TickWheelExecutor(3, 2.seconds)
       val i = new AtomicInteger(0)
       ec.schedule(new Runnable {
         def run() { i.set(1) }
-      }, 200.millis)
+      }, 7.seconds)
 
-      Thread.sleep(60)
+      TimingTools.spin(5.seconds)(false)
       i.get should_== 0
 
-      Thread.sleep(300)
+      TimingTools.spin(10.seconds)(i.get == 1)
       i.get should_== 1
 
     }
@@ -55,14 +52,13 @@ class TickWheelExecutorSpec extends Specification with NoTimeConversions {
       val ec = new TickWheelExecutor(3, 3.millis)
       val i = new AtomicInteger(0)
 
-      0 until 1000 foreach { _ =>
+      0 until 1000 foreach { j =>
         ec.schedule(new Runnable {
           def run() { i.incrementAndGet() }
-        }, 13.millis)
-        Thread.sleep(1)
+        }, j.millis)
       }
 
-      Thread.sleep(1020)
+      TimingTools.spin(10.seconds)(i.get == 1000)
       i.get() should_== 1000
 
     }
@@ -74,13 +70,13 @@ class TickWheelExecutorSpec extends Specification with NoTimeConversions {
       val cancels = 0 until 1000 map { j =>
         val c = ec.schedule(new Runnable {
           def run() { i.incrementAndGet() }
-        }, ((j+20)*10).millis)
+        }, (j+500).millis)
         c
       }
-      cancels.foreach(_.cancel())
+      cancels.zipWithIndex.foreach{ case (r, i) => if (i % 2 == 0) r.cancel() }
 
-      Thread.sleep(700)
-      i.get() should_== 0
+      TimingTools.spin(10.seconds)(i.get == 500)
+      i.get() should_== 500
 
     }
 

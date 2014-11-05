@@ -25,15 +25,15 @@ import org.log4s.getLogger
   * @constructor primary constructor which immediately spins up a thread and begins ticking
   *
   * @param wheelSize number of spokes on the wheel. Each tick, the wheel will advance a spoke
-  * @param resolution duration between ticks
+  * @param tick duration between ticks
   */
-class TickWheelExecutor(wheelSize: Int = 512, resolution: Duration = 100.milli) {
+class TickWheelExecutor(wheelSize: Int = 512, tick: Duration = 100.milli) {
   private[this] val logger = getLogger
 
   @volatile private var currentTick = 0
   @volatile private var alive = true
 
-  private val tickMilli = resolution.toMillis
+  private val tickMilli = tick.toMillis
   private val _tickInv = 1.0/tickMilli.toDouble
 
   private val clockFace: Array[Bucket] = {
