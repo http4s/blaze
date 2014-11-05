@@ -7,9 +7,6 @@ import java.nio.ByteBuffer
 import org.specs2.time.NoTimeConversions
 import scala.concurrent.{Future, Await}
 
-/**
- * Created by Bryce Anderson on 6/9/14.
- */
 abstract class TimeoutHelpers extends Specification with NoTimeConversions {
   
   def genDelayStage(timeout: Duration): TimeoutStageBase[ByteBuffer]
