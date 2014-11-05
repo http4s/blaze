@@ -75,7 +75,7 @@ object ApplicationBuild extends Build {
 //    javaOptions in run += "-Djavax.net.debug=all",    // SSL Debugging
 //    javaOptions in run += "-Dcom.sun.net.ssl.enableECC=false",
 //    javaOptions in run += "-Djsse.enableSNIExtension=false",
-    fork in run := true
+    fork in run := true,
 
       // Adds NPN to the boot classpath for Spdy support
 //    javaOptions in run <++= (managedClasspath in Runtime) map { attList =>
@@ -85,6 +85,7 @@ object ApplicationBuild extends Build {
 //      } yield { println(path); "-Xbootclasspath/p:" + path}
 //    }
 
+    resolvers += Resolver.sonatypeRepo("snapshots")
   )
 
   /* dependencies */
