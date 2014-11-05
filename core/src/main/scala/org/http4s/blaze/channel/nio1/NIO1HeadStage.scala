@@ -11,10 +11,6 @@ import org.http4s.blaze.pipeline.Command.EOF
 import org.http4s.blaze.util.BufferTools
 import org.log4s.getLogger
 
-/**
- * @author Bryce Anderson
- *         Created on 1/21/14
- */
 
 private[nio1] object NIO1HeadStage {
   sealed trait WriteResult
@@ -26,8 +22,6 @@ private[nio1] object NIO1HeadStage {
 
 private[nio1] abstract class NIO1HeadStage extends HeadStage[ByteBuffer] {
   import NIO1HeadStage._
-
-  private[this] val logger = getLogger
 
   protected def ch: SelectableChannel
 

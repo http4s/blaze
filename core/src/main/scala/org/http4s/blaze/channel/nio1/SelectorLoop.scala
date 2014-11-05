@@ -14,10 +14,6 @@ import org.http4s.blaze.pipeline._
 import org.http4s.blaze.channel.BufferPipelineBuilder
 import org.log4s.getLogger
 
-/**
- * @author Bryce Anderson
- *         Created on 1/20/14
- */
 
 final class SelectorLoop(selector: Selector, bufferSize: Int)
             extends Thread("SelectorLoop") { thisLoop =>

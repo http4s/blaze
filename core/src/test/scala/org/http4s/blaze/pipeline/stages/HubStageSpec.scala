@@ -13,7 +13,6 @@ import org.log4s.getLogger
 
 
 class HubStageSpec extends Specification {
-  private[this] val logger = getLogger
 
   // its important to use a 'this thread' Execution context for many of these tests to be deterministic and not
   // require doing some waiting which sometimes fails on the build server

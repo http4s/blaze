@@ -7,13 +7,9 @@ import org.http4s.blaze.channel._
 import scala.util.control.NonFatal
 import org.log4s.getLogger
 
-/**
- * @author Bryce Anderson
- *         Created on 1/19/14
- */
 abstract class NIOServerChannelFactory[Channel <: NetworkChannel](pool: SelectorLoopPool)
                 extends ServerChannelFactory[Channel] {
-  private[this] val logger = getLogger
+  protected val logger = getLogger
 
   def this(fixedPoolSize: Int, bufferSize: Int = 8*1024) = this(new FixedArraySelectorPool(fixedPoolSize, bufferSize))
 

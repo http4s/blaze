@@ -4,10 +4,7 @@ import org.eclipse.jetty.npn.NextProtoNego
 import org.log4s.getLogger
 import java.util
 
-/**
- * @author Bryce Anderson
- *         Created on 1/27/14
- */
+
 class ServerProvider extends NextProtoNego.ServerProvider {
   private[this] val logger = getLogger
 

@@ -12,10 +12,7 @@ import org.http4s.blaze.channel._
 import org.http4s.blaze.pipeline.Command.Connected
 import org.log4s.getLogger
 
-/**
- * @author Bryce Anderson
- *         Created on 1/4/14
- */
+
 class NIO2ServerChannelFactory(pipeFactory: BufferPipelineBuilder, group: AsynchronousChannelGroup = null)
         extends ServerChannelFactory[AsynchronousServerSocketChannel] {
   private[this] val logger = getLogger

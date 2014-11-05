@@ -23,7 +23,6 @@ import org.http4s.blaze.util.BufferTools
 import org.log4s.getLogger
 
 abstract class HttpServerStage(maxReqBody: Int) extends Http1ServerParser with TailStage[ByteBuffer] {
-  private[this] val logger = getLogger
   import HttpServerStage.RouteResult._
 
   private implicit def ec = trampoline

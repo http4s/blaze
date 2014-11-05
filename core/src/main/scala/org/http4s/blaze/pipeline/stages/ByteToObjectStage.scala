@@ -12,12 +12,7 @@ import scala.util.{Failure, Success}
 import scala.util.control.NonFatal
 
 
-/**
- * @author Bryce Anderson
- *         Created on 1/13/14
- */
 trait ByteToObjectStage[O] extends MidStage[ByteBuffer, O] {
-  private[this] val logger = getLogger
   import org.http4s.blaze.util.BufferTools._
 
   private var _decodeBuffer: ByteBuffer = null

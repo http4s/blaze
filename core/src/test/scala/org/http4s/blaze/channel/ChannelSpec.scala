@@ -9,10 +9,6 @@ import java.util.Date
 import java.util.concurrent.atomic.AtomicInteger
 
 
-/**
-* @author Bryce Anderson
-*         Created on 1/5/14
-*/
 class ChannelSpec extends Specification {
 
   class BasicServer(f: BufferPipelineBuilder) {

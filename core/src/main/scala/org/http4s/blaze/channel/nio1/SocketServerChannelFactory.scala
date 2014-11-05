@@ -11,13 +11,8 @@ import org.http4s.blaze.pipeline.Command.EOF
 import NIO1HeadStage._
 import org.log4s.getLogger
 
-/**
- * @author Bryce Anderson
- *         Created on 1/21/14
- */
 class SocketServerChannelFactory(pipeFactory: BufferPipelineBuilder, pool: SelectorLoopPool)
                 extends NIOServerChannelFactory[ServerSocketChannel](pool) {
-  private[this] val logger = getLogger
 
   import SocketServerChannelFactory.brokePipeMessages
 

@@ -32,7 +32,6 @@ object WebSocketServer {
 
 /** this stage can be seen as the "route" of the example. It handles requests and returns responses */
 class ExampleWebSocketHttpServerStage extends HttpServerStage(10*1024) {
-  private[this] val logger = getLogger
 
   def handleRequest(method: String, uri: String, headers: Seq[(String, String)], body: ByteBuffer): Future[Response] = {
     if (ServerHandshaker.isWebSocketRequest(headers)) {
@@ -47,7 +46,6 @@ class ExampleWebSocketHttpServerStage extends HttpServerStage(10*1024) {
 
 /** This represents the actual web socket interactions */
 class SocketStage extends WSStage {
-  private[this] val logger = getLogger
 
   def onMessage(msg: WebSocketFrame): Unit = msg match {
     case Text(msg, _) =>

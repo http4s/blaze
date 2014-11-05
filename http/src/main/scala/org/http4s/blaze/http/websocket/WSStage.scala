@@ -9,12 +9,8 @@ import scala.util.Failure
 import scala.util.Success
 import org.log4s.getLogger
 
-/**
- * @author Bryce Anderson
- *         Created on 1/18/14
- */
+
 trait WSStage extends TailStage[WebSocketFrame] {
-  private[this] val logger = getLogger
 
   def name: String = "WebSocket Stage"
 

@@ -16,7 +16,7 @@ import java.nio.channels.NotYetConnectedException
 
 
 abstract class HubStage[I, O, K](nodeBuilder: () => LeafBuilder[O], ec: ExecutionContext) extends TailStage[I] {
-  private[this] val logger = getLogger
+
   def name: String = "HubStage"
 
   sealed trait Node {

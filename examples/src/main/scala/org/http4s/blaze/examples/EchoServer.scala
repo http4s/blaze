@@ -13,11 +13,6 @@ import org.http4s.blaze.pipeline.Command.EOF
 import org.http4s.blaze.channel.nio2.NIO2ServerChannelFactory
 import org.log4s.getLogger
 
-/**
- * @author Bryce Anderson
- *         Created on 1/5/14
- */
-
 
 
 class EchoServer {
@@ -52,8 +47,8 @@ class EchoServer {
           // Write it, wait for conformation, and start again
           channelWrite(b).onSuccess{ case _ => stageStartup() }
 
-        case Failure(EOF) => logger.trace("Channel closed.")
-        case Failure(t) => logger.error("Channel read failed: " + t)
+        case Failure(EOF) => this.logger.trace("Channel closed.")
+        case Failure(t)   => this.logger.error("Channel read failed: " + t)
       }
     }
   }

@@ -8,13 +8,7 @@ import org.http4s.blaze.pipeline.Command.EOF
 import org.log4s.getLogger
 
 
-/**
- * Created by Bryce Anderson on 5/6/14.
- */
-
-
 class EchoStage extends TailStage[ByteBuffer] {
-  private[this] val logger = getLogger
 
   def name: String = "EchoStage"
 

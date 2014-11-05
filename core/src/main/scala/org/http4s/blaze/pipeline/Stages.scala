@@ -34,7 +34,7 @@ import java.util.concurrent.TimeoutException
  */
 
 sealed trait Stage {
-  private[this] val logger = getLogger
+  final protected val logger = getLogger
 
   def name: String
 
@@ -55,7 +55,6 @@ sealed trait Stage {
 }
 
 sealed trait Tail[I] extends Stage {
-  private[this] val logger = getLogger
   private[pipeline] var _prevStage: Head[I] = null
 
   final def channelRead(size: Int = -1, timeout: Duration = Duration.Inf): Future[I] = {
@@ -201,7 +200,6 @@ sealed trait Tail[I] extends Stage {
 }
 
 sealed trait Head[O] extends Stage {
-  private[this] val logger = getLogger
   private[pipeline] var _nextStage: Tail[O] = null
 
   def readRequest(size: Int): Future[O]

@@ -6,11 +6,6 @@ import scala.concurrent.ExecutionContext
 import scala.concurrent.duration._
 import org.log4s.getLogger
 
-/**
- * @author Bryce Anderson
- *         Created on 2/2/14
- *
- */
 
 
 /** Low resolution execution scheduler

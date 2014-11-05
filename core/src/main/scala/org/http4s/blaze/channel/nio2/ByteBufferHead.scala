@@ -19,7 +19,6 @@ import org.log4s.getLogger
 class ByteBufferHead(channel: AsynchronousSocketChannel,
                      val name: String = "ByteBufferHeadStage",
                      bufferSize: Int = 8*1024) extends HeadStage[ByteBuffer] {
-  private[this] val logger = getLogger
 
   private val buffer = ByteBuffer.allocate(bufferSize)
 

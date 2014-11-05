@@ -8,10 +8,6 @@ import scala.compat.Platform.EOL
 import scala.util.control.NonFatal
 import org.log4s.getLogger
 
-/**
- * @author Bryce Anderson
- *         Created on 1/23/14
- */
 
 
 abstract class ServerChannel extends Runnable with Closeable { self =>

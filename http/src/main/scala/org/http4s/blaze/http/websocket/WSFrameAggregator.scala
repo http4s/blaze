@@ -11,12 +11,8 @@ import scala.util.{Failure, Success}
 
 import java.net.ProtocolException
 
-/**
- * @author Bryce Anderson
- *         Created on 1/19/14
- */
+
 class WSFrameAggregator extends MidStage[WebSocketFrame, WebSocketFrame] {
-  private[this] val logger = getLogger
 
   def name: String = "WebSocket Frame Aggregator"
 

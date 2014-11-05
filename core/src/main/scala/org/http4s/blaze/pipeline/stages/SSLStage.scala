@@ -17,12 +17,7 @@ import org.log4s.getLogger
 import scala.annotation.tailrec
 
 
-/**
- * @author Bryce Anderson
- *         Created on 1/11/14
- */
 class SSLStage(engine: SSLEngine, maxSubmission: Int = -1) extends MidStage[ByteBuffer, ByteBuffer] {
-  private[this] val logger = getLogger
 
   import org.http4s.blaze.util.BufferTools._
 

@@ -6,13 +6,9 @@ import scala.annotation.switch
 import scala.util.control.NonFatal
 import org.log4s.getLogger
 
-/**
- * @author Bryce Anderson
- *         Created on 1/26/14
- */
+
 class Spdy3_1FrameCodec(val maxBufferSize: Int = -1)
       extends ByteToObjectStage[SpdyFrame] with SpdyDecoderMethods with SpdyEncoderMethods {
-  private[this] val logger = getLogger
 
   def name: String = "Spdy3.1 Frame Codec"
   

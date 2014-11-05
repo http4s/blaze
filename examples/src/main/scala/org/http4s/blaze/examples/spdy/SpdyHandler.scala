@@ -15,12 +15,8 @@ import scala.util.Failure
 import org.http4s.blaze.http.spdy.SynStreamFrame
 import org.log4s.getLogger
 
-/**
- * @author Bryce Anderson
- *         Created on 1/27/14
- */
+
 class SpdyHandler(eng: SSLEngine) extends TailStage[SpdyFrame] {
-  private[this] val logger = getLogger
 
   def name: String = "SpdyStage"
 
