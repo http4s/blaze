@@ -3,10 +3,7 @@ package pipeline
 
 import scala.util.control.NoStackTrace
 
-/**
- * @author Bryce Anderson
- *         Created on 1/4/14
- */
+
 object Command {
 
   trait InboundCommand

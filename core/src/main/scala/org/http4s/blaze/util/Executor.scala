@@ -5,12 +5,7 @@ import java.util
 import scala.util.control.NonFatal
 import org.log4s.getLogger
 
-/**
- * @author Bryce Anderson
- *         Created on 1/5/14
- *
- *         Essentially directly copied from the Play2 framework
- */
+
 object Execution {
   private[this] val logger = getLogger
 
