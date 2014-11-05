@@ -136,13 +136,11 @@ object ApplicationBuild extends Build {
           <id>bryce-anderson</id>
           <name>Bryce L. Anderson</name>
           <email>bryce.anderson22@gamil.com</email>
-          <!-- <url></url> -->
         </developer>
         <developer>
           <id>rossabaker</id>
           <name>Ross A. Baker</name>
-          <email>baker@alumni.indiana.edu</email>
-          <!-- <url></url> -->
+          <email>ross@rossabaker.com</email>
         </developer>
       </developers>
     )
