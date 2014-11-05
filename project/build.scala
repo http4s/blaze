@@ -10,28 +10,22 @@ object ApplicationBuild extends Build {
   lazy val blaze = project
                     .in(file("."))
                     .settings(buildSettings :+ dontPublish:_*)
-                    .aggregate(core, websockets, http, examples)
+                    .aggregate(core, http, examples)
 
   lazy val core = Project("blaze-core",
                       file("core"),
                       settings = buildSettings ++ dependencies)
 
-  lazy val websockets = Project("blaze-websockets",
-                      file("websockets"),
-                      settings = buildSettings ++ Seq(
-                        libraryDependencies += specs2 % "test"
-                      ))
-
-
   lazy val http = Project("blaze-http",
                     file("http"),
                     settings = buildSettings ++ dependencies ++ Seq(
+                      libraryDependencies += http4sWebsocket,
                       libraryDependencies ++= (scalaBinaryVersion.value match {
                         case "2.10" => Seq.empty
                         case "2.11" => Seq(scalaXml)
                       })
                     )
-                  ).dependsOn(core % "test->test;compile->compile", websockets)
+                  ).dependsOn(core % "test->test;compile->compile")
 
   lazy val examples = Project("blaze-examples",
                     file("examples"),
@@ -103,6 +97,8 @@ object ApplicationBuild extends Build {
   )
 
   lazy val specs2 =    "org.specs2"    %% "specs2"    % "2.4"
+
+  lazy val http4sWebsocket = "org.http4s" %% "http4s-websocket" % "0.1.0-SNAPSHOT"
 
   lazy val scalaloggingSlf4j   = "com.typesafe.scala-logging" %% "scala-logging-slf4j"   % "2.1.2"
   lazy val logbackClassic      = "ch.qos.logback" %  "logback-classic"    % "1.0.9"
