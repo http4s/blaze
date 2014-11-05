@@ -13,7 +13,6 @@ import org.http4s.blaze.pipeline.MidStage
 import org.http4s.blaze.pipeline.Command.EOF
 import org.http4s.blaze.util.Execution._
 import org.http4s.blaze.util.{BufferTools, ScratchBuffer}
-import org.log4s.getLogger
 import scala.annotation.tailrec
 
 

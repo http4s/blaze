@@ -23,6 +23,10 @@ import org.log4s.getLogger
   * @param tick duration between ticks
   */
 class TickWheelExecutor(wheelSize: Int = 512, tick: Duration = 100.milli) {
+
+  require(wheelSize > 0, "Need finite size number of ticks")
+  require(tick.isFinite() && tick.toNanos != 0, "tick duration must be finite")
+
   private[this] val logger = getLogger
 
   @volatile private var currentTick = 0
@@ -42,7 +46,7 @@ class TickWheelExecutor(wheelSize: Int = 512, tick: Duration = 100.milli) {
 
   private val thread = new Thread {
     override def run() {
-      cycle()
+      cycle(System.currentTimeMillis())
     }
   }
 
@@ -74,23 +78,27 @@ class TickWheelExecutor(wheelSize: Int = 512, tick: Duration = 100.milli) {
   }
 
   @tailrec
-  private def cycle(): Unit = {
-    val i = currentTick
+  private def cycle(lastTickTime: Long): Unit = {
     val time = System.currentTimeMillis()
+    val ticks = (((time - lastTickTime) * _tickInv) + 0.5).toInt % wheelSize
 
-    clockFace(i).prune(time) // Remove canceled and submit expired tasks from the current spoke
-    currentTick = (i + 1) % wheelSize
+    @tailrec
+    def go(ticks: Int): Unit = if (ticks > 0) {
+      clockFace(currentTick).prune(time) // Remove canceled and submit expired tasks from the current spoke
+      currentTick = (currentTick + 1) % wheelSize
+      go(ticks - 1)
+    }
 
-    clockFace(i).prune(time) // Remove canceled and submit expired tasks from the next spoke
+    go(ticks)
 
     if (alive) {
       // Make up for execution time, unlikely to be significant
       val left = tickMilli - (System.currentTimeMillis() - time)
       if (left > 0) Thread.sleep(left)
-      cycle()
+      cycle(time)
     }
     else {  // delete all our buckets so we don't hold any references
-      for { i <- 0 until wheelSize} clockFace(i) = null
+      for { i <- 0 until wheelSize } clockFace(i) = null
     }
   }
 
