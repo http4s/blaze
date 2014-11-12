@@ -97,20 +97,17 @@ object ApplicationBuild extends Build {
     libraryDependencies += npn_boot
   )
 
-  lazy val specs2 =    "org.specs2"    %% "specs2"    % "2.4"
-
-  lazy val http4sWebsocket = "org.http4s" %% "http4s-websocket" % "0.1.0-SNAPSHOT"
-
-  lazy val scalaloggingSlf4j   = "com.typesafe.scala-logging" %% "scala-logging-slf4j"   % "2.1.2"
-  lazy val logbackClassic      = "ch.qos.logback" %  "logback-classic"    % "1.0.9"
-
-  lazy val scalaXml = "org.scala-lang.modules" %% "scala-xml" % "1.0.2"
+  lazy val specs2              = "org.specs2"                 %% "specs2"              % "2.4"
+  lazy val http4sWebsocket     = "org.http4s"                 %% "http4s-websocket"    % "0.1.0"
+  lazy val scalaloggingSlf4j   = "com.typesafe.scala-logging" %% "scala-logging-slf4j" % "2.1.2"
+  lazy val logbackClassic      = "ch.qos.logback"             %  "logback-classic"     % "1.0.9"
+  lazy val scalaXml = "org.scala-lang.modules"                %% "scala-xml"           % "1.0.2"
 
   // Needed for Spdy Support. Perhaps it should be a sub-project?
   // Interesting note: Http2.0 will use the TSLALPN extension which, unfortunately,
   // is also not implemented in java SSL yet.
-  lazy val npn_api             = "org.eclipse.jetty.npn"     % "npn-api"  % npn_version
-  lazy val npn_boot            = "org.mortbay.jetty.npn"     % "npn-boot" % npn_version
+  lazy val npn_api             = "org.eclipse.jetty.npn"     % "npn-api"               % npn_version
+  lazy val npn_boot            = "org.mortbay.jetty.npn"     % "npn-boot"              % npn_version
 
   lazy val npn_version = "8.1.2.v20120308"
 
