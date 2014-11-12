@@ -29,7 +29,6 @@ class TickWheelExecutor(wheelSize: Int = 512, tick: Duration = 100.milli) {
 
   private[this] val logger = getLogger
 
-  @volatile private var currentTick = 0
   @volatile private var alive = true
 
   private val tickMilli = tick.toMillis
@@ -66,8 +65,11 @@ class TickWheelExecutor(wheelSize: Int = 512, tick: Duration = 100.milli) {
   def schedule(r: Runnable, ec: ExecutionContext, timeout: Duration): Cancellable = {
     if (!timeout.isFinite()) sys.error(s"Cannot submit infinite duration delays!")
     else if (alive) {
-      val exp = timeout.toMillis
-      if (exp > 0) getBucket(exp).add(r, ec, exp + System.currentTimeMillis())
+      val milidur = timeout.toMillis
+      if (milidur > 0) {
+        val expires = milidur + System.currentTimeMillis()
+        getBucket(expires).add(r, ec, expires)
+      }
       else {  // we can submit the task right now! Not sure why you would want to do this...
         try ec.execute(r)
         catch { case NonFatal(t) => onNonFatal(t) }
@@ -80,16 +82,16 @@ class TickWheelExecutor(wheelSize: Int = 512, tick: Duration = 100.milli) {
   @tailrec
   private def cycle(lastTickTime: Long): Unit = {
     val time = System.currentTimeMillis()
-    val ticks = (((time - lastTickTime) * _tickInv) + 0.5).toInt % wheelSize
+    val lastTick = (lastTickTime * _tickInv).toLong % wheelSize
+    val ticks = ((time - lastTickTime) * _tickInv + 0.5).toLong % wheelSize
 
     @tailrec
-    def go(ticks: Int): Unit = if (ticks > 0) {
-      clockFace(currentTick).prune(time) // Remove canceled and submit expired tasks from the current spoke
-      currentTick = (currentTick + 1) % wheelSize
-      go(ticks - 1)
+    def go(i: Long): Unit = if (i <= ticks) { // will do at least one tick
+      val ii = ((lastTick + i) % wheelSize).toInt
+      clockFace(ii).prune(time) // Remove canceled and submit expired tasks from the current spoke
+      go(i + 1)
     }
-
-    go(ticks)
+    go(0)
 
     if (alive) {
       // Make up for execution time, unlikely to be significant
@@ -106,8 +108,8 @@ class TickWheelExecutor(wheelSize: Int = 512, tick: Duration = 100.milli) {
     logger.error(t)("Non-Fatal Exception caught while executing scheduled task")
   }
   
-  private def getBucket(duration: Long): Bucket = {
-    val i = ((duration*_tickInv).toLong + currentTick) % wheelSize
+  private def getBucket(expiration: Long): Bucket = {
+    val i = ((expiration*_tickInv).toLong) % wheelSize
     clockFace(i.toInt)
   }
 
