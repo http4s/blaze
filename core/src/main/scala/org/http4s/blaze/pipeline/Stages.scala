@@ -7,14 +7,10 @@ import Command._
 import org.http4s.blaze.util.Execution.directec
 import scala.concurrent.duration.Duration
 import org.http4s.blaze.util.Execution
+import org.log4s.getLogger
 import java.util.concurrent.TimeoutException
-import com.typesafe.scalalogging.slf4j.StrictLogging
 
-/*
- * @author Bryce Anderson
- *         Created on 1/4/14
- *
- *         Stages are formed from the three fundamental types. They essentially form a
+/*         Stages are formed from the three fundamental types. They essentially form a
  *         double linked list. Commands can be sent in both directions while data is only
  *         requested from the end of the list, or Tail sections and returned as Futures
  *         which can get transformed down the stages.
@@ -33,7 +29,8 @@ import com.typesafe.scalalogging.slf4j.StrictLogging
  *
  */
 
-sealed trait Stage extends StrictLogging {
+sealed trait Stage {
+  final protected val logger = getLogger
 
   def name: String
 
@@ -54,7 +51,6 @@ sealed trait Stage extends StrictLogging {
 }
 
 sealed trait Tail[I] extends Stage {
-  
   private[pipeline] var _prevStage: Head[I] = null
 
   final def channelRead(size: Int = -1, timeout: Duration = Duration.Inf): Future[I] = {
@@ -120,7 +116,7 @@ sealed trait Tail[I] extends Stage {
       catch { case t: Throwable => inboundCommand(Error(t)) }
     } else {
       val e = new Exception("cannot send outbound command on disconnected stage")
-      logger.error("", e)
+      logger.error(e)("")
       throw e
     }
 
@@ -200,7 +196,6 @@ sealed trait Tail[I] extends Stage {
 }
 
 sealed trait Head[O] extends Stage {
-
   private[pipeline] var _nextStage: Tail[O] = null
 
   def readRequest(size: Int): Future[O]
@@ -225,7 +220,7 @@ sealed trait Head[O] extends Stage {
       catch { case t: Throwable => outboundCommand(Error(t)) }
     } else {
       val e = new Exception("cannot send inbound command on disconnected stage")
-      logger.error("", e)
+      logger.error(e)("")
       throw e
     }
   }
@@ -249,7 +244,7 @@ sealed trait Head[O] extends Stage {
       stage
     } else {
       val e = new Exception("cannot send outbound command on disconnected stage")
-      logger.error("", e)
+      logger.error(e)("")
       throw e
     }
   }

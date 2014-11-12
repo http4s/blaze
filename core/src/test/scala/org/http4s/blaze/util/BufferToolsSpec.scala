@@ -3,11 +3,6 @@ package org.http4s.blaze.util
 import org.specs2.mutable._
 import java.nio.ByteBuffer
 
-
-/**
- * @author Bryce Anderson
- *         Created on 1/28/14
- */
 class BufferToolsSpec extends Specification {
 
   def b(i: Int = 1) = {

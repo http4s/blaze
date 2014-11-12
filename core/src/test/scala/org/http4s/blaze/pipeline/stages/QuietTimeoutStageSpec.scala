@@ -6,9 +6,6 @@ import org.http4s.blaze.pipeline.Command
 
 import scala.concurrent.duration._
 
-/**
- * Created by Bryce Anderson on 6/23/14.
- */
 class QuietTimeoutStageSpec extends TimeoutHelpers {
 
   override def genDelayStage(timeout: Duration): TimeoutStageBase[ByteBuffer] = new QuietTimeoutStage[ByteBuffer](timeout)

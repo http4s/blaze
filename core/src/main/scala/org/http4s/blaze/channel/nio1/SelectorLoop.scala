@@ -1,8 +1,6 @@
 package org.http4s.blaze.channel.nio1
 
 
-import com.typesafe.scalalogging.slf4j.StrictLogging
-
 import scala.annotation.tailrec
 import scala.util.control.NonFatal
 
@@ -14,14 +12,12 @@ import java.util.concurrent.RejectedExecutionException
 
 import org.http4s.blaze.pipeline._
 import org.http4s.blaze.channel.BufferPipelineBuilder
+import org.log4s.getLogger
 
-/**
- * @author Bryce Anderson
- *         Created on 1/20/14
- */
 
 final class SelectorLoop(selector: Selector, bufferSize: Int)
-            extends Thread("SelectorLoop") with StrictLogging { thisLoop =>
+            extends Thread("SelectorLoop") { thisLoop =>
+  private[this] val logger = getLogger
 
   private class Node(val runnable: Runnable) extends AtomicReference[Node]
 
@@ -57,7 +53,7 @@ final class SelectorLoop(selector: Selector, bufferSize: Int)
     @tailrec
     def go(n: Node): Unit = {
       try n.runnable.run()
-      catch { case t: Exception => logger.error("Caught exception in queued task", t) }
+      catch { case t: Exception => logger.error(t)("Caught exception in queued task") }
       val next = n.get()
       if (next eq null) {
         // If we are not the last cell, we will spin until the cons resolves and continue
@@ -115,10 +111,10 @@ final class SelectorLoop(selector: Selector, bufferSize: Int)
           } catch {
             case e: CancelledKeyException => /* NOOP */
             case t: Throwable =>
-              logger.error(
+              logger.error(t) {
                 if (t.isInstanceOf[IOException]) "IOException while performing channel operations. Closing channel."
-                else "Error performing channel operations. Closing channel.",
-                t)
+                else "Error performing channel operations. Closing channel."
+              }
 
               try {
                 val head = k.attachment().asInstanceOf[NIO1HeadStage]
@@ -126,7 +122,7 @@ final class SelectorLoop(selector: Selector, bufferSize: Int)
                 head.inboundCommand(Command.Error(t))
               } catch {
                 case NonFatal(_) => /* NOOP */
-                case t: Throwable => logger.error("Fatal error shutting down pipeline", t)
+                case t: Throwable => logger.error(t)("Fatal error shutting down pipeline")
               }
               k.attach(null)
               k.cancel()
@@ -135,14 +131,14 @@ final class SelectorLoop(selector: Selector, bufferSize: Int)
       }
 
     } catch {
-      case e: IOException => logger.error("IOException in SelectorLoop while acquiring selector", e)
+      case e: IOException => logger.error(e)("IOException in SelectorLoop while acquiring selector")
       case e: ClosedSelectorException =>
         _isClosed = true
-        logger.error("Selector unexpectedly closed", e)
+        logger.error(e)("Selector unexpectedly closed")
         return  // If the selector is closed, no reason to continue the thread.
 
       case e: Throwable =>
-        logger.error("Unhandled exception in selector loop", e)
+        logger.error(e)("Unhandled exception in selector loop")
         close()
         return
     }
@@ -170,7 +166,7 @@ final class SelectorLoop(selector: Selector, bufferSize: Int)
       }
 
       selector.close()
-    } catch { case t: Throwable => logger.warn("Killing selector resulted in an exception", t) }
+    } catch { case t: Throwable => logger.warn(t)("Killing selector resulted in an exception") }
   }
 
   def wakeup(): Unit = selector.wakeup()
@@ -190,7 +186,7 @@ final class SelectorLoop(selector: Selector, bufferSize: Int)
 
           head.inboundCommand(Command.Connected)
           logger.trace("Started channel.")
-        } catch { case e: Throwable => logger.error("Caught error during channel init.", e) }
+        } catch { case e: Throwable => logger.error(e)("Caught error during channel init.") }
       }
     })
   }

@@ -91,7 +91,7 @@ object ApplicationBuild extends Build {
   /* dependencies */
   lazy val dependencies = Seq(
     libraryDependencies += specs2 % "test",
-    libraryDependencies += scalaloggingSlf4j,
+    libraryDependencies += log4s,
     libraryDependencies += logbackClassic,
     libraryDependencies += npn_api,
     libraryDependencies += npn_boot
@@ -102,6 +102,8 @@ object ApplicationBuild extends Build {
   lazy val scalaloggingSlf4j   = "com.typesafe.scala-logging" %% "scala-logging-slf4j" % "2.1.2"
   lazy val logbackClassic      = "ch.qos.logback"             %  "logback-classic"     % "1.0.9"
   lazy val scalaXml = "org.scala-lang.modules"                %% "scala-xml"           % "1.0.2"
+  lazy val log4s               = "org.log4s"                  %% "log4s"               % "1.1.2"
+
 
   // Needed for Spdy Support. Perhaps it should be a sub-project?
   // Interesting note: Http2.0 will use the TSLALPN extension which, unfortunately,
@@ -136,13 +138,11 @@ object ApplicationBuild extends Build {
           <id>bryce-anderson</id>
           <name>Bryce L. Anderson</name>
           <email>bryce.anderson22@gamil.com</email>
-          <!-- <url></url> -->
         </developer>
         <developer>
           <id>rossabaker</id>
           <name>Ross A. Baker</name>
-          <email>baker@alumni.indiana.edu</email>
-          <!-- <url></url> -->
+          <email>ross@rossabaker.com</email>
         </developer>
       </developers>
     )

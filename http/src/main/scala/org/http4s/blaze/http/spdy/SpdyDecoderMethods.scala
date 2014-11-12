@@ -1,14 +1,11 @@
 package org.http4s.blaze.http.spdy
 
 import java.nio.ByteBuffer
+import org.log4s.Logger
 
-import com.typesafe.scalalogging.Logging
 
-/**
- * @author Bryce Anderson
- *         Created on 1/27/14
- */
-private[spdy] trait SpdyDecoderMethods { self: Logging =>
+private[spdy] trait SpdyDecoderMethods {
+  protected val logger: Logger
 
   protected def inflater: SpdyHeaderDecoder
 

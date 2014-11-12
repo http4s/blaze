@@ -3,6 +3,7 @@ package org.http4s.blaze.pipeline.stages
 import org.http4s.blaze.pipeline.MidStage
 import org.http4s.blaze.util.Execution.trampoline
 import org.http4s.blaze.pipeline.Command.Error
+import org.log4s.getLogger
 
 import java.nio.{BufferOverflowException, ByteBuffer}
 
@@ -11,12 +12,7 @@ import scala.util.{Failure, Success}
 import scala.util.control.NonFatal
 
 
-/**
- * @author Bryce Anderson
- *         Created on 1/13/14
- */
 trait ByteToObjectStage[O] extends MidStage[ByteBuffer, O] {
-
   import org.http4s.blaze.util.BufferTools._
 
   private var _decodeBuffer: ByteBuffer = null
@@ -47,7 +43,7 @@ trait ByteToObjectStage[O] extends MidStage[ByteBuffer, O] {
   override def writeRequest(data: Seq[O]): Future[Unit] = {
     try channelWrite(data.flatMap(messageToBuffer))
     catch { case NonFatal(t) =>
-      logger.error("Encoding failure", t)
+      logger.error(t)("Encoding failure")
       Future.failed(t)
     }
   }
@@ -55,7 +51,7 @@ trait ByteToObjectStage[O] extends MidStage[ByteBuffer, O] {
   def writeRequest(data: O): Future[Unit] = {
     try channelWrite(messageToBuffer(data))
     catch { case NonFatal(t) =>
-      logger.error("Encoding failure", t)
+      logger.error(t)("Encoding failure")
       Future.failed(t)
     }
   }
@@ -99,7 +95,7 @@ trait ByteToObjectStage[O] extends MidStage[ByteBuffer, O] {
         }
       }
       catch { case NonFatal(t) =>
-        logger.error("Error during decode", t)
+        logger.error(t)("Error during decode")
         p.tryFailure(t)
       }
 

@@ -14,10 +14,6 @@ import org.eclipse.jetty.npn.NextProtoNego
 import org.http4s.blaze.http.spdy.Spdy3_1FrameCodec
 import org.http4s.blaze.pipeline.TrunkBuilder
 
-/**
- * @author Bryce Anderson
- *         Created on 1/27/14
- */
 class SpdyServer(port: Int) {
   val sslContext: SSLContext = {
     val ksStream = BogusKeystore.asInputStream()

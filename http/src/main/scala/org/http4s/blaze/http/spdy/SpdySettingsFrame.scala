@@ -2,10 +2,6 @@ package org.http4s.blaze.http.spdy
 
 import java.nio.{BufferOverflowException, ByteBuffer}
 
-/**
- * @author Bryce Anderson
- *         Created on 1/27/14
- */
 
 object SettingFlag {
 

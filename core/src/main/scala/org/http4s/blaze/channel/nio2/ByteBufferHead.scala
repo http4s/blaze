@@ -14,7 +14,7 @@ import java.io.IOException
 import java.util.Date
 import java.util.concurrent.TimeUnit
 import java.lang.{Long => JLong}
-
+import org.log4s.getLogger
 
 class ByteBufferHead(channel: AsynchronousSocketChannel,
                      val name: String = "ByteBufferHeadStage",
@@ -63,7 +63,7 @@ class ByteBufferHead(channel: AsynchronousSocketChannel,
       channel.write[Null](srcs, 0, srcs.length, -1L, TimeUnit.MILLISECONDS, null: Null, new CompletionHandler[JLong, Null] {
         def failed(exc: Throwable, attachment: Null) {
           if (exc.isInstanceOf[ClosedChannelException]) logger.trace("Channel closed, dropping packet")
-          else logger.error("Failure writing to channel", exc)
+          else logger.error(exc)("Failure writing to channel")
           f.tryFailure(exc)
         }
 
@@ -110,7 +110,7 @@ class ByteBufferHead(channel: AsynchronousSocketChannel,
 
   override def outboundCommand(cmd: OutboundCommand): Unit = cmd match {
     case Disconnect         => closeChannel()
-    case Error(e)         => logger.error("ByteBufferHead received error command", e); channelError(e)
+    case Error(e)         => logger.error(e)("ByteBufferHead received error command"); channelError(e)
     case cmd              => // NOOP
   }
 
@@ -123,12 +123,12 @@ class ByteBufferHead(channel: AsynchronousSocketChannel,
       EOF
 
     case e: IOException =>
-      logger.trace("Channel IO Error. Closing", e)
+      logger.trace(e)("Channel IO Error. Closing")
       closeChannel()
       EOF
 
     case e: ShutdownChannelGroupException =>
-      logger.trace("Channel Group was shutdown", e)
+      logger.trace(e)("Channel Group was shutdown")
       closeChannel()
       EOF
 
@@ -138,7 +138,7 @@ class ByteBufferHead(channel: AsynchronousSocketChannel,
   }
 
   private def channelError(e: Throwable) {
-    logger.error("Unexpected fatal error", e)
+    logger.error(e)("Unexpected fatal error")
     sendInboundCommand(Error(e))
     closeChannel()
   }

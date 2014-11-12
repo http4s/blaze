@@ -2,10 +2,6 @@ package org.http4s.blaze.http.http_parser
 
 import java.nio.ByteBuffer
 
-/**
- * @author Bryce Anderson
- *         Created on 2/8/14
- */
 
 class BenchParser(maxReq: Int = 1034, maxHeader: Int = 1024) extends Http1ServerParser(maxReq, maxHeader, 1) {
 

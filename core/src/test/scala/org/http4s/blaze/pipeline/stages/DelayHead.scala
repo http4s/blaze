@@ -1,17 +1,13 @@
 package org.http4s.blaze.pipeline.stages
 
+import java.util.concurrent.TimeUnit
+
 import scala.concurrent.duration.Duration
 import org.http4s.blaze.pipeline.{Command, HeadStage}
 import scala.concurrent.{Promise, Future}
-import org.http4s.blaze.util.Execution
-import java.util.concurrent.TimeUnit
+import org.http4s.blaze.util.TimingTools
 import scala.collection.mutable
-import java.nio.channels.ClosedChannelException
 
-/**
- * @author Bryce Anderson
- *         Created on 2/2/14
- */
 abstract class DelayHead[I](delay: Duration) extends HeadStage[I] {
 
   def next(): I
@@ -33,12 +29,12 @@ abstract class DelayHead[I](delay: Duration) extends HeadStage[I] {
 
     rememberPromise(p)
 
-    Execution.scheduler.schedule(new Runnable {
+    TimingTools.highres.schedule(new Runnable {
       def run() {
         p.trySuccess(next())
         unqueue(p)
       }
-    }, delay)
+    }, delay.toNanos, TimeUnit.NANOSECONDS)
     p.future
   }
 
@@ -46,12 +42,12 @@ abstract class DelayHead[I](delay: Duration) extends HeadStage[I] {
 
   override def writeRequest(data: I): Future[Unit] = {
     val p = Promise[Unit]
-    Execution.scheduler.schedule(new Runnable {
+    TimingTools.highres.schedule(new Runnable {
       def run() {
         p.trySuccess(())
         unqueue(p)
       }
-    }, delay)
+    }, delay.toNanos, TimeUnit.NANOSECONDS)
 
     rememberPromise(p)
     p.future

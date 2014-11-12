@@ -5,10 +5,7 @@ import java.nio.charset.StandardCharsets.US_ASCII
 import org.http4s.blaze.util.ScratchBuffer
 import scala.annotation.tailrec
 
-/**
- * @author Bryce Anderson
- *         Created on 1/26/14
- */
+
 package object spdy {
 
   private[spdy] object Flags {

@@ -4,11 +4,9 @@ import org.http4s.blaze.pipeline.stages.ByteToObjectStage
 import java.nio. ByteBuffer
 import scala.annotation.switch
 import scala.util.control.NonFatal
+import org.log4s.getLogger
 
-/**
- * @author Bryce Anderson
- *         Created on 1/26/14
- */
+
 class Spdy3_1FrameCodec(val maxBufferSize: Int = -1)
       extends ByteToObjectStage[SpdyFrame] with SpdyDecoderMethods with SpdyEncoderMethods {
 
@@ -77,7 +75,7 @@ class Spdy3_1FrameCodec(val maxBufferSize: Int = -1)
       Some(frame)
     } catch {
       case t: ProtocolException =>
-        logger.error(s"Protocol Error during decoding of frame type $frametype", t)
+        logger.error(t)(s"Protocol Error during decoding of frame type $frametype")
         val p = in.position()
         in.position(0)
         dumpFrame(in)
@@ -85,7 +83,7 @@ class Spdy3_1FrameCodec(val maxBufferSize: Int = -1)
         throw t
 
       case NonFatal(t) =>
-        logger.error(s"Error decoding frame type $frametype", t)
+        logger.error(t)(s"Error decoding frame type $frametype")
         val p = in.position()
         in.position(0)
         dumpFrame(in)

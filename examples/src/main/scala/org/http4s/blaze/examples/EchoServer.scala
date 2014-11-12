@@ -11,16 +11,12 @@ import java.util.Date
 import scala.concurrent.ExecutionContext.Implicits.global
 import org.http4s.blaze.pipeline.Command.EOF
 import org.http4s.blaze.channel.nio2.NIO2ServerChannelFactory
-import com.typesafe.scalalogging.slf4j.StrictLogging
-
-/**
- * @author Bryce Anderson
- *         Created on 1/5/14
- */
+import org.log4s.getLogger
 
 
 
-class EchoServer extends StrictLogging {
+class EchoServer {
+  private[this] val logger = getLogger
 
   def prepare(address: InetSocketAddress): ServerChannel = {
     val f: BufferPipelineBuilder = _ => new EchoStage
@@ -51,8 +47,8 @@ class EchoServer extends StrictLogging {
           // Write it, wait for conformation, and start again
           channelWrite(b).onSuccess{ case _ => stageStartup() }
 
-        case Failure(EOF) => logger.trace("Channel closed.")
-        case Failure(t) => logger.error("Channel read failed: " + t)
+        case Failure(EOF) => this.logger.trace("Channel closed.")
+        case Failure(t)   => this.logger.error("Channel read failed: " + t)
       }
     }
   }

@@ -13,12 +13,11 @@ import scala.util.Success
 import org.http4s.blaze.http.spdy.DataFrame
 import scala.util.Failure
 import org.http4s.blaze.http.spdy.SynStreamFrame
+import org.log4s.getLogger
 
-/**
- * @author Bryce Anderson
- *         Created on 1/27/14
- */
+
 class SpdyHandler(eng: SSLEngine) extends TailStage[SpdyFrame] {
+
   def name: String = "SpdyStage"
 
   override protected def stageStartup(): Unit = {
@@ -55,7 +54,7 @@ class SpdyHandler(eng: SSLEngine) extends TailStage[SpdyFrame] {
         stageShutdown()
 
       case Failure(t) =>
-        logger.error("Stream failure. Shutting down", t)
+        logger.error(t)("Stream failure. Shutting down")
         sendOutboundCommand(Command.Disconnect)
         stageShutdown()
     }

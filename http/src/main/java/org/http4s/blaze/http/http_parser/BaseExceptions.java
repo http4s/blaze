@@ -1,10 +1,5 @@
 package org.http4s.blaze.http.http_parser;
 
-
-/**
- * @author Bryce Anderson
- *         Created on 1/2/14
- */
 public class BaseExceptions {
 
     public static abstract class ParserException extends Exception {

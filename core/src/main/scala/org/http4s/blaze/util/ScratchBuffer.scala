@@ -1,14 +1,11 @@
 package org.http4s.blaze.util
 
 import java.nio.ByteBuffer
+import org.log4s.getLogger
 
-import com.typesafe.scalalogging.slf4j.StrictLogging
 
-/**
- * @author Bryce Anderson
- *         Created on 1/26/14
- */
-object ScratchBuffer extends StrictLogging {
+object ScratchBuffer {
+  private[this] val logger = getLogger
   val localBuffer = new ThreadLocal[ByteBuffer]
 
   def getScratchBuffer(size: Int): ByteBuffer = {

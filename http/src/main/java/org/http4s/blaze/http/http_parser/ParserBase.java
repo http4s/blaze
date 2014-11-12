@@ -5,10 +5,6 @@ import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import org.http4s.blaze.http.http_parser.BaseExceptions.BadRequest;
 
-/**
- * @author Bryce Anderson
- *         Created on 2/4/14
- */
 public abstract class ParserBase {
 
     // Methods for managing the internal buffer

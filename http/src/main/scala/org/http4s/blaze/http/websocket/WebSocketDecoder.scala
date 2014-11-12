@@ -3,10 +3,9 @@ package org.http4s.blaze.http.websocket
 import org.http4s.blaze.pipeline.stages.ByteToObjectStage
 import java.nio.ByteBuffer
 
-import org.http4s.websocket.WebsocketBits.WebSocketFrame
 import org.http4s.websocket.FrameTranscoder
+import org.http4s.websocket.WebsocketBits.WebSocketFrame
 import org.http4s.websocket.FrameTranscoder.TranscodeError
-
 
 
 class WebSocketDecoder(isClient: Boolean, val maxBufferSize: Int = 0)

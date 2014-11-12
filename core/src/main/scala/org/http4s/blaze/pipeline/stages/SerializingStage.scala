@@ -7,10 +7,6 @@ import scala.concurrent.{Promise, Future}
 import org.http4s.blaze.util.Execution.directec
 import org.http4s.blaze.pipeline.stages.addons.Serializer
 
-/**
- * @author Bryce Anderson
- *         Created on 1/7/14
- */
 final class SerializingStage[I](val name: String = "BufferHeadStage",
                               override val maxReadQueue: Int = 0,
                               override val maxWriteQueue: Int = 0)

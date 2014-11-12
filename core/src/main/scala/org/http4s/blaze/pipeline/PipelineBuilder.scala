@@ -1,11 +1,6 @@
 package org.http4s.blaze.pipeline
 
 
-/**
- * @author Bryce Anderson
- *         Created on 1/4/14
- */
-
 
 /** By requiring a LeafBuilder, you are ensuring that the pipeline is capped
   * with a TailStage as the only way to get a LeafBuilder if by capping with a

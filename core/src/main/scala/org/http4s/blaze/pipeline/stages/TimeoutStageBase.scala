@@ -8,9 +8,6 @@ import org.http4s.blaze.util.{Cancellable, TickWheelExecutor}
 import org.http4s.blaze.util.Execution.scheduler
 import java.util.concurrent.atomic.AtomicReference
 
-/**
- * Created by Bryce Anderson on 6/8/14.
- */
 abstract class TimeoutStageBase[T](timeout: Duration, exec: TickWheelExecutor) extends MidStage[T, T] { stage =>
 
   // Constructor

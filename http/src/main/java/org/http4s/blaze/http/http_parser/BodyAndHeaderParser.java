@@ -7,11 +7,7 @@ import org.http4s.blaze.http.http_parser.BaseExceptions.BadRequest;
 import org.http4s.blaze.http.http_parser.BaseExceptions.InvalidState;
 import org.http4s.blaze.util.BufferTools;
 
-/**
- * @author Bryce Anderson
- *         Created on 2/4/14
- *
- *         This HTTP/1.0 HTTP/1.1 parser is strongly inspired by the awsome Jetty parser
+/**        This HTTP/1.0 HTTP/1.1 parser is strongly inspired by the awesome Jetty parser
  *         http://www.eclipse.org/jetty/
  */
 public abstract class BodyAndHeaderParser extends ParserBase {

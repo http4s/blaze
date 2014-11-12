@@ -4,9 +4,7 @@ import java.nio.ByteBuffer
 import org.http4s.blaze.pipeline.Command
 import scala.concurrent.duration._
 
-/**
- * Created by Bryce Anderson on 6/23/14.
- */
+
 class CommandTimeoutStageSpec extends TimeoutHelpers {
   override def genDelayStage(timeout: Duration) = new CommandTimeoutStage[ByteBuffer](timeout)
 

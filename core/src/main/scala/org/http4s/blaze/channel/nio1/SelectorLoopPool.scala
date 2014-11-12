@@ -3,10 +3,7 @@ package org.http4s.blaze.channel.nio1
 import java.nio.channels.Selector
 import java.util.concurrent.atomic.AtomicInteger
 
-/**
- * @author Bryce Anderson
- *         Created on 1/23/14
- */
+
 trait SelectorLoopPool {
 
   def nextLoop(): SelectorLoop

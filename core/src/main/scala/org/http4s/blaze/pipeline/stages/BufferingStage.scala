@@ -7,10 +7,6 @@ import scala.concurrent.Future
 import scala.collection.immutable.VectorBuilder
 import org.http4s.blaze.pipeline.Command.OutboundCommand
 
-/**
- * @author Bryce Anderson
- *         Created on 1/7/14
- */
 abstract class BufferingStage[T](bufferSize: Int, val name: String = "BufferingStage")
                                                                extends MidStage[T, T] {
 

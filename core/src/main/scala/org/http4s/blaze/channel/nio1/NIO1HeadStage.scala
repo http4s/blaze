@@ -9,11 +9,8 @@ import scala.concurrent.{Future, Promise}
 import scala.util.control.NonFatal
 import org.http4s.blaze.pipeline.Command.EOF
 import org.http4s.blaze.util.BufferTools
+import org.log4s.getLogger
 
-/**
- * @author Bryce Anderson
- *         Created on 1/21/14
- */
 
 private[nio1] object NIO1HeadStage {
   sealed trait WriteResult
@@ -80,11 +77,11 @@ private[nio1] abstract class NIO1HeadStage extends HeadStage[ByteBuffer] {
     case ChannelClosed => writeFailAndClose(EOF)
 
     case WriteError(NonFatal(t)) =>
-      logger.warn("Error performing write", t)
+      logger.warn(t)("Error performing write")
       writeFailAndClose(t)
 
     case WriteError(t) =>
-      logger.error("Serious error while performing write. Shutting down connector", t)
+      logger.error(t)("Serious error while performing write. Shutting down connector")
       writeFailAndClose(t)
   }
 
@@ -131,7 +128,7 @@ private[nio1] abstract class NIO1HeadStage extends HeadStage[ByteBuffer] {
     if (w != null) w.tryFailure(t)
 
     try closeChannel()
-    catch { case NonFatal(t) => logger.warn("Caught exception while closing channel", t) }
+    catch { case NonFatal(t) => logger.warn(t)("Caught exception while closing channel") }
   }
 
   ///////////////////////////////// Channel Ops ////////////////////////////////////////

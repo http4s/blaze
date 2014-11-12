@@ -6,10 +6,6 @@ import scala.annotation.tailrec
 import java.nio.charset.StandardCharsets._
 import java.nio.{BufferUnderflowException, ByteBuffer}
 
-/**
- * @author Bryce Anderson
- *         Created on 1/26/14
- */
 class SpdyHeaderDecoder {
 
   private val inflater = new java.util.zip.Inflater()

@@ -2,10 +2,6 @@ package org.http4s.blaze.http.http_parser;
 
 import org.http4s.blaze.http.http_parser.BaseExceptions.BadRequest;
 
-/**
- * @author Bryce Anderson
- *         Created on 1/2/14
- */
 
 // Taken directly from Jetty
 

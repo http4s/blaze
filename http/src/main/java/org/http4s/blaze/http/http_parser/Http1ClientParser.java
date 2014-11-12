@@ -3,10 +3,6 @@ package org.http4s.blaze.http.http_parser;
 import java.nio.ByteBuffer;
 import org.http4s.blaze.http.http_parser.BaseExceptions.*;
 
-/**
- * @author Bryce Anderson
- *         Created on 2/4/14
- */
 public abstract class Http1ClientParser extends BodyAndHeaderParser {
 
     public Http1ClientParser(int maxRequestLineSize, int maxHeaderLength, int initialBufferSize, int maxChunkSize) {

@@ -2,10 +2,6 @@ package org.http4s.blaze.util
 
 import java.nio.ByteBuffer
 
-/**
- * @author Bryce Anderson
- *         Created on 1/28/14
- */
 object BufferTools {
 
   val emptyBuffer: ByteBuffer = ByteBuffer.allocate(0)

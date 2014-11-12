@@ -9,7 +9,6 @@ import java.nio.charset.{StandardCharsets, Charset}
 
 import scala.xml.Node
 
-
 package object http {
 
   type Headers = Seq[(String, String)]

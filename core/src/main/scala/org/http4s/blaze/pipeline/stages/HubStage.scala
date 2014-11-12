@@ -1,146 +1,126 @@
-package org.http4s.blaze.pipeline.stages
+package org.http4s.blaze
+package pipeline
+package stages
+
+import java.util.concurrent.ConcurrentHashMap
+
+import pipeline.Command._
+import scala.concurrent.{ ExecutionContext, Future }
 
 import org.http4s.blaze.pipeline.{LeafBuilder, TailStage, HeadStage}
 import java.util.concurrent.ConcurrentHashMap
 import scala.concurrent.{Promise, Future}
 import org.http4s.blaze.pipeline.Command._
+import org.log4s.getLogger
 import java.nio.channels.NotYetConnectedException
 
-/**
- * @author Bryce Anderson
- *         Created on 1/25/14
- */
 
-abstract class HubStage[I, O, K](nodeBuilder: () => LeafBuilder[O]) extends TailStage[I] {
+abstract class HubStage[I, O, K](nodeBuilder: () => LeafBuilder[O], ec: ExecutionContext) extends TailStage[I] {
 
   def name: String = "HubStage"
 
-  /** methods that change the contents of the nodes map or operate on all elements of the map
-    * synchronize on it, to avoid situations where the elements of the map are changed while
-    * something is iterating over its members
-    */
-  private val nodeMap = new ConcurrentHashMap[K, NodeHead]()
+  sealed trait Node {
+    /** Identifier of this node */
+    def key: K
 
-  protected def nodeReadRequest(key: K, size: Int): Unit
-
-  protected def onNodeWrite(key: K, data: O): Future[Unit]
-
-  protected def onNodeWrite(key: K, data: Seq[O]): Future[Unit]
-
-  protected def onNodeCommand(key: K, cmd: OutboundCommand): Unit
-
-  protected def newHead(key: K): NodeHead = new NodeHead(key)
-
-  override def inboundCommand(cmd: InboundCommand): Unit = cmd match{
-    case Connected => stageStartup()
-    case Disconnected => stageShutdown()
-    case _ => nodeMap.synchronized {
-      val keys = nodeMap.keys()
-      while(keys.hasMoreElements) sendNodeCommand(keys.nextElement(), cmd)
-    }
-
+    /** Shuts down the [[Node]]
+      * This [[Node]] is sent the [[Disconnected]] [[InboundCommand]],
+      * any pending read requests are sent [[EOF]], and removes it from the [[HubStage]] */
+    def shutdown(): Unit
   }
+
+  /** called when a node requests a write operation */
+  protected def onNodeWrite(node: Node, data: Seq[O]): Future[Unit]
+
+  /** called when a node needs more data */
+  protected def onNodeRead(node: Node, size: Int): Future[O]
+
+  /** called when a node sends an outbound command */
+  protected def onNodeCommand(node: Node, cmd: OutboundCommand): Unit
+
+  ////////////////////////////////////////////////////////////////////////////////////
+
+  private implicit def _ec = ec
+  private val nodeMap = new ConcurrentHashMap[K, NodeHead]()
 
   /** Make a new node and connect it to the hub
     * @param key key which identifies this node
     * @return the newly created node
     */
-  protected def makeNode(key: K): NodeHead = nodeMap.synchronized {
-    val hub = newHead(key)
-    nodeBuilder().base(hub)
-    val old = nodeMap.put(key, hub)
-
+  protected def makeNode(key: K): Node = {
+    val node = new NodeHead(key)
+    nodeBuilder().base(node)
+    val old = nodeMap.put(key, node)
     if (old != null) {
       logger.warn(s"New Node $old with key $key created which replaced an existing Node")
-      old
+      old.inboundCommand(Disconnected)
     }
-
-    hub
-  }
-
-  final protected def makeAndInitNode(key: K): NodeHead = {
-    val node = makeNode(key)
     node.stageStartup()
     node
   }
 
-  final protected def sendNodeMessage(key: K, msg: O): Boolean = {
-    getNode(key) match {
-      case Some(node) =>
-        node.sendMsg(msg)
-        true
-
-      case None =>
-        logger.warn(s"Attempted to send message $msg to non-existent node with key $key")
-        false
-    }
-  }
-
-  final protected def sendNodeCommand(key: K, cmd: InboundCommand) {
-    val hub = nodeMap.get(key)
-    if (hub != null) hub.sendInboundCommand(cmd)
-    else logger.warn(s"Sent command $cmd to non-existent node with key $key")
-  }
-  
-  protected def removeNode(key: K): Unit = nodeMap.synchronized {
-    val node = nodeMap.remove(key)
-    if (node != null) node.sendInboundCommand(Disconnected)
-    else logger.warn(s"Tried to remove non-existent node with key $key")
-  }
-
-  protected final def closeAllNodes(): Unit = nodeMap.synchronized {
-    val keys = nodeMap.keys()
-    while (keys.hasMoreElements) removeNode(keys.nextElement())
-  }
-
+  /** Get a child [[Node]]
+    * @param key K specifying the [[Node]] of interest
+    * @return `Option[Node]`
+    */
   final protected def getNode(key: K): Option[NodeHead] = Option(nodeMap.get(key))
 
-  class NodeHead(val key: K) extends HeadStage[O] {
+  /** Send the specified [[InboundCommand]] to the [[Node]] with the designated key
+    * @param key K specifying the node
+    * @param cmd [[InboundCommand]] to send
+    */
+  final protected def sendNodeCommand(key: K, cmd: InboundCommand): Unit = {
+    val node = nodeMap.get(key)
+    if (node != null) node.sendInboundCommand(cmd)
+    else logger.warn(s"Sent command $cmd to non-existent node with key $key")
+  }
 
-    private val inboundQueue = new java.util.LinkedList[O]()
-    private var readReq: Promise[O] = null
-
-    @volatile private var connected = false
-    @volatile private var initialized = false
-
-    def sendMsg(msg: O): Unit = inboundQueue.synchronized {
-      if (readReq != null) {
-        val r = readReq
-        readReq = null
-        r.success(msg)
-      }
-      else inboundQueue.offer(msg)
+  /** Closes all the nodes of this hub stage */
+  protected def closeAllNodes(): Unit = {
+    val values = nodeMap.values().iterator()
+    while (values.hasNext) {
+      val node = values.next()
+      node.stageShutdown()
+      node.sendInboundCommand(Disconnected)
     }
+    nodeMap.clear()
+  }
 
-    def readRequest(size: Int): Future[O] = {
-      if (connected) inboundQueue.synchronized {
-        val msg = inboundQueue.poll()
-        if (msg != null) Future.successful(msg)
-        else if (readReq != null) Future.failed(new Exception(s"Read already pending: $readReq"))
-        else {  // No messages in queue
-          readReq = Promise[O]
-          nodeReadRequest(key, size)
-          readReq.future
-        }
-      }
-      else if (!initialized) {
-        logger.error(s"Uninitialized node with key $key attempting read request")
-        Future.failed(new NotYetConnectedException)
-      }
-      else Future.failed(EOF)
-    }
+  /** Remove the specified [[Node]] from this [[HubStage]] */
+  final protected def removeNode(node: Node): Unit = removeNode(node.key)
 
-    def writeRequest(data: O): Future[Unit] = {
-      if (connected) onNodeWrite(key, data)
-      else if (!initialized) {
-        logger.error(s"Disconnected node with key $key attempting write request")
-        Future.failed(new NotYetConnectedException)
-      }
-      else Future.failed(EOF)
+  /** Remove the [[Node]] from this [[HubStage]]
+    * This method should only be called from 
+    * @param key K specifying the [[Node]]
+    */
+  protected def removeNode(key: K): Option[Node] = {
+    val node = nodeMap.remove(key)
+    if (node != null) {
+      node.stageShutdown()
+      node.sendInboundCommand(Disconnected)
+      Some(node)
     }
+    else None
+  }
+
+  override protected def stageShutdown(): Unit = {
+    closeAllNodes()
+    super.stageShutdown()
+  }
+
+
+  private[HubStage] class NodeHead(val key: K) extends HeadStage[O] with Node {
+
+    def name: String = "HubStage Hub Head"
+    private var connected = false
+    private var initialized = false
+
+    def shutdown(): Unit = removeNode(key)
+
+    override def writeRequest(data: O): Future[Unit] = writeRequest(data::Nil)
 
     override def writeRequest(data: Seq[O]): Future[Unit] = {
-      if (connected) onNodeWrite(key, data)
+      if (connected) onNodeWrite(this, data)
       else if (!initialized) {
         logger.error(s"Disconnected node with key $key attempting write request")
         Future.failed(new NotYetConnectedException)
@@ -148,7 +128,16 @@ abstract class HubStage[I, O, K](nodeBuilder: () => LeafBuilder[O]) extends Tail
       else Future.failed(EOF)
     }
 
-    override def outboundCommand(cmd: OutboundCommand): Unit = onNodeCommand(key, cmd)
+    override def readRequest(size: Int): Future[O] =  {
+      if (connected) onNodeRead(this, size)
+      else if (!initialized) {
+        logger.error(s"Disconnected node with key $key attempting read request")
+        Future.failed(new NotYetConnectedException)
+      } else Future.failed(EOF)
+    }
+
+    override def outboundCommand(cmd: OutboundCommand): Unit =
+      onNodeCommand(this, cmd)
 
     override def stageStartup(): Unit = {
       connected = true
@@ -156,18 +145,9 @@ abstract class HubStage[I, O, K](nodeBuilder: () => LeafBuilder[O]) extends Tail
       sendInboundCommand(Connected)
     }
 
-    override protected def stageShutdown(): Unit = {
+    override def stageShutdown(): Unit = {
       connected = false
       super.stageShutdown()
-      inboundQueue.synchronized {
-        if (readReq != null) {
-          val r = readReq
-          readReq = null
-          r.failure(EOF)
-        }
-      }
     }
-
-    def name: String = "HubStage Hub Head"
   }
 }

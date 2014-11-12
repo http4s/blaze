@@ -6,9 +6,7 @@ import org.http4s.blaze.util.TickWheelExecutor
 import scala.concurrent.Future
 import scala.concurrent.duration.Duration
 
-/**
- * Created by Bryce Anderson on 6/23/14.
- */
+
 class QuietTimeoutStage[T](timeout: Duration, exec: TickWheelExecutor = scheduler) extends TimeoutStageBase[T](timeout, exec) {
 
   ////////////////////////////////////////////////////////////////////////////////

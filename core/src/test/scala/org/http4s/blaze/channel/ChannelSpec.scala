@@ -3,19 +3,16 @@ package org.http4s.blaze.channel
 
 import java.net.InetSocketAddress
 import org.specs2.mutable.Specification
-import com.typesafe.scalalogging.slf4j.StrictLogging
 import org.http4s.blaze.channel.nio2.NIO2ServerChannelFactory
+import org.log4s.getLogger
 import java.util.Date
 import java.util.concurrent.atomic.AtomicInteger
 
 
-/**
-* @author Bryce Anderson
-*         Created on 1/5/14
-*/
 class ChannelSpec extends Specification {
 
-  class BasicServer(f: BufferPipelineBuilder) extends StrictLogging {
+  class BasicServer(f: BufferPipelineBuilder) {
+    private[this] val logger = getLogger
 
     def prepare(address: InetSocketAddress): ServerChannel = {
       val factory = new NIO2ServerChannelFactory(f)

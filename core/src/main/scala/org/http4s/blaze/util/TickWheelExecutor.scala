@@ -4,13 +4,8 @@ import scala.annotation.tailrec
 import scala.util.control.NonFatal
 import scala.concurrent.ExecutionContext
 import scala.concurrent.duration._
-import com.typesafe.scalalogging.slf4j.LazyLogging
+import org.log4s.getLogger
 
-/**
- * @author Bryce Anderson
- *         Created on 2/2/14
- *
- */
 
 
 /** Low resolution execution scheduler
@@ -25,14 +20,19 @@ import com.typesafe.scalalogging.slf4j.LazyLogging
   * @constructor primary constructor which immediately spins up a thread and begins ticking
   *
   * @param wheelSize number of spokes on the wheel. Each tick, the wheel will advance a spoke
-  * @param resolution duration between ticks
+  * @param tick duration between ticks
   */
-class TickWheelExecutor(wheelSize: Int = 512, resolution: Duration = 100.milli) extends LazyLogging {
+class TickWheelExecutor(wheelSize: Int = 512, tick: Duration = 100.milli) {
+
+  require(wheelSize > 0, "Need finite size number of ticks")
+  require(tick.isFinite() && tick.toNanos != 0, "tick duration must be finite")
+
+  private[this] val logger = getLogger
 
   @volatile private var currentTick = 0
   @volatile private var alive = true
 
-  private val tickMilli = resolution.toMillis
+  private val tickMilli = tick.toMillis
   private val _tickInv = 1.0/tickMilli.toDouble
 
   private val clockFace: Array[Bucket] = {
@@ -46,7 +46,7 @@ class TickWheelExecutor(wheelSize: Int = 512, resolution: Duration = 100.milli) 
 
   private val thread = new Thread {
     override def run() {
-      cycle()
+      cycle(System.currentTimeMillis())
     }
   }
 
@@ -78,28 +78,32 @@ class TickWheelExecutor(wheelSize: Int = 512, resolution: Duration = 100.milli) 
   }
 
   @tailrec
-  private def cycle(): Unit = {
-    val i = currentTick
+  private def cycle(lastTickTime: Long): Unit = {
     val time = System.currentTimeMillis()
+    val ticks = (((time - lastTickTime) * _tickInv) + 0.5).toInt % wheelSize
 
-    clockFace(i).prune(time) // Remove canceled and submit expired tasks from the current spoke
-    currentTick = (i + 1) % wheelSize
+    @tailrec
+    def go(ticks: Int): Unit = if (ticks > 0) {
+      clockFace(currentTick).prune(time) // Remove canceled and submit expired tasks from the current spoke
+      currentTick = (currentTick + 1) % wheelSize
+      go(ticks - 1)
+    }
 
-    clockFace(i).prune(time) // Remove canceled and submit expired tasks from the next spoke
+    go(ticks)
 
     if (alive) {
       // Make up for execution time, unlikely to be significant
       val left = tickMilli - (System.currentTimeMillis() - time)
       if (left > 0) Thread.sleep(left)
-      cycle()
+      cycle(time)
     }
     else {  // delete all our buckets so we don't hold any references
-      for { i <- 0 until wheelSize} clockFace(i) = null
+      for { i <- 0 until wheelSize } clockFace(i) = null
     }
   }
 
   protected def onNonFatal(t: Throwable) {
-    logger.error("Non-Fatal Exception caught while executing scheduled task", t)
+    logger.error(t)("Non-Fatal Exception caught while executing scheduled task")
   }
   
   private def getBucket(duration: Long): Bucket = {

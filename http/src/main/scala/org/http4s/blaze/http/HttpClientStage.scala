@@ -15,11 +15,6 @@ import java.nio.charset.StandardCharsets
 import java.nio.ByteBuffer
 import java.nio.channels.NotYetConnectedException
 
-/**
- * @author Bryce Anderson
- *         Created on 2/6/14
- */
-
 class HttpClientStage(timeout: Duration = Duration.Inf)
               (implicit val ec: ExecutionContext = Execution.trampoline)
     extends Http1ClientParser with TailStage[ByteBuffer] {

@@ -3,15 +3,11 @@ package org.http4s.blaze.util
 import scala.concurrent.ExecutionContext
 import java.util
 import scala.util.control.NonFatal
-import com.typesafe.scalalogging.slf4j.StrictLogging
+import org.log4s.getLogger
 
-/**
- * @author Bryce Anderson
- *         Created on 1/5/14
- *
- *         Essentially directly copied from the Play2 framework
- */
-object Execution extends StrictLogging {
+
+object Execution {
+  private[this] val logger = getLogger
 
   val trampoline: ExecutionContext = new ExecutionContext {
 
@@ -45,7 +41,7 @@ object Execution extends StrictLogging {
       }
     }
 
-    def reportFailure(t: Throwable): Unit = logger.error("Trampoline EC Exception caught", t)
+    def reportFailure(t: Throwable): Unit = logger.error(t)("Trampoline EC Exception caught")
   }
 
   val directec: ExecutionContext = new ExecutionContext {
@@ -53,7 +49,7 @@ object Execution extends StrictLogging {
     def execute(runnable: Runnable): Unit = runnable.run()
 
     def reportFailure(t: Throwable): Unit = {
-      logger.error("Error encountered in Direct EC", t)
+      logger.error(t)("Error encountered in Direct EC")
       throw t
     }
   }

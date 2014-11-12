@@ -10,10 +10,7 @@ import scala.util.{Failure, Success}
 
 import java.net.ProtocolException
 
-/**
- * @author Bryce Anderson
- *         Created on 1/19/14
- */
+
 class WSFrameAggregator extends MidStage[WebSocketFrame, WebSocketFrame] {
 
   def name: String = "WebSocket Frame Aggregator"
@@ -37,7 +34,7 @@ class WSFrameAggregator extends MidStage[WebSocketFrame, WebSocketFrame] {
     case c: Continuation =>
       if (queue.isEmpty) {
         val e = new ProtocolException("Invalid state: Received a Continuation frame without accumulated state.")
-        logger.error("Invalid state", e)
+        logger.error(e)("Invalid state")
         p.failure(e)
       } else {
         queue += frame
@@ -76,7 +73,7 @@ class WSFrameAggregator extends MidStage[WebSocketFrame, WebSocketFrame] {
   private def handleHead(frame: WebSocketFrame, p: Promise[WebSocketFrame]): Unit = {
     if (!queue.isEmpty) {
       val e = new ProtocolException(s"Invalid state: Received a head frame with accumulated state: ${queue.length} frames")
-      logger.error("Invalid state", e)
+      logger.error(e)("Invalid state")
       size = 0
       queue.clear()
       p.failure(e)

@@ -10,6 +10,7 @@ import scala.util.Success
 
 
 trait WSStage extends TailStage[WebSocketFrame] {
+
   def name: String = "WebSocket Stage"
 
   def onMessage(msg: WebSocketFrame): Unit
@@ -25,12 +26,12 @@ trait WSStage extends TailStage[WebSocketFrame] {
           _wsLoop()
         }
         catch {case t: Throwable =>
-          logger.error("WSStage onMessage threw exception. Shutting down.", t)
+          logger.error(t)("WSStage onMessage threw exception. Shutting down.")
           sendOutboundCommand(Command.Disconnect)
         }
 
       case Failure(t) =>
-        logger.error("error on Websocket read loop", t)
+        logger.error(t)("error on Websocket read loop")
         sendOutboundCommand(Command.Disconnect)
     }(trampoline)
   }
