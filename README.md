@@ -8,7 +8,7 @@ to service the core http4s project, but may find application elsewhere.
 - Speed is the first priority
 - Asynchronous using scala 2.10 Futures as the underpinning
 - Java NIO backend for fast/asynchronous network and file I/O
-- Offer a framework for rapid development of fast, asynchronous pipelines
+- Offer a framework for rapid development of fast, asynchronous pipelines using scala
 
 #### What blaze is not
 - Purely functional. Functional is preferred except when in conflict with the first goal
@@ -16,10 +16,8 @@ to service the core http4s project, but may find application elsewhere.
   are always appreciated!
 
 ## Asynchronous network I/O
-blaze was built with the Java 7 NIO2 features in mind. While many NIO frameworks have been developed with NIO1
-underpinnings, NIO2 offers a host of new features which are offered in a unified way.
-
-A TCP Socket Server skeleton is already implemented. It is basic, but simple is good for most projects.
+blaze was built with the Java 7 NIO2 features in mind. NIO2 offers a host of new features which are offered 
+in a unified way. blaze offers TCP socket server support for both NIO1 and NIO2, depending on your preference. 
 
 ## How to use blaze
 For a quick start, look at the examples for some simple examples of HTTP, WebSocket, and a simple EchoServer. 
@@ -39,9 +37,8 @@ the previous write has completed and the same for reads, or use a SerializerStag
 manage reads and writes for you.
 
 ## Development
-blaze is under heavy development and at this stage, everything is candidate for change. The timeline
-for development is undefined as there is only one active developer on the project. Contributions and comments are
-helpful and appreciated.
+blaze is under heavy development and at this stage, everything is candidate for change. Contributions 
+and comments are both helpful and very appreciated.
 
 ### Acknowledgments
 The structure of this project is heavily influenced by the Netty Project, and outstanding NIO framework for Java.
