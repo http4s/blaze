@@ -47,7 +47,7 @@ class EchoServer {
           // Write it, wait for conformation, and start again
           channelWrite(b).onSuccess{ case _ => stageStartup() }
 
-        case Failure(EOF) => this.logger.trace("Channel closed.")
+        case Failure(EOF) => this.logger.debug("Channel closed.")
         case Failure(t)   => this.logger.error("Channel read failed: " + t)
       }
     }

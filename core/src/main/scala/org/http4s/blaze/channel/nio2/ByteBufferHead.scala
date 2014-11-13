@@ -62,7 +62,7 @@ class ByteBufferHead(channel: AsynchronousSocketChannel,
     def go(i: Long): Unit = {
       channel.write[Null](srcs, 0, srcs.length, -1L, TimeUnit.MILLISECONDS, null: Null, new CompletionHandler[JLong, Null] {
         def failed(exc: Throwable, attachment: Null) {
-          if (exc.isInstanceOf[ClosedChannelException]) logger.trace("Channel closed, dropping packet")
+          if (exc.isInstanceOf[ClosedChannelException]) logger.debug("Channel closed, dropping packet")
           else logger.error(exc)("Failure writing to channel")
           f.tryFailure(exc)
         }
@@ -110,7 +110,7 @@ class ByteBufferHead(channel: AsynchronousSocketChannel,
 
   override def outboundCommand(cmd: OutboundCommand): Unit = cmd match {
     case Disconnect         => closeChannel()
-    case Error(e)         => logger.error(e)("ByteBufferHead received error command"); channelError(e)
+    case Error(e)         => logger.error(e)("ByteBufferHead received error command"); channelError(e, false)
     case cmd              => // NOOP
   }
 
@@ -118,33 +118,35 @@ class ByteBufferHead(channel: AsynchronousSocketChannel,
 
   private def checkError(e: Throwable): Throwable = e match {
     case e: ClosedChannelException =>
-      logger.trace("Channel closed, dropping packet")
+      logger.debug("Channel closed, dropping packet")
       closeChannel()
       EOF
 
     case e: IOException =>
-      logger.trace(e)("Channel IO Error. Closing")
+      logger.warn(e)("Channel IO error")
       closeChannel()
       EOF
 
     case e: ShutdownChannelGroupException =>
-      logger.trace(e)("Channel Group was shutdown")
+      logger.debug(e)("Channel Group was shutdown")
       closeChannel()
       EOF
 
     case e: Throwable =>  // Don't know what to do besides close
-      channelError(e)
+      channelError(e, true)
       e
   }
 
-  private def channelError(e: Throwable) {
-    logger.error(e)("Unexpected fatal error")
+  private def channelError(e: Throwable, log: Boolean) {
+    if (log) {
+      logger.error(e)("Unexpected fatal error")
+    }
     sendInboundCommand(Error(e))
     closeChannel()
   }
 
   private def closeChannel() {
-    logger.trace("channelClose")
+    logger.debug("channelClose")
     try channel.close()
     catch {  case e: IOException => /* Don't care */ }
   }

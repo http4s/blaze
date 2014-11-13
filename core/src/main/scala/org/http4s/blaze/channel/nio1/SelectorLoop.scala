@@ -185,7 +185,7 @@ final class SelectorLoop(selector: Selector, bufferSize: Int)
           builder(NIO1Connection(ch)).base(head)
 
           head.inboundCommand(Command.Connected)
-          logger.trace("Started channel.")
+          logger.debug("Started channel.")
         } catch { case e: Throwable => logger.error(e)("Caught error during channel init.") }
       }
     })

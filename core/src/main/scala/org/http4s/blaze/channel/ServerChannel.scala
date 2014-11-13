@@ -55,7 +55,7 @@ abstract class ServerChannel extends Runnable with Closeable { self =>
   }
 
   def runAsync(): Thread = {
-    logger.trace("Starting server loop on new thread")
+    logger.debug("Starting server loop on new thread")
     val t = new Thread(this)
     t.start()
     t

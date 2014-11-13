@@ -34,9 +34,9 @@ sealed trait Stage {
 
   def name: String
 
-  protected def stageStartup(): Unit = logger.trace(s"Starting up at ${new Date}")
+  protected def stageStartup(): Unit = logger.debug(s"Stage starting up at ${new Date}")
 
-  protected def stageShutdown(): Unit = logger.trace(s"Shutting down at ${new Date}")
+  protected def stageShutdown(): Unit = logger.debug(s"Stage shutting down at ${new Date}")
 
   /** Handle basic startup and shutdown commands.
     * This should clearly be overridden in all cases except possibly TailStages
@@ -57,13 +57,7 @@ sealed trait Tail[I] extends Stage {
     try {
       if (_prevStage != null) {
         val f = _prevStage.readRequest(size)
-        if (timeout.isFinite()) {
-          val p = Promise[I]
-
-          scheduleTimeout(p, f, timeout)
-          p.future
-        }
-        else f
+        checkTimeout(timeout, f)
       } else stageDisconnected
     }  catch { case t: Throwable => return Future.failed(t) }
   }
@@ -79,12 +73,7 @@ sealed trait Tail[I] extends Stage {
     try {
       if (_prevStage != null) {
         val f = _prevStage.writeRequest(data)
-        if (timeout.isFinite()) {
-          val p = Promise[Unit]
-          scheduleTimeout(p, f, timeout)
-          p.future
-        }
-        else f
+        checkTimeout(timeout, f)
       } else stageDisconnected
     }
     catch { case t: Throwable => Future.failed(t) }
@@ -97,20 +86,14 @@ sealed trait Tail[I] extends Stage {
     try {
       if (_prevStage != null) {
         val f = _prevStage.writeRequest(data)
-
-        if (timeout.isFinite()) {
-          val p = Promise[Unit]
-          scheduleTimeout(p, f, timeout)
-          p.future
-        }
-        else f
+        checkTimeout(timeout, f)
       } else stageDisconnected
     } catch { case t: Throwable => Future.failed(t) }
 
   }
 
   final def sendOutboundCommand(cmd: OutboundCommand): Unit = {
-    logger.trace(s"Stage ${getClass.getName} sending outbound command: $cmd")
+    logger.debug(s"Stage ${getClass.getName} sending outbound command: $cmd")
     if (_prevStage != null) {
       try _prevStage.outboundCommand(cmd)
       catch { case t: Throwable => inboundCommand(Error(t)) }
@@ -170,6 +153,16 @@ sealed trait Tail[I] extends Stage {
     this
   }
 
+  /** Arranges a timeout for a write request */
+  private def checkTimeout[T](timeout: Duration, f: Future[T]): Future[T] = {
+    if (timeout.isFinite()) {
+      val p = Promise[T]
+      scheduleTimeout(p, f, timeout)
+      p.future
+    }
+    else f
+  }
+
   ///////////////////////////////////////////////////////////////////
   /** Schedules a timeout and sets it to race against the provided future
     * @param p Promise[T] to be completed by whichever comes first:
@@ -214,7 +207,7 @@ sealed trait Head[O] extends Stage {
   }
 
   final def sendInboundCommand(cmd: InboundCommand): Unit = {
-    logger.trace(s"Stage ${getClass.getName} sending inbound command: $cmd")
+    logger.debug(s"Stage ${getClass.getName} sending inbound command: $cmd")
     if (_nextStage != null) {
       try _nextStage.inboundCommand(cmd)
       catch { case t: Throwable => outboundCommand(Error(t)) }

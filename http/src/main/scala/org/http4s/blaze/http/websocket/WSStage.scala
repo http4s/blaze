@@ -20,7 +20,7 @@ trait WSStage extends TailStage[WebSocketFrame] {
   private def _wsLoop(): Unit = {
     channelRead().onComplete {
       case Success(msg) =>
-        logger.trace(s"Received Websocket message: $msg")
+        logger.debug(s"Received Websocket message: $msg")
         try {
           onMessage(msg)
           _wsLoop()

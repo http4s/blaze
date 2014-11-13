@@ -38,11 +38,11 @@ class NIO2ServerChannelFactory(pipeFactory: BufferPipelineBuilder, group: Asynch
           val ch = channel.accept().get() // Will synchronize here
 
           if (!acceptConnection(ch)) {
-            logger.trace(s"Connection to ${ch.getRemoteAddress} being denied at ${new Date}")
+            logger.info(s"Connection to ${ch.getRemoteAddress} being denied at ${new Date}")
             ch.close()
           }
           else {
-            logger.trace(s"Connection to ${ch.getRemoteAddress} accepted at ${new Date}")
+            logger.info(s"Connection to ${ch.getRemoteAddress} accepted at ${new Date}")
             pipeFactory(NIO2SocketConnection(ch)).base(new ByteBufferHead(ch)).sendInboundCommand(Connected)
           }
 

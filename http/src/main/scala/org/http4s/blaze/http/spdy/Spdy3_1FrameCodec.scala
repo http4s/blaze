@@ -53,7 +53,7 @@ class Spdy3_1FrameCodec(val maxBufferSize: Int = -1)
 
     val frametype = in.getShort(2)
 
-    logger.trace("Decoding frame type: " + frametype)
+    logger.debug("Decoding frame type: " + frametype)
 
     // We are a control frame
     try {

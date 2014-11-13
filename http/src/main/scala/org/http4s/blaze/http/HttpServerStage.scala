@@ -55,7 +55,7 @@ abstract class HttpServerStage(maxReqBody: Int) extends Http1ServerParser with T
   }
 
   private def readLoop(buff: ByteBuffer): Unit = {
-    logger.trace{
+    logger.trace {
       buff.mark()
       val sb = new StringBuilder
 
@@ -147,21 +147,21 @@ abstract class HttpServerStage(maxReqBody: Int) extends Http1ServerParser with T
     val sb = new StringBuilder(512)
     WebsocketHandshake.serverHandshake(reqHeaders) match {
       case Left((i, msg)) =>
-        logger.trace(s"Invalid handshake: $i: $msg")
+        logger.info(s"Invalid handshake: $i: $msg")
         sb.append("HTTP/1.1 ").append(i).append(' ').append(msg).append('\r').append('\n')
           .append('\r').append('\n')
 
         channelWrite(ByteBuffer.wrap(sb.result().getBytes(US_ASCII))).map(_ => Close)
 
       case Right(hdrs) =>
-        logger.trace("Starting websocket request")
+        logger.info("Starting websocket request")
         sb.append("HTTP/1.1 101 Switching Protocols\r\n")
         hdrs.foreach { case (k, v) => sb.append(k).append(": ").append(v).append('\r').append('\n') }
         sb.append('\r').append('\n')
 
         // write the accept headers and reform the pipeline
-        channelWrite(ByteBuffer.wrap(sb.result().getBytes(US_ASCII))).map{_ =>
-          logger.trace("Switching segments.")
+        channelWrite(ByteBuffer.wrap(sb.result().getBytes(US_ASCII))).map{ _ =>
+          logger.debug("Switching pipeline segments for upgrade")
           val segment = wsBuilder.prepend(new WebSocketDecoder(false))
           this.replaceInline(segment)
           Upgrade

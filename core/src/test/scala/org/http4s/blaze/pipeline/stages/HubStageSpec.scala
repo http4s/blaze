@@ -256,7 +256,7 @@ class HubStageSpec extends Specification {
 //            reqLoop()
 //
 //          case Failure(EOF) =>
-//            logger.trace("Finished.")
+//            logger.debug("Finished.")
 //            closeAllNodes()
 //
 //          case Failure(t)   => throw t

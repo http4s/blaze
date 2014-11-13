@@ -58,7 +58,7 @@ class SocketStage extends WSStage {
   }
 
   override protected def stageStartup(): Unit = {
-    logger.trace("SocketStage starting up.")
+    logger.debug("SocketStage starting up.")
     super.stageStartup()
     channelWrite(Text("Hello! This is an echo websocket"))
   }

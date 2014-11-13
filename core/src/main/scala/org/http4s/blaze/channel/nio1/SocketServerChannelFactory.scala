@@ -9,7 +9,6 @@ import java.nio.ByteBuffer
 import scala.util.{Failure, Success, Try}
 import org.http4s.blaze.pipeline.Command.EOF
 import NIO1HeadStage._
-import org.log4s.getLogger
 
 class SocketServerChannelFactory(pipeFactory: BufferPipelineBuilder, pool: SelectorLoopPool)
                 extends NIOServerChannelFactory[ServerSocketChannel](pool) {
@@ -41,7 +40,7 @@ class SocketServerChannelFactory(pipeFactory: BufferPipelineBuilder, pool: Selec
       try {
         scratch.clear()
         val bytes = ch.read(scratch)
-        logger.trace(s"Read $bytes bytes")
+        logger.debug(s"Read $bytes bytes")
         if (bytes >= 0) {
           scratch.flip()
 
@@ -60,7 +59,7 @@ class SocketServerChannelFactory(pipeFactory: BufferPipelineBuilder, pool: Selec
     }
 
     def performWrite(scratch: ByteBuffer, buffers: Array[ByteBuffer]): WriteResult = {
-      logger.trace("Performing write: " + buffers)
+      logger.debug("Performing write: " + buffers)
       try {
         ch.write(buffers)
         if (util.BufferTools.checkEmpty(buffers)) Complete
