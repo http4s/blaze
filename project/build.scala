@@ -43,9 +43,9 @@ object ApplicationBuild extends Build {
 
     version := "0.3.0-SNAPSHOT",
 
-    scalaVersion := "2.11.2",
+    scalaVersion := "2.11.4",
 
-    crossScalaVersions := Seq("2.10.4", "2.11.2"),
+    crossScalaVersions := Seq("2.10.4", "2.11.4"),
 
     description := "NIO Framework for Scala",
 
