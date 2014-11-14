@@ -29,7 +29,10 @@ object ApplicationBuild extends Build {
 
   lazy val examples = Project("blaze-examples",
                     file("examples"),
-                    settings = buildSettings :+ dontPublish
+                    settings = buildSettings ++ Seq(
+                       dontPublish,
+                       libraryDependencies += logbackClassic
+                    )
                   ).dependsOn(http)
 
   /* Don't publish setting */
@@ -91,15 +94,14 @@ object ApplicationBuild extends Build {
   /* dependencies */
   lazy val dependencies = Seq(
     libraryDependencies += specs2 % "test",
+    libraryDependencies += logbackClassic % "test",
     libraryDependencies += log4s,
-    libraryDependencies += logbackClassic,
     libraryDependencies += npn_api,
     libraryDependencies += npn_boot
   )
 
   lazy val specs2              = "org.specs2"                 %% "specs2"              % "2.4"
   lazy val http4sWebsocket     = "org.http4s"                 %% "http4s-websocket"    % "0.1.1"
-  lazy val scalaloggingSlf4j   = "com.typesafe.scala-logging" %% "scala-logging-slf4j" % "2.1.2"
   lazy val logbackClassic      = "ch.qos.logback"             %  "logback-classic"     % "1.0.9"
   lazy val scalaXml = "org.scala-lang.modules"                %% "scala-xml"           % "1.0.2"
   lazy val log4s               = "org.log4s"                  %% "log4s"               % "1.1.2"
