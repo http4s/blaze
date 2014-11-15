@@ -1,24 +1,16 @@
 package org.http4s.blaze.channel.nio2
 
 import java.net.SocketAddress
-
-import java.nio.channels.{AsynchronousServerSocketChannel,
-                          AsynchronousSocketChannel,
-                          AsynchronousChannelGroup}
+import java.nio.channels.{AsynchronousServerSocketChannel, AsynchronousChannelGroup}
 
 import scala.annotation.tailrec
-import java.util.Date
+
 import org.http4s.blaze.channel._
 import org.http4s.blaze.pipeline.Command.Connected
-import org.log4s.getLogger
 
 
 class NIO2ServerChannelFactory(pipeFactory: BufferPipelineBuilder, group: AsynchronousChannelGroup = null)
         extends ServerChannelFactory[AsynchronousServerSocketChannel] {
-  private[this] val logger = getLogger
-
-  // Intended to be overridden in order to allow the reject of connections
-  protected def acceptConnection(channel: AsynchronousSocketChannel): Boolean = true
 
   def bind(localAddress: SocketAddress = null): ServerChannel = {
     if (pipeFactory == null) sys.error("Pipeline factory required")
@@ -36,15 +28,12 @@ class NIO2ServerChannelFactory(pipeFactory: BufferPipelineBuilder, group: Asynch
         var continue = true
         try {
           val ch = channel.accept().get() // Will synchronize here
+          val addr = ch.getRemoteAddress
 
-          if (!acceptConnection(ch)) {
-            logger.info(s"Connection to ${ch.getRemoteAddress} being denied at ${new Date}")
-            ch.close()
-          }
-          else {
-            logger.info(s"Connection to ${ch.getRemoteAddress} accepted at ${new Date}")
-            pipeFactory(NIO2SocketConnection(ch)).base(new ByteBufferHead(ch)).sendInboundCommand(Connected)
-          }
+          if (!doAcceptConnection(addr)) ch.close()
+          else pipeFactory(NIO2SocketConnection(ch))
+                .base(new ByteBufferHead(ch))
+                .sendInboundCommand(Connected)
 
         } catch {
           case e: InterruptedException => continue = false

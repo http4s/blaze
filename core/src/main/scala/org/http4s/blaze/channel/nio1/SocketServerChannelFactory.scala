@@ -22,14 +22,24 @@ class SocketServerChannelFactory(pipeFactory: BufferPipelineBuilder, pool: Selec
 
   def doBind(address: SocketAddress): ServerSocketChannel = ServerSocketChannel.open().bind(address)
 
-  def acceptConnection(serverChannel: ServerSocketChannel, loop: SelectorLoop): Boolean = {
+  override def completeConnection(serverChannel: ServerSocketChannel, loop: SelectorLoop): Boolean = {
     try {
       val ch = serverChannel.accept()
-      ch.setOption(java.net.StandardSocketOptions.TCP_NODELAY, java.lang.Boolean.FALSE)
-      loop.initChannel(pipeFactory, ch, key => new SocketChannelHead(ch, loop, key))
-      true
+      val addr = ch.getRemoteAddress
+
+      // check to see if we want to keep this connection
+      if (doAcceptConnection(addr)) {
+        ch.setOption(java.net.StandardSocketOptions.TCP_NODELAY, java.lang.Boolean.FALSE)
+        loop.initChannel(pipeFactory, ch, key => new SocketChannelHead(ch, loop, key))
+        true
+      } else {
+        ch.close()
+        false
+      }
+
+    } catch {
+      case e: IOException => false
     }
-    catch {case e: IOException => false }
   }
 
   private class SocketChannelHead(val ch: SocketChannel, val loop: SelectorLoop, val key: SelectionKey)

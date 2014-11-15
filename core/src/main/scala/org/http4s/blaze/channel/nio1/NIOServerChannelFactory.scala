@@ -9,21 +9,22 @@ import org.log4s.getLogger
 
 abstract class NIOServerChannelFactory[Channel <: NetworkChannel](pool: SelectorLoopPool)
                 extends ServerChannelFactory[Channel] {
-  protected val logger = getLogger
 
   def this(fixedPoolSize: Int, bufferSize: Int = 8*1024) = this(new FixedArraySelectorPool(fixedPoolSize, bufferSize))
 
   protected def doBind(address: SocketAddress): Channel
 
-  protected def acceptConnection(ch: Channel, loop: SelectorLoop): Boolean
+  protected def completeConnection(ch: Channel, loop: SelectorLoop): Boolean
 
   protected def makeSelector: Selector = Selector.open()
 
   protected def createServerChannel(channel: Channel): ServerChannel =
     new NIO1ServerChannel(channel, pool)
 
-  def bind(localAddress: SocketAddress = null): ServerChannel = createServerChannel(doBind(localAddress))
-
+  override def bind(localAddress: SocketAddress = null): ServerChannel = {
+    val c = doBind(localAddress)
+    createServerChannel(c)
+  }
 
   /** This class can be extended to change the way selector loops are provided */
   protected class NIO1ServerChannel(val channel: Channel, pool: SelectorLoopPool) extends ServerChannel {
@@ -43,7 +44,7 @@ abstract class NIOServerChannelFactory[Channel <: NetworkChannel](pool: Selector
       while (channel.isOpen && !closed) {
         try {
           val p = pool.nextLoop()
-          acceptConnection(channel, p)
+          completeConnection(channel, p)
         } catch {
           case NonFatal(t) => logger.error(t)("Error accepting connection")
         }
