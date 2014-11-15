@@ -10,10 +10,10 @@ import scala.util.{Failure, Success, Try}
 import org.http4s.blaze.pipeline.Command.EOF
 import NIO1HeadStage._
 
-class SocketServerChannelFactory(pipeFactory: BufferPipelineBuilder, pool: SelectorLoopPool)
+class NIO1SocketServerChannelFactory(pipeFactory: BufferPipelineBuilder, pool: SelectorLoopPool)
                 extends NIOServerChannelFactory[ServerSocketChannel](pool) {
 
-  import SocketServerChannelFactory.brokePipeMessages
+  import NIO1SocketServerChannelFactory.brokePipeMessages
 
   def this(pipeFactory: BufferPipelineBuilder, workerThreads: Int = 8, bufferSize: Int = 4*1024) =
     this(pipeFactory, new FixedArraySelectorPool(workerThreads, bufferSize))
@@ -86,10 +86,10 @@ class SocketServerChannelFactory(pipeFactory: BufferPipelineBuilder, pool: Selec
   }
 }
 
-object SocketServerChannelFactory {
+object NIO1SocketServerChannelFactory {
 
   // If the connection is forcibly closed, we might get an IOException with one of the following messages
-  private [SocketServerChannelFactory] val brokePipeMessages = Seq(
+  private [NIO1SocketServerChannelFactory] val brokePipeMessages = Seq(
     "Connection reset by peer",   // Found on Linux
     "An existing connection was forcibly closed by the remote host",    // Found on windows
     "Broken pipe"   // Found also on Linux

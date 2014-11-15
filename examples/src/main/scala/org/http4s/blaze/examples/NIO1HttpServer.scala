@@ -3,7 +3,7 @@ package org.http4s.blaze.examples
 import org.http4s.blaze.channel._
 
 import java.net.InetSocketAddress
-import org.http4s.blaze.channel.nio1.SocketServerChannelFactory
+import org.http4s.blaze.channel.nio1.NIO1SocketServerChannelFactory
 import org.http4s.blaze.pipeline.LeafBuilder
 import org.http4s.blaze.pipeline.stages.monitors.IntervalConnectionMonitor
 
@@ -15,7 +15,7 @@ class NIO1HttpServer(port: Int) {
   private val f: BufferPipelineBuilder =
     status.wrapBuilder { _ => LeafBuilder(new ExampleHttpServerStage(Some(status), 10*1024)) }
 
-  private val factory = new SocketServerChannelFactory(f, workerThreads = 6)
+  private val factory = new NIO1SocketServerChannelFactory(f, workerThreads = 6)
 
   def run(): Unit = factory.bind(new InetSocketAddress(port)).run()
 }

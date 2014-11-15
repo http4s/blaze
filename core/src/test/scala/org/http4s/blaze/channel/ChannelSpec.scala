@@ -3,7 +3,7 @@ package org.http4s.blaze.channel
 
 import java.net.InetSocketAddress
 import org.specs2.mutable.Specification
-import org.http4s.blaze.channel.nio2.NIO2ServerChannelFactory
+import org.http4s.blaze.channel.nio2.NIO2SocketServerChannelFactory
 import org.log4s.getLogger
 import java.util.Date
 import java.util.concurrent.atomic.AtomicInteger
@@ -15,7 +15,7 @@ class ChannelSpec extends Specification {
     private[this] val logger = getLogger
 
     def prepare(address: InetSocketAddress): ServerChannel = {
-      val factory = new NIO2ServerChannelFactory(f)
+      val factory = new NIO2SocketServerChannelFactory(f)
       factory.bind(address)
     }
 

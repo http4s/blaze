@@ -12,14 +12,14 @@ import scala.concurrent.Future
 import org.http4s.blaze.pipeline.{LeafBuilder, Command}
 import org.http4s.blaze.http.websocket.WSStage
 
-import org.http4s.blaze.channel.nio2.NIO2ServerChannelFactory
+import org.http4s.blaze.channel.nio2.NIO2SocketServerChannelFactory
 
 class WebSocketServer(port: Int) {
   private val f: BufferPipelineBuilder = _ => LeafBuilder(new ExampleWebSocketHttpServerStage)
 
   val group = AsynchronousChannelGroup.withFixedThreadPool(10, java.util.concurrent.Executors.defaultThreadFactory())
 
-  private val factory = new NIO2ServerChannelFactory(f)
+  private val factory = new NIO2SocketServerChannelFactory(f)
 
   def run(): Unit = factory.bind(new InetSocketAddress(port)).run()
 }

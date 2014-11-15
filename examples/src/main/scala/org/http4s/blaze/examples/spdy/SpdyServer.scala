@@ -6,7 +6,7 @@ import java.security.KeyStore
 import org.http4s.blaze.channel._
 import org.http4s.blaze.pipeline.stages.SSLStage
 import java.nio.channels.AsynchronousChannelGroup
-import org.http4s.blaze.channel.nio2.NIO2ServerChannelFactory
+import org.http4s.blaze.channel.nio2.NIO2SocketServerChannelFactory
 import java.net.InetSocketAddress
 
 import org.eclipse.jetty.npn.NextProtoNego
@@ -40,7 +40,7 @@ class SpdyServer(port: Int) {
 
   val group = AsynchronousChannelGroup.withFixedThreadPool(10, java.util.concurrent.Executors.defaultThreadFactory())
 
-  private val factory = new NIO2ServerChannelFactory(f)
+  private val factory = new NIO2SocketServerChannelFactory(f)
 
   def run(): Unit = factory.bind(new InetSocketAddress(port)).run()
 }

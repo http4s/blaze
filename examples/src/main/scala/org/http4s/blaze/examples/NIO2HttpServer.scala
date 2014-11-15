@@ -4,7 +4,7 @@ import java.net.InetSocketAddress
 import java.nio.channels.AsynchronousChannelGroup
 
 import org.http4s.blaze.channel._
-import org.http4s.blaze.channel.nio2.NIO2ServerChannelFactory
+import org.http4s.blaze.channel.nio2.NIO2SocketServerChannelFactory
 import org.http4s.blaze.pipeline.LeafBuilder
 import org.http4s.blaze.pipeline.stages.monitors.IntervalConnectionMonitor
 
@@ -16,7 +16,7 @@ class NIO2HttpServer(port: Int) {
 
   private val status = new IntervalConnectionMonitor(10.minutes)
   private val f: BufferPipelineBuilder = _ => LeafBuilder(new ExampleHttpServerStage(Some(status), 10*1024))
-  private val factory = new NIO2ServerChannelFactory(status.wrapBuilder(f))
+  private val factory = new NIO2SocketServerChannelFactory(status.wrapBuilder(f))
 
   def run(): Unit = factory.bind(new InetSocketAddress(port)).run()
 }

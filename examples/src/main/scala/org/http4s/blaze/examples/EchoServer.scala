@@ -10,7 +10,7 @@ import java.util.Date
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import org.http4s.blaze.pipeline.Command.EOF
-import org.http4s.blaze.channel.nio2.NIO2ServerChannelFactory
+import org.http4s.blaze.channel.nio2.NIO2SocketServerChannelFactory
 import org.log4s.getLogger
 
 
@@ -21,7 +21,7 @@ class EchoServer {
   def prepare(address: InetSocketAddress): ServerChannel = {
     val f: BufferPipelineBuilder = _ => new EchoStage
 
-    val factory = new NIO2ServerChannelFactory(f)
+    val factory = new NIO2SocketServerChannelFactory(f)
     factory.bind(address)
   }
   
