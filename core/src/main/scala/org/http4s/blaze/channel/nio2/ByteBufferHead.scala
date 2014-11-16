@@ -1,9 +1,8 @@
 package org.http4s.blaze.channel.nio2
 
 
-import org.http4s.blaze.pipeline.HeadStage
+import org.http4s.blaze.channel.ChannelHead
 import org.http4s.blaze.pipeline.Command._
-import org.http4s.blaze.pipeline.Command.Error
 
 import scala.concurrent.{Promise, Future}
 import scala.annotation.tailrec
@@ -14,15 +13,15 @@ import java.io.IOException
 import java.util.Date
 import java.util.concurrent.TimeUnit
 import java.lang.{Long => JLong}
-import org.log4s.getLogger
 
-class ByteBufferHead(channel: AsynchronousSocketChannel,
-                     val name: String = "ByteBufferHeadStage",
-                     bufferSize: Int = 8*1024) extends HeadStage[ByteBuffer] {
+final class ByteBufferHead(channel: AsynchronousSocketChannel,
+                           bufferSize: Int = 8*1024) extends ChannelHead {
+
+  def name: String = "ByteBufferHeadStage"
 
   private val buffer = ByteBuffer.allocate(bufferSize)
 
-  def writeRequest(data: ByteBuffer): Future[Unit] = {
+  final override def writeRequest(data: ByteBuffer): Future[Unit] = {
 
     if (!data.hasRemaining() && data.position > 0) {
       logger.warn("Received write request with non-zero position but ZERO available" +
@@ -47,7 +46,7 @@ class ByteBufferHead(channel: AsynchronousSocketChannel,
     f.future
   }
 
-  override def writeRequest(data: Seq[ByteBuffer]): Future[Unit] = {
+  final override def writeRequest(data: Seq[ByteBuffer]): Future[Unit] = {
 
     val f = Promise[Unit]
     val srcs = data.toArray
@@ -106,48 +105,25 @@ class ByteBufferHead(channel: AsynchronousSocketChannel,
     p.future
   }
 
-  override def stageShutdown(): Unit = closeChannel()
-
-  override def outboundCommand(cmd: OutboundCommand): Unit = cmd match {
-    case Disconnect         => closeChannel()
-    case Error(e)         => logger.error(e)("ByteBufferHead received error command"); channelError(e, false)
-    case cmd              => // NOOP
-  }
-
-  /////////////////////////// Private methods /////////////////////////////////////////
-
-  private def checkError(e: Throwable): Throwable = e match {
-    case e: ClosedChannelException =>
-      logger.debug("Channel closed, dropping packet")
-      closeChannel()
-      EOF
-
-    case e: IOException =>
-      logger.warn(e)("Channel IO error")
-      closeChannel()
-      EOF
-
+  override protected def checkError(e: Throwable): Throwable = e match {
     case e: ShutdownChannelGroupException =>
       logger.debug(e)("Channel Group was shutdown")
       closeChannel()
       EOF
 
     case e: Throwable =>  // Don't know what to do besides close
-      channelError(e, true)
-      e
+      super.checkError(e)
   }
 
-  private def channelError(e: Throwable, log: Boolean) {
-    if (log) {
-      logger.error(e)("Unexpected fatal error")
-    }
-    sendInboundCommand(Error(e))
-    closeChannel()
+  override protected def stageShutdown(): Unit = closeChannel()
+
+  override protected def closeWithError(t: Throwable): Unit = {
+    logger.error(t)(s"$name closing with error.")
   }
 
-  private def closeChannel() {
+  override protected def closeChannel(): Unit = {
     logger.debug("channelClose")
     try channel.close()
-    catch {  case e: IOException => /* Don't care */ }
+    catch { case e: IOException => /* Don't care */ }
   }
 }

@@ -25,4 +25,6 @@ object Command {
   }
 
   case class Error(e: Throwable) extends Exception(e) with InboundCommand with OutboundCommand
+
+  case class UnhandledError(e: Throwable) extends Exception(e) with InboundCommand
 }

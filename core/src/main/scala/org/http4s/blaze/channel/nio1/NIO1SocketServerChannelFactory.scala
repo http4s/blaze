@@ -10,10 +10,12 @@ import scala.util.{Failure, Success, Try}
 import org.http4s.blaze.pipeline.Command.EOF
 import NIO1HeadStage._
 
-class NIO1SocketServerChannelFactory(pipeFactory: BufferPipelineBuilder, pool: SelectorLoopPool)
-                extends NIOServerChannelFactory[ServerSocketChannel](pool) {
+class NIO1SocketServerChannelFactory(pipeFactory: BufferPipelineBuilder,
+                                     pool: SelectorLoopPool)
+          extends NIOServerChannelFactory[ServerSocketChannel](pool)
+{
 
-  import NIO1SocketServerChannelFactory.brokePipeMessages
+  import org.http4s.blaze.channel.ChannelHead.brokePipeMessages
 
   def this(pipeFactory: BufferPipelineBuilder, workerThreads: Int = 8, bufferSize: Int = 4*1024) =
     this(pipeFactory, new FixedArraySelectorPool(workerThreads, bufferSize))
@@ -42,11 +44,13 @@ class NIO1SocketServerChannelFactory(pipeFactory: BufferPipelineBuilder, pool: S
     }
   }
 
-  private class SocketChannelHead(val ch: SocketChannel, val loop: SelectorLoop, val key: SelectionKey)
-              extends NIO1HeadStage {
+  private class SocketChannelHead(ch: SocketChannel,
+                                  loop: SelectorLoop,
+                                  key: SelectionKey) extends NIO1HeadStage(ch, loop, key)
+  {
 
     // TODO: these methods may be better rewritten to throw to the underlying NIO1HeadStage instead of catching internally
-    def performRead(scratch: ByteBuffer): Try[ByteBuffer] = {
+    override def performRead(scratch: ByteBuffer): Try[ByteBuffer] = {
       try {
         scratch.clear()
         val bytes = ch.read(scratch)
@@ -68,7 +72,7 @@ class NIO1SocketServerChannelFactory(pipeFactory: BufferPipelineBuilder, pool: S
       }
     }
 
-    def performWrite(scratch: ByteBuffer, buffers: Array[ByteBuffer]): WriteResult = {
+    override def performWrite(scratch: ByteBuffer, buffers: Array[ByteBuffer]): WriteResult = {
       logger.debug("Performing write: " + buffers)
       try {
         ch.write(buffers)
@@ -86,12 +90,3 @@ class NIO1SocketServerChannelFactory(pipeFactory: BufferPipelineBuilder, pool: S
   }
 }
 
-object NIO1SocketServerChannelFactory {
-
-  // If the connection is forcibly closed, we might get an IOException with one of the following messages
-  private [NIO1SocketServerChannelFactory] val brokePipeMessages = Seq(
-    "Connection reset by peer",   // Found on Linux
-    "An existing connection was forcibly closed by the remote host",    // Found on windows
-    "Broken pipe"   // Found also on Linux
-  )
-}
