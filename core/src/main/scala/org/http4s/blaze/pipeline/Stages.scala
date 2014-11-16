@@ -46,7 +46,7 @@ sealed trait Stage {
   def inboundCommand(cmd: InboundCommand): Unit = cmd match {
     case Connected     => stageStartup()
     case Disconnected  => stageShutdown()
-    case _             => // NOOP
+    case _             => logger.warn(s"$name received unhandled inbound command: $cmd")
   }
 }
 
@@ -218,16 +218,24 @@ sealed trait Head[O] extends Stage {
     }
   }
 
-  // Overrides to propagate commands.
+  /** Receives inbound commands
+    * Override to capture commands. */
   override def inboundCommand(cmd: InboundCommand): Unit = {
     super.inboundCommand(cmd)
     sendInboundCommand(cmd)
   }
 
+  /** Receives outbound commands
+    * Override to capture commands. */
   def outboundCommand(cmd: OutboundCommand): Unit = cmd match {
-    case Connect => stageStartup()
-    case Disconnect  => stageShutdown()
-    case _         => // NOOP
+    case Connect    => stageStartup()
+    case Disconnect => stageShutdown()
+
+    case Error(e)   =>
+      logger.error(e)(s"$name received unhandled error command")
+      sendInboundCommand(UnhandledError(e))
+
+    case _          => logger.warn(s"$name received unhandled outbound command: $cmd")
   }
 
   final def spliceAfter(stage: MidStage[O, O]): stage.type = {

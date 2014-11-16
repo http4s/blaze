@@ -17,15 +17,9 @@ trait ChannelHead extends HeadStage[ByteBuffer] {
   protected def closeChannel(): Unit
 
   override def outboundCommand(cmd: OutboundCommand): Unit = cmd match {
-    case Disconnect =>
-      closeChannel()
-
-    case Error(e) =>
-      logger.error(e)(s"$name received unhandled error command")
-      closeChannel()
-      sendInboundCommand(UnhandledError(e))
-
-    case cmd => logger.warn(s"Unhandled outbound command: $cmd")
+    case Disconnect => closeChannel()
+    case Error(e)   => closeChannel(); super.outboundCommand(cmd)
+    case cmd        => super.outboundCommand(cmd)
   }
 
   protected def checkError(e: Throwable): Throwable = e match {
@@ -47,14 +41,10 @@ trait ChannelHead extends HeadStage[ByteBuffer] {
       EOF
 
     case e: Throwable =>  // Don't know what to do besides close
-      channelError(e)
+      logger.error(e)("Unexpected fatal error")
+      sendInboundCommand(Error(e))
+      closeWithError(e)
       e
-  }
-
-  private def channelError(e: Throwable) {
-    logger.error(e)("Unexpected fatal error")
-    sendInboundCommand(Error(e))
-    closeWithError(e)
   }
 }
 
