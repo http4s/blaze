@@ -11,7 +11,7 @@ import java.util.concurrent.atomic.AtomicReference
 abstract class TimeoutStageBase[T](timeout: Duration, exec: TickWheelExecutor) extends MidStage[T, T] { stage =>
 
   // Constructor
-  if (!timeout.isFinite()) sys.error(s"Cannot use a TimeoutStage with infinite timeout: $timeout")
+  require(timeout.isFinite() && timeout.toMillis != 0, s"Invalid timeout: $timeout")
 
   override def name: String = s"${this.getClass.getName} Stage: $timeout"
 

@@ -22,7 +22,7 @@ import org.log4s.getLogger
   * @param wheelSize number of spokes on the wheel. Each tick, the wheel will advance a spoke
   * @param tick duration between ticks
   */
-class TickWheelExecutor(wheelSize: Int = 512, tick: Duration = 100.milli) {
+class TickWheelExecutor(wheelSize: Int = 512, tick: Duration = 200.milli) {
 
   require(wheelSize > 0, "Need finite size number of ticks")
   require(tick.isFinite() && tick.toNanos != 0, "tick duration must be finite")
