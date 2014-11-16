@@ -12,7 +12,7 @@ import NIO1HeadStage._
 
 class NIO1SocketServerChannelFactory(pipeFactory: BufferPipelineBuilder,
                                      pool: SelectorLoopPool)
-          extends NIOServerChannelFactory[ServerSocketChannel](pool)
+          extends NIO1ServerChannelFactory[ServerSocketChannel](pool)
 {
 
   import org.http4s.blaze.channel.ChannelHead.brokePipeMessages

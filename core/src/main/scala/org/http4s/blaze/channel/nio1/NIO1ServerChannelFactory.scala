@@ -7,7 +7,7 @@ import org.http4s.blaze.channel._
 import scala.util.control.NonFatal
 import org.log4s.getLogger
 
-abstract class NIOServerChannelFactory[Channel <: NetworkChannel](pool: SelectorLoopPool)
+abstract class NIO1ServerChannelFactory[Channel <: NetworkChannel](pool: SelectorLoopPool)
                 extends ServerChannelFactory[Channel] {
 
   def this(fixedPoolSize: Int, bufferSize: Int = 8*1024) = this(new FixedArraySelectorPool(fixedPoolSize, bufferSize))
