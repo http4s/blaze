@@ -13,6 +13,10 @@ import org.http4s.blaze.util.BufferTools
 
 
 private[nio1] object NIO1HeadStage {
+
+  val closedWritePromise = Promise[Unit].failure(EOF)
+  val closedReadPromise  = Promise[ByteBuffer].failure(EOF)
+
   sealed trait WriteResult
   case object Complete extends WriteResult
   case object Incomplete extends WriteResult
@@ -56,7 +60,10 @@ private[nio1] abstract class NIO1HeadStage(ch: SelectableChannel,
       else loop.enqueTask(_readTask)
       p.future
     }
-    else Future.failed(new IndexOutOfBoundsException("Cannot have more than one pending read request"))
+    else {
+      if (readPromise.get() eq closedReadPromise) closedReadPromise.future
+      else Future.failed(new IndexOutOfBoundsException("Cannot have more than one pending read request"))
+    }
   }
 
   /// channel write bits /////////////////////////////////////////////////
@@ -100,7 +107,8 @@ private[nio1] abstract class NIO1HeadStage(ch: SelectableChannel,
         Future.successful(())
       }
     } else {
-      Future.failed(new IndexOutOfBoundsException("Cannot have more than one pending write request"))
+      if (writePromise.get eq closedWritePromise) closedWritePromise.future
+      else Future.failed(new IndexOutOfBoundsException("Cannot have more than one pending write request"))
     }
   }
 
@@ -131,12 +139,12 @@ private[nio1] abstract class NIO1HeadStage(ch: SelectableChannel,
   /** Don't actually close until the next cycle */
   final override protected def closeChannel(): Unit = closeWithError(EOF)
 
-  // Cleanup any read or write requests with an exception
+  // Cleanup any read or write requests with the exception
   final override def closeWithError(t: Throwable): Unit = {
-    val r = readPromise.getAndSet(null)
+    val r = readPromise.getAndSet(closedReadPromise)
     if (r != null) r.tryFailure(t)
 
-    val w = writePromise.getAndSet(null)
+    val w = writePromise.getAndSet(closedWritePromise)
     writeData = null
     if (w != null) w.tryFailure(t)
 
