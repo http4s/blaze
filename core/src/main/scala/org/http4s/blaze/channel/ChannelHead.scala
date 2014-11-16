@@ -42,7 +42,7 @@ trait ChannelHead extends HeadStage[ByteBuffer] {
       EOF
 
     case e: IOException =>
-      logger.warn(e)("Channel IO error")
+      logger.warn(e)("Channel IOException not known to be a disconnect error")
       closeChannel()
       EOF
 
