@@ -16,12 +16,12 @@ abstract class ServerChannelFactory[C <: NetworkChannel] {
 
   /** perform some stateful operation when an connection is accepted */
   protected def onAccepted(address: SocketAddress): Unit = {
-    logger.info(s"Connection to $address accepted at ${new Date}")
+    logger.debug(s"Connection to $address accepted at ${new Date}")
   }
 
   /** perform some stateful operation when an connection is rejected */
   protected def onRejected(address: SocketAddress): Unit = {
-    logger.info(s"Connection to $address being denied at ${new Date}")
+    logger.debug(s"Connection to $address being denied at ${new Date}")
   }
 
   /** This method should be used by the backends to ensure uniform behavior with

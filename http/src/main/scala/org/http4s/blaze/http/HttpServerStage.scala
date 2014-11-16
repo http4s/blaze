@@ -21,7 +21,6 @@ import java.nio.ByteBuffer
 import java.nio.charset.StandardCharsets.US_ASCII
 
 import org.http4s.blaze.util.BufferTools
-import org.log4s.getLogger
 
 abstract class HttpServerStage(maxReqBody: Int) extends Http1ServerParser with TailStage[ByteBuffer] {
   import HttpServerStage.RouteResult._

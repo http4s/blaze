@@ -92,7 +92,7 @@ final class SelectorLoop(selector: Selector, bufferSize: Int)
               val head = k.attachment().asInstanceOf[NIO1HeadStage]
 
               if (head != null) {
-                logger.debug {
+                logger.trace {
                   "selection key interests: " +
                   "write: " +  k.isWritable +
                   ", read: " + k.isReadable }
