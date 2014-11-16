@@ -13,9 +13,12 @@ import org.http4s.blaze.util.BufferTools
 
 
 private[nio1] object NIO1HeadStage {
-
-  val closedWritePromise = Promise[Unit].failure(EOF)
-  val closedReadPromise  = Promise[ByteBuffer].failure(EOF)
+  
+  case class PipeClosedPromise[T](t: Throwable) extends Promise[T] {
+    override val future: Future[T] = Future.failed(t)
+    override def tryComplete(result: Try[T]): Boolean = false
+    override def isCompleted: Boolean = true
+  }
 
   sealed trait WriteResult
   case object Complete extends WriteResult
@@ -60,9 +63,10 @@ private[nio1] abstract class NIO1HeadStage(ch: SelectableChannel,
       else loop.enqueTask(_readTask)
       p.future
     }
-    else {
-      if (readPromise.get() eq closedReadPromise) closedReadPromise.future
-      else Future.failed(new IndexOutOfBoundsException("Cannot have more than one pending read request"))
+    else readPromise.get() match {
+      case f @PipeClosedPromise(_) => f.future
+      case _                    =>
+        Future.failed(new IndexOutOfBoundsException("Cannot have more than one pending read request"))
     }
   }
 
@@ -106,9 +110,10 @@ private[nio1] abstract class NIO1HeadStage(ch: SelectableChannel,
         writeData = null
         Future.successful(())
       }
-    } else {
-      if (writePromise.get eq closedWritePromise) closedWritePromise.future
-      else Future.failed(new IndexOutOfBoundsException("Cannot have more than one pending write request"))
+    } else writePromise.get match {
+      case f @PipeClosedPromise(_) => f.future
+      case _                    =>
+        Future.failed(new IndexOutOfBoundsException("Cannot have more than one pending write request"))
     }
   }
 
@@ -141,10 +146,10 @@ private[nio1] abstract class NIO1HeadStage(ch: SelectableChannel,
 
   // Cleanup any read or write requests with the exception
   final override def closeWithError(t: Throwable): Unit = {
-    val r = readPromise.getAndSet(closedReadPromise)
+    val r = readPromise.getAndSet(PipeClosedPromise(t))
     if (r != null) r.tryFailure(t)
 
-    val w = writePromise.getAndSet(closedWritePromise)
+    val w = writePromise.getAndSet(PipeClosedPromise(t))
     writeData = null
     if (w != null) w.tryFailure(t)
 

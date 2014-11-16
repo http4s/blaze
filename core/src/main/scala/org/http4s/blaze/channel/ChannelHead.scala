@@ -42,7 +42,6 @@ trait ChannelHead extends HeadStage[ByteBuffer] {
 
     case e: Throwable =>  // Don't know what to do besides close
       logger.error(e)("Unexpected fatal error")
-      sendInboundCommand(Error(e))
       closeWithError(e)
       e
   }

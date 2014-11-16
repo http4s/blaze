@@ -119,7 +119,6 @@ final class SelectorLoop(selector: Selector, bufferSize: Int)
               try {
                 val head = k.attachment().asInstanceOf[NIO1HeadStage]
                 head.closeWithError(t)
-                head.inboundCommand(Command.Error(t))
               } catch {
                 case NonFatal(_) => /* NOOP */
                 case t: Throwable => logger.error(t)("Fatal error shutting down pipeline")

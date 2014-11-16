@@ -96,7 +96,7 @@ sealed trait Tail[I] extends Stage {
     logger.debug(s"Stage ${getClass.getName} sending outbound command: $cmd")
     if (_prevStage != null) {
       try _prevStage.outboundCommand(cmd)
-      catch { case t: Throwable => inboundCommand(Error(t)) }
+      catch { case t: Throwable => logger.error(t)("Outbound command caused an error") }
     } else {
       val e = new Exception("cannot send outbound command on disconnected stage")
       logger.error(e)("")
@@ -233,7 +233,6 @@ sealed trait Head[O] extends Stage {
 
     case Error(e)   =>
       logger.error(e)(s"$name received unhandled error command")
-      sendInboundCommand(UnhandledError(e))
 
     case _          => logger.warn(s"$name received unhandled outbound command: $cmd")
   }

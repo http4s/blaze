@@ -24,7 +24,5 @@ object Command {
     override def toString() = getMessage
   }
 
-  case class Error(e: Throwable) extends Exception(e) with InboundCommand with OutboundCommand
-
-  case class UnhandledError(e: Throwable) extends Exception(e) with InboundCommand
+  case class Error(e: Throwable) extends Exception(e) with OutboundCommand
 }
