@@ -13,25 +13,22 @@ class QuietTimeoutStage[T](timeout: Duration, exec: TickWheelExecutor = schedule
 
   override def readRequest(size: Int): Future[T] = {
     resetTimeout()
-    channelRead(size).map { t =>
-      cancelTimeout()
-      t
-    }(directec)
+    val f = channelRead(size)
+    f.onComplete { _ => cancelTimeout() }(directec)
+    f
   }
 
   override def writeRequest(data: Seq[T]): Future[Unit] = {
     resetTimeout()
-    channelWrite(data).map { t =>
-      cancelTimeout()
-      t
-    }(directec)
+    val f = channelWrite(data)
+    f.onComplete { _ => cancelTimeout() }(directec)
+    f
   }
 
   override def writeRequest(data: T): Future[Unit] = {
     resetTimeout()
-    channelWrite(data).map { t =>
-      cancelTimeout()
-      t
-    }(directec)
+    val f = channelWrite(data)
+    f.onComplete { _ => cancelTimeout() }(directec)
+    f
   }
 }
