@@ -34,11 +34,14 @@ public abstract class Http1ClientParser extends BodyAndHeaderParser {
     private final int maxRequestLineSize;
 
     private RequestLineState _requestLineState = RequestLineState.START;
-
     private String _lineScheme = null;
     private int _majorVersion = 0;
     private int _minorVersion = 0;
     private int _statusCode = 0;
+
+    final public boolean isStartState() {
+        return _requestLineState == RequestLineState.START;
+    }
 
     protected abstract void submitResponseLine(int code, String reason, String scheme, int majorversion, int minorversion);
 
