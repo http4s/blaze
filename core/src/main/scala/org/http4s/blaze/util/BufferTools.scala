@@ -22,13 +22,16 @@ object BufferTools {
   }
 
   /** Merge the `ByteBuffer`s into a single buffer */
-  def joinBuffers(buffers: Seq[ByteBuffer]): ByteBuffer = {
-    val sz = buffers.foldLeft(0)((sz, o) => sz + o.remaining())
-    val b = allocate(sz)
-    buffers.foreach(b.put)
+  def joinBuffers(buffers: Seq[ByteBuffer]): ByteBuffer = buffers match {
+    case Seq()  => emptyBuffer
+    case Seq(b) => b
+    case _      =>
+      val sz = buffers.foldLeft(0)((sz, o) => sz + o.remaining())
+      val b = allocate(sz)
+      buffers.foreach(b.put)
 
-    b.flip()
-    b
+      b.flip()
+      b
   }
 
   /** Get the `String` representation of the `ByteBuffer` */
@@ -47,20 +50,28 @@ object BufferTools {
       if (!oldbuff.isReadOnly && oldbuff.capacity() >= oldbuff.limit() + newbuff.remaining()) {
         // Enough room to append to end
         oldbuff.mark()
-        oldbuff.position(oldbuff.limit())
-        oldbuff.limit(oldbuff.limit() + newbuff.remaining())
+               .position(oldbuff.limit())
+               .limit(oldbuff.limit() + newbuff.remaining())
+
         oldbuff.put(newbuff)
-        oldbuff.reset()
+               .reset()
+
         oldbuff
       }
       else if (!oldbuff.isReadOnly && oldbuff.capacity() >= oldbuff.remaining() + newbuff.remaining()) {
         // Enough room if we compact oldbuff
-        oldbuff.compact().put(newbuff).flip()
+        oldbuff.compact()
+               .put(newbuff)
+               .flip()
+
         oldbuff
       }
       else {  // Need to make a larger buffer
         val n = ByteBuffer.allocate(oldbuff.remaining() + newbuff.remaining())
-        n.put(oldbuff).put(newbuff).flip()
+        n.put(oldbuff)
+         .put(newbuff)
+         .flip()
+
         n
       }
     } else newbuff
