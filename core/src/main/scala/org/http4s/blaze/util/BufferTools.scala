@@ -2,9 +2,44 @@ package org.http4s.blaze.util
 
 import java.nio.ByteBuffer
 
+import scala.annotation.tailrec
+
 object BufferTools {
 
   val emptyBuffer: ByteBuffer = ByteBuffer.allocate(0)
+
+  /** Allocate an empty `ByteBuffer`
+    *
+    * @param size size of desired `ByteBuffer`
+    */
+  def allocate(size: Int): ByteBuffer = ByteBuffer.allocate(size)
+
+  /** Make a copy of the ByteBuffer, zeroing the input buffer */
+  def copyBuffer(b: ByteBuffer): ByteBuffer = {
+    val bb = allocate(b.remaining())
+    bb.put(b).flip()
+    bb
+  }
+
+  /** Merge the `ByteBuffer`s into a single buffer */
+  def joinBuffers(buffers: Seq[ByteBuffer]): ByteBuffer = {
+    val sz = buffers.foldLeft(0)((sz, o) => sz + o.remaining())
+    val b = allocate(sz)
+    buffers.foreach(b.put)
+
+    b.flip()
+    b
+  }
+
+  /** Get the `String` representation of the `ByteBuffer` */
+  def bufferToString(buffer: ByteBuffer): String = {
+    if (buffer.hasRemaining) {
+      val arr = new Array[Byte](buffer.remaining())
+      buffer.get(arr)
+      new String(arr)
+    }
+    else ""
+  }
 
   /** Join the two buffers into a single ByteBuffer */
   def concatBuffers(oldbuff: ByteBuffer, newbuff: ByteBuffer): ByteBuffer = {
@@ -33,16 +68,24 @@ object BufferTools {
 
   /** Check the array of buffers to ensure they are all empty
     *
-    * @param buffers ByteBuffers to check for data
+    * @param buffers `ByteBuffer`s to check for data
     * @return true if they are empty, false if there is data remaining
     */
   def checkEmpty(buffers: Array[ByteBuffer]): Boolean = {
+    @tailrec
     def checkEmpty(i: Int): Boolean = {
       if (i < 0) true
-      else if (buffers(i).remaining == 0) checkEmpty(i - 1)
+      else if (!buffers(i).hasRemaining()) checkEmpty(i - 1)
       else false
     }
     checkEmpty(buffers.length - 1)
   }
 
+  /** Check the array of buffers to ensure they are all empty
+    *
+    * @param buffers `ByteBuffer`s to check for data
+    * @return true if they are empty, false if there is data remaining
+    */
+  def checkEmpty(buffers: TraversableOnce[ByteBuffer]): Boolean =
+    !buffers.exists(_.hasRemaining)
 }

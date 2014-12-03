@@ -3,6 +3,8 @@ package org.http4s.blaze.util
 import org.specs2.mutable._
 import java.nio.ByteBuffer
 
+import BufferTools._
+
 class BufferToolsSpec extends Specification {
 
   def b(i: Int = 1) = {
@@ -54,6 +56,23 @@ class BufferToolsSpec extends Specification {
       bb should_== b1
       bb.getInt() should_== 1
       bb.getInt() should_== 2
+    }
+
+    "check if buffers are empty" in {
+      checkEmpty(Array(allocate(0), allocate(3))) must_== false
+      checkEmpty(Seq(allocate(0), allocate(3))) must_== false
+
+      checkEmpty(Array(allocate(0), allocate(0))) must_== true
+      checkEmpty(Seq(allocate(0), allocate(0))) must_== true
+
+      checkEmpty(Array(allocate(3))) must_== false
+      checkEmpty(Seq(allocate(3))) must_== false
+
+      checkEmpty(Array(allocate(0))) must_== true
+      checkEmpty(Seq(allocate(0))) must_== true
+
+      checkEmpty(Array[ByteBuffer]()) must_== true
+      checkEmpty(Seq()) must_== true
     }
   }
 

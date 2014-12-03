@@ -2,7 +2,7 @@ import sbt._
 import Keys._
 import scala.util.Properties
 
-//import spray.revolver.RevolverPlugin._
+import spray.revolver.RevolverPlugin._
 
 object ApplicationBuild extends Build {
 
@@ -29,10 +29,12 @@ object ApplicationBuild extends Build {
 
   lazy val examples = Project("blaze-examples",
                     file("examples"),
-                    settings = buildSettings ++ Seq(
+                    settings = buildSettings ++
+                               Revolver.settings
+                      ++Seq(
                        dontPublish,
                        libraryDependencies += logbackClassic
-                    )
+                      )
                   ).dependsOn(http)
 
   /* Don't publish setting */
