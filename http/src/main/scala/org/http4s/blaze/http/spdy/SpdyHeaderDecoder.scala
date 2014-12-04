@@ -6,7 +6,9 @@ import scala.annotation.tailrec
 import java.nio.charset.StandardCharsets._
 import java.nio.{BufferUnderflowException, ByteBuffer}
 
+
 class SpdyHeaderDecoder {
+  import SpdyHeaderDecoder._
 
   private val inflater = new java.util.zip.Inflater()
 
@@ -23,7 +25,7 @@ class SpdyHeaderDecoder {
 
       // Load the data into the inflater. We will use the scratch buffer for double duty
       val len = data.remaining()
-      val scratch = ScratchBuffer.getScratchBuffer(20*len)
+      val scratch = getScratchBuffer(20*len)
 
       scratch.position(19*len)     // store the data at the end
       scratch.put(data)
@@ -137,3 +139,5 @@ class SpdyHeaderDecoder {
     new String(strArr, US_ASCII)
   }
 }
+
+private object SpdyHeaderDecoder extends ScratchBuffer

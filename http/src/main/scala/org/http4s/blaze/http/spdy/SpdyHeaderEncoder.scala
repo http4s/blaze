@@ -7,6 +7,7 @@ import org.http4s.blaze.util.{BufferTools, ScratchBuffer}
 import java.util.zip.Deflater
 
 class SpdyHeaderEncoder {
+  import SpdyHeaderEncoder._
 
   private val deflater = new java.util.zip.Deflater
   deflater.setDictionary(spdyCompresionDict)
@@ -71,7 +72,7 @@ class SpdyHeaderEncoder {
 
     // Compress the headers into a scratch buffer. Give
     // one length for orig, two for compressed just in case
-    val scratch = ScratchBuffer.getScratchBuffer(headerlen * 3)
+    val scratch = getScratchBuffer(headerlen * 3)
 
     putHeaders(scratch, headers)
 
@@ -89,3 +90,5 @@ class SpdyHeaderEncoder {
   }
 
 }
+
+private object SpdyHeaderEncoder extends ScratchBuffer

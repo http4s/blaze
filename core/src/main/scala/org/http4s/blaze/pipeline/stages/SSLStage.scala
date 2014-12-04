@@ -17,7 +17,9 @@ import org.http4s.blaze.util.ScratchBuffer
 import org.http4s.blaze.util.BufferTools._
 
 
+
 final class SSLStage(engine: SSLEngine) extends MidStage[ByteBuffer, ByteBuffer] {
+  import SSLStage._
 
   def name: String = s"SSLStage"
 
@@ -50,11 +52,6 @@ final class SSLStage(engine: SSLEngine) extends MidStage[ByteBuffer, ByteBuffer]
     p.future
   }
 
-  override protected def stageShutdown(): Unit = {
-    ScratchBuffer.clearBuffer()
-    super.stageShutdown()
-  }
-
   private def sslHandshake(data: ByteBuffer, r: SSLEngineResult): Future[ByteBuffer] = {
     r.getHandshakeStatus match {
       case HandshakeStatus.NEED_UNWRAP =>
@@ -62,7 +59,7 @@ final class SSLStage(engine: SSLEngine) extends MidStage[ByteBuffer, ByteBuffer]
           channelRead().flatMap { b =>
             val sum = concatBuffers(data, b)
             try {
-              val o = ScratchBuffer.getScratchBuffer(maxBuffer)
+              val o = getScratchBuffer(maxBuffer)
               val r = engine.unwrap(sum, o)
               sslHandshake(sum, r)
             }
@@ -78,7 +75,7 @@ final class SSLStage(engine: SSLEngine) extends MidStage[ByteBuffer, ByteBuffer]
           }(trampoline)
         } else {
           try {
-            val o = ScratchBuffer.getScratchBuffer(maxBuffer)
+            val o = getScratchBuffer(maxBuffer)
             val r = engine.unwrap(data, o)
 
             if (o.position() > 0) {
@@ -100,7 +97,7 @@ final class SSLStage(engine: SSLEngine) extends MidStage[ByteBuffer, ByteBuffer]
       case HandshakeStatus.NEED_TASK =>
         runTasks()
         try {
-          val o = ScratchBuffer.getScratchBuffer(maxBuffer)
+          val o = getScratchBuffer(maxBuffer)
           val r = engine.unwrap(data, o)
           sslHandshake(data, r)
         }  // just kind of bump it along
@@ -110,7 +107,7 @@ final class SSLStage(engine: SSLEngine) extends MidStage[ByteBuffer, ByteBuffer]
 
       case HandshakeStatus.NEED_WRAP =>
         try {
-          val o = ScratchBuffer.getScratchBuffer(maxBuffer)
+          val o = getScratchBuffer(maxBuffer)
           val r = engine.wrap(emptyBuffer, o)
           assert(r.bytesProduced() > 0)
           o.flip()
@@ -136,7 +133,7 @@ final class SSLStage(engine: SSLEngine) extends MidStage[ByteBuffer, ByteBuffer]
     readLeftover = null
 
     var bytesRead = 0
-    val o = ScratchBuffer.getScratchBuffer(maxBuffer)
+    val o = getScratchBuffer(maxBuffer)
 
     @tailrec
     def go(): Unit = {
@@ -203,7 +200,7 @@ final class SSLStage(engine: SSLEngine) extends MidStage[ByteBuffer, ByteBuffer]
   }
 
   private def writeLoop(buffers: Array[ByteBuffer], out: ListBuffer[ByteBuffer], p: Promise[Unit]): Unit = {
-    val o = ScratchBuffer.getScratchBuffer(maxBuffer)
+    val o = getScratchBuffer(maxBuffer)
     @tailrec
     def go(): Unit = {    // We try and encode the data buffer by buffer until its gone
       o.clear()
@@ -281,4 +278,4 @@ final class SSLStage(engine: SSLEngine) extends MidStage[ByteBuffer, ByteBuffer]
   }
 }
 
-
+private object SSLStage extends ScratchBuffer

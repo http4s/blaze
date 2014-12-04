@@ -4,11 +4,11 @@ import java.nio.ByteBuffer
 import org.log4s.getLogger
 
 
-object ScratchBuffer {
+abstract class ScratchBuffer {
   private[this] val logger = getLogger
-  val localBuffer = new ThreadLocal[ByteBuffer]
+  private val localBuffer = new ThreadLocal[ByteBuffer]
 
-  def getScratchBuffer(size: Int): ByteBuffer = {
+  final def getScratchBuffer(size: Int): ByteBuffer = {
     val b = localBuffer.get()
 
     if (b == null || b.capacity() < size) {
@@ -22,7 +22,7 @@ object ScratchBuffer {
     }
   }
 
-  def clearBuffer(): Unit = {
+  final def clearScratchBuffer(): Unit = {
     logger.trace("Removing thread local ByteBuffer")
     localBuffer.remove()
   }
