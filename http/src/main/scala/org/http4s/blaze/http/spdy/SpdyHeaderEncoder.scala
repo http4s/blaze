@@ -3,7 +3,7 @@ package org.http4s.blaze.http.spdy
 import java.nio.ByteBuffer
 import java.nio.charset.StandardCharsets._
 import scala.annotation.tailrec
-import org.http4s.blaze.util.ScratchBuffer
+import org.http4s.blaze.util.{BufferTools, ScratchBuffer}
 import java.util.zip.Deflater
 
 class SpdyHeaderEncoder {
@@ -50,7 +50,7 @@ class SpdyHeaderEncoder {
       if (arr.length <= 0xffffff)
         throw new ProtocolException(s"Compressed header length larger than 24 bit: ${sz + pos}")
 
-      val n = ByteBuffer.allocate(math.min(0xffffff, 2*(arr.length - pos)))
+      val n = BufferTools.allocate(math.min(0xffffff, 2*(arr.length - pos)))
       buff.limit(pos + sz)
       n.put(buff)
       compressToBuffer(0, n)
@@ -81,7 +81,7 @@ class SpdyHeaderEncoder {
 
       val buff = compressToBuffer(scratch.position(), scratch)
       if (buff eq scratch) {  // Need to copy it out of the scratch buffer
-        val b = ByteBuffer.allocate(buff.remaining())
+        val b = BufferTools.allocate(buff.remaining())
         b.put(buff).flip()
         b
       } else buff

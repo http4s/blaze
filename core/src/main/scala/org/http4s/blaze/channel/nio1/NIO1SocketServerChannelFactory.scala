@@ -6,6 +6,8 @@ import java.nio.channels._
 import java.net.SocketAddress
 import java.io.IOException
 import java.nio.ByteBuffer
+import org.http4s.blaze.util.BufferTools
+
 import scala.util.{Failure, Success, Try}
 import org.http4s.blaze.pipeline.Command.EOF
 import NIO1HeadStage._
@@ -58,7 +60,7 @@ class NIO1SocketServerChannelFactory(pipeFactory: BufferPipelineBuilder,
         if (bytes >= 0) {
           scratch.flip()
 
-          val b = ByteBuffer.allocate(scratch.remaining())
+          val b = BufferTools.allocate(scratch.remaining())
           b.put(scratch)
           b.flip()
           Success(b)

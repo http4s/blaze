@@ -2,6 +2,8 @@ package org.http4s.blaze.http.spdy
 
 import java.nio.ByteBuffer
 
+import org.http4s.blaze.util.BufferTools
+
 private[spdy] trait SpdyEncoderMethods {
 
   protected def deflater: SpdyHeaderEncoder
@@ -10,7 +12,7 @@ private[spdy] trait SpdyEncoderMethods {
   def encodeData(frame: DataFrame): Seq[ByteBuffer] = {
     import frame._
 
-      val header = ByteBuffer.allocate(8)
+      val header = BufferTools.allocate(8)
 
       header.putInt(streamid & Masks.STREAMID)
       header.put((if (isLast) Flags.FINISHED else 0).toByte)
@@ -53,7 +55,7 @@ private[spdy] trait SpdyEncoderMethods {
     import frame._
 
 
-      val buff = ByteBuffer.allocate(12)
+      val buff = BufferTools.allocate(12)
 
       buff.putShort((Flags.CONTROL << 8 | spdyVersion).toShort)
       buff.putShort(frameID.toShort)
@@ -77,7 +79,7 @@ private[spdy] trait SpdyEncoderMethods {
   def encodeRstStream(frame: RstStreamFrame): Seq[ByteBuffer] = {
     import frame._
 
-    val buff = ByteBuffer.allocate(16)
+    val buff = BufferTools.allocate(16)
     buff.putShort((Flags.CONTROL << 8 | spdyVersion).toShort)
         .putShort(frameID.toShort)
         .position(7)
@@ -93,7 +95,7 @@ private[spdy] trait SpdyEncoderMethods {
     import frame._
 
     val count = settings.length
-    val buff = ByteBuffer.allocate(12 + 8 * count)
+    val buff = BufferTools.allocate(12 + 8 * count)
 
     buff.putShort((Flags.CONTROL << 8 | spdyVersion).toShort)
       .putShort(frameID.toShort)
@@ -111,7 +113,7 @@ private[spdy] trait SpdyEncoderMethods {
   def encodePing(frame: PingFrame): Seq[ByteBuffer] = {
     import frame._
 
-    val buff = ByteBuffer.allocate(12)
+    val buff = BufferTools.allocate(12)
 
     buff.putShort((Flags.CONTROL << 8 | spdyVersion).toShort)
       .putShort(frameID.toShort)
@@ -125,7 +127,7 @@ private[spdy] trait SpdyEncoderMethods {
   def encodeGoAway(frame: GoAwayFrame): Seq[ByteBuffer] = {
     import frame._
 
-    val buff = ByteBuffer.allocate(16)
+    val buff = BufferTools.allocate(16)
     buff.putShort((Flags.CONTROL << 8 | spdyVersion).toShort)
       .putShort(frameID.toShort)
       .putInt(8)    // flags and length, which are 0 and 8 respectively
@@ -139,7 +141,7 @@ private[spdy] trait SpdyEncoderMethods {
   def encodeHeaders(frame: HeadersFrame): Seq[ByteBuffer] = {
     import frame._
 
-    val buff = ByteBuffer.allocate(12)
+    val buff = BufferTools.allocate(12)
     buff.putShort((Flags.CONTROL << 8 | spdyVersion).toShort)
       .putShort(frameID.toShort)
     if (isLast) buff.put(Flags.FINISHED)
@@ -156,7 +158,7 @@ private[spdy] trait SpdyEncoderMethods {
   def encodeWindowUpdate(frame: WindowUpdateFrame): Seq[ByteBuffer] = {
     import frame._
 
-    val buff = ByteBuffer.allocate(16)
+    val buff = BufferTools.allocate(16)
     buff.putShort((Flags.CONTROL << 8 | spdyVersion).toShort)
       .putShort(frameID.toShort)
       .putInt(8)    // flags (0) and length (8)

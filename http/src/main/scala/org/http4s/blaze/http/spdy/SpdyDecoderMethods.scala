@@ -1,6 +1,7 @@
 package org.http4s.blaze.http.spdy
 
 import java.nio.ByteBuffer
+import org.http4s.blaze.util.BufferTools
 import org.log4s.Logger
 
 
@@ -15,7 +16,7 @@ private[spdy] trait SpdyDecoderMethods {
     val id = data.getInt() & Masks.STREAMID
     val finished = data.get() != 0
     val len = data.get() << 16 | data.get() << 8 | data.get()
-    val body = ByteBuffer.allocate(len)
+    val body = BufferTools.allocate(len)
     body.put(data)
     body.flip()
 

@@ -13,7 +13,7 @@ object ScratchBuffer {
 
     if (b == null || b.capacity() < size) {
       logger.trace(s"Allocating thread local ByteBuffer($size)")
-      val b = ByteBuffer.allocate(size)
+      val b = BufferTools.allocate(size)
       localBuffer.set(b)
       b
     } else {

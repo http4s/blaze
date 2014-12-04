@@ -8,7 +8,7 @@ import BufferTools._
 class BufferToolsSpec extends Specification {
 
   def b(i: Int = 1) = {
-    val b = ByteBuffer.allocate(4)
+    val b = BufferTools.allocate(4)
     b.putInt(i).flip()
     b
   }
@@ -34,7 +34,7 @@ class BufferToolsSpec extends Specification {
     }
 
     "append the result of one to the end of another if there is room" in {
-      val b1 = ByteBuffer.allocate(9)
+      val b1 = BufferTools.allocate(9)
       b1.position(1)              // offset by 1 to simulated already having read a byte
       b1.putInt(1).flip().position(1)
       val b2 = b(2)
@@ -47,7 +47,7 @@ class BufferToolsSpec extends Specification {
     }
 
     "compact a buffer to fit the second" in {
-      val b1 = ByteBuffer.allocate(8)
+      val b1 = BufferTools.allocate(8)
       b1.putInt(0).putInt(1).flip()
       b1.getInt() // Discard the first element
       val b2 = b(2)

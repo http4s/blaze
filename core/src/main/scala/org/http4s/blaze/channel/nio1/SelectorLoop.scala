@@ -1,11 +1,12 @@
 package org.http4s.blaze.channel.nio1
 
 
+import org.http4s.blaze.util.BufferTools
+
 import scala.annotation.tailrec
 import scala.util.control.NonFatal
 
 import java.nio.channels._
-import java.nio.ByteBuffer
 import java.io.IOException
 import java.util.concurrent.atomic.AtomicReference
 import java.util.concurrent.RejectedExecutionException
@@ -24,7 +25,7 @@ final class SelectorLoop(selector: Selector, bufferSize: Int)
   private val queueHead = new AtomicReference[Node](null)
   private val queueTail = new AtomicReference[Node](null)
 
-  private val scratch = ByteBuffer.allocate(bufferSize)
+  private val scratch = BufferTools.allocate(bufferSize)
   @volatile private var _isClosed = false
 
   def executeTask(r: Runnable) {

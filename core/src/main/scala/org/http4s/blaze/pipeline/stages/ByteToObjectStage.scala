@@ -3,7 +3,6 @@ package org.http4s.blaze.pipeline.stages
 import org.http4s.blaze.pipeline.MidStage
 import org.http4s.blaze.util.Execution.trampoline
 import org.http4s.blaze.pipeline.Command.Error
-import org.log4s.getLogger
 
 import java.nio.{BufferOverflowException, ByteBuffer}
 

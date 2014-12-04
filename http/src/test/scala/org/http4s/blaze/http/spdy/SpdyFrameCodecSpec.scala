@@ -1,5 +1,6 @@
 package org.http4s.blaze.http.spdy
 
+import org.http4s.blaze.util.BufferTools
 import org.specs2.mutable._
 import java.nio.ByteBuffer
 
@@ -56,7 +57,7 @@ class SpdyFrameCodecSpec extends Specification {
   
   def concat(buffs: Seq[ByteBuffer]): ByteBuffer = {
     val len = buffs.foldLeft(0)((i, b) => i + b.remaining())
-    val buff = ByteBuffer.allocate(len)
+    val buff = BufferTools.allocate(len)
     buffs.foreach(buff.put)
     
     buff.flip()

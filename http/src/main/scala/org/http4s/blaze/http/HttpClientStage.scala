@@ -148,7 +148,7 @@ class HttpClientStage(timeout: Duration = Duration.Inf)
             else if (bodyBuffers.length == 1) bodyBuffers.head
             else {
               val sz = bodyBuffers.foldLeft(0)((sz, i) => sz + i.remaining())
-              val b = ByteBuffer.allocate(sz)
+              val b = BufferTools.allocate(sz)
               bodyBuffers.foreach(b.put(_))
               b.flip()
               b

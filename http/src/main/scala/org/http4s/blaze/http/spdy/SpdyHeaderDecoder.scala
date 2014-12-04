@@ -1,6 +1,6 @@
 package org.http4s.blaze.http.spdy
 
-import org.http4s.blaze.util.ScratchBuffer
+import org.http4s.blaze.util.{BufferTools, ScratchBuffer}
 import scala.collection.mutable.ListBuffer
 import scala.annotation.tailrec
 import java.nio.charset.StandardCharsets._
@@ -131,7 +131,7 @@ class SpdyHeaderDecoder {
 
   private def getString(buff: ByteBuffer, len: Int): String = {
     if(len > 4*1024) throw new ProtocolException(s"Invalid Header value length: $len")
-    ByteBuffer.allocate(43)
+    BufferTools.allocate(43)
     val strArr = new Array[Byte](len)
     buff.get(strArr)
     new String(strArr, US_ASCII)

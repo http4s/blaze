@@ -2,6 +2,8 @@ package org.http4s.blaze.http.spdy
 
 import java.nio.{BufferOverflowException, ByteBuffer}
 
+import org.http4s.blaze.util.BufferTools
+
 
 object SettingFlag {
 
@@ -86,6 +88,6 @@ object Setting {
     apply(flags, id, mkBuffer.putInt(value).array())
   }
 
-  private def mkBuffer = ByteBuffer.allocate(4)
+  private def mkBuffer = BufferTools.allocate(4)
 }
 

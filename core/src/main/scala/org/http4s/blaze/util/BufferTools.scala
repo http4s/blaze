@@ -6,7 +6,7 @@ import scala.annotation.tailrec
 
 object BufferTools {
 
-  val emptyBuffer: ByteBuffer = ByteBuffer.allocate(0)
+  val emptyBuffer: ByteBuffer = allocate(0)
 
   /** Allocate an empty `ByteBuffer`
     *
@@ -67,7 +67,7 @@ object BufferTools {
         oldbuff
       }
       else {  // Need to make a larger buffer
-        val n = ByteBuffer.allocate(oldbuff.remaining() + newbuff.remaining())
+        val n = allocate(oldbuff.remaining() + newbuff.remaining())
         n.put(oldbuff)
          .put(newbuff)
          .flip()

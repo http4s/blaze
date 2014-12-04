@@ -201,7 +201,7 @@ abstract class HttpServerStage(maxReqBody: Int) extends Http1ServerParser with T
         case b::Nil  => b
         case buffers =>
           val sz = buffers.foldLeft(0)(_ + _.remaining())
-          val b = ByteBuffer.allocate(sz)
+          val b = BufferTools.allocate(sz)
           buffers.foreach(b.put)
           b.flip()
           b

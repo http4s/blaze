@@ -1,5 +1,6 @@
 package org.http4s.blaze.pipeline.stages
 
+import org.http4s.blaze.util.BufferTools
 import org.specs2.mutable._
 
 import java.nio.ByteBuffer
@@ -19,7 +20,7 @@ class ByteToObjectStageSpec extends Specification with NoTimeConversions {
     def name: String = "TestCodec"
 
     def messageToBuffer(in: Msg): Seq[ByteBuffer] = {
-      val b = ByteBuffer.allocate(3)
+      val b = BufferTools.allocate(3)
       b.put(in.tag)
       in match {
         case One(byte) => b.put(byte)
@@ -50,13 +51,13 @@ class ByteToObjectStageSpec extends Specification with NoTimeConversions {
   }
 
   def oneBuffer = {
-    val b = ByteBuffer.allocate(2)
+    val b = BufferTools.allocate(2)
     b.put(0.toByte).put(1.toByte).flip()
     b
   }
 
   def twoBuffer = {
-    val b = ByteBuffer.allocate(3)
+    val b = BufferTools.allocate(3)
     b.put(1.toByte).putShort(2.toShort).flip()
     b
   }
@@ -112,7 +113,7 @@ class ByteToObjectStageSpec extends Specification with NoTimeConversions {
     }
 
     "Decode one large buffer" in {
-      val b = ByteBuffer.allocate(oneBuffer.remaining() + twoBuffer.remaining())
+      val b = BufferTools.allocate(oneBuffer.remaining() + twoBuffer.remaining())
       b.put(oneBuffer).put(twoBuffer)
       b.flip()
 
@@ -122,11 +123,11 @@ class ByteToObjectStageSpec extends Specification with NoTimeConversions {
     }
 
     "Decode a series of one byte buffers" in {
-      val b = ByteBuffer.allocate(oneBuffer.remaining() + twoBuffer.remaining())
+      val b = BufferTools.allocate(oneBuffer.remaining() + twoBuffer.remaining())
       b.put(oneBuffer).put(twoBuffer)
 
       val buffs = b.array().map{ byte =>
-        val b = ByteBuffer.allocate(1)
+        val b = BufferTools.allocate(1)
         b.put(byte).flip()
         b
       }

@@ -3,6 +3,7 @@ package org.http4s.blaze.channel.nio2
 
 import org.http4s.blaze.channel.ChannelHead
 import org.http4s.blaze.pipeline.Command._
+import org.http4s.blaze.util.BufferTools
 
 import scala.concurrent.{Promise, Future}
 import scala.annotation.tailrec
@@ -19,7 +20,7 @@ final class ByteBufferHead(channel: AsynchronousSocketChannel,
 
   def name: String = "ByteBufferHeadStage"
 
-  private val buffer = ByteBuffer.allocate(bufferSize)
+  private val buffer = BufferTools.allocate(bufferSize)
 
   final override def writeRequest(data: ByteBuffer): Future[Unit] = {
 
@@ -92,7 +93,7 @@ final class ByteBufferHead(channel: AsynchronousSocketChannel,
       def completed(i: Integer, attachment: Null) {
         if (i.intValue() >= 0) {
           buffer.flip()
-          val b = ByteBuffer.allocate(buffer.remaining())
+          val b = BufferTools.allocate(buffer.remaining())
           b.put(buffer).flip()
           p.trySuccess(b)
         } else {   // must be end of stream
