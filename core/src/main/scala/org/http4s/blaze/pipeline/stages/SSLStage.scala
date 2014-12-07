@@ -18,7 +18,7 @@ import org.http4s.blaze.util.BufferTools._
 
 
 
-final class SSLStage(engine: SSLEngine) extends MidStage[ByteBuffer, ByteBuffer] {
+final class SSLStage(engine: SSLEngine, maxWrite: Int = 1024*1024) extends MidStage[ByteBuffer, ByteBuffer] {
   import SSLStage._
 
   def name: String = s"SSLStage"
@@ -127,19 +127,19 @@ final class SSLStage(engine: SSLEngine) extends MidStage[ByteBuffer, ByteBuffer]
     val b = concatBuffers(readLeftover, buffer)
     readLeftover = null
 
-    var bytesRead = 0
     val o = getScratchBuffer(maxBuffer)
 
     @tailrec
-    def go(): Unit = {
+    def goRead(bytesRead: Int): Unit = {
       val r = engine.unwrap(b, o)
 
       if (r.bytesProduced() > 0) {
-        bytesRead += r.bytesProduced()
         o.flip()
         out += copyBuffer(o)
         o.clear()
       }
+
+      val newRead = bytesRead + r.bytesProduced()
 
       logger.debug(s"SSL Read Request Status: $r, $o")
 
@@ -147,19 +147,17 @@ final class SSLStage(engine: SSLEngine) extends MidStage[ByteBuffer, ByteBuffer]
         case HandshakeStatus.NOT_HANDSHAKING =>
 
           r.getStatus() match {
-            case Status.OK => go()    // successful decrypt, continue
+            case Status.OK => goRead(newRead)    // successful decrypt, continue
 
             case Status.BUFFER_UNDERFLOW => // Need more data
               if (b.hasRemaining) {   // TODO: stash the buffer. I don't like this, but is there another way?
                 readLeftover = b
               }
 
-              if (!out.isEmpty) {          // We got some data so send it
-                p.success(joinBuffers(out))
-              }
+              if (out.nonEmpty) p.success(joinBuffers(out))          // We got some data so send it
               else {
                 val readsize = if (size > 0) size - bytesRead else size
-                channelRead(math.min(readsize, maxNetSize)).onComplete {
+                channelRead(math.max(readsize, maxNetSize)).onComplete {
                   case Success(b) => readLoop(b, readsize, out, p)
                   case Failure(f) => p.tryFailure(f)
                 }(trampoline)
@@ -182,7 +180,7 @@ final class SSLStage(engine: SSLEngine) extends MidStage[ByteBuffer, ByteBuffer]
       }
     }
 
-    try go()
+    try goRead(0)
     catch {
       case t: SSLException =>
         logger.warn(t)("SSLException during read loop")
@@ -197,11 +195,9 @@ final class SSLStage(engine: SSLEngine) extends MidStage[ByteBuffer, ByteBuffer]
   private def writeLoop(buffers: Array[ByteBuffer], out: ListBuffer[ByteBuffer], p: Promise[Unit]): Unit = {
     val o = getScratchBuffer(maxBuffer)
     @tailrec
-    def go(): Unit = {    // We try and encode the data buffer by buffer until its gone
+    def goWrite(b: Int): Unit = {    // We try and encode the data buffer by buffer until its gone
       o.clear()
       val r = engine.wrap(buffers, o)
-
-      logger.debug(s"Write request result: $r, $o")
 
       r.getHandshakeStatus() match {
         case HandshakeStatus.NOT_HANDSHAKING =>
@@ -209,13 +205,20 @@ final class SSLStage(engine: SSLEngine) extends MidStage[ByteBuffer, ByteBuffer]
           if (o.position() > 0) { // Accumulate any encoded bytes for output
             o.flip()
             out += copyBuffer(o)
-            o.clear()
           }
+
+          val buffered = b + r.bytesProduced()
 
           r.getStatus() match {
             case Status.OK =>   // Successful encode
               if (checkEmpty(buffers)) p.completeWith(channelWrite(out))
-              else go()
+              else if (buffered > maxNetSize) {
+                channelWrite(out).onComplete {
+                  case Success(_)    => writeLoop(buffers, new ListBuffer, p)
+                  case f@ Failure(_) => p.tryComplete(f)
+                }(trampoline)
+              }
+              else goWrite(buffered)
 
             case Status.CLOSED =>
               if (!out.isEmpty) p.completeWith(channelWrite(out))
@@ -231,7 +234,7 @@ final class SSLStage(engine: SSLEngine) extends MidStage[ByteBuffer, ByteBuffer]
         // r.getHandshakeStatus()
         case _ => // need to handshake
 
-          def continue(r: Try[ByteBuffer]): Unit = r match {
+          def continue(t: Try[ByteBuffer]): Unit = t match {
             case Success(b) =>    // In reality, we shouldn't get any data back with a reasonable protocol.
               val old = readLeftover
               if (old != null && old.hasRemaining && b.hasRemaining) {
@@ -263,7 +266,7 @@ final class SSLStage(engine: SSLEngine) extends MidStage[ByteBuffer, ByteBuffer]
       }
     }
 
-    try go()
+    try goWrite(0)
     catch {
       case t: SSLException =>
         logger.warn(t)("SSLException during writeLoop")

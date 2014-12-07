@@ -8,7 +8,7 @@ object BufferTools {
 
   val emptyBuffer: ByteBuffer = allocate(0)
 
-  /** Allocate an empty `ByteBuffer`
+  /** Allocate a fresh `ByteBuffer`
     *
     * @param size size of desired `ByteBuffer`
     */

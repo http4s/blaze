@@ -31,7 +31,7 @@ class SSLHttpServer(port: Int) {
     val eng = sslContext.createSSLEngine()
     eng.setUseClientMode(false)
 
-    TrunkBuilder(new SSLStage(eng)).cap(new ExampleHttpServerStage(None, 10*1024))
+    TrunkBuilder(new SSLStage(eng, 100*1024)).cap(new ExampleHttpServerStage(None, 10*1024))
   }
 
   val group = AsynchronousChannelGroup.withFixedThreadPool(10, java.util.concurrent.Executors.defaultThreadFactory())
