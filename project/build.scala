@@ -30,10 +30,20 @@ object ApplicationBuild extends Build {
   lazy val examples = Project("blaze-examples",
                     file("examples"),
                     settings = buildSettings ++
-                               Revolver.settings
-                      ++Seq(
-                       dontPublish,
-                       libraryDependencies += logbackClassic
+                               Revolver.settings ++
+                      Seq(
+                        dontPublish,
+                        libraryDependencies += logbackClassic,
+                        libraryDependencies += alpn_api,
+                        libraryDependencies += alpn_boot,
+
+                        // Adds ALPN to the boot classpath for Spdy support
+                        javaOptions in run <++= (managedClasspath in Runtime) map { attList =>
+                          for {
+                            file <- attList.map(_.data)
+                            path = file.getAbsolutePath if path.contains("jetty.alpn")
+                          } yield { println(path); "-Xbootclasspath/p:" + path}
+                        }
                       )
                   ).dependsOn(http)
 
@@ -76,20 +86,10 @@ object ApplicationBuild extends Build {
      s"-target:jvm-${JvmTarget}"
     ),
 
-    //mainClass in Revolver.reStart := Some("org.http4s.blaze.examples.NIO1HttpServer"),
 //    javaOptions in run += "-Djavax.net.debug=all",    // SSL Debugging
 //    javaOptions in run += "-Dcom.sun.net.ssl.enableECC=false",
 //    javaOptions in run += "-Djsse.enableSNIExtension=false",
     fork in run := true,
-
-      // Adds NPN to the boot classpath for Spdy support
-//    javaOptions in run <++= (managedClasspath in Runtime) map { attList =>
-//      for {
-//        file <- attList.map(_.data)
-//        path = file.getAbsolutePath if path.contains("jetty.npn")
-//      } yield { println(path); "-Xbootclasspath/p:" + path}
-//    }
-
     resolvers += Resolver.sonatypeRepo("snapshots")
   )
 
@@ -97,9 +97,7 @@ object ApplicationBuild extends Build {
   lazy val dependencies = Seq(
     libraryDependencies += specs2 % "test",
     libraryDependencies += logbackClassic % "test",
-    libraryDependencies += log4s,
-    libraryDependencies += npn_api,
-    libraryDependencies += npn_boot
+    libraryDependencies += log4s
   )
 
   lazy val specs2              = "org.specs2"                 %% "specs2"              % "2.4"
@@ -110,12 +108,12 @@ object ApplicationBuild extends Build {
 
 
   // Needed for Spdy Support. Perhaps it should be a sub-project?
-  // Interesting note: Http2.0 will use the TSLALPN extension which, unfortunately,
-  // is also not implemented in java SSL yet.
-  lazy val npn_api             = "org.eclipse.jetty.npn"     % "npn-api"               % npn_version
-  lazy val npn_boot            = "org.mortbay.jetty.npn"     % "npn-boot"              % npn_version
+  // Interesting note: Http2.0 will use the TSLALPN extension which, unfortunate
+  // as it is not implemented in java SSL yet.
+  lazy val alpn_api            = "org.eclipse.jetty.alpn"     % "alpn-api"             % "1.1.0.v20141014"
 
-  lazy val npn_version = "8.1.2.v20120308"
+  // Note that the alpn_boot version is JVM version specific. Check the docs if getting weird errors
+  lazy val alpn_boot           = "org.mortbay.jetty.alpn"     % "alpn-boot"            % "7.0.0.v20140317"
 
   /* publishing */
   lazy val publishing = Seq(

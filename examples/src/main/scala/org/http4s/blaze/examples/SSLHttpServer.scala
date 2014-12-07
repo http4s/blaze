@@ -14,19 +14,7 @@ import org.http4s.blaze.pipeline.TrunkBuilder
 
 class SSLHttpServer(port: Int) {
 
-  private val sslContext = {
-    val ksStream = BogusKeystore.asInputStream()
-    val ks = KeyStore.getInstance("JKS")
-    ks.load(ksStream, BogusKeystore.getKeyStorePassword)
-
-    val kmf = KeyManagerFactory.getInstance(KeyManagerFactory.getDefaultAlgorithm())
-    kmf.init(ks, BogusKeystore.getCertificatePassword)
-
-    val context = SSLContext.getInstance("SSL")
-
-    context.init(kmf.getKeyManagers(), null, null)
-    context
-  }
+  private val sslContext = ExampleKeystore.sslContext()
 
   private val f: BufferPipelineBuilder = { _ =>
     val eng = sslContext.createSSLEngine()
