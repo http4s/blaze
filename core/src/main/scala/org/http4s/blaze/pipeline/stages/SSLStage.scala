@@ -212,7 +212,7 @@ final class SSLStage(engine: SSLEngine, maxWrite: Int = 1024*1024) extends MidSt
           r.getStatus() match {
             case Status.OK =>   // Successful encode
               if (checkEmpty(buffers)) p.completeWith(channelWrite(out))
-              else if (buffered > maxNetSize) {
+              else if (maxWrite > 0 && buffered > maxWrite) {
                 channelWrite(out).onComplete {
                   case Success(_)    => writeLoop(buffers, new ListBuffer, p)
                   case f@ Failure(_) => p.tryComplete(f)

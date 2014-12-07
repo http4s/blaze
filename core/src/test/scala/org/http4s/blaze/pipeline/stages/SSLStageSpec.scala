@@ -44,6 +44,38 @@ class SSLStageSpec extends Specification with NoTimeConversions {
       BufferTools.mkString(head.results) must_== "Foo"
     }
 
+    "Split large buffers" in {
+      val (headEng, stageEng) = mkClientServerEngines
+      val s = "Fo"*(stageEng.getSession.getPacketBufferSize*0.75).toInt
+
+      /* The detection of splitting the buffer is seen by checking the write
+       * output: if its flushing, the output should only be single buffers for
+       * a small flush limits. This could break with changes to the SSLStage
+       * algorithm
+       */
+      class TestStage extends SSLSeqHead(Seq(mkBuffer(s)), headEng) {
+        var multipleWrite = false
+        override def writeRequest(data: Seq[ByteBuffer]): Future[Unit] = {
+          if (data.length > 1) multipleWrite = true
+          super.writeRequest(data)
+        }
+      }
+
+      val head = new TestStage
+
+      val tail = new MapTail[ByteBuffer](b => BufferTools.concatBuffers(b, b.duplicate()))
+      LeafBuilder(tail)
+        .prepend(new SSLStage(stageEng, maxWrite = 100))
+        .base(head)
+
+      head.sendInboundCommand(Connected)
+      Await.ready(tail.startLoop(), 20.seconds)
+
+      val r = BufferTools.mkString(head.results)
+      head.multipleWrite must_== false
+      r must_== s + s
+    }
+
     "Transcode multiple single byte buffers" in {
 
       val (headEng, stageEng) = mkClientServerEngines
@@ -230,6 +262,13 @@ class SSLStageSpec extends Specification with NoTimeConversions {
           val o = BufferTools.allocate(maxNetSize)
           val r = engine.wrap(buffer, o)
           o.flip()
+
+          // Store any left over buffer
+          if (buffer.hasRemaining) {
+            assert (readBuffer == null)
+            readBuffer = buffer
+          }
+
           if (debug) println("Go in readRequest: " + r)
           r.getHandshakeStatus match {
             case NOT_HANDSHAKING =>
@@ -238,12 +277,6 @@ class SSLStageSpec extends Specification with NoTimeConversions {
 
             case status =>
               if (debug) println("Need to handshake: " + o)
-
-              // Store any left over buffer
-              if (buffer.hasRemaining) {
-                assert (readBuffer == null)
-                readBuffer = buffer
-              }
 
               if (o.hasRemaining) Future.successful(o)
               else {

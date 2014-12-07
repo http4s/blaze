@@ -1,6 +1,6 @@
 package org.http4s.blaze.pipeline.stages
 
-import org.http4s.blaze.pipeline.Command.{EOF, InboundCommand}
+import org.http4s.blaze.pipeline.Command.EOF
 import org.http4s.blaze.pipeline.TailStage
 
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -10,8 +10,8 @@ import scala.util.{Failure, Success}
 import scala.concurrent.Promise
 
 
-class EchoTail[A] extends TailStage[A] {
-  override def name: String = "Echo Tail"
+class MapTail[A](f: A => A) extends TailStage[A] {
+  override def name = "MapTail"
 
   def startLoop(): Future[Unit] = {
     val p = Promise[Unit]
@@ -20,12 +20,14 @@ class EchoTail[A] extends TailStage[A] {
   }
 
   private def innerLoop(p: Promise[Unit]): Unit = {
-    channelRead(-1, 20.seconds).flatMap { buff =>
-      channelWrite(buff)
+    channelRead(-1, 10.seconds).flatMap { a =>
+      channelWrite(f(a))
     }.onComplete{
-      case Success(_) => innerLoop(p)
+      case Success(_)   => innerLoop(p)
       case Failure(EOF) => p.success(())
       case e            => p.complete(e)
     }
   }
 }
+
+class EchoTail[A] extends MapTail[A](identity)
