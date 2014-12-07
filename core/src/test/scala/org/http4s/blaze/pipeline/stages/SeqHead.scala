@@ -12,7 +12,7 @@ class SeqHead[O](private var data: Seq[O]) extends HeadStage[O] {
 
   def name: String = "SeqHead test HeadStage"
 
-  def readRequest(size: Int): Future[O] = {
+  def readRequest(size: Int): Future[O] = lock.synchronized {
     if (!data.isEmpty) {
       val h = data.head
       data = data.tail

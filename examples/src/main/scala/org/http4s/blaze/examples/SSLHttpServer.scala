@@ -4,7 +4,8 @@ import org.http4s.blaze.channel._
 import java.net.InetSocketAddress
 import java.nio.channels.AsynchronousChannelGroup
 import org.http4s.blaze.pipeline.stages.SSLStage
-import javax.net.ssl.{KeyManagerFactory, SSLContext}
+
+import javax.net.ssl.{SSLContext, KeyManagerFactory}
 
 import java.security.KeyStore
 import org.http4s.blaze.util.BogusKeystore
@@ -13,7 +14,7 @@ import org.http4s.blaze.pipeline.TrunkBuilder
 
 class SSLHttpServer(port: Int) {
 
-  val sslContext: SSLContext = {
+  private val sslContext = {
     val ksStream = BogusKeystore.asInputStream()
     val ks = KeyStore.getInstance("JKS")
     ks.load(ksStream, BogusKeystore.getKeyStorePassword)

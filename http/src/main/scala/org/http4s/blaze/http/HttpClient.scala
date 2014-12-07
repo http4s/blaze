@@ -1,35 +1,24 @@
 package org.http4s.blaze.http
 
-import org.http4s.blaze.channel.nio2.ClientChannelFactory
-import org.http4s.blaze.pipeline.{Command, LeafBuilder}
 import java.nio.ByteBuffer
+import javax.net.ssl.SSLContext
 import scala.concurrent.{ExecutionContext, Future}
 import scala.concurrent.duration.Duration
 import java.net.InetSocketAddress
+
+import org.http4s.blaze.channel.nio2.ClientChannelFactory
+import org.http4s.blaze.pipeline.{Command, LeafBuilder}
 import org.http4s.blaze.pipeline.stages.http.{SimpleHttpResponse, HttpClientStage, Response}
-import javax.net.ssl.{KeyManagerFactory, SSLContext}
-import java.security.KeyStore
 import org.http4s.blaze.pipeline.stages.SSLStage
-import org.http4s.blaze.util.{BufferTools, Execution, BogusKeystore}
+import org.http4s.blaze.util.{GenericSSLContext, BufferTools, Execution}
+
+
 
 trait HttpClient {
 
-  private lazy val connManager = new ClientChannelFactory()
+  protected def connectionManager: ClientChannelFactory
 
-  // TODO: is there a better way to make a dummy context? Clients shouldn't need a certificate I would think
-  private lazy val sslContext = {
-    val ksStream = BogusKeystore.asInputStream()
-    val ks = KeyStore.getInstance("JKS")
-    ks.load(ksStream, BogusKeystore.getKeyStorePassword)
-
-    val kmf = KeyManagerFactory.getInstance(KeyManagerFactory.getDefaultAlgorithm())
-    kmf.init(ks, BogusKeystore.getCertificatePassword)
-
-    val context = SSLContext.getInstance("SSL")
-
-    context.init(kmf.getKeyManagers(), null, null)
-    context
-  }
+  protected def sslContext: SSLContext
 
   // TODO: the robustness of this method to varying input is highly questionable
   private def parseURL(url: String): (String, Int, String, String) = {
@@ -45,16 +34,16 @@ trait HttpClient {
   }
 
   protected def runReq(method: String,
-                     url: String,
-                     headers: Seq[(String, String)],
-                     body: ByteBuffer,
-                     timeout: Duration)(implicit ec: ExecutionContext): Future[Response] = {
+                          url: String,
+                      headers: Seq[(String, String)],
+                         body: ByteBuffer,
+                      timeout: Duration)(implicit ec: ExecutionContext): Future[Response] = {
 
     val (host, port, scheme, uri) = parseURL(url)
 
-    val fhead = connManager.connect(new InetSocketAddress(host, port))
+    val head = connectionManager.connect(new InetSocketAddress(host, port))
 
-    fhead.flatMap { head =>
+    head.flatMap { head =>
       val t = new HttpClientStage()
 
       if (scheme == "https") {
@@ -83,4 +72,8 @@ trait HttpClient {
   }
 }
 
-object HttpClient extends HttpClient
+object HttpClient extends HttpClient {
+  override lazy val connectionManager = new ClientChannelFactory()
+
+  override protected val sslContext: SSLContext = GenericSSLContext.clientSSLContext()
+}

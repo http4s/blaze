@@ -1,6 +1,7 @@
 package org.http4s.blaze.util
 
 import java.nio.ByteBuffer
+import java.nio.charset.{StandardCharsets, Charset}
 
 import scala.annotation.tailrec
 
@@ -99,4 +100,10 @@ object BufferTools {
     */
   def checkEmpty(buffers: TraversableOnce[ByteBuffer]): Boolean =
     !buffers.exists(_.hasRemaining)
+
+  /** Make a String from the collection of ByteBuffers */
+  def mkString(buffers: Seq[ByteBuffer],charset: Charset = StandardCharsets.UTF_8): String = {
+    val b = joinBuffers(buffers)
+    charset.decode(b).toString()
+  }
 }

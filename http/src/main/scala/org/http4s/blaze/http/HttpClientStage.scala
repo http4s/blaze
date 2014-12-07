@@ -25,8 +25,7 @@ class HttpClientStage(timeout: Duration = Duration.Inf)
 
   private var code: Int = 0
   private var reason: String = null
-  private var recvHdrs: List[(String, String)] = null
-  private var bodyBuffers = Vector.empty[ByteBuffer]
+  private val bodyBuffers = new ListBuffer[ByteBuffer]
 
   private val hdrs = new ListBuffer[(String, String)]
 
@@ -35,18 +34,17 @@ class HttpClientStage(timeout: Duration = Duration.Inf)
     super.reset()
     code = 0
     reason = null
-    recvHdrs = null
-    bodyBuffers = Vector.empty
+    bodyBuffers.clear()
     hdrs.clear()
   }
 
   // Methods for the Http1ClientParser -----------------------------------------------
 
   protected def submitResponseLine(code: Int,
-                                   reason: String,
-                                   scheme: String,
-                                   majorversion: Int,
-                                   minorversion: Int) {
+                                 reason: String,
+                                 scheme: String,
+                           majorversion: Int,
+                           minorversion: Int) {
     this.code = code
     this.reason = reason
   }
@@ -115,58 +113,43 @@ class HttpClientStage(timeout: Duration = Duration.Inf)
     }
   }
 
-  private def parseBuffer(b: ByteBuffer, p: Promise[Response]): Unit = try {
-    if (!this.responseLineComplete() && !parseResponseLine(b)) {
-      parserLoop(p)
-      return
-    }
-    if (!this.headersComplete() && !parseHeaders(b)) {
-      parserLoop(p)
-      return
-    }
+  private def parseBuffer(b: ByteBuffer, p: Promise[Response]): Unit = {
+    try {
+      if (!this.responseLineComplete() && !parseResponseLine(b)) {
+        parserLoop(p)
+        return
+      }
+      if (!this.headersComplete() && !parseHeaders(b)) {
+        parserLoop(p)
+        return
+      }
 
-    // Must now be in body
-    if (recvHdrs == null) {
-      recvHdrs = hdrs.result()
-      hdrs.clear()
-    }
+      @tailrec
+      def parseBuffer(b: ByteBuffer): Unit = {
+        val body = parseContent(b)
 
-    @tailrec
-    def parseBuffer(b: ByteBuffer): Unit = {
-      val body = parseContent(b)
+        if (body != null) {
 
-      //println("Received body: " +body)
-      if (body != null) {
-
-//          println(s"$b, " + StandardCharsets.US_ASCII.decode(body.duplicate()))
-
-        if (body.remaining() > 0)  bodyBuffers :+= body
-
-        if (contentComplete()) {
-          val b = {
-            if (bodyBuffers.length == 0) BufferTools.emptyBuffer
-            else if (bodyBuffers.length == 1) bodyBuffers.head
-            else {
-              val sz = bodyBuffers.foldLeft(0)((sz, i) => sz + i.remaining())
-              val b = BufferTools.allocate(sz)
-              bodyBuffers.foreach(b.put(_))
-              b.flip()
-              b
-            }
+          if (body.remaining() > 0) {
+            bodyBuffers += body.slice()
           }
 
-          val r = SimpleHttpResponse(this.reason, this.code, this.recvHdrs, b)
-          reset()
+          if (contentComplete()) {
+            val b = BufferTools.joinBuffers(bodyBuffers.result())
+            val r = SimpleHttpResponse(this.reason, this.code, hdrs.result(), b)
+            reset()
 
-          p.success(r)
+            p.success(r)
+          }
+          else parseBuffer(b)  // We have sufficient data, but need to continue parsing. Probably chunking
         }
-        else parseBuffer(b)  // We have sufficient data, but need to continue parsing. Probably chunking
+        else parserLoop(p)  // Need to get more data off the line
       }
-      else parserLoop(p)  // Need to get more data off the line
-    }
-    parseBuffer(b)
 
-  }  // need more data
-  catch { case NonFatal(t) => p.failure(t) }
+      parseBuffer(b)
+    } catch {
+      case NonFatal(t) => p.failure(t)
+    }
+  }
 
 }

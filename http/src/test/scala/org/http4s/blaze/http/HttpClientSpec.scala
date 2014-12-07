@@ -16,6 +16,7 @@ class HttpClientSpec extends Specification with NoTimeConversions {
 
       val r = Await.result(f, 10.seconds)
 
+      println(r.stringBody())
       r.code should_== 200
     }
   }
