@@ -43,12 +43,13 @@ class TickWheelExecutor(wheelSize: Int = 512, tick: Duration = 200.milli) {
   /////////////////////////////////////////////////////
   // new Thread that actually runs the execution.
 
-  private val thread = new Thread {
+  private val thread = new Thread(s"TickWheelExecutor: $wheelSize spokes, $tick interval") {
     override def run() {
       cycle(System.currentTimeMillis())
     }
   }
 
+  thread.setDaemon(true)
   thread.start()
 
   /////////////////////////////////////////////////////
