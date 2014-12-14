@@ -3,29 +3,27 @@ package org.http4s.blaze.http.http_parser;
 import org.http4s.blaze.http.http_parser.BaseExceptions.BadRequest;
 
 
-// Taken directly from Jetty
-
 public final class HttpTokens
 {
     // Terminal symbols.
-    static final byte COLON= (byte)':';
-    static final byte TAB= 0x09;
-    static final byte LF = 0x0A;
-    static final byte CR = 0x0D;
-    static final byte SPACE= 0x20;
-    static final byte[] CRLF = {CR, LF};
-    static final byte SEMI_COLON= (byte)';';
+    static final char COLON      = ':';
+    static final char TAB        = '\t';
+    static final char LF         = '\n';
+    static final char CR         = '\r';
+    static final char SPACE      = ' ';
+    static final char[] CRLF     = {CR, LF};
+    static final char SEMI_COLON = ';';
 
-    final static byte ZERO = (byte)'0';
-    final static byte NINE = (byte)'9';
-    final static byte A = (byte)'A';
-    final static byte F = (byte)'F';
-    final static byte Z = (byte)'Z';
-    final static byte a = (byte)'a';
-    final static byte f = (byte)'f';
-    final static byte z = (byte)'z';
+    final static byte ZERO = '0';
+    final static byte NINE = '9';
+    final static byte A    = 'A';
+    final static byte F    = 'F';
+    final static byte Z    = 'Z';
+    final static byte a    = 'a';
+    final static byte f    = 'f';
+    final static byte z    = 'z';
 
-    public static int hexCharToInt(final byte ch) throws BadRequest {
+    public static int hexCharToInt(final char ch) throws BadRequest {
         if (ZERO <= ch && ch <= NINE) {
             return ch - ZERO;
         }
@@ -40,7 +38,7 @@ public final class HttpTokens
         }
     }
 
-    public static boolean isDigit(byte ch) {
+    public static boolean isDigit(final char ch) {
         return HttpTokens.NINE >= ch && ch >= HttpTokens.ZERO;
     }
 
@@ -50,7 +48,7 @@ public final class HttpTokens
                   A <= ch && ch <= F;
     }
 
-    public static boolean isWhiteSpace(byte ch) {
+    public static boolean isWhiteSpace(char ch) {
         return ch == HttpTokens.SPACE || ch == HttpTokens.TAB;
     }
 

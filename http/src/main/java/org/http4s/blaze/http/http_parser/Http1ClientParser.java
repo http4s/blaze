@@ -81,7 +81,7 @@ public abstract class Http1ClientParser extends BodyAndHeaderParser {
     protected final boolean parseResponseLine(ByteBuffer in) throws BaseExceptions.InvalidState, BaseExceptions.BadResponse {
         try {
             lineLoop: while(true) {
-                byte ch;
+                char ch;
                 switch (_requestLineState) {
                     case START:
                         _requestLineState = RequestLineState.VERSION;
@@ -90,7 +90,7 @@ public abstract class Http1ClientParser extends BodyAndHeaderParser {
                     case VERSION:
                         for(ch = next(in, false); ch != HttpTokens.SPACE && ch != HttpTokens.TAB; ch = next(in, false)) {
                             if (ch == 0) return false;
-                            putByte(ch);
+                            putChar(ch);
                         }
 
                         _majorVersion = 1;
@@ -162,13 +162,13 @@ public abstract class Http1ClientParser extends BodyAndHeaderParser {
                             throw new BadResponse("Response lacks status Reason");
                         }
 
-                        putByte(ch);
+                        putChar(ch);
                         _requestLineState = RequestLineState.REASON;
 
                     case REASON:
                         for(ch = next(in, false); ch != HttpTokens.LF; ch = next(in, false)) {
                             if (ch == 0) return false;
-                            putByte(ch);
+                            putChar(ch);
                         }
 
 

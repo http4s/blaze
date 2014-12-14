@@ -12,9 +12,9 @@ class HttpTokensSpec extends Specification {
 
   "HttpTokens" should {
     "parse hex chars to ints" in {
-      smalChrs.map(c => HttpTokens.hexCharToInt(c.toByte)) should_== (0 until 16 toList)
+      smalChrs.map(c => HttpTokens.hexCharToInt(c)) should_== (0 until 16 toList)
 
-      bigChrs.map(c => HttpTokens.hexCharToInt(c.toByte)) should_== (0 until 16 toList)
+      bigChrs.map(c => HttpTokens.hexCharToInt(c)) should_== (0 until 16 toList)
 
       HttpTokens.hexCharToInt('x') should throwA[BadRequest]
     }
@@ -27,7 +27,7 @@ class HttpTokensSpec extends Specification {
 
     "Identify whitespace" in {
       (0 until 256).map { i =>
-        HttpTokens.isWhiteSpace(i.toByte) should_== (i.toChar == ' ' || i.toChar == '\t')
+        HttpTokens.isWhiteSpace(i.toChar) should_== (i.toChar == ' ' || i.toChar == '\t')
       }.reduce(_ and _)
     }
   }

@@ -2,23 +2,22 @@ package org.http4s.blaze.http.http_parser;
 
 
 import java.nio.ByteBuffer;
-import java.nio.charset.StandardCharsets;
 import org.http4s.blaze.http.http_parser.BaseExceptions.BadRequest;
 
 public abstract class ParserBase {
 
-    // Methods for managing the internal buffer
-
-    ParserBase(int initialSize) {
-        _internalBuffer = new byte[initialSize];
+    ParserBase(int initialBufferSize) {
+        _internalBuffer = new char[initialBufferSize];
         clearBuffer();
     }
 
     private int _bufferPosition = 0;
-    private int _bufferLen = 0;
-    private byte[] _internalBuffer;
+    private char[] _internalBuffer;
 
+    // Signals if the last char was a '\r' and if the next one needs to be a '\n'
     private boolean _cr;
+
+    // For signalling overflow of the String buffer
     private int _segmentByteLimit;
     private int _segmentBytePosition;
 
@@ -31,20 +30,16 @@ public abstract class ParserBase {
        clearBuffer();
     }
 
-    final protected void makeRoom(int size) {
-        // Resize the internal array
-        int nextsize = Math.max(_bufferLen*2, _bufferLen + 2*size);
-        this._bufferLen = nextsize;
-        byte[] next = new byte[nextsize];
+    /** Store the char in the internal buffer */
+    final protected void putChar(char c) {
+        final int clen = _internalBuffer.length;
+        if (clen == _bufferPosition) {
+            final char[] next = new char[2 * clen + 1];
 
-        System.arraycopy(_internalBuffer, 0, next, 0, _bufferPosition);
-        _internalBuffer = next;
-    }
-
-    final protected void putByte(byte c) {
-        if (_internalBuffer.length == _bufferPosition) {
-            makeRoom(1);
+            System.arraycopy(_internalBuffer, 0, next, 0, _bufferPosition);
+            _internalBuffer = next;
         }
+
         _internalBuffer[_bufferPosition++] = c;
     }
 
@@ -65,7 +60,11 @@ public abstract class ParserBase {
     }
 
     final protected String getString(int start, int end) {
-        String str = new String(_internalBuffer, start, end, StandardCharsets.ISO_8859_1);
+        if (end > _bufferPosition) {
+            throw new IndexOutOfBoundsException("Requested: " + end + ", max: " + _bufferPosition);
+        }
+
+        String str = new String(_internalBuffer, start, end);
         return str;
     }
 
@@ -77,7 +76,7 @@ public abstract class ParserBase {
         boolean quoted = false;
         // Look for start
         while (start < _bufferPosition) {
-            final byte ch = _internalBuffer[start];
+            final char ch = _internalBuffer[start];
             if (ch == '"') {
                 quoted = true;
                 break;
@@ -92,7 +91,7 @@ public abstract class ParserBase {
 
         // Look for end
         while(end > start) {
-            final byte ch = _internalBuffer[end];
+            final char ch = _internalBuffer[end];
             if (quoted) {
                 if (ch == '"') break;
                 else if (ch != HttpTokens.SPACE && ch != HttpTokens.TAB) {
@@ -103,15 +102,15 @@ public abstract class ParserBase {
             end--;
         }
 
-        String str = new String(_internalBuffer, start, end + 1, StandardCharsets.ISO_8859_1);
+        String str = new String(_internalBuffer, start, end + 1);
         return str;
     }
 
-    final protected boolean arrayMatches(final byte[] bytes) {
-        if (bytes.length != _bufferPosition) return false;
+    final protected boolean arrayMatches(final char[] chars) {
+        if (chars.length != _bufferPosition) return false;
 
         for (int i = 0; i < _bufferPosition; i++) {
-            if (bytes[i] != _internalBuffer[i])
+            if (chars[i] != _internalBuffer[i])
                 return false;
         }
 
@@ -126,7 +125,7 @@ public abstract class ParserBase {
     }
 
     // Removes CRs but returns LFs
-    final protected byte next(final ByteBuffer buffer, boolean allow8859) throws BaseExceptions.BadRequest {
+    final protected char next(final ByteBuffer buffer, boolean allow8859) throws BaseExceptions.BadRequest {
 
         if (!buffer.hasRemaining()) return 0;
 
@@ -135,39 +134,40 @@ public abstract class ParserBase {
             throw new BadRequest("Request length limit exceeded: " + _segmentByteLimit);
         }
 
-        final byte ch = buffer.get();
+        final byte b = buffer.get();
         _segmentBytePosition++;
 
         // If we ended on a CR, make sure we are
         if (_cr) {
-            if (ch != HttpTokens.LF) {
-                throw new BadRequest("Invalid sequence: LF didn't follow CR: " + ch);
+            if (b != HttpTokens.LF) {
+                throw new BadRequest("Invalid sequence: LF didn't follow CR: " + b);
             }
             _cr = false;
-            return ch;
+            return (char)b;  // must be LF
         }
 
         // Make sure its a valid character
-        if (ch < HttpTokens.SPACE) {
-            if (ch == HttpTokens.CR) {   // Set the flag to check for _cr and just run again
+        if (b < HttpTokens.SPACE) {
+            if (b == HttpTokens.CR) {   // Set the flag to check for _cr and just run again
                 _cr = true;
                 return next(buffer, allow8859);
             }
-            else if (ch == HttpTokens.TAB || allow8859 && ch < 0) {
-                return ch;
+            else if (b == HttpTokens.TAB || allow8859 && b < 0) {
+                return (char)(b & 0xff);
             }
             else {
-                if (ch == HttpTokens.LF) {
+                if (b == HttpTokens.LF) {
                     shutdownParser();
                     throw new BadRequest("LineFeed found without CR");
                 }
                 else {
                     shutdownParser();
-                    throw new BadRequest("Invalid char: " + ch);
+                    throw new BadRequest("Invalid char: '" + (char)(b & 0xff) + "', 0x" + Integer.toHexString(b));
                 }
             }
         }
 
-        return ch;
+        // valid ascii char
+        return (char)b;
     }
 }

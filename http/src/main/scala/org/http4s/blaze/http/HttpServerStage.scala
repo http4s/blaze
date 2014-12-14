@@ -114,7 +114,7 @@ abstract class HttpServerStage(maxReqBody: Int) extends Http1ServerParser with T
     catch {
       case NonFatal(e) =>
         logger.error(e)("Error during `handleRequest` of HttpServerStage")
-        val body = ByteBuffer.wrap("Internal Service Error".getBytes(StandardCharsets.UTF_8))
+        val body = ByteBuffer.wrap("Internal Service Error".getBytes(StandardCharsets.ISO_8859_1))
         handleHttpResponse(SimpleHttpResponse("OK", 200, Nil, body), reqHeaders).onComplete { _ =>
           sendOutboundCommand(Cmd.Disconnect)
         }

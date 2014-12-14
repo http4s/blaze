@@ -100,7 +100,7 @@ public abstract class Http1ServerParser extends BodyAndHeaderParser {
     /** parses the request line. Returns true if completed successfully, false if needs input */
     protected final boolean parseRequestLine(ByteBuffer in) throws InvalidState, BadRequest {
         lineLoop: while(true) {
-            byte ch;
+            char ch;
             switch (_lineState) {
                 case START:
                     _lineState = LineState.METHOD;
@@ -108,7 +108,7 @@ public abstract class Http1ServerParser extends BodyAndHeaderParser {
 
                 case METHOD:
                     for(ch = next(in, false); HttpTokens.A <= ch && ch <= HttpTokens.Z; ch = next(in, false)) {
-                        putByte(ch);
+                        putChar(ch);
                     }
 
                     if (ch == 0) return false;
@@ -131,13 +131,13 @@ public abstract class Http1ServerParser extends BodyAndHeaderParser {
 
                     if (ch == 0) return false;
 
-                    putByte(ch);
+                    putChar(ch);
                     _lineState = LineState.URI;
 
                 case URI:
                     for(ch = next(in, false); ch != HttpTokens.SPACE && ch != HttpTokens.TAB; ch = next(in, false)) {
                         if (ch == 0) return false;
-                        putByte(ch);
+                        putChar(ch);
                     }
 
                     _uriString = getString();
@@ -156,13 +156,13 @@ public abstract class Http1ServerParser extends BodyAndHeaderParser {
                         throw new BadRequest("Http version started with illegal character: " + ch);
                     }
 
-                    putByte(ch);
+                    putChar(ch);
                     _lineState = LineState.REQUEST_VERSION;
 
                 case REQUEST_VERSION:
                     for(ch = next(in, false); ch != HttpTokens.LF; ch = next(in, false)) {
                         if (ch == 0) return false;
-                        putByte(ch);
+                        putChar(ch);
                     }
 
                     int _majorversion = 1;

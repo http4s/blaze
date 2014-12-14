@@ -1,7 +1,6 @@
 package org.http4s.blaze.http.http_parser;
 
 import java.nio.ByteBuffer;
-import java.nio.charset.StandardCharsets;
 
 import org.http4s.blaze.http.http_parser.BaseExceptions.BadRequest;
 import org.http4s.blaze.http.http_parser.BaseExceptions.InvalidState;
@@ -57,11 +56,11 @@ public abstract class BodyAndHeaderParser extends ParserBase {
 
     /* --------------------------------------------------------------------- */
 
-    final protected static byte[] HTTP10Bytes  = "HTTP/1.0".getBytes(StandardCharsets.US_ASCII);
-    final protected static byte[] HTTP11Bytes  = "HTTP/1.1".getBytes(StandardCharsets.US_ASCII);
+    final protected static char[] HTTP10Bytes  = "HTTP/1.0".toCharArray();
+    final protected static char[] HTTP11Bytes  = "HTTP/1.1".toCharArray();
 
-    final protected static byte[] HTTPS10Bytes = "HTTPS/1.0".getBytes(StandardCharsets.US_ASCII);
-    final protected static byte[] HTTPS11Bytes = "HTTPS/1.1".getBytes(StandardCharsets.US_ASCII);
+    final protected static char[] HTTPS10Bytes = "HTTPS/1.0".toCharArray();
+    final protected static char[] HTTPS11Bytes = "HTTPS/1.1".toCharArray();
 
     /* Constructor --------------------------------------------------------- */
 
@@ -148,7 +147,7 @@ public abstract class BodyAndHeaderParser extends ParserBase {
     protected final boolean parseHeaders(ByteBuffer in) throws BaseExceptions.BadRequest, BaseExceptions.InvalidState {
 
         headerLoop: while (true) {
-            byte ch;
+            char ch;
             switch (_hstate) {
                 case START:
                     _hstate = HeaderState.HEADER_IN_NAME;
@@ -157,7 +156,7 @@ public abstract class BodyAndHeaderParser extends ParserBase {
                 case HEADER_IN_NAME:
                     for(ch = next(in, false); ch != ':' && ch != HttpTokens.LF; ch = next(in, false)) {
                         if (ch == 0) return false;
-                        putByte(ch);
+                        putChar(ch);
                     }
 
                     // Must be done with headers
@@ -200,13 +199,13 @@ public abstract class BodyAndHeaderParser extends ParserBase {
                         throw new BadRequest("Missing value for header " + _headerName);
                     }
 
-                    putByte(ch);
+                    putChar(ch);
                     _hstate = HeaderState.HEADER_IN_VALUE;
 
                 case HEADER_IN_VALUE:
                     for(ch = next(in, true); ch != HttpTokens.LF; ch = next(in, true)) {
                         if (ch == 0) return false;
-                        putByte(ch);
+                        putChar(ch);
                     }
 
                     String value;
@@ -328,7 +327,7 @@ public abstract class BodyAndHeaderParser extends ParserBase {
 
     private ByteBuffer chunkedContent(ByteBuffer in) throws BaseExceptions.BadRequest, BaseExceptions.InvalidState {
         while(true) {
-            byte ch;
+            char ch;
             sw: switch (_chunkState) {
                 case START:
                     _chunkState = ChunkState.CHUNK_SIZE;

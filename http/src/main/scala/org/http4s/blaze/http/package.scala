@@ -5,7 +5,7 @@ import org.http4s.blaze.pipeline.LeafBuilder
 import org.http4s.websocket.WebsocketBits.WebSocketFrame
 
 import java.nio.charset.StandardCharsets.UTF_8
-import java.nio.charset.{StandardCharsets, Charset}
+import java.nio.charset.Charset
 
 import scala.xml.Node
 
@@ -16,7 +16,8 @@ package object http {
   sealed trait Response
 
   case class SimpleHttpResponse(status: String, code: Int, headers: Headers, body: ByteBuffer) extends Response {
-    def stringBody(charset: Charset = StandardCharsets.UTF_8): String = {
+    def stringBody(charset: Charset = UTF_8): String = {
+      // In principle we should get the charset from the headers
       charset.decode(body.asReadOnlyBuffer()).toString
     }
   }
@@ -26,7 +27,7 @@ package object http {
       SimpleHttpResponse("OK", 200, headers, ByteBuffer.wrap(body))
 
     def Ok(body: String, headers: Headers): SimpleHttpResponse =
-      Ok(body.getBytes(StandardCharsets.UTF_8), ("Content-Type", "text/plain; charset=UTF-8")+:headers)
+      Ok(body.getBytes(UTF_8), ("Content-Type", "text/plain; charset=UTF-8")+:headers)
 
     def Ok(body: String): SimpleHttpResponse = Ok(body, Nil)
 
