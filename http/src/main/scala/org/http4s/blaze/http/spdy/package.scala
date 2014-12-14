@@ -1,7 +1,6 @@
 package org.http4s.blaze.http
 
 import java.nio.ByteBuffer
-import java.nio.charset.StandardCharsets.US_ASCII
 import org.http4s.blaze.util.ScratchBuffer
 import scala.annotation.tailrec
 

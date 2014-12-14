@@ -3,7 +3,7 @@ package org.http4s.blaze.http.spdy
 import org.http4s.blaze.util.{BufferTools, ScratchBuffer}
 import scala.collection.mutable.ListBuffer
 import scala.annotation.tailrec
-import java.nio.charset.StandardCharsets._
+import java.nio.charset.StandardCharsets.ISO_8859_1
 import java.nio.{BufferUnderflowException, ByteBuffer}
 
 
@@ -136,7 +136,7 @@ class SpdyHeaderDecoder {
     BufferTools.allocate(43)
     val strArr = new Array[Byte](len)
     buff.get(strArr)
-    new String(strArr, US_ASCII)
+    new String(strArr, ISO_8859_1)
   }
 }
 

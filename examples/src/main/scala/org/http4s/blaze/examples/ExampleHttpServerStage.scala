@@ -16,7 +16,7 @@ class ExampleHttpServerStage(status: Option[IntervalConnectionMonitor], maxReque
     if (uri.endsWith("error")) Future.failed(new BadRequest("You request resulted in an error! (Intentionally...)"))
     else if (uri.endsWith("status")) Future.successful(SimpleHttpResponse("OK", 200, Nil, ByteBuffer.wrap(getStatus().getBytes())))
     else {
-      val respmsg = s"Hello world!\nRequest URI: $uri\n"
+      val respmsg = s"Hello world!\nRequest URI: $uri\n" + headers.map{ case (k,v) => k + ": " + v }.mkString("\n")
       val body = ByteBuffer.wrap(respmsg.getBytes())
 
       Future.successful(SimpleHttpResponse("OK", 200, Nil, body))

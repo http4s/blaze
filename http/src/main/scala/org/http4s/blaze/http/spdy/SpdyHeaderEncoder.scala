@@ -1,7 +1,7 @@
 package org.http4s.blaze.http.spdy
 
 import java.nio.ByteBuffer
-import java.nio.charset.StandardCharsets._
+import java.nio.charset.StandardCharsets.ISO_8859_1
 import scala.annotation.tailrec
 import org.http4s.blaze.util.{BufferTools, ScratchBuffer}
 import java.util.zip.Deflater
@@ -21,13 +21,13 @@ class SpdyHeaderEncoder {
     // Put all the data in there
     headers.foreach { case (k, v) =>
       buff.putInt(k.length)
-        .put(k.toLowerCase.getBytes(US_ASCII))
+        .put(k.toLowerCase.getBytes(ISO_8859_1))
 
       if (!v.isEmpty) {  // put the values in the buffer
       val pos = buff.position()
         buff.position(pos + 4)  // skip ahead of the value length
 
-        v.foreach( v => buff.put(v.getBytes(US_ASCII)).put(0x0.toByte) )
+        v.foreach( v => buff.put(v.getBytes(ISO_8859_1)).put(0x0.toByte) )
         val keylen = buff.position() - pos - 1 - 4  // drop last byte
         buff.position(pos)
 

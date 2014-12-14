@@ -138,6 +138,13 @@ public abstract class BodyAndHeaderParser extends ParserBase {
         super.shutdownParser();
     }
 
+    /** Parse headers
+     *
+     * @param in input ByteBuffer
+     * @return true if successful, false if more input is needed
+     * @throws BaseExceptions.BadRequest on invalid input
+     * @throws BaseExceptions.InvalidState if called when the parser is not ready to accept headers
+     */
     protected final boolean parseHeaders(ByteBuffer in) throws BaseExceptions.BadRequest, BaseExceptions.InvalidState {
 
         headerLoop: while (true) {
@@ -148,7 +155,7 @@ public abstract class BodyAndHeaderParser extends ParserBase {
                     resetLimit(headerSizeLimit);
 
                 case HEADER_IN_NAME:
-                    for(ch = next(in); ch != ':' && ch != HttpTokens.LF; ch = next(in)) {
+                    for(ch = next(in, false); ch != ':' && ch != HttpTokens.LF; ch = next(in, false)) {
                         if (ch == 0) return false;
                         putByte(ch);
                     }
@@ -184,7 +191,7 @@ public abstract class BodyAndHeaderParser extends ParserBase {
                     _hstate = HeaderState.HEADER_SPACE;
 
                 case HEADER_SPACE:
-                    for(ch = next(in); ch == HttpTokens.SPACE || ch == HttpTokens.TAB; ch = next(in));
+                    for(ch = next(in, true); ch == HttpTokens.SPACE || ch == HttpTokens.TAB; ch = next(in, true));
 
                     if (ch == 0) return false;
 
@@ -197,7 +204,7 @@ public abstract class BodyAndHeaderParser extends ParserBase {
                     _hstate = HeaderState.HEADER_IN_VALUE;
 
                 case HEADER_IN_VALUE:
-                    for(ch = next(in); ch != HttpTokens.LF; ch = next(in)) {
+                    for(ch = next(in, true); ch != HttpTokens.LF; ch = next(in, true)) {
                         if (ch == 0) return false;
                         putByte(ch);
                     }
@@ -333,7 +340,7 @@ public abstract class BodyAndHeaderParser extends ParserBase {
 
                     while (true) {
 
-                        ch = next(in);
+                        ch = next(in, false);
                         if (ch == 0) return null;
 
                         if (HttpTokens.isWhiteSpace(ch) || ch == HttpTokens.SEMI_COLON) {
@@ -361,7 +368,7 @@ public abstract class BodyAndHeaderParser extends ParserBase {
 
                 case CHUNK_PARAMS:
                     // Don't store them, for now.
-                    for(ch = next(in); ch != HttpTokens.LF; ch = next(in)) {
+                    for(ch = next(in, false); ch != HttpTokens.LF; ch = next(in, false)) {
                         if (ch == 0) return null;
                     }
 
@@ -392,7 +399,7 @@ public abstract class BodyAndHeaderParser extends ParserBase {
                     }
 
                 case CHUNK_LF:
-                    ch = next(in);
+                    ch = next(in, false);
                     if (ch == 0) return null;
 
                     if (ch != HttpTokens.LF) {

@@ -65,7 +65,7 @@ public abstract class ParserBase {
     }
 
     final protected String getString(int start, int end) {
-        String str = new String(_internalBuffer, start, end, StandardCharsets.US_ASCII);
+        String str = new String(_internalBuffer, start, end, StandardCharsets.ISO_8859_1);
         return str;
     }
 
@@ -103,7 +103,7 @@ public abstract class ParserBase {
             end--;
         }
 
-        String str = new String(_internalBuffer, start, end + 1, StandardCharsets.US_ASCII);
+        String str = new String(_internalBuffer, start, end + 1, StandardCharsets.ISO_8859_1);
         return str;
     }
 
@@ -126,11 +126,11 @@ public abstract class ParserBase {
     }
 
     // Removes CRs but returns LFs
-    final protected byte next(final ByteBuffer buffer) throws BaseExceptions.BadRequest {
+    final protected byte next(final ByteBuffer buffer, boolean allow8859) throws BaseExceptions.BadRequest {
 
         if (!buffer.hasRemaining()) return 0;
 
-        if (_segmentByteLimit == _segmentBytePosition) {
+        if (_segmentByteLimit <= _segmentBytePosition) {
             shutdownParser();
             throw new BadRequest("Request length limit exceeded: " + _segmentByteLimit);
         }
@@ -151,9 +151,9 @@ public abstract class ParserBase {
         if (ch < HttpTokens.SPACE) {
             if (ch == HttpTokens.CR) {   // Set the flag to check for _cr and just run again
                 _cr = true;
-                return next(buffer);
+                return next(buffer, allow8859);
             }
-            else if (ch == HttpTokens.TAB) {
+            else if (ch == HttpTokens.TAB || allow8859 && ch < 0) {
                 return ch;
             }
             else {

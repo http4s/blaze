@@ -18,7 +18,6 @@ import org.http4s.blaze.http.websocket.WebSocketDecoder
 
 import java.util.Date
 import java.nio.ByteBuffer
-import java.nio.charset.StandardCharsets.US_ASCII
 
 import org.http4s.blaze.util.BufferTools
 
@@ -136,7 +135,7 @@ abstract class HttpServerStage(maxReqBody: Int) extends Http1ServerParser with T
 
     renderHeaders(sb, resp.headers, resp.body.remaining())
 
-    val messages = Array(ByteBuffer.wrap(sb.result().getBytes(US_ASCII)), resp.body)
+    val messages = Array(ByteBuffer.wrap(sb.result().getBytes(StandardCharsets.ISO_8859_1)), resp.body)
 
     channelWrite(messages).map(_ => if (keepAlive) Reload else Close)(directec)
   }
@@ -150,7 +149,7 @@ abstract class HttpServerStage(maxReqBody: Int) extends Http1ServerParser with T
         sb.append("HTTP/1.1 ").append(i).append(' ').append(msg).append('\r').append('\n')
           .append('\r').append('\n')
 
-        channelWrite(ByteBuffer.wrap(sb.result().getBytes(US_ASCII))).map(_ => Close)
+        channelWrite(ByteBuffer.wrap(sb.result().getBytes(StandardCharsets.ISO_8859_1))).map(_ => Close)
 
       case Right(hdrs) =>
         logger.info("Starting websocket request")
@@ -159,7 +158,7 @@ abstract class HttpServerStage(maxReqBody: Int) extends Http1ServerParser with T
         sb.append('\r').append('\n')
 
         // write the accept headers and reform the pipeline
-        channelWrite(ByteBuffer.wrap(sb.result().getBytes(US_ASCII))).map{ _ =>
+        channelWrite(ByteBuffer.wrap(sb.result().getBytes(StandardCharsets.ISO_8859_1))).map{ _ =>
           logger.debug("Switching pipeline segments for upgrade")
           val segment = wsBuilder.prepend(new WebSocketDecoder(false))
           this.replaceInline(segment)
@@ -174,7 +173,7 @@ abstract class HttpServerStage(maxReqBody: Int) extends Http1ServerParser with T
       .append(minor).append(' ').append(400)
       .append(' ').append("Bad Request").append('\r').append('\n').append('\r').append('\n')
 
-    channelWrite(ByteBuffer.wrap(sb.result().getBytes(US_ASCII)))
+    channelWrite(ByteBuffer.wrap(sb.result().getBytes(StandardCharsets.ISO_8859_1)))
       .onComplete(_ => sendOutboundCommand(Cmd.Disconnect))
   }
 

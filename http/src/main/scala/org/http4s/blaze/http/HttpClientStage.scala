@@ -95,7 +95,7 @@ class HttpClientStage(timeout: Duration = Duration.Inf)
 
 //    println(sb.result.replace("\r\n", "\\r\\n\r\n"))
 
-    val hdr = ByteBuffer.wrap(sb.result().getBytes(StandardCharsets.US_ASCII))
+    val hdr = ByteBuffer.wrap(sb.result().getBytes(StandardCharsets.ISO_8859_1))
 
     val p = Promise[Response]
     channelWrite(hdr::body::Nil, timeout).onComplete {

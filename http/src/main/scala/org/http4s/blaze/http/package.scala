@@ -22,9 +22,18 @@ package object http {
   }
 
   object SimpleHttpResponse {
-    def Ok(body: Array[Byte]): SimpleHttpResponse = SimpleHttpResponse("OK", 200, Nil, ByteBuffer.wrap(body))
-    def Ok(body: String): SimpleHttpResponse = Ok(body.getBytes(UTF_8))
-    def Ok(body: Node): SimpleHttpResponse = Ok(body.toString())
+    def Ok(body: Array[Byte], headers: Headers = Nil): SimpleHttpResponse =
+      SimpleHttpResponse("OK", 200, headers, ByteBuffer.wrap(body))
+
+    def Ok(body: String, headers: Headers): SimpleHttpResponse =
+      Ok(body.getBytes(StandardCharsets.UTF_8), ("Content-Type", "text/plain; charset=UTF-8")+:headers)
+
+    def Ok(body: String): SimpleHttpResponse = Ok(body, Nil)
+
+    def Ok(body: Node, headers: Headers): SimpleHttpResponse =
+      Ok(body.toString(), headers)
+
+    def Ok(body: Node): SimpleHttpResponse = Ok(body, Nil)
   }
 
   case class WSResponse(stage: LeafBuilder[WebSocketFrame]) extends Response

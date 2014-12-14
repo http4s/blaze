@@ -88,7 +88,7 @@ public abstract class Http1ClientParser extends BodyAndHeaderParser {
                         resetLimit(maxRequestLineSize);
 
                     case VERSION:
-                        for(ch = next(in); ch != HttpTokens.SPACE && ch != HttpTokens.TAB; ch = next(in)) {
+                        for(ch = next(in, false); ch != HttpTokens.SPACE && ch != HttpTokens.TAB; ch = next(in, false)) {
                             if (ch == 0) return false;
                             putByte(ch);
                         }
@@ -119,7 +119,7 @@ public abstract class Http1ClientParser extends BodyAndHeaderParser {
 
                     case SPACE1:
                         // Eat whitespace
-                        for(ch = next(in); ch == HttpTokens.SPACE || ch == HttpTokens.TAB; ch = next(in));
+                        for(ch = next(in, false); ch == HttpTokens.SPACE || ch == HttpTokens.TAB; ch = next(in, false));
 
                         if (ch == 0) return false;
 
@@ -131,7 +131,7 @@ public abstract class Http1ClientParser extends BodyAndHeaderParser {
                         _requestLineState = RequestLineState.STATUS_CODE;
 
                     case STATUS_CODE:
-                        for(ch = next(in); HttpTokens.isDigit(ch); ch = next(in)) {
+                        for(ch = next(in, false); HttpTokens.isDigit(ch); ch = next(in, false)) {
                             if (ch == 0) return false;
                             _statusCode = 10*_statusCode + (ch - HttpTokens.ZERO);
                         }
@@ -153,7 +153,7 @@ public abstract class Http1ClientParser extends BodyAndHeaderParser {
 
                     case SPACE2:
                         // Eat whitespace
-                        for(ch = next(in); ch == HttpTokens.SPACE || ch == HttpTokens.TAB; ch = next(in));
+                        for(ch = next(in, false); ch == HttpTokens.SPACE || ch == HttpTokens.TAB; ch = next(in, false));
 
                         if (ch == 0) return false;
 
@@ -166,7 +166,7 @@ public abstract class Http1ClientParser extends BodyAndHeaderParser {
                         _requestLineState = RequestLineState.REASON;
 
                     case REASON:
-                        for(ch = next(in); ch != HttpTokens.LF; ch = next(in)) {
+                        for(ch = next(in, false); ch != HttpTokens.LF; ch = next(in, false)) {
                             if (ch == 0) return false;
                             putByte(ch);
                         }

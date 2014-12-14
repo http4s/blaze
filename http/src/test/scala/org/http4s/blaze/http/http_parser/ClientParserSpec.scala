@@ -2,7 +2,7 @@ package org.http4s.blaze.http.http_parser
 
 import org.specs2.mutable._
 
-import java.nio.charset.StandardCharsets.US_ASCII
+import java.nio.charset.StandardCharsets.ISO_8859_1
 import scala.collection.mutable.ListBuffer
 import java.nio.ByteBuffer
 import org.http4s.blaze.http.http_parser.BaseExceptions.{InvalidState, BadResponse}
@@ -54,10 +54,22 @@ class ClientParserSpec extends Specification {
   }
 
   "Client parser" should {
+    "Fail on non-ascii char in status line" in {
+      val p = new TestParser()
+      val ch = "£"
+
+      for (i <- 0 until resp.length) yield {
+        p.reset()
+        val (h, t) = resp.splitAt(i)
+        val l2 = h + ch + t
+        p.parseResponse(wrap(l2.getBytes(ISO_8859_1))) must throwA[BadResponse]
+      }
+    }
+
     "Parse the response line" in {
       val p = new TestParser
 
-      p.parseResponse(wrap(resp.getBytes(US_ASCII))) should_== true
+      p.parseResponse(wrap(resp.getBytes(ISO_8859_1))) should_== true
       p.responseLineComplete() should_== true
       p.code should_== 200
       p.reason should_== "OK"
@@ -69,7 +81,7 @@ class ClientParserSpec extends Specification {
       //
       p.reset()
       val line = "HTTP/1.0 200 OK\r\n"
-      p.parseResponse(wrap(line.getBytes(US_ASCII))) should_== true
+      p.parseResponse(wrap(line.getBytes(ISO_8859_1))) should_== true
       p.responseLineComplete() should_== true
       p.minorversion should_== 0
     }
@@ -78,42 +90,42 @@ class ClientParserSpec extends Specification {
       val p = new TestParser
 
       val badVerison = "HTTP/1.7 200 OK\r\n"
-      p.parseResponse(wrap(badVerison.getBytes(US_ASCII))) should throwA[BadResponse]
+      p.parseResponse(wrap(badVerison.getBytes(ISO_8859_1))) should throwA[BadResponse]
 
       p.reset()
       val weirdCode = "HTTP/1.1 200 OK\r\n"
-      p.parseResponse(wrap(weirdCode.getBytes(US_ASCII)))
+      p.parseResponse(wrap(weirdCode.getBytes(ISO_8859_1)))
 
       p.reset()
       val badCodeChar = "HTTP/1.1 T200 OK\r\n"
-      p.parseResponse(wrap(badCodeChar.getBytes(US_ASCII))) should throwA[BadResponse]
+      p.parseResponse(wrap(badCodeChar.getBytes(ISO_8859_1))) should throwA[BadResponse]
 
       p.reset()
       val missingSpace = "HTTP/1.1 200OK\r\n"
-      p.parseResponse(wrap(missingSpace.getBytes(US_ASCII))) should throwA[BadResponse]
+      p.parseResponse(wrap(missingSpace.getBytes(ISO_8859_1))) should throwA[BadResponse]
 
       p.reset()
       val noSpace = "HTTP/1.1 200OK\r\n"
-      p.parseResponse(wrap(noSpace.getBytes(US_ASCII))) should throwA[BadResponse]
+      p.parseResponse(wrap(noSpace.getBytes(ISO_8859_1))) should throwA[BadResponse]
 
       p.reset()
       val badCode = "HTTP/1.1 20 OK\r\n"
-      p.parseResponse(wrap(badCode.getBytes(US_ASCII))) should throwA[BadResponse]
+      p.parseResponse(wrap(badCode.getBytes(ISO_8859_1))) should throwA[BadResponse]
 
       p.reset()
       val badCode2 = "HTTP/1.1 600 OK\r\n"
-      p.parseResponse(wrap(badCode2.getBytes(US_ASCII))) should throwA[BadResponse]
+      p.parseResponse(wrap(badCode2.getBytes(ISO_8859_1))) should throwA[BadResponse]
 
       p.reset()
       val badLf = "HTTP/1.1 200 OK\r\r\n"
-      p.parseResponse(wrap(badLf.getBytes(US_ASCII))) should throwA[BadResponse]
+      p.parseResponse(wrap(badLf.getBytes(ISO_8859_1))) should throwA[BadResponse]
     }
 
     "throw invalid state if trying to parse the response line more than once" in {
       val p = new TestParser
-      p.parseResponse(wrap(resp.getBytes(US_ASCII))) should_== (true)
+      p.parseResponse(wrap(resp.getBytes(ISO_8859_1))) should_== (true)
 
-      p.parseResponse(wrap(resp.getBytes(US_ASCII))) should throwA[InvalidState]
+      p.parseResponse(wrap(resp.getBytes(ISO_8859_1))) should throwA[InvalidState]
     }
 
 
@@ -123,7 +135,7 @@ class ClientParserSpec extends Specification {
 
       //println(msg.replace("\r\n", "\\r\\n\r\n"))
 
-      val bts = wrap(msg.getBytes(US_ASCII))
+      val bts = wrap(msg.getBytes(ISO_8859_1))
       p.parseResponse(bts) should_== (true)
       p.responseLineComplete() should_== (true)
 
@@ -140,7 +152,7 @@ class ClientParserSpec extends Specification {
 
 //      println(full.replace("\r\n", "\\r\\n\r\n"))
 
-      val bts = wrap(full.getBytes(US_ASCII))
+      val bts = wrap(full.getBytes(ISO_8859_1))
 
       p.parseResponse(bts) should_== (true)
       p.parseheaders(bts) should_== (true)
@@ -150,7 +162,7 @@ class ClientParserSpec extends Specification {
       val out = p.parsebody(bts)
       out.remaining() should_==(body.length)
 
-      US_ASCII.decode(out).toString should_==(body)
+      ISO_8859_1.decode(out).toString should_==(body)
     }
 
     "Parse a chunked body" in {
@@ -162,7 +174,7 @@ class ClientParserSpec extends Specification {
                   "0\r\n" +
                   "\r\n"
 
-      val bts = wrap(full.getBytes(US_ASCII))
+      val bts = wrap(full.getBytes(ISO_8859_1))
 
       p.parseResponse(bts) should_== (true)
       p.parseheaders(bts) should_== (true)
@@ -176,14 +188,14 @@ class ClientParserSpec extends Specification {
       p.parsebody(bts).remaining() should_==(0)
       p.contentComplete() should_==(true)
 
-      US_ASCII.decode(out).toString should_==(body)
+      ISO_8859_1.decode(out).toString should_==(body)
     }
 
     "Parse a body with without Content-Length or Transfer-Encoding" in {
       val p = new TestParser
       val full = resp + l_headersstr + body
 
-      val bts = wrap(full.getBytes(US_ASCII))
+      val bts = wrap(full.getBytes(ISO_8859_1))
 
       p.parseResponse(bts) should_== (true)
       p.parseheaders(bts) should_== (true)
@@ -195,7 +207,7 @@ class ClientParserSpec extends Specification {
 
       p.contentComplete() should_==(false)
 
-      US_ASCII.decode(out).toString should_==(body)
+      ISO_8859_1.decode(out).toString should_==(body)
     }
 
   }

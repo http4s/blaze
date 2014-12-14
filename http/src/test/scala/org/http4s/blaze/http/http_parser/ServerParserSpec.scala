@@ -1,5 +1,7 @@
 package org.http4s.blaze.http.http_parser
 
+import java.nio.charset.StandardCharsets
+
 import org.specs2.mutable._
 
 import java.nio.ByteBuffer
@@ -9,9 +11,7 @@ import scala.collection.mutable.ListBuffer
 
 class ServerParserSpec extends Specification {
 
-  implicit def strToBuffer(str: String) = ByteBuffer.wrap(str.getBytes())
-
-
+  implicit def strToBuffer(str: String) = ByteBuffer.wrap(str.getBytes(StandardCharsets.ISO_8859_1))
 
   class Parser(maxReq: Int = 1034, maxHeader: Int = 1024) extends Http1ServerParser(maxReq, maxHeader, 1) {
 
@@ -71,11 +71,16 @@ class ServerParserSpec extends Specification {
 //                "User-Agent: HTTPTool/1.0  \r\n" +
 //                "Some-Header\r\n" +
 //                "\r\n"
-  val header = l_headers.foldLeft(new StringBuilder){ (sb, h) =>
-                sb.append(h._1)
-                if (h._2.length > 0) sb.append(": " + h._2)
-                sb.append("\r\n")
-              }.append("\r\n").result
+
+  def  buildHeaderString(hs: Seq[(String, String)]): String = {
+    hs.foldLeft(new StringBuilder){ (sb, h) =>
+      sb.append(h._1)
+      if (h._2.length > 0) sb.append(": " + h._2)
+      sb.append("\r\n")
+    }.append("\r\n").result
+  }
+
+  val header = buildHeaderString(l_headers)
 
   val body    = "hello world"
 
@@ -90,12 +95,25 @@ class ServerParserSpec extends Specification {
   val twoline = request + host
 
   "Http1ServerParser" should {
+    "Fail on non-ascii char in request line" in {
+      val p = new Parser()
+      val line = "POST /enlighten/calais.asmx HTTP/1.1\r\n"
+      val ch = "£"
+
+      for (i <- 0 until line.length) yield {
+        p.reset()
+        val (h, t) = line.splitAt(i)
+        val l2 = h + ch + t
+        p.parseLine(l2) must throwA[BadRequest]
+      }
+    }
+
     "Parse the request line for HTTP" in {
       val p = new Parser()
       p.parseLine("POST /enlighten/calais.asmx HTTP/1.1\r\n") should_==(true)
 
-//      p.s should_== ("Request('POST', '/enlighten/calais.asmx', 'http', 1.1)")
-//      p.getState() should_== (ParserState.Idle)
+      //      p.s should_== ("Request('POST', '/enlighten/calais.asmx', 'http', 1.1)")
+      //      p.getState() should_== (ParserState.Idle)
     }
 
     "Parse the request line for HTTP in segments" in {
@@ -143,6 +161,33 @@ class ServerParserSpec extends Specification {
       p.parseheaders(header) should_== (true)
       p.getContentType should_== (EndOfContent.UNKNOWN_CONTENT)
       p.h.result should_==(l_headers.map{ case (a, b) => (a.trim, b.trim)})
+    }
+
+    "Fail on non-ascii char in header name" in {
+      val p = new Parser()
+      val ch = "£"
+      val k = "Content-Length"
+
+      for (i <- 0 until k.length) yield {
+        p.reset()
+        val (h,t) = k.splitAt(i)
+        val hs = (h + ch + t, "0")::Nil
+        p.parseheaders(buildHeaderString(hs)) must throwA[BadRequest]
+      }
+    }
+
+    "Allow non-ascii char in header value" in {
+      val p = new Parser()
+      val ch = "£"
+      val k = "Foo-Header"
+      val v = "this_is_some_header_value"
+
+      for (i <- 0 until v.length) yield {
+        p.reset()
+        val (h,t) = v.splitAt(i)
+        val hs = (k, h + ch + t)::Nil
+        p.parseheaders(buildHeaderString(hs)) must_== true
+      }
     }
 
     "need input on partial headers" in {

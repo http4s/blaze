@@ -107,7 +107,7 @@ public abstract class Http1ServerParser extends BodyAndHeaderParser {
                     resetLimit(maxRequestLineSize);
 
                 case METHOD:
-                    for(ch = next(in); HttpTokens.A <= ch && ch <= HttpTokens.Z; ch = next(in)) {
+                    for(ch = next(in, false); HttpTokens.A <= ch && ch <= HttpTokens.Z; ch = next(in, false)) {
                         putByte(ch);
                     }
 
@@ -127,7 +127,7 @@ public abstract class Http1ServerParser extends BodyAndHeaderParser {
 
                 case SPACE1:
                     // Eat whitespace
-                    for(ch = next(in); ch == HttpTokens.SPACE || ch == HttpTokens.TAB; ch = next(in));
+                    for(ch = next(in, false); ch == HttpTokens.SPACE || ch == HttpTokens.TAB; ch = next(in, false));
 
                     if (ch == 0) return false;
 
@@ -135,7 +135,7 @@ public abstract class Http1ServerParser extends BodyAndHeaderParser {
                     _lineState = LineState.URI;
 
                 case URI:
-                    for(ch = next(in); ch != HttpTokens.SPACE && ch != HttpTokens.TAB; ch = next(in)) {
+                    for(ch = next(in, false); ch != HttpTokens.SPACE && ch != HttpTokens.TAB; ch = next(in, false)) {
                         if (ch == 0) return false;
                         putByte(ch);
                     }
@@ -147,7 +147,7 @@ public abstract class Http1ServerParser extends BodyAndHeaderParser {
 
                 case SPACE2:
                     // Eat whitespace
-                    for(ch = next(in); ch == HttpTokens.SPACE || ch == HttpTokens.TAB; ch = next(in));
+                    for(ch = next(in, false); ch == HttpTokens.SPACE || ch == HttpTokens.TAB; ch = next(in, false));
 
                     if (ch == 0) return false;
 
@@ -160,7 +160,7 @@ public abstract class Http1ServerParser extends BodyAndHeaderParser {
                     _lineState = LineState.REQUEST_VERSION;
 
                 case REQUEST_VERSION:
-                    for(ch = next(in); ch != HttpTokens.LF; ch = next(in)) {
+                    for(ch = next(in, false); ch != HttpTokens.LF; ch = next(in, false)) {
                         if (ch == 0) return false;
                         putByte(ch);
                     }
