@@ -22,9 +22,7 @@ class CommandTimeoutStage[T](timeout: Duration, exec: TickWheelExecutor = schedu
   // Overrides to propagate commands.
   override def inboundCommand(cmd: InboundCommand): Unit = cmd match {
     case TimeoutBegin => resetTimeout()
-
     case TimeoutCancel => cancelTimeout()
-
     case _ => super.inboundCommand(cmd)
   }
 }

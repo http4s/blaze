@@ -2,88 +2,91 @@ package org.http4s.blaze
 package pipeline
 package stages
 
-import java.util.concurrent.ConcurrentHashMap
 
-import pipeline.Command._
-import scala.concurrent.{ ExecutionContext, Future }
-
-import org.http4s.blaze.pipeline.{LeafBuilder, TailStage, HeadStage}
-import java.util.concurrent.ConcurrentHashMap
-import scala.concurrent.{Promise, Future}
-import org.http4s.blaze.pipeline.Command._
-import org.log4s.getLogger
+import java.util.HashMap
 import java.nio.channels.NotYetConnectedException
 
+import scala.collection.mutable
+import scala.concurrent.Future
 
-abstract class HubStage[I, O, K](nodeBuilder: () => LeafBuilder[O], ec: ExecutionContext) extends TailStage[I] {
+import org.http4s.blaze.pipeline.Command._
 
-  def name: String = "HubStage"
 
+
+abstract class HubStage[I] extends TailStage[I] {
+  
+  type Out                  // type of messages accepted by the nodes
+  type Key                  // type that will uniquely determine the nodes
+  protected type Attachment // state that can be appended to the node
+
+  /** Will serve as the attachment point for each attached pipeline */
   sealed trait Node {
     /** Identifier of this node */
-    def key: K
+    val key: Key
+
+    val attachment: Attachment
+
+    def inboundCommand(command: InboundCommand): Unit
 
     /** Shuts down the [[Node]]
-      * This [[Node]] is sent the [[Disconnected]] [[InboundCommand]],
-      * any pending read requests are sent [[EOF]], and removes it from the [[HubStage]] */
-    def shutdown(): Unit
+      * Any pending read requests are sent [[EOF]], and removes it from the [[HubStage]] */
+    def stageShutdown(): Unit
+
+    final def startNode(): Unit = inboundCommand(Connected)
+
+    override def toString: String = s"Node[$key]"
   }
 
   /** called when a node requests a write operation */
-  protected def onNodeWrite(node: Node, data: Seq[O]): Future[Unit]
+  protected def onNodeWrite(node: Node, data: Seq[Out]): Future[Unit]
 
   /** called when a node needs more data */
-  protected def onNodeRead(node: Node, size: Int): Future[O]
+  protected def onNodeRead(node: Node, size: Int): Future[Out]
 
-  /** called when a node sends an outbound command */
+  /** called when a node sends an outbound command
+    * This includes Disconnect commands to give the Hub notice so
+    * it can change any related state it may have */
   protected def onNodeCommand(node: Node, cmd: OutboundCommand): Unit
 
   ////////////////////////////////////////////////////////////////////////////////////
 
-  private implicit def _ec = ec
-  private val nodeMap = new ConcurrentHashMap[K, NodeHead]()
+  private val nodeMap = new HashMap[Key, NodeHead]()
 
-  /** Make a new node and connect it to the hub
+  final protected def nodeCount(): Int = nodeMap.size()
+
+  /** Make a new node and connect it to the hub if the key doesn't already exist
     * @param key key which identifies this node
-    * @return the newly created node
+    * @return the newly created node in an unstarted state. To begin the node
+    *         send a [[Connected]] command or call its `startNode()` method
     */
-  protected def makeNode(key: K): Node = {
-    val node = new NodeHead(key)
-    nodeBuilder().base(node)
-    val old = nodeMap.put(key, node)
-    if (old != null) {
-      logger.warn(s"New Node $old with key $key created which replaced an existing Node")
-      old.inboundCommand(Disconnected)
+  protected def makeNode(key: Key, builder: LeafBuilder[Out], attachment: => Attachment): Option[Node] = {
+    if (!nodeMap.containsKey(key)) {
+      val node = new NodeHead(key, attachment)
+      nodeMap.put(key, node)
+      builder.base(node)
+      Some(node)
     }
-    node.stageStartup()
-    node
+    else None
   }
 
   /** Get a child [[Node]]
     * @param key K specifying the [[Node]] of interest
     * @return `Option[Node]`
     */
-  final protected def getNode(key: K): Option[NodeHead] = Option(nodeMap.get(key))
+  final protected def getNode(key: Key): Option[Node] = Option(nodeMap.get(key))
 
-  /** Send the specified [[InboundCommand]] to the [[Node]] with the designated key
-    * @param key K specifying the node
-    * @param cmd [[InboundCommand]] to send
-    */
-  final protected def sendNodeCommand(key: K, cmd: InboundCommand): Unit = {
-    val node = nodeMap.get(key)
-    if (node != null) node.sendInboundCommand(cmd)
-    else logger.warn(s"Sent command $cmd to non-existent node with key $key")
-  }
+  /** Get an iterator over the nodes attached to this [[HubStage]] */
+  final protected def nodes(): Seq[Node] =
+    mutable.WrappedArray.make(nodeMap.values().toArray())
 
   /** Closes all the nodes of this hub stage */
   protected def closeAllNodes(): Unit = {
     val values = nodeMap.values().iterator()
     while (values.hasNext) {
       val node = values.next()
-      node.stageShutdown()
-      node.sendInboundCommand(Disconnected)
+      values.remove()
+      checkShutdown(node)
     }
-    nodeMap.clear()
   }
 
   /** Remove the specified [[Node]] from this [[HubStage]] */
@@ -93,11 +96,10 @@ abstract class HubStage[I, O, K](nodeBuilder: () => LeafBuilder[O], ec: Executio
     * This method should only be called from 
     * @param key K specifying the [[Node]]
     */
-  protected def removeNode(key: K): Option[Node] = {
+  protected def removeNode(key: Key): Option[Node] = {
     val node = nodeMap.remove(key)
     if (node != null) {
-      node.stageShutdown()
-      node.sendInboundCommand(Disconnected)
+      checkShutdown(node)
       Some(node)
     }
     else None
@@ -108,46 +110,57 @@ abstract class HubStage[I, O, K](nodeBuilder: () => LeafBuilder[O], ec: Executio
     super.stageShutdown()
   }
 
+  ////////////////////////////////////////////////////////////
 
-  private[HubStage] class NodeHead(val key: K) extends HeadStage[O] with Node {
+  private def checkShutdown(node: NodeHead): Unit = {
+    if (node.isConnected()) node.sendInboundCommand(Disconnected)
+  }
 
-    def name: String = "HubStage Hub Head"
+  ////////////////////////////////////////////////////////////
+
+  private[HubStage] final class NodeHead(val key: Key, val attachment: Attachment)
+    extends HeadStage[Out] with Node
+  {
     private var connected = false
     private var initialized = false
 
-    def shutdown(): Unit = removeNode(key)
+    def name: String = "HubStage_NodeHead"
 
-    override def writeRequest(data: O): Future[Unit] = writeRequest(data::Nil)
+    def isConnected(): Boolean = connected
 
-    override def writeRequest(data: Seq[O]): Future[Unit] = {
+    override def writeRequest(data: Out): Future[Unit] = writeRequest(data::Nil)
+
+    override def writeRequest(data: Seq[Out]): Future[Unit] = {
       if (connected) onNodeWrite(this, data)
-      else if (!initialized) {
-        logger.error(s"Disconnected node with key $key attempting write request")
-        Future.failed(new NotYetConnectedException)
-      }
-      else Future.failed(EOF)
+      else onNotReady()
     }
 
-    override def readRequest(size: Int): Future[O] =  {
+    override def readRequest(size: Int): Future[Out] =  {
       if (connected) onNodeRead(this, size)
-      else if (!initialized) {
-        logger.error(s"Disconnected node with key $key attempting read request")
-        Future.failed(new NotYetConnectedException)
-      } else Future.failed(EOF)
+      else onNotReady()
     }
 
     override def outboundCommand(cmd: OutboundCommand): Unit =
       onNodeCommand(this, cmd)
 
     override def stageStartup(): Unit = {
+      super.stageStartup()
       connected = true
       initialized = true
-      sendInboundCommand(Connected)
     }
 
     override def stageShutdown(): Unit = {
       connected = false
+      removeNode(key)
       super.stageShutdown()
+    }
+
+    private def onNotReady(): Future[Nothing] = {
+      if (!initialized) {
+        logger.error(s"Disconnected node with key $key attempting write request")
+        Future.failed(new NotYetConnectedException)
+      }
+      else Future.failed(EOF)
     }
   }
 }

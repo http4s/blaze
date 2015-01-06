@@ -13,8 +13,6 @@ import org.specs2.time.NoTimeConversions
 import scala.concurrent.duration._
 import scala.concurrent._
 
-import scala.concurrent.ExecutionContext.Implicits.global
-
 class SSLStageSpec extends Specification with NoTimeConversions {
 
   def debug = false
@@ -38,7 +36,7 @@ class SSLStageSpec extends Specification with NoTimeConversions {
         .base(head)
 
       head.sendInboundCommand(Connected)
-      Await.ready(tail.startLoop(), 20.seconds)
+      Await.ready(tail.startLoop(), 10.seconds)
 
       head.results.length must beGreaterThan(0)
       BufferTools.mkString(head.results) must_== "Foo"

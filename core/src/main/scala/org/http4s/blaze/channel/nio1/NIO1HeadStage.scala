@@ -8,13 +8,13 @@ import java.nio.channels.{CancelledKeyException, SelectionKey, SelectableChannel
 import java.util.concurrent.atomic.AtomicReference
 import scala.concurrent.{Future, Promise}
 import scala.util.control.NonFatal
-import org.http4s.blaze.pipeline.Command.EOF
+import org.http4s.blaze.pipeline.Command.{Disconnected, EOF}
 import org.http4s.blaze.util.BufferTools
 
 
 private[nio1] object NIO1HeadStage {
   
-  case class PipeClosedPromise[T](t: Throwable) extends Promise[T] {
+  private class PipeClosedPromise[T](t: Throwable) extends Promise[T] {
     override val future: Future[T] = Future.failed(t)
     override def tryComplete(result: Try[T]): Boolean = false
     override def isCompleted: Boolean = true
@@ -23,13 +23,12 @@ private[nio1] object NIO1HeadStage {
   sealed trait WriteResult
   case object Complete extends WriteResult
   case object Incomplete extends WriteResult
-  case object ChannelClosed extends WriteResult
-  case class WriteError(t: Exception) extends WriteResult
+  case class WriteError(t: Exception) extends WriteResult // EOF signals normal termination
 }
 
 private[nio1] abstract class NIO1HeadStage(ch: SelectableChannel,
-                                           loop: SelectorLoop,
-                                           key: SelectionKey) extends ChannelHead
+                                         loop: SelectorLoop,
+                                          key: SelectionKey) extends ChannelHead
 {
   import NIO1HeadStage._
 
@@ -40,17 +39,22 @@ private[nio1] abstract class NIO1HeadStage(ch: SelectableChannel,
   private val readPromise = new AtomicReference[Promise[ByteBuffer]]
 
   // Called by the selector loop when this channel has data to read
-  final def readReady(scratch: ByteBuffer) {
+  final def readReady(scratch: ByteBuffer): Unit = {
     val r = performRead(scratch)
     unsetOp(SelectionKey.OP_READ)
-    val p = readPromise.getAndSet(null)
+
 
     // if we successfully read some data, unset the interest and
     // complete the promise, otherwise fail appropriately
     r match {
-      case Success(_)   => p.complete(r)
-      case Failure(EOF) => closeChannel()
-      case Failure(e)   => p.tryFailure(checkError(e))
+      case Success(_)   =>
+        val p = readPromise.getAndSet(null)
+        p.complete(r)
+
+      case Failure(e) =>
+        val ee = checkError(e)
+        sendInboundCommand(Disconnected)
+        closeWithError(ee)    // will complete the promise with the error
     }
   }
 
@@ -64,7 +68,7 @@ private[nio1] abstract class NIO1HeadStage(ch: SelectableChannel,
       p.future
     }
     else readPromise.get() match {
-      case f @PipeClosedPromise(_) => f.future
+      case f :PipeClosedPromise[ByteBuffer] => f.future
       case _                    =>
         Future.failed(new IndexOutOfBoundsException("Cannot have more than one pending read request"))
     }
@@ -76,27 +80,29 @@ private[nio1] abstract class NIO1HeadStage(ch: SelectableChannel,
   private val writePromise = new AtomicReference[Promise[Unit]](null)
 
   // Will always be called from the SelectorLoop thread
-  final def writeReady(scratch: ByteBuffer): Unit = performWrite(scratch, writeData) match {
-    case Complete =>
-      val p = writePromise.get
-      writeData = null
-      writePromise.set(null)
-      unsetOp(SelectionKey.OP_WRITE)
-      p.success(())
+  final def writeReady(scratch: ByteBuffer): Unit = {
+    val buffers = writeData // get a local reference so we don't hit the volatile a lot
+    performWrite(scratch, buffers) match {
+      case Complete =>
+        val p = writePromise.get()
+        writeData = null
+        writePromise.set(null)
+        unsetOp(SelectionKey.OP_WRITE)
+        p.success(())
 
-    case Incomplete => /* Need to wait for another go around to try and send more data */
+      case Incomplete => /* Need to wait for another go around to try and send more data */
+        BufferTools.dropEmpty(buffers)
 
-    case ChannelClosed =>
-      closeChannel()
-
-    case WriteError(t) =>
-      logger.error(t)("Error while performing write. Shutting down connector")
-      closeWithError(t)
+      case WriteError(t) =>
+        sendInboundCommand(Disconnected)
+        closeWithError(t)
+    }
   }
 
   final override def writeRequest(data: ByteBuffer): Future[Unit] = writeRequest(data::Nil)
 
   final override def writeRequest(data: Seq[ByteBuffer]): Future[Unit] = {
+//    logger.trace("NIO1HeadStage Write Request.")
     val p = Promise[Unit]
     if (writePromise.compareAndSet(null, p)) {
       val writes = data.toArray
@@ -111,8 +117,9 @@ private[nio1] abstract class NIO1HeadStage(ch: SelectableChannel,
         Future.successful(())
       }
     } else writePromise.get match {
-      case f @PipeClosedPromise(_) => f.future
-      case _                    =>
+      case f :PipeClosedPromise[Unit] => f.future
+      case p                    =>
+        logger.trace(s"Received bad write request: $p")
         Future.failed(new IndexOutOfBoundsException("Cannot have more than one pending write request"))
     }
   }
@@ -132,25 +139,25 @@ private[nio1] abstract class NIO1HeadStage(ch: SelectableChannel,
     *                scratch space until this method returns
     * @return a Try with either a successful ByteBuffer, an error, or null if this operation is not complete
     */
-  def performRead(scratch: ByteBuffer): Try[ByteBuffer]
+  protected def performRead(scratch: ByteBuffer): Try[ByteBuffer]
 
   /** Perform the write operation for this channel
     * @param buffers buffers to be written to the channel
     * @return a Try that is either a Success(Any), a Failure with an appropriate error,
     *         or null if this operation is not complete
     */
-  def performWrite(scratch: ByteBuffer, buffers: Array[ByteBuffer]): WriteResult
-
-  /** Don't actually close until the next cycle */
-  final override protected def closeChannel(): Unit = closeWithError(EOF)
+  protected def performWrite(scratch: ByteBuffer, buffers: Array[ByteBuffer]): WriteResult
 
   // Cleanup any read or write requests with the exception
   final override def closeWithError(t: Throwable): Unit = {
-    val r = readPromise.getAndSet(PipeClosedPromise(t))
+    if (t != EOF) logger.warn(t)("Abnormal NIO1HeadStage termination")
+
+    val r = readPromise.getAndSet(new PipeClosedPromise(t))
+    logger.trace(s"closeWithError($t); promise: $r")
     if (r != null) r.tryFailure(t)
 
-    val w = writePromise.getAndSet(PipeClosedPromise(t))
-    writeData = null
+    val w = writePromise.getAndSet(new PipeClosedPromise(t))
+    writeData = Array()
     if (w != null) w.tryFailure(t)
 
     try loop.enqueTask(new Runnable {
@@ -185,7 +192,11 @@ private[nio1] abstract class NIO1HeadStage(ch: SelectableChannel,
       if ((ops & op) != 0) {
         key.interestOps(ops & ~op)
       }
-    } catch { case _: CancelledKeyException => closeChannel() }
+    } catch {
+      case _: CancelledKeyException =>
+        sendInboundCommand(Disconnected)
+        closeWithError(EOF)
+    }
   }
 
   private def _setOp(op: Int) {
@@ -194,6 +205,10 @@ private[nio1] abstract class NIO1HeadStage(ch: SelectableChannel,
       if ((ops & op) == 0) {
         key.interestOps(ops | op)
       }
-    } catch { case _: CancelledKeyException => closeChannel() }
+    } catch {
+      case _: CancelledKeyException =>
+        sendInboundCommand(Disconnected)
+        closeWithError(EOF)
+    }
   }
 }

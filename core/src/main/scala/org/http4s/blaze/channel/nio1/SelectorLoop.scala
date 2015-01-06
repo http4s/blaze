@@ -1,7 +1,10 @@
 package org.http4s.blaze.channel.nio1
 
 
+import org.http4s.blaze.pipeline.{ Command => Cmd }
 import org.http4s.blaze.util.BufferTools
+import org.http4s.blaze.pipeline._
+import org.http4s.blaze.channel.BufferPipelineBuilder
 
 import scala.annotation.tailrec
 import scala.util.control.NonFatal
@@ -11,13 +14,11 @@ import java.io.IOException
 import java.util.concurrent.atomic.AtomicReference
 import java.util.concurrent.RejectedExecutionException
 
-import org.http4s.blaze.pipeline._
-import org.http4s.blaze.channel.BufferPipelineBuilder
 import org.log4s.getLogger
 
 
-final class SelectorLoop(selector: Selector, bufferSize: Int)
-            extends Thread("SelectorLoop") { thisLoop =>
+final class SelectorLoop(id: String, selector: Selector, bufferSize: Int) extends Thread(id) { thisLoop =>
+
   private[this] val logger = getLogger
 
   private class Node(val runnable: Runnable) extends AtomicReference[Node]
@@ -40,7 +41,7 @@ final class SelectorLoop(selector: Selector, bufferSize: Int)
     val head = queueHead.getAndSet(node)
     if (head eq null) {
       queueTail.set(node)
-      wakeup()
+      selector.wakeup()
     } else head.lazySet(node)
   }
 
@@ -71,8 +72,7 @@ final class SelectorLoop(selector: Selector, bufferSize: Int)
     }
   }
 
-  // Main thread method. This is just a everlasting loop.
-  // TODO: should we plan an escape for this loop?
+  // Main thread method. The loop will break if the Selector loop is closed
   override def run() {
 
     try while(!_isClosed) {
@@ -93,11 +93,6 @@ final class SelectorLoop(selector: Selector, bufferSize: Int)
               val head = k.attachment().asInstanceOf[NIO1HeadStage]
 
               if (head != null) {
-                logger.trace {
-                  "selection key interests: " +
-                  "write: " +  k.isWritable +
-                  ", read: " + k.isReadable }
-
                 val readyOps: Int = k.readyOps()
 
                 if ((readyOps & SelectionKey.OP_READ) != 0) head.readReady(scratch)
@@ -135,21 +130,22 @@ final class SelectorLoop(selector: Selector, bufferSize: Int)
       case e: ClosedSelectorException =>
         _isClosed = true
         logger.error(e)("Selector unexpectedly closed")
-        return  // If the selector is closed, no reason to continue the thread.
 
       case e: Throwable =>
         logger.error(e)("Unhandled exception in selector loop")
-        close()
-        return
+        _isClosed = true
     }
-  }
 
-  def close() {
-    _isClosed = true
+    // If we've made it to here, we've exited the run loop and we need to shut down
     killSelector()
   }
 
-  @throws[IOException]
+  /** Signal to the [[SelectorLoop]] that it should close */
+  def close(): Unit = {
+    logger.info(s"Shutting down SelectorLoop ${getName()}")
+    _isClosed = true
+  }
+
   private def killSelector() {
     import scala.collection.JavaConversions._
 
@@ -158,7 +154,9 @@ final class SelectorLoop(selector: Selector, bufferSize: Int)
         try {
           val head = k.attachment()
           if (head != null) {
-            head.asInstanceOf[NIO1HeadStage].sendInboundCommand(Command.Disconnected)
+            val stage = head.asInstanceOf[NIO1HeadStage]
+            stage.sendInboundCommand(Cmd.Disconnected)
+            stage.closeWithError(Cmd.EOF)
           }
           k.channel().close()
           k.attach(null)
@@ -168,8 +166,6 @@ final class SelectorLoop(selector: Selector, bufferSize: Int)
       selector.close()
     } catch { case t: Throwable => logger.warn(t)("Killing selector resulted in an exception") }
   }
-
-  def wakeup(): Unit = selector.wakeup()
 
   def initChannel(builder: BufferPipelineBuilder, ch: SelectableChannel, mkStage: SelectionKey => NIO1HeadStage) {
    enqueTask( new Runnable {

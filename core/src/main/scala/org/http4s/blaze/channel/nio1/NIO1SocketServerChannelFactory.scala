@@ -20,7 +20,7 @@ class NIO1SocketServerChannelFactory(pipeFactory: BufferPipelineBuilder,
   import org.http4s.blaze.channel.ChannelHead.brokePipeMessages
 
   def this(pipeFactory: BufferPipelineBuilder, workerThreads: Int = 8, bufferSize: Int = 4*1024) =
-    this(pipeFactory, new FixedArraySelectorPool(workerThreads, bufferSize))
+    this(pipeFactory, new FixedSelectorPool(workerThreads, bufferSize))
 
   //////////////// End of constructors /////////////////////////////////////////////////////////
 
@@ -47,16 +47,13 @@ class NIO1SocketServerChannelFactory(pipeFactory: BufferPipelineBuilder,
   }
 
   private class SocketChannelHead(ch: SocketChannel,
-                                  loop: SelectorLoop,
-                                  key: SelectionKey) extends NIO1HeadStage(ch, loop, key)
+                                loop: SelectorLoop,
+                                 key: SelectionKey) extends NIO1HeadStage(ch, loop, key)
   {
-
-    // TODO: these methods may be better rewritten to throw to the underlying NIO1HeadStage instead of catching internally
     override def performRead(scratch: ByteBuffer): Try[ByteBuffer] = {
       try {
         scratch.clear()
         val bytes = ch.read(scratch)
-        logger.debug(s"Read $bytes bytes")
         if (bytes >= 0) {
           scratch.flip()
 
@@ -75,15 +72,14 @@ class NIO1SocketServerChannelFactory(pipeFactory: BufferPipelineBuilder,
     }
 
     override def performWrite(scratch: ByteBuffer, buffers: Array[ByteBuffer]): WriteResult = {
-      logger.debug("Performing write: " + buffers)
       try {
         ch.write(buffers)
         if (util.BufferTools.checkEmpty(buffers)) Complete
         else Incomplete
       }
       catch {
-        case e: ClosedChannelException => ChannelClosed
-        case e: IOException if brokePipeMessages.contains(e.getMessage) => ChannelClosed
+        case e: ClosedChannelException => WriteError(EOF)
+        case e: IOException if brokePipeMessages.contains(e.getMessage) => WriteError(EOF)
         case e: IOException =>
           logger.warn(e)("Error writing to channel")
           WriteError(e)

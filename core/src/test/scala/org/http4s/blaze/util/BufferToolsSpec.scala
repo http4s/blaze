@@ -13,20 +13,22 @@ class BufferToolsSpec extends Specification {
     b
   }
 
-  "BufferTools" should {
+  "BufferTools.concatBuffers" should {
     "discard null old buffers" in {
       val bb = b()
       BufferTools.concatBuffers(null, bb) should_== bb
     }
 
     "discard empty buffers" in {
-      val b1 = b(); val b2 = b()
+      val b1 = b();
+      val b2 = b()
       b1.getInt()
       BufferTools.concatBuffers(b1, b2) should_== b2
     }
 
     "concat two buffers" in {
-      val b1 = b(1); val b2 = b(2)
+      val b1 = b(1);
+      val b2 = b(2)
       val a = BufferTools.concatBuffers(b1, b2)
       a.remaining() should_== 8
       a.getInt() should_== 1
@@ -35,7 +37,7 @@ class BufferToolsSpec extends Specification {
 
     "append the result of one to the end of another if there is room" in {
       val b1 = BufferTools.allocate(9)
-      b1.position(1)              // offset by 1 to simulated already having read a byte
+      b1.position(1) // offset by 1 to simulated already having read a byte
       b1.putInt(1).flip().position(1)
       val b2 = b(2)
 
@@ -57,6 +59,9 @@ class BufferToolsSpec extends Specification {
       bb.getInt() should_== 1
       bb.getInt() should_== 2
     }
+  }
+
+  "BufferTools.checkEmpty" should {
 
     "check if buffers are empty" in {
       checkEmpty(Array(allocate(0), allocate(3))) must_== false
@@ -73,6 +78,40 @@ class BufferToolsSpec extends Specification {
 
       checkEmpty(Array[ByteBuffer]()) must_== true
       checkEmpty(Seq()) must_== true
+    }
+  }
+
+  "BufferTools.dropEmpty" should {
+
+    val buff0 = allocate(0)
+    val buff1 = allocate(1)
+
+    "Find index of first Non-empty buffer" in {
+      val arr1 = Array(buff0)
+      dropEmpty(arr1) must_== 0
+
+      val arr2 = Array(buff0, buff1)
+      dropEmpty(arr2) must_== 1
+
+      val arr3 = Array(buff1, buff0)
+      dropEmpty(arr3) must_== 0
+    }
+
+    "drop empty buffers until the first non-empty buffer except the last" in {
+      val arr = Array(buff0, buff0)
+      dropEmpty(arr) must_== 1
+      (arr(0) eq emptyBuffer) must_== true
+      (arr(1) eq buff0) must_== true
+
+      val arr2 = Array(buff1, buff1)
+      dropEmpty(arr2) must_== 0
+      (arr2(0) eq buff1) must_== true
+      (arr2(1) eq buff1) must_== true
+
+      val arr3 = Array(buff0, buff1)
+      dropEmpty(arr3) must_== 1
+      (arr3(0) eq emptyBuffer) must_== true
+      (arr3(1) eq buff1) must_== true
     }
   }
 
