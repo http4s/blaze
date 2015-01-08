@@ -15,7 +15,6 @@ public abstract class BodyAndHeaderParser extends ParserBase {
     private static enum HeaderState {
         START,
         HEADER_IN_NAME,
-        HEADER_SPACE,
         HEADER_IN_VALUE,
         END
     }
@@ -181,28 +180,6 @@ public abstract class BodyAndHeaderParser extends ParserBase {
 
                     _headerName = getString();
                     clearBuffer();
-                    _hstate = HeaderState.HEADER_SPACE;
-
-                case HEADER_SPACE:
-                    for(ch = next(in); ch == HttpTokens.SPACE || ch == HttpTokens.TAB; ch = next(in));
-
-                    if (ch == 0) return false;
-
-                    if (ch == HttpTokens.LF) {
-                        clearBuffer();
-
-                        try {
-                            if (headerComplete(_headerName, "")) {
-                                return true;
-                            }
-                        }
-                        finally {
-                            _hstate = HeaderState.HEADER_IN_NAME;
-                        }
-                        continue headerLoop;
-                    }
-
-                    putByte(ch);
                     _hstate = HeaderState.HEADER_IN_VALUE;
 
                 case HEADER_IN_VALUE:
