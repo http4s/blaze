@@ -1,5 +1,7 @@
 package org.http4s.blaze.util
 
+import java.util.concurrent.atomic.AtomicReference
+
 import scala.annotation.tailrec
 import scala.util.control.NonFatal
 import scala.concurrent.ExecutionContext
@@ -27,6 +29,10 @@ class TickWheelExecutor(wheelSize: Int = 512, tick: Duration = 200.milli) {
   require(wheelSize > 0, "Need finite size number of ticks")
   require(tick.isFinite() && tick.toNanos != 0, "tick duration must be finite")
 
+  private sealed abstract class ScheduleEvent(node: Node) extends AtomicReference[ScheduleEvent](null)
+  private case class Register(node: Node) extends ScheduleEvent(node)
+  private case class Cancel(node: Node) extends ScheduleEvent(node)
+
   private[this] val logger = getLogger
 
   @volatile private var alive = true
@@ -34,10 +40,13 @@ class TickWheelExecutor(wheelSize: Int = 512, tick: Duration = 200.milli) {
   private val tickMilli = tick.toMillis
   private val _tickInv = 1.0/tickMilli.toDouble
 
+  private val tailTaskNode = new Register(null) // Marker node for the tail of the offer queue
+  private val head = new AtomicReference[ScheduleEvent](tailTaskNode)
+
+  private val tailNode = new Node(null, null, -1, null) // Marker for bucket queues
+
   private val clockFace: Array[Bucket] = {
-    val arr = new Array[Bucket](wheelSize)
-    0 until wheelSize foreach { i => arr(i) = new Bucket }
-    arr
+    (0 until wheelSize).map(_ => new Bucket()).toArray
   }
 
   /////////////////////////////////////////////////////
@@ -66,10 +75,13 @@ class TickWheelExecutor(wheelSize: Int = 512, tick: Duration = 200.milli) {
   def schedule(r: Runnable, ec: ExecutionContext, timeout: Duration): Cancellable = {
     if (!timeout.isFinite()) sys.error(s"Cannot submit infinite duration delays!")
     else if (alive) {
-      val milidur = timeout.toMillis
-      if (milidur > 0) {
-        val expires = milidur + System.currentTimeMillis()
-        getBucket(expires).add(r, ec, expires)
+      val millis = timeout.toMillis
+      if (millis > 0) {
+        val expires = millis + System.currentTimeMillis()
+
+        val node = new Node(r, ec, expires, null)
+        addNodeToTasks(Register(node))
+        node
       }
       else {  // we can submit the task right now! Not sure why you would want to do this...
         try ec.execute(r)
@@ -80,8 +92,50 @@ class TickWheelExecutor(wheelSize: Int = 512, tick: Duration = 200.milli) {
     else sys.error("TickWheelExecutor is shutdown")
   }
 
+  // Adds the ScheduleEvent to the atomic stack
+  private def addNodeToTasks(link: ScheduleEvent): Unit = {
+    @tailrec
+    def go(): Unit = {
+      val h = head.get()
+      if (head.compareAndSet(h, link)) link.lazySet(h)
+      else go()
+    }
+
+    go()
+  }
+
+  // Deals with appending and removing tasks from the buckets
+  private def handleTasks(): Unit = {
+
+    @tailrec
+    def go(task: ScheduleEvent): Unit = {
+      if (task ne tailTaskNode) {
+        task match {
+          case Cancel(n) => n.canceled = true
+          case Register(n) =>
+            if (!n.canceled) getBucket(n.expiration).add(n)
+        }
+
+        @tailrec  // will spin, if needed, until the next link resolves
+        def getNext(task: ScheduleEvent): ScheduleEvent = {
+          val n = task.get()
+          if (n == null) getNext(task)
+          else n
+        }
+
+        go(getNext(task))
+      }
+    }
+
+    val task = head.getAndSet(tailTaskNode)
+    go(task)
+  }
+
   @tailrec
   private def cycle(lastTickTime: Long): Unit = {
+
+    handleTasks()  // Deal with scheduling and cancellations
+
     val now = System.currentTimeMillis()
     val lastTick = (lastTickTime * _tickInv).toLong
     val thisTick = (now * _tickInv).toLong
@@ -116,53 +170,37 @@ class TickWheelExecutor(wheelSize: Int = 512, tick: Duration = 200.milli) {
   }
 
   private class Bucket {
-    private val lock = new AnyRef
-    private var nodes: Node = null
+    // An empty cell serves as the head of the linked list
+    private val head: Node = new Node(null, null, -1, tailNode)
 
-    /** Removes expired and canceled elements from this bucket, placing expired ones in the
-      * expiredTasks variable for subsequent execution
+    /** Removes expired and canceled elements from this bucket, executing expired elements
+      *
       * @param time current system time (in milliseconds)
       */
     def prune(time: Long) {
-      var expiredTasks: Node = null
-
-      // we lock the Bucket and collect expired elements
-      lock.synchronized {
-        val i = nodes
-        nodes = null
-
-        @tailrec
-        def go(tail: Node, i: Node): Unit = if (i != null) {
-          val n = i.next
-          i.next = null
-          if (i.isCancelled()) go(tail, n)
-          else if (i.expiresBy(time)) {
-            i.next = expiredTasks
-            expiredTasks = i
-            go(tail, n)
+      @tailrec
+      def checkNext(prev: Node): Unit = {
+        val next = prev.next
+        if (next ne tailNode) {
+          if (next.canceled) {   // remove it
+            prev.next = next.next
+            checkNext(prev)
           }
-          else {  // still valid
-            if (tail == null) nodes = i // first element
-            else tail.next = i
-            go(i, n)
+          else if (next.expiresBy(time)) {
+            next.run()
+            prev.next = next.next
+            checkNext(prev)
           }
+          else checkNext(next)  // still valid
         }
-        go(null, i)
       }
 
-      // All done pruning and the lock is released. Now we need to execute the expiredTasks
-      while(expiredTasks != null) {
-        val i = expiredTasks
-        expiredTasks = expiredTasks.next
-        i.next = null
-        try i.run()
-        catch { case NonFatal(t) => onNonFatal(t) }
-      }
+      checkNext(head)
     }
     
-    def add(r: Runnable, ec: ExecutionContext, expiration: Long): Cancellable = lock.synchronized {
-      nodes = new Node(r, ec, expiration, nodes)
-      nodes
+    def add(node: Node): Unit =  {
+      node.next = head.next
+      head.next = node
     }
   }
 
@@ -170,27 +208,24 @@ class TickWheelExecutor(wheelSize: Int = 512, tick: Duration = 200.milli) {
     * @param r [[java.lang.Runnable]] which will be executed after the expired time
     * @param ec [[scala.concurrent.ExecutionContext]] on which to execute the Runnable
     * @param expiration time in milliseconds after which this Node is expired
-    * @param next next Node in the list or null if this is the last element
+    * @param next next Node in the list or ``tailNode` if this is the last element
     */
-  private class Node(r: Runnable, ec: ExecutionContext, expiration: Long, var next: Node) extends Cancellable {
-    @volatile private var alive = true
+  final private class Node(r: Runnable,
+                          ec: ExecutionContext,
+              val expiration: Long,
+                    var next: Node,
+                var canceled: Boolean = false) extends Cancellable {
 
     def expiresBy(now: Long): Boolean = now >= expiration
 
-    def isCancelled(): Boolean = !alive
+    def cancel(): Unit = addNodeToTasks(Cancel(this))
 
-    def cancel(): Unit = alive = false
-
-    def run() = ec.execute(r)
+    def run() = try ec.execute(r) catch { case NonFatal(t) => onNonFatal(t) }
   }
 }
 
 trait Cancellable {
-
   def cancel(): Unit
-
-  def isCancelled(): Boolean
-
 }
 
 object Cancellable {
