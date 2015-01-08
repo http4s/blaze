@@ -87,11 +87,12 @@ public abstract class ParserBase {
             start++;
         }
 
-        int end = _bufferPosition - 1;  // Position is of next write
+        int end = _bufferPosition;  // Position is of next write
 
         // Look for end
         while(end > start) {
-            final char ch = _internalBuffer[end];
+            final char ch = _internalBuffer[end - 1];
+
             if (quoted) {
                 if (ch == '"') break;
                 else if (ch != HttpTokens.SPACE && ch != HttpTokens.TAB) {
@@ -102,7 +103,8 @@ public abstract class ParserBase {
             end--;
         }
 
-        String str = new String(_internalBuffer, start, end + 1);
+        String str = new String(_internalBuffer, start, end - start);
+
         return str;
     }
 
