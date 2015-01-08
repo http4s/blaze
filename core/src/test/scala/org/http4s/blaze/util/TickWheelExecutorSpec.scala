@@ -101,7 +101,7 @@ class TickWheelExecutorSpec extends Specification with NoTimeConversions {
         }
       }, Duration.Zero)
 
-      Thread.sleep(10)
+      Thread.sleep(100)
       failed should_== 2
     }
 

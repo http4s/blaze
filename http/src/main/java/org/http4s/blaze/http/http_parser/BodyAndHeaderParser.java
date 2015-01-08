@@ -189,8 +189,17 @@ public abstract class BodyAndHeaderParser extends ParserBase {
                     if (ch == 0) return false;
 
                     if (ch == HttpTokens.LF) {
-                        shutdownParser();
-                        throw new BadRequest("Missing value for header " + _headerName);
+                        clearBuffer();
+
+                        try {
+                            if (headerComplete(_headerName, "")) {
+                                return true;
+                            }
+                        }
+                        finally {
+                            _hstate = HeaderState.HEADER_IN_NAME;
+                        }
+                        continue headerLoop;
                     }
 
                     putByte(ch);

@@ -71,11 +71,9 @@ class ServerParserSpec extends Specification {
 //                "User-Agent: HTTPTool/1.0  \r\n" +
 //                "Some-Header\r\n" +
 //                "\r\n"
-  val header = l_headers.foldLeft(new StringBuilder){ (sb, h) =>
-                sb.append(h._1)
-                if (h._2.length > 0) sb.append(": " + h._2)
-                sb.append("\r\n")
-              }.append("\r\n").result
+
+
+  val header = mkHeaderString(l_headers)
 
   val body    = "hello world"
 
@@ -88,6 +86,14 @@ class ServerParserSpec extends Specification {
   val mockChunked = request + host + chunked + header + toChunk(body) + toChunk(body + " again!") + "0 \r\n" + "\r\n"
 
   val twoline = request + host
+
+  def mkHeaderString(headers: Seq[(String, String)]): String = {
+    headers.foldLeft(new StringBuilder){ (sb, h) =>
+      sb.append(h._1)
+      if (h._2.length > 0) sb.append(": " + h._2)
+      sb.append("\r\n")
+    }.append("\r\n").result
+  }
 
   "Http1ServerParser" should {
     "Parse the request line for HTTP" in {
@@ -143,6 +149,14 @@ class ServerParserSpec extends Specification {
       p.parseheaders(header) should_== (true)
       p.getContentType should_== (EndOfContent.UNKNOWN_CONTENT)
       p.h.result should_==(l_headers.map{ case (a, b) => (a.trim, b.trim)})
+    }
+
+    "Accept headers without values" in {
+      val hsStr = "If-Modified-Since\r\nIf-Modified-Since:\r\nIf-Modified-Since: \r\nIf-Modified-Since:\t\r\n\r\n"
+      val p = new Parser()
+      p.parseheaders(hsStr) should_== (true)
+      p.getContentType should_== (EndOfContent.UNKNOWN_CONTENT)
+      p.h.result should_== List.fill(4)(("If-Modified-Since", ""))
     }
 
     "need input on partial headers" in {
