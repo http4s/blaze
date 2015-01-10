@@ -3,6 +3,7 @@ package org.http4s.blaze.examples
 import org.http4s.blaze.channel._
 import java.net.InetSocketAddress
 import java.nio.channels.AsynchronousChannelGroup
+import org.http4s.blaze.channel.nio1.NIO1SocketServerChannelFactory
 import org.http4s.blaze.pipeline.stages.SSLStage
 
 import org.http4s.blaze.channel.nio2.NIO2SocketServerChannelFactory
@@ -16,13 +17,10 @@ class SSLHttpServer(port: Int) {
   private val f: BufferPipelineBuilder = { _ =>
     val eng = sslContext.createSSLEngine()
     eng.setUseClientMode(false)
-
-    TrunkBuilder(new SSLStage(eng, 100*1024)).cap(new ExampleHttpServerStage(None, 10*1024))
+    TrunkBuilder(new SSLStage(eng, 100*1024)).cap(ExampleService.http1Stage(None, 10*1024))
   }
 
-  val group = AsynchronousChannelGroup.withFixedThreadPool(10, java.util.concurrent.Executors.defaultThreadFactory())
-
-  private val factory = new NIO2SocketServerChannelFactory(f)
+  private val factory = new NIO1SocketServerChannelFactory(f, workerThreads = 6)
 
   def run(): Unit = factory.bind(new InetSocketAddress(port)).run()
 }

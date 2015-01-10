@@ -8,7 +8,6 @@ import java.net.InetSocketAddress
 
 import org.http4s.blaze.channel.nio2.ClientChannelFactory
 import org.http4s.blaze.pipeline.{Command, LeafBuilder}
-import org.http4s.blaze.pipeline.stages.http.{SimpleHttpResponse, HttpClientStage, Response}
 import org.http4s.blaze.pipeline.stages.SSLStage
 import org.http4s.blaze.util.{GenericSSLContext, BufferTools, Execution}
 

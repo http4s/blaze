@@ -5,7 +5,7 @@ import org.http4s.blaze.util.Execution._
 import org.http4s.websocket.WebsocketBits._
 
 import scala.concurrent.{Promise, Future}
-import scala.collection.mutable.ListBuffer
+import scala.collection.mutable.ArrayBuffer
 import scala.util.{Failure, Success}
 
 import java.net.ProtocolException
@@ -15,7 +15,7 @@ class WSFrameAggregator extends MidStage[WebSocketFrame, WebSocketFrame] {
 
   def name: String = "WebSocket Frame Aggregator"
 
-  private val queue = new ListBuffer[WebSocketFrame]
+  private var queue = new ArrayBuffer[WebSocketFrame]
   private var size = 0
 
   def readRequest(size: Int): Future[WebSocketFrame] = {
@@ -53,8 +53,8 @@ class WSFrameAggregator extends MidStage[WebSocketFrame, WebSocketFrame] {
     val arr = new Array[Byte](size)
     size = 0
 
-    val msgs = queue.result()
-    queue.clear()
+    val msgs = queue
+    queue = new ArrayBuffer[WebSocketFrame](msgs.size + 10)
 
     msgs.foldLeft(0) { (i, f) =>
       System.arraycopy(f.data, 0, arr, i, f.data.length)

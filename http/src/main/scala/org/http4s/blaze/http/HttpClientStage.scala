@@ -1,4 +1,4 @@
-package org.http4s.blaze.pipeline.stages.http
+package org.http4s.blaze.http
 
 import org.http4s.blaze.http.http_parser.Http1ClientParser
 import org.http4s.blaze.pipeline.TailStage

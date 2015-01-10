@@ -19,7 +19,8 @@ object ApplicationBuild extends Build {
   lazy val http = Project("blaze-http",
                     file("http"),
                     settings = buildSettings ++ dependencies ++ Seq(
-                      libraryDependencies += http4sWebsocket,
+                      libraryDependencies ++= Seq(http4sWebsocket,
+                                                  twitterHAPCK),
                       libraryDependencies ++= (scalaBinaryVersion.value match {
                         case "2.10" => Seq.empty
                         case "2.11" => Seq(scalaXml)
@@ -103,8 +104,9 @@ object ApplicationBuild extends Build {
   lazy val specs2              = "org.specs2"                 %% "specs2"              % "2.4"
   lazy val http4sWebsocket     = "org.http4s"                 %% "http4s-websocket"    % "0.1.1"
   lazy val logbackClassic      = "ch.qos.logback"             %  "logback-classic"     % "1.0.9"
-  lazy val scalaXml = "org.scala-lang.modules"                %% "scala-xml"           % "1.0.2"
+  lazy val scalaXml =            "org.scala-lang.modules"     %% "scala-xml"           % "1.0.2"
   lazy val log4s               = "org.log4s"                  %% "log4s"               % "1.1.2"
+  lazy val twitterHAPCK        = "com.twitter"                %  "hpack"               % "0.10.0"
 
 
   // Needed for Spdy Support. Perhaps it should be a sub-project?
@@ -113,7 +115,7 @@ object ApplicationBuild extends Build {
   lazy val alpn_api            = "org.eclipse.jetty.alpn"     % "alpn-api"             % "1.1.0.v20141014"
 
   // Note that the alpn_boot version is JVM version specific. Check the docs if getting weird errors
-  lazy val alpn_boot           = "org.mortbay.jetty.alpn"     % "alpn-boot"            % "7.0.0.v20140317"
+  lazy val alpn_boot           = "org.mortbay.jetty.alpn"     % "alpn-boot"            % "8.0.0.v20140317" // "7.0.0.v20140317"
 
   /* publishing */
   lazy val publishing = Seq(

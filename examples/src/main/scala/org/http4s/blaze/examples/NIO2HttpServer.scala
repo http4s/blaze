@@ -12,10 +12,10 @@ import scala.concurrent.duration._
 
 class NIO2HttpServer(port: Int) {
 
-  val group = AsynchronousChannelGroup.withFixedThreadPool(10, java.util.concurrent.Executors.defaultThreadFactory())
+  val group = AsynchronousChannelGroup.withFixedThreadPool(6, java.util.concurrent.Executors.defaultThreadFactory())
 
   private val status = new IntervalConnectionMonitor(10.minutes)
-  private val f: BufferPipelineBuilder = _ => LeafBuilder(new ExampleHttpServerStage(Some(status), 10*1024))
+  private val f: BufferPipelineBuilder = _ => LeafBuilder(ExampleService.http1Stage(Some(status), 10*1024))
   private val factory = new NIO2SocketServerChannelFactory(status.wrapBuilder(f))
 
   def run(): Unit = factory.bind(new InetSocketAddress(port)).run()
