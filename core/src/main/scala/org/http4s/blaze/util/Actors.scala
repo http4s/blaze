@@ -23,8 +23,6 @@ object Actors {
   def make[M](f: M => Any, onError: (Throwable, M) => Unit = defaultOnError(_: Throwable,_: M))(implicit ec: ExecutionContext): Actor[M] =
     new Actor(f, onError, ec)
 
-//  def make[M](ec: ExecutionContext)(f: M => Any): Actor[M] = new Actor(f, ec)
-
   final class Actor[M]private[Actors](f: M => Any, onError: (Throwable, M) => Unit, ec: ExecutionContext) {
     // Keep the head of the chain
     private val head = new AtomicReference[Node]()

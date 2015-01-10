@@ -12,10 +12,11 @@ trait SelectorLoopPool {
 
 }
 
-class FixedArraySelectorPool(poolSize: Int, bufferSize: Int) extends SelectorLoopPool {
+/** Provides a fixed size pool of [[SelectorLoop]]s, distributing work in a round robin fashion */
+class FixedSelectorPool(poolSize: Int, bufferSize: Int) extends SelectorLoopPool {
 
-  private val loops = 0.until(poolSize).map{ _ =>
-    val l = new SelectorLoop(Selector.open(), bufferSize)
+  private val loops = 0.until(poolSize).map { id =>
+    val l = new SelectorLoop(s"FixedPoolLoop-$id", Selector.open(), bufferSize)
     l.start()
     l
   }.toArray

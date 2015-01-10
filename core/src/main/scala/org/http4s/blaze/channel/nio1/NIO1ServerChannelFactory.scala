@@ -10,7 +10,7 @@ import org.log4s.getLogger
 abstract class NIO1ServerChannelFactory[Channel <: NetworkChannel](pool: SelectorLoopPool)
                 extends ServerChannelFactory[Channel] {
 
-  def this(fixedPoolSize: Int, bufferSize: Int = 8*1024) = this(new FixedArraySelectorPool(fixedPoolSize, bufferSize))
+  def this(fixedPoolSize: Int, bufferSize: Int = 8*1024) = this(new FixedSelectorPool(fixedPoolSize, bufferSize))
 
   protected def doBind(address: SocketAddress): Channel
 

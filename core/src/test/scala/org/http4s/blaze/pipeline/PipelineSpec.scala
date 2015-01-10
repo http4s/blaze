@@ -12,6 +12,7 @@ class PipelineSpec extends Specification with NoTimeConversions {
 
     def name = "IntHead"
 
+    @volatile
     var lastWrittenInt: Int = 0
 
     def writeRequest(data: Int): Future[Unit] = {
@@ -48,8 +49,8 @@ class PipelineSpec extends Specification with NoTimeConversions {
       TrunkBuilder(new IntToString).cap(tail).base(head)
 
       val r = tail.channelRead()
-      Await.result(r, 1.second) should_== "54"
-      Await.ready(tail.channelWrite("32"), 1.second)
+      Await.result(r, 60.seconds) should_== "54"
+      Await.ready(tail.channelWrite("32"), 60.seconds)
 
       head.lastWrittenInt should_== 32
 

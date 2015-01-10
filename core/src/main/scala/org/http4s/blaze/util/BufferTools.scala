@@ -45,9 +45,11 @@ object BufferTools {
     else ""
   }
 
-  /** Join the two buffers into a single ByteBuffer */
+  /** Join the two buffers into a single ByteBuffer. This method is
+    * guaranteed to return a ByteBuffer, but it may be empty. */
   def concatBuffers(oldbuff: ByteBuffer, newbuff: ByteBuffer): ByteBuffer = {
-    if (oldbuff != null && oldbuff.hasRemaining) {
+    if (oldbuff == null && newbuff == null) emptyBuffer
+    else if (oldbuff != null && oldbuff.hasRemaining) {
       if (!oldbuff.isReadOnly && oldbuff.capacity() >= oldbuff.limit() + newbuff.remaining()) {
         // Enough room to append to end
         oldbuff.mark()
@@ -75,7 +77,8 @@ object BufferTools {
 
         n
       }
-    } else newbuff
+    }
+    else newbuff
   }
 
   /** Check the array of buffers to ensure they are all empty
@@ -91,6 +94,19 @@ object BufferTools {
       else false
     }
     checkEmpty(buffers.length - 1)
+  }
+
+  /** Replaces any empty buffers except for the last one with the `emptyBuffer`
+    * to allow GC of depleted ByteBuffers and returns the index of the first
+    * non-empty ByteBuffer, or the last index, whichever comes first. */
+  def dropEmpty(buffers: Array[ByteBuffer]): Int = {
+    val max = buffers.length - 1
+    var first = 0
+    while(first < max && !buffers(first).hasRemaining()) {
+      buffers(first) = emptyBuffer
+      first += 1
+    }
+    first
   }
 
   /** Check the array of buffers to ensure they are all empty
