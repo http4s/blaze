@@ -3,13 +3,17 @@ package org.http4s.blaze.http.http20
 import java.io.{IOException, InputStream}
 import java.nio.ByteBuffer
 
-final class ByteBufferInputStream(buffer: ByteBuffer) extends InputStream {
+final private[http20] class ByteBufferInputStream(buffer: ByteBuffer) extends InputStream {
 
   private var markSize = 0
 
+  // TODO: I cant make this block until more data becomes available..
   override def read(): Int = {
-    markSize -= 1
-    buffer.get()
+    if (buffer.hasRemaining()) {
+      markSize -= 1
+      buffer.get() & 0xff
+    }
+    else -1
   }
 
   override def read(b: Array[Byte], off: Int, len: Int): Int = {
