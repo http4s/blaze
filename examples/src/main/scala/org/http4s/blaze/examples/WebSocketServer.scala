@@ -11,6 +11,7 @@ import org.http4s.blaze.channel.nio2.NIO2SocketServerChannelFactory
 import java.nio.channels.AsynchronousChannelGroup
 import java.net.InetSocketAddress
 import java.nio.ByteBuffer
+import java.util.concurrent.Executors
 
 import org.log4s.getLogger
 
@@ -19,7 +20,7 @@ import scala.concurrent.Future
 class WebSocketServer(port: Int) {
   private val f: BufferPipelineBuilder = _ => LeafBuilder(new ExampleWebSocketHttpServerStage)
 
-  val group = AsynchronousChannelGroup.withFixedThreadPool(10, java.util.concurrent.Executors.defaultThreadFactory())
+  val group = AsynchronousChannelGroup.withFixedThreadPool(Consts.poolSize, Executors.defaultThreadFactory())
 
   private val factory = new NIO2SocketServerChannelFactory(f)
 

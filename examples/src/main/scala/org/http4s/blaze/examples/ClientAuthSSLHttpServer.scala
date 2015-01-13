@@ -2,6 +2,7 @@ package org.http4s.blaze.examples
 
 import java.net.InetSocketAddress
 import java.nio.channels.AsynchronousChannelGroup
+import java.util.concurrent.Executors
 
 import org.http4s.blaze.channel._
 import org.http4s.blaze.channel.nio2.NIO2SocketServerChannelFactory
@@ -20,7 +21,9 @@ class ClientAuthSSLHttpServer(port: Int) {
     TrunkBuilder(new SSLStage(eng, 100*1024)).cap(ExampleService.http1Stage(None, 10*1024))
   }
 
-  val group = AsynchronousChannelGroup.withFixedThreadPool(10, java.util.concurrent.Executors.defaultThreadFactory())
+
+
+  val group = AsynchronousChannelGroup.withFixedThreadPool(Consts.poolSize, Executors.defaultThreadFactory())
 
   private val factory = new NIO2SocketServerChannelFactory(f)
 

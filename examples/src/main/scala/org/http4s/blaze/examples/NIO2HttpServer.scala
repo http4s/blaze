@@ -2,6 +2,7 @@ package org.http4s.blaze.examples
 
 import java.net.InetSocketAddress
 import java.nio.channels.AsynchronousChannelGroup
+import java.util.concurrent.Executors
 
 import org.http4s.blaze.channel._
 import org.http4s.blaze.channel.nio2.NIO2SocketServerChannelFactory
@@ -12,7 +13,7 @@ import scala.concurrent.duration._
 
 class NIO2HttpServer(port: Int) {
 
-  val group = AsynchronousChannelGroup.withFixedThreadPool(6, java.util.concurrent.Executors.defaultThreadFactory())
+  val group = AsynchronousChannelGroup.withFixedThreadPool(Consts.poolSize, Executors.defaultThreadFactory())
 
   private val status = new IntervalConnectionMonitor(10.minutes)
   private val f: BufferPipelineBuilder = _ => LeafBuilder(ExampleService.http1Stage(Some(status), 10*1024))
