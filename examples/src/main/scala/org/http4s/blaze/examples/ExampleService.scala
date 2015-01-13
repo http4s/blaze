@@ -28,8 +28,8 @@ object ExampleService {
     )
   }
 
-  private def service(status: Option[IntervalConnectionMonitor])
-                     (method: Method, uri: Uri, hs: Headers, body: ByteBuffer): Future[Response] = {
+  def service(status: Option[IntervalConnectionMonitor])
+             (method: Method, uri: Uri, hs: Headers, body: ByteBuffer): Future[Response] = {
 
     val resp = uri match {
       case "/bigstring" =>
