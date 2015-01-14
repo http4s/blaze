@@ -29,9 +29,11 @@ class TickWheelExecutor(wheelSize: Int = 512, tick: Duration = 200.milli) {
   require(wheelSize > 0, "Need finite size number of ticks")
   require(tick.isFinite() && tick.toNanos != 0, "tick duration must be finite")
 
-  private sealed abstract class ScheduleEvent(node: Node) extends AtomicReference[ScheduleEvent](null)
-  private case class Register(node: Node) extends ScheduleEvent(node)
-  private case class Cancel(node: Node) extends ScheduleEvent(node)
+  // Types that form a linked list with links representing different events
+  private sealed trait ScheduleEvent
+  private case class Register(node: Node, next: ScheduleEvent) extends ScheduleEvent
+  private case class Cancel(node: Node, next: ScheduleEvent) extends ScheduleEvent
+  private case object Tail extends ScheduleEvent
 
   private[this] val logger = getLogger
 
@@ -40,10 +42,7 @@ class TickWheelExecutor(wheelSize: Int = 512, tick: Duration = 200.milli) {
   private val tickMilli = tick.toMillis
   private val _tickInv = 1.0/tickMilli.toDouble
 
-  private val tailTaskNode = new Register(null) // Marker node for the tail of the offer queue
-  private val head = new AtomicReference[ScheduleEvent](tailTaskNode)
-
-  private val tailNode = new Node(null, null, -1, null) // Marker for bucket queues
+  private val head = new AtomicReference[ScheduleEvent](Tail)
 
   private val clockFace: Array[Bucket] = {
     (0 until wheelSize).map(_ => new Bucket()).toArray
@@ -79,8 +78,14 @@ class TickWheelExecutor(wheelSize: Int = 512, tick: Duration = 200.milli) {
       if (millis > 0) {
         val expires = millis + System.currentTimeMillis()
 
-        val node = new Node(r, ec, expires, null)
-        addNodeToTasks(Register(node))
+        val node = new Node(r, ec, expires, null, null)
+
+        def go(): Unit = {
+          val h = head.get()
+          if (!head.compareAndSet(h, Register(node, h))) go()
+        }
+
+        go()
         node
       }
       else {  // we can submit the task right now! Not sure why you would want to do this...
@@ -92,43 +97,25 @@ class TickWheelExecutor(wheelSize: Int = 512, tick: Duration = 200.milli) {
     else sys.error("TickWheelExecutor is shutdown")
   }
 
-  // Adds the ScheduleEvent to the atomic stack
-  private def addNodeToTasks(link: ScheduleEvent): Unit = {
-    @tailrec
-    def go(): Unit = {
-      val h = head.get()
-      if (head.compareAndSet(h, link)) link.lazySet(h)
-      else go()
-    }
-
-    go()
-  }
-
   // Deals with appending and removing tasks from the buckets
   private def handleTasks(): Unit = {
 
     @tailrec
-    def go(task: ScheduleEvent): Unit = {
-      if (task ne tailTaskNode) {
-        task match {
-          case Cancel(n) => n.canceled = true
-          case Register(n) =>
-            if (!n.canceled) getBucket(n.expiration).add(n)
-        }
+    def go(task: ScheduleEvent): Unit = task match {
+      case Cancel(n, nxt) =>
+        n.canceled = true
+        n.unlink()
+        go(nxt)
 
-        @tailrec  // will spin, if needed, until the next link resolves
-        def getNext(task: ScheduleEvent): ScheduleEvent = {
-          val n = task.get()
-          if (n == null) getNext(task)
-          else n
-        }
+      case Register(n, nxt) =>
+        if (!n.canceled) getBucket(n.expiration).add(n)
+        go(nxt)
 
-        go(getNext(task))
-      }
+      case Tail => // NOOP
     }
 
-    val task = head.getAndSet(tailTaskNode)
-    go(task)
+    val tasks = head.getAndSet(Tail)
+    go(tasks)
   }
 
   @tailrec
@@ -171,7 +158,7 @@ class TickWheelExecutor(wheelSize: Int = 512, tick: Duration = 200.milli) {
 
   private class Bucket {
     // An empty cell serves as the head of the linked list
-    private val head: Node = new Node(null, null, -1, tailNode)
+    private val head: Node = new Node(null, null, -1, null, null)
 
     /** Removes expired and canceled elements from this bucket, executing expired elements
       *
@@ -181,14 +168,14 @@ class TickWheelExecutor(wheelSize: Int = 512, tick: Duration = 200.milli) {
       @tailrec
       def checkNext(prev: Node): Unit = {
         val next = prev.next
-        if (next ne tailNode) {
+        if (next ne null) {
           if (next.canceled) {   // remove it
-            prev.next = next.next
-            checkNext(prev)
+            logger.error("Tickwheel has canceled node in bucket: shouldn't get here.")
+            next.unlink()
           }
           else if (next.expiresBy(time)) {
             next.run()
-            prev.next = next.next
+            next.unlink()
             checkNext(prev)
           }
           else checkNext(next)  // still valid
@@ -199,8 +186,7 @@ class TickWheelExecutor(wheelSize: Int = 512, tick: Duration = 200.milli) {
     }
     
     def add(node: Node): Unit =  {
-      node.next = head.next
-      head.next = node
+      node.insertAfter(head)
     }
   }
 
@@ -208,17 +194,53 @@ class TickWheelExecutor(wheelSize: Int = 512, tick: Duration = 200.milli) {
     * @param r [[java.lang.Runnable]] which will be executed after the expired time
     * @param ec [[scala.concurrent.ExecutionContext]] on which to execute the Runnable
     * @param expiration time in milliseconds after which this Node is expired
-    * @param next next Node in the list or ``tailNode` if this is the last element
+    * @param next next Node in the list or `tailNode` if this is the last element
     */
   final private class Node(r: Runnable,
                           ec: ExecutionContext,
               val expiration: Long,
+                    var prev: Node,
                     var next: Node,
                 var canceled: Boolean = false) extends Cancellable {
 
+    /** Remove this node from its linked list */
+    def unlink(): Unit = {
+      if (prev != null) { // Every node that is in a bucket should have a `prev`
+        prev.next = next
+      }
+
+      if (next != null) {
+        next.prev = prev
+      }
+
+      prev = null
+      next = null
+    }
+
+    /** Insert this node immediately after `node` */
+    def insertAfter(node: Node): Unit = {
+      val n = node.next
+      node.next = this
+
+      if (n != null) {
+        n.prev = this
+      }
+
+      this.prev = node
+      this.next = n
+    }
+
     def expiresBy(now: Long): Boolean = now >= expiration
 
-    def cancel(): Unit = addNodeToTasks(Cancel(this))
+    /** Schedule a the TickWheel to remove this node next tick */
+    def cancel(): Unit = {
+      def go(): Unit = {
+        val h = head.get()
+        if (!head.compareAndSet(h, Cancel(this, h))) go()
+      }
+
+      go()
+    }
 
     def run() = try ec.execute(r) catch { case NonFatal(t) => onNonFatal(t) }
   }
@@ -231,6 +253,5 @@ trait Cancellable {
 object Cancellable {
   val finished = new Cancellable {
     def cancel(): Unit = {}
-    def isCancelled(): Boolean = false
   }
 }
