@@ -1,7 +1,7 @@
 package org.http4s.blaze.http.spdy
 
 import org.http4s.blaze.util.{BufferTools, ScratchBuffer}
-import scala.collection.mutable.ListBuffer
+import scala.collection.mutable.{ArrayBuffer, ListBuffer}
 import scala.annotation.tailrec
 import java.nio.charset.StandardCharsets.ISO_8859_1
 import java.nio.{BufferUnderflowException, ByteBuffer}
@@ -70,15 +70,13 @@ class SpdyHeaderDecoder {
 
   private def decodeToHeaders(data: ByteBuffer): Map[String, Seq[String]] = {
 
-
-
     val headercount = data.getInt
 
 //    println(s"%%%%%%%%%%%%%%% Decoding $headercount headers %%%%%%%%%%%%%%%%%%%%%%")
 
     val sb = new StringBuffer(512)
     val vals = new ListBuffer[String]
-    val headers = new ListBuffer[(String, Seq[String])]
+    val headers = Map.newBuilder[String, Seq[String]]
 
     @tailrec
     def decodeHeaderLoop(remaining: Int): Unit = {
@@ -125,10 +123,10 @@ class SpdyHeaderDecoder {
     catch {
       case t: BufferUnderflowException =>
         throw new ProtocolException(s"Invalid header format resulted in BufferUnderflow.\n" +
-          headers.result() + "\n" + vals.result())
+          headers + "\n" + vals.result())
     }
 
-    headers.toMap
+    headers.result()
   }
 
   private def getString(buff: ByteBuffer, len: Int): String = {

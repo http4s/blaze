@@ -1,10 +1,10 @@
 package org.http4s.blaze.http.spdy
 
+import org.http4s.blaze.pipeline.Command.Disconnect
 import org.http4s.blaze.pipeline.stages.ByteToObjectStage
 import java.nio. ByteBuffer
 import scala.annotation.switch
 import scala.util.control.NonFatal
-import org.log4s.getLogger
 
 
 class Spdy3_1FrameCodec(val maxBufferSize: Int = -1)
@@ -20,7 +20,7 @@ class Spdy3_1FrameCodec(val maxBufferSize: Int = -1)
     * @param in object to decode
     * @return sequence of ByteBuffers to pass to the head
     */
-  def messageToBuffer(in: SpdyFrame): Seq[ByteBuffer] = in match {
+  override def messageToBuffer(in: SpdyFrame): Seq[ByteBuffer] = in match {
     case f: DataFrame         => encodeData(f)
     case f: SynStreamFrame    => encodeSynStream(f)
     case f: SynReplyFrame     => encodeSynReply(f)
@@ -38,20 +38,27 @@ class Spdy3_1FrameCodec(val maxBufferSize: Int = -1)
     * @param in ByteBuffer of immediately available data
     * @return optional message if enough data was available
     */
-  def bufferToMessage(in: ByteBuffer): Option[SpdyFrame] = {
+  override def bufferToMessage(in: ByteBuffer): Option[SpdyFrame] = {
     logger.info("Attempting to decode frame: " + in)
 
     if (in.remaining() < 8) return None
 
-    val len = in.get(5) << 16 | in.get(6) << 8 | in.get(7)
+    val len = (in.get(5) & 0xff) << 16 | (in.get(6) & 0xff) << 8 | (in.get(7) & 0xff)
+    val frametype = in.getShort(2)
 
-    if (in.remaining() < 8 + len) return None
+    if (in.remaining() < 8 + len) {
+      if (1 >= frametype || frametype >= 9) {  // not a real frame
+        logger.info("Received what looks to be an invalid frame. " +
+                   s"Request length: $len, frame code: $frametype. Maybe HTTP/1?")
+        sendOutboundCommand(Disconnect)
+      }
+
+      return None
+    }
 
     // Are we a data frame?
     if ((in.get(0) & Flags.CONTROL) == 0)
       return Some(decodeDataFrame(in))
-
-    val frametype = in.getShort(2)
 
     logger.debug("Decoding frame type: " + frametype)
 
