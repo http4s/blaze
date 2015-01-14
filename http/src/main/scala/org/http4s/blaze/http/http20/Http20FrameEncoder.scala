@@ -205,7 +205,7 @@ trait Http20FrameEncoder {
   //////////////////////////////////////////////////////////////////////////////////////////
 
   private def writePriority(p: Priority, buffer: ByteBuffer): Unit = {
-    buffer.putInt(p.dependentStreamId | (if (p.exclusive) Masks.exclsive else 0))
+    buffer.putInt(p.dependentStreamId | (if (p.exclusive) Masks.exclusive else 0))
     buffer.put(((p.priority - 1) & 0xff).toByte)
   }
 

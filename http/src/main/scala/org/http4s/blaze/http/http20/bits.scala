@@ -6,10 +6,10 @@ object bits {
   def clientTLSHandshakeString = "PRI * HTTP/2.0\r\n\r\nSM\r\n\r\n"
 
   object Masks {
-    val STREAMID = 0x7fffffff
-    val LENGTH   =   0xffffff
-    val int31    = 0x7fffffff
-    val exclsive = ~int31
+    val STREAMID  = 0x7fffffff
+    val LENGTH    =   0xffffff
+    val int31     = 0x7fffffff
+    val exclusive = ~int31
   }
 
   object FrameTypes {
@@ -44,7 +44,7 @@ object bits {
     def ACK(flags: Byte): Boolean         = checkFlag(flags, ACK)          // ping
 
     def DepID(id: Int): Int               = id & Masks.int31
-    def DepExclusive(id: Int): Boolean    = (Masks.exclsive & id) != 0
+    def DepExclusive(id: Int): Boolean    = (Masks.exclusive & id) != 0
 
     @inline
     private def checkFlag(flags: Byte, flag: Byte) = (flags & flag) != 0
