@@ -66,33 +66,60 @@ class TickWheelExecutor(wheelSize: Int = 512, tick: Duration = 200.milli) {
     alive = false
   }
 
-  // Execute directly on this worker thread. ONLY for QUICK tasks...
+  /** Schedule the `Runnable` on the [[TickWheelExecutor]]
+    *
+    * Execution is performed on the [[TickWheelExecutor]]s thread, so only extremely small
+    * tasks should be submitted with this method.
+    * timeouts of Inf duration are ignored, timeouts of zero or negative duration are executed
+    * immediately on the submitting thread.
+    *
+    * @param r `Runnable` to be executed
+    * @param timeout `Duration` to wait before execution
+    * @return a [[Cancellable]]. This is not a `java.util.concurrent.Cancellable`,
+    *         which is a richer interface.
+    */
   def schedule(r: Runnable, timeout: Duration): Cancellable = {
     schedule(r, Execution.directec, timeout)
   }
 
+  /** Schedule the `Runnable` on the [[TickWheelExecutor]]
+    *
+    * timeouts of Inf duration are ignored, timeouts of zero or negative duration are executed
+    * immediately on the submitting thread.
+    *
+    * @param r `Runnable` to be executed
+    * @param ec `ExecutionContext` to submit the `Runnable`
+    * @param timeout `Duration` to wait before execution
+    * @return a [[Cancellable]]. This is not a `java.util.concurrent.Cancellable`,
+    *         which is a richer interface.
+    */
   def schedule(r: Runnable, ec: ExecutionContext, timeout: Duration): Cancellable = {
-    if (!timeout.isFinite()) sys.error(s"Cannot submit infinite duration delays!")
-    else if (alive) {
-      val millis = timeout.toMillis
-      if (millis > 0) {
-        val expires = millis + System.currentTimeMillis()
+    if (alive) {
+      if (!timeout.isFinite()) {  // This will never timeout, so don't schedule it.
+        Cancellable.noopCancel
+      }
+      else {
+        val millis = timeout.toMillis
+        if (millis > 0) {
+          val expires = millis + System.currentTimeMillis()
 
-        val node = new Node(r, ec, expires, null, null)
+          val node = new Node(r, ec, expires, null, null)
 
-        def go(): Unit = {
-          val h = head.get()
-          if (!head.compareAndSet(h, Register(node, h))) go()
+          def go(): Unit = {
+            val h = head.get()
+            if (!head.compareAndSet(h, Register(node, h))) go()
+          }
+
+          go()
+          node
         }
-
-        go()
-        node
+        else {  // we can submit the task right now! Not sure why you would want to do this...
+          try ec.execute(r)
+          catch { case NonFatal(t) => onNonFatal(t) }
+          Cancellable.noopCancel
+        }
       }
-      else {  // we can submit the task right now! Not sure why you would want to do this...
-        try ec.execute(r)
-        catch { case NonFatal(t) => onNonFatal(t) }
-        Cancellable.finished
-      }
+      
     }
     else sys.error("TickWheelExecutor is shutdown")
   }
@@ -246,12 +273,12 @@ class TickWheelExecutor(wheelSize: Int = 512, tick: Duration = 200.milli) {
   }
 }
 
-trait Cancellable {
+sealed trait Cancellable {
   def cancel(): Unit
 }
 
 object Cancellable {
-  val finished = new Cancellable {
+  private[util] val noopCancel = new Cancellable {
     def cancel(): Unit = {}
   }
 }

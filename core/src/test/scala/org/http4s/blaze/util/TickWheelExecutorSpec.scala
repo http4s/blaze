@@ -21,7 +21,24 @@ class TickWheelExecutorSpec extends Specification with NoTimeConversions {
       }, Duration.Zero)
 
       i.get() should_== 1
+    }
 
+    "Execute a simple task with negative delay" in {
+      val i = new AtomicInteger(0)
+      ec.schedule(new Runnable {
+        def run() { i.set(1) }
+      }, -2.seconds)
+
+      i.get() should_== 1
+    }
+
+    "Not schedule a simple task with Inf delay" in {
+      val i = new AtomicInteger(0)
+      ec.schedule(new Runnable {
+        def run() { i.set(1) }
+      }, Duration.Inf)
+      Thread.sleep(100)
+      i.get() should_== 0
     }
 
     "Execute a simple task with a short delay" in {
@@ -77,7 +94,6 @@ class TickWheelExecutorSpec extends Specification with NoTimeConversions {
 
       TimingTools.spin(10.seconds)(i.get == 500)
       i.get() should_== 500
-
     }
 
     "Gracefully handle exceptions" in {
@@ -112,6 +128,10 @@ class TickWheelExecutorSpec extends Specification with NoTimeConversions {
       ec.schedule(new Runnable{
          def run() { sys.error("Woops!")}
       }, Duration.Zero) must throwA[RuntimeException]
+
+      ec.schedule(new Runnable{
+        def run() { sys.error("Woops!")}
+      }, Duration.Inf) must throwA[RuntimeException]
     }
   }
 
