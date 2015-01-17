@@ -3,6 +3,7 @@ package org.http4s.blaze.http.http20
 import java.nio.ByteBuffer
 import java.nio.charset.StandardCharsets.US_ASCII
 
+import org.http4s.blaze.http.http20.Http2Exception._
 import org.http4s.blaze.http.http20.Settings.DefaultSettings
 import org.http4s.blaze.util.BufferTools
 
@@ -40,18 +41,23 @@ abstract class HeaderDecoder[To](maxHeaderSize: Int,
     }
   }
 
-  final def decode(buffer: ByteBuffer): Unit = {
-    val buff = BufferTools.concatBuffers(leftovers, buffer)
-    val is = new ByteBufferInputStream(buff)
-    decoder.decode(is, listener)
+  final def decode(buffer: ByteBuffer, streamId: Int): MaybeError = {
+    try {
+      val buff = BufferTools.concatBuffers(leftovers, buffer)
+      val is = new ByteBufferInputStream(buff)
+      decoder.decode(is, listener)
 
-    if (!buff.hasRemaining()) leftovers = null
-    else if (buff ne buffer) leftovers = buff // we made a copy with concatBuffers
-    else {  // buff == input buffer. Need to copy the input buffer so we are not sharing it
+      if (!buff.hasRemaining()) leftovers = null
+      else if (buff ne buffer) leftovers = buff // we made a copy with concatBuffers
+      else {  // buff == input buffer. Need to copy the input buffer so we are not sharing it
       val b = BufferTools.allocate(buff.remaining())
-      b.put(buff).flip()
-      leftovers = b
-    }
+        b.put(buff).flip()
+        leftovers = b
+      }
+
+      Continue
+
+    } catch { case t: Throwable => Error(COMPRESSION_ERROR("", streamId)) }
   }
 
   final def setMaxTableSize(max: Int): Unit = decoder.setMaxHeaderTableSize(max)

@@ -61,9 +61,12 @@ abstract class DecodingFrameHandler extends FrameHandler {
     }
 
     if (end_headers) {
-      headerDecoder.decode(buffer)
-      val hs = headerDecoder.result()
-      onCompleteHeadersFrame(streamId, priority, end_stream, hs)
+      val r = headerDecoder.decode(buffer, streamId)
+      if (r.success) {
+        val hs = headerDecoder.result()
+        onCompleteHeadersFrame(streamId, priority, end_stream, hs)
+      }
+      else r
     }
     else {
       hInfo = PHeaders(streamId, priority, end_stream, buffer)
@@ -81,9 +84,12 @@ abstract class DecodingFrameHandler extends FrameHandler {
     }
 
     if (end_headers) {
-      headerDecoder.decode(buffer)
-      val hs = headerDecoder.result()
-      onCompletePushPromiseFrame(streamId, promisedId, hs)
+      val r = headerDecoder.decode(buffer, streamId)
+      if (r.success) {
+        val hs = headerDecoder.result()
+        onCompletePushPromiseFrame(streamId, promisedId, hs)
+      }
+      else r
     }
     else {
       hInfo = PPromise(streamId, promisedId, buffer)
@@ -102,16 +108,19 @@ abstract class DecodingFrameHandler extends FrameHandler {
     val newBuffer = BufferTools.concatBuffers(hInfo.buffer, buffer)
     
     if (end_headers) {
-      headerDecoder.decode(newBuffer)
-      val hs = headerDecoder.result()
+      val r = headerDecoder.decode(newBuffer, streamId)
+      if (r.success) {
+        val hs = headerDecoder.result()
 
-      val i = hInfo // drop the reference before doing the stateful action
-      hInfo = null
+        val i = hInfo // drop the reference before doing the stateful action
+        hInfo = null
 
-      i match {
-        case PHeaders(sid, pri, es, _) => onCompleteHeadersFrame(sid, pri, es, hs)
-        case PPromise(sid, pro, _)     => onCompletePushPromiseFrame(sid, pro, hs)
+        i match {
+          case PHeaders(sid, pri, es, _) => onCompleteHeadersFrame(sid, pri, es, hs)
+          case PPromise(sid, pro, _)     => onCompletePushPromiseFrame(sid, pro, hs)
+        }
       }
+      else r
     }
     else {
       hInfo.buffer = newBuffer

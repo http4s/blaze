@@ -28,6 +28,10 @@ trait FrameHandler {
 
   def onGoAwayFrame(lastStream: Int, errorCode: Long, debugData: ByteBuffer): Http2Result
 
+  /** Handle Window Update
+    *
+    * Invalid stream sizes need to be handled by the [[FrameHandler]]
+    */
   def onWindowUpdateFrame(streamId: Int, sizeIncrement: Int): Http2Result
 
   def onContinuationFrame(streamId: Int, endHeaders: Boolean, data: ByteBuffer): Http2Result

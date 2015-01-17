@@ -114,7 +114,6 @@ trait Http20FrameDecoder {
   }
 
 
-
   //////////// PRIORITY ///////////////
   private def decodePriorityFrame(buffer: ByteBuffer, streamId: Int, flags: Byte): Http2Result = {
 
@@ -245,10 +244,6 @@ trait Http20FrameDecoder {
     }
 
     val size = buffer.getInt() & Masks.int31
-
-    if (size == 0) {
-      return Error(PROTOCOL_ERROR("Invalid WINDOW_UPDATE size of 0x0"))
-    }
 
     handler.onWindowUpdateFrame(streamId, size)
   }

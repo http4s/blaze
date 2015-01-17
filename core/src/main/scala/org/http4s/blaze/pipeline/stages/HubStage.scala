@@ -113,7 +113,7 @@ abstract class HubStage[I] extends TailStage[I] {
   ////////////////////////////////////////////////////////////
 
   private def checkShutdown(node: NodeHead): Unit = {
-    if (node.isConnected()) node.sendInboundCommand(Disconnected)
+    if (node.isConnected()) node.inboundCommand(Disconnected)
   }
 
   ////////////////////////////////////////////////////////////
@@ -121,23 +121,31 @@ abstract class HubStage[I] extends TailStage[I] {
   private[HubStage] final class NodeHead(val key: Key, val attachment: Attachment)
     extends HeadStage[Out] with Node
   {
-    private var connected = false
-    private var initialized = false
+    private sealed trait NodeState
+    private case object NotInitialized extends NodeState
+    private case object Open extends NodeState
+    private case class CloseStream(t: Throwable) extends NodeState
+
+    // TODO: these are no fun as volatile
+    @volatile private var state: NodeState = NotInitialized
+    @volatile private var initialized = false
 
     def name: String = "HubStage_NodeHead"
 
-    def isConnected(): Boolean = connected
+    def isConnected(): Boolean = state == Open
 
     override def writeRequest(data: Out): Future[Unit] = writeRequest(data::Nil)
 
-    override def writeRequest(data: Seq[Out]): Future[Unit] = {
-      if (connected) onNodeWrite(this, data)
-      else onNotReady()
+    override def writeRequest(data: Seq[Out]): Future[Unit] = state match {
+      case Open => onNodeWrite(this, data)
+      case NotInitialized => onNotReady()
+      case CloseStream(t) => Future.failed(t)
     }
 
-    override def readRequest(size: Int): Future[Out] =  {
-      if (connected) onNodeRead(this, size)
-      else onNotReady()
+    override def readRequest(size: Int): Future[Out] = state match {
+      case Open => onNodeRead(this, size)
+      case NotInitialized => onNotReady()
+      case CloseStream(t) => Future.failed(t)
     }
 
     override def outboundCommand(cmd: OutboundCommand): Unit =
@@ -145,19 +153,19 @@ abstract class HubStage[I] extends TailStage[I] {
 
     override def stageStartup(): Unit = {
       super.stageStartup()
-      connected = true
+      state = Open
       initialized = true
     }
 
     override def stageShutdown(): Unit = {
-      connected = false
+      state = CloseStream(EOF)
       removeNode(key)
       super.stageShutdown()
     }
 
     private def onNotReady(): Future[Nothing] = {
       if (!initialized) {
-        logger.error(s"Disconnected node with key $key attempting write request")
+        logger.error(s"Disconnected node with key $key attempting IO request")
         Future.failed(new NotYetConnectedException)
       }
       else Future.failed(EOF)

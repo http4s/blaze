@@ -9,6 +9,7 @@ import org.http4s.blaze.pipeline.TailStage
 import org.http4s.blaze.util.BufferTools
 import Http2Exception.{ PROTOCOL_ERROR, INTERNAL_ERROR }
 
+import scala.annotation.tailrec
 import scala.collection.mutable.ArrayBuffer
 import scala.concurrent.ExecutionContext
 import scala.concurrent.duration.Duration
@@ -39,7 +40,7 @@ class BasicHttpStage(timeout: Duration, ec: ExecutionContext, service: HttpServi
   private def readHeaders(): Unit = {
     channelRead(timeout = timeout).onComplete  {
       case Success(HeadersFrame(_, endStream, hs)) =>
-        if (endStream) checkAndRunReqeust(hs, BufferTools.emptyBuffer)
+        if (endStream) checkAndRunRequest(hs, BufferTools.emptyBuffer)
         else getBody(hs, new ArrayBuffer[ByteBuffer](16))
 
       case Success(frame) =>
@@ -59,11 +60,11 @@ class BasicHttpStage(timeout: Duration, ec: ExecutionContext, service: HttpServi
     case Success(DataFrame(last, bytes)) =>
       if (bytes.hasRemaining()) acc += bytes
       if (!last) getBody(hs, acc)
-      else checkAndRunReqeust(hs, BufferTools.joinBuffers(acc))  // Finished with body
+      else checkAndRunRequest(hs, BufferTools.joinBuffers(acc))  // Finished with body
 
     case Success(HeadersFrame(_, true, ts)) =>
       logger.info("Appending trailers: " + ts)
-      checkAndRunReqeust(hs ++ ts, BufferTools.joinBuffers(acc))
+      checkAndRunRequest(hs ++ ts, BufferTools.joinBuffers(acc))
 
     case Success(other) =>
       val msg = "Received invalid frame while accumulating body: " + other
@@ -81,21 +82,56 @@ class BasicHttpStage(timeout: Duration, ec: ExecutionContext, service: HttpServi
       shutdownWithCommand(Cmd.Error(e))
   }
 
-  private def checkAndRunReqeust(hs: Headers, body: ByteBuffer): Unit = {
+  private def checkAndRunRequest(hs: Headers, body: ByteBuffer): Unit = {
 
     val normalHeaders = new ArrayBuffer[(String, String)](hs.size)
     var method: String = null
     var scheme: String = null
     var path: String = null
     var error: String = ""
+    var pseudoDone = false
 
     hs.foreach {
-      case (Method, v)    => if (method == null) method = v else error += "Multiple ':method' headers defined. "
-      case (Scheme, v)    => if (scheme == null) scheme = v else error += "Multiple ':scheme' headers defined. "
-      case (Path, v)      => if (path == null)   path   = v else error += "Multiple ':path' headers defined. "
+      case (Method, v)    =>
+        if (pseudoDone) error += "Pseudo header in invalid position. "
+        else if (method == null) method = v
+        else error += "Multiple ':method' headers defined. "
+
+      case (Scheme, v)    =>
+        if (pseudoDone) error += "Pseudo header in invalid position. "
+        else if (scheme == null) scheme = v
+        else error += "Multiple ':scheme' headers defined. "
+
+      case (Path, v)      =>
+        if (pseudoDone) error += "Pseudo header in invalid position. "
+        else if (path == null)   path   = v
+        else error += "Multiple ':path' headers defined. "
+
       case (Authority, _) => // NOOP; TODO: we should keep the authority header
-      case h@(k, _) if k.startsWith(":") => logger.info(s"Unknown pseudo-header: $h")
-      case header         => normalHeaders += header
+        if (pseudoDone) error += "Pseudo header in invalid position. "
+
+      case h@(k, _) if k.startsWith(":") => error += s"Invalid pseudo header: $h. "
+      case h@(k, _) if !isLowerCase(k) => error += s"Invalid header key: $k. "
+
+      case hs =>    // Non pseudo headers
+        pseudoDone = true
+        hs match {
+          case h@(Connection, _) => error += s"HTTP/2.0 forbids connection specific headers: $h. "
+
+          case (ContentLength, v) =>
+            try {
+              val sz = Integer.valueOf(v)
+              if (sz != body.remaining())
+                error += s"Invalid content-length, expected: ${body.remaining()}, header: $sz"
+            }
+            catch { case t: NumberFormatException => error += s"Invalid content-length: $v. " }
+
+          case h@(TE, v) =>
+            if (!v.equalsIgnoreCase("trailers")) error += s"HTTP/2.0 forbids TE header values other than 'trailers'. "
+          // ignore otherwise
+
+          case header         => ; normalHeaders += header
+      }
     }
 
     if (method == null || scheme == null || path == null) {
@@ -141,4 +177,20 @@ private object BasicHttpStage {
 
   // Response pseudo header
   val Status = ":status"
+  val Connection = "connection"
+  val TE = "te"
+  val ContentLength = "content-length"
+
+  def isLowerCase(str: String): Boolean = {
+    @tailrec
+    def go(i: Int): Boolean = {
+      if (i == str.length) true
+      else {
+        val ch = str.charAt(i)
+        if ('A' <= ch && ch <= 'Z') false
+        else go(i + 1)
+      }
+    }
+    go(0)
+  }
 }

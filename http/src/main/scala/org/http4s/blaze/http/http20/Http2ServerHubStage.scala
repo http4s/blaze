@@ -114,7 +114,8 @@ final class Http2ServerHubStage[HType](headerDecoder: HeaderDecoder[HType],
         buff.limit(l).position(p + clientTLSHandshakeString.length)
         readLoop(buff)
       } else {
-        onFailure(new Exception("Failed to handshake, invalid header: " + header), "processHandshake")
+        logger.info("HTTP/2.0: Failed to handshake, invalid header: " + header)
+        onFailure(Cmd.EOF, "doHandshake")
       }
     }
   }
@@ -160,17 +161,30 @@ final class Http2ServerHubStage[HType](headerDecoder: HeaderDecoder[HType],
   }
 
   /** called when a node sends an outbound command */
-  override protected def onNodeCommand(node: Node, cmd: OutboundCommand): Unit = lock.synchronized( cmd match {
-    case Cmd.Disconnect =>
-      removeNode(node)
+  override protected def onNodeCommand(node: Node, cmd: OutboundCommand): Unit = lock.synchronized {
+
+    def checkGoAway(): Unit = {
       if (receivedGoAway && nodes().isEmpty) {  // we must be done
         stageShutdown()
         sendOutboundCommand(Cmd.Disconnect)
       }
+    }
 
-    case e@Cmd.Error(t) => logger.error(t)(s"Received error from node ${node.key}"); sendOutboundCommand(e)
-    case cmd            => logger.warn(s"$name is ignoring unhandled command ($cmd) from $node.")  // Flush, Connect...
-  })
+    cmd match {
+      case Cmd.Disconnect =>
+        removeNode(node)
+        checkGoAway()
+
+      case Cmd.Error(t: Http2Exception) =>
+        sendRstStreamFrame(node.key, t)
+        removeNode(node)
+        checkGoAway()
+
+
+      case e@Cmd.Error(t) => logger.error(t)(s"Received error from node ${node.key}"); sendOutboundCommand(e)
+      case cmd            => logger.warn(s"$name is ignoring unhandled command ($cmd) from $node.")  // Flush, Connect...
+    }
+  }
 
   ///////////////////////// The FrameHandler decides how to decode incoming frames ///////////////////////
   
@@ -199,10 +213,10 @@ final class Http2ServerHubStage[HType](headerDecoder: HeaderDecoder[HType],
           else {
             val node = makeNode(streamId)
             node.startNode()
-            node.attachment.inboundMessage(msg, 0)
+            node.attachment.inboundMessage(msg, 0, end_stream)
           }
 
-        case Some(node) => node.attachment.inboundMessage(msg, 0)
+        case Some(node) => node.attachment.inboundMessage(msg, 0, end_stream)
       }
     }
 
@@ -273,7 +287,7 @@ final class Http2ServerHubStage[HType](headerDecoder: HeaderDecoder[HType],
             } else { max_outbound_streams = v.toInt; Continue }
 
           case Setting(Settings.INITIAL_WINDOW_SIZE, v) =>
-            if (v > Integer.MAX_VALUE) Error(PROTOCOL_ERROR(s"Invalid initial window size: $v"))
+            if (v > Integer.MAX_VALUE) Error(FLOW_CONTROL_ERROR(s"Invalid initial window size: $v"))
             else { FlowControl.onInitialWindowSizeChange(v.toInt); Continue }
 
           case Setting(Settings.MAX_FRAME_SIZE, v) =>
@@ -304,22 +318,35 @@ final class Http2ServerHubStage[HType](headerDecoder: HeaderDecoder[HType],
       val codeName = errorName(code)
       val node = removeNode(streamId)
       if (node.isEmpty) {
-        logger.warn(s"Client attempted to reset non-existent stream: $streamId, code: $codeName")
+
+        if (idManager.lastClientId() < streamId) {
+          logger.warn(s"Client attempted to reset idle stream: $streamId, code: $codeName")
+          Error(PROTOCOL_ERROR("Attempted to RST idle stream"))
+        }
+        else {
+          logger.info(s"Client attempted to reset closed stream: $streamId, code: $codeName")
+          Continue
+        }
       }
-      else logger.info(s"Stream $streamId reset with code $codeName")
-      Continue
+      else {
+        logger.info(s"Stream $streamId reset with code $codeName")
+        Continue
+      }
+
     }
 
-    override def onDataFrame(streamId: Int, isLast: Boolean, data: ByteBuffer, flowSize: Int): Http2Result = {
+    override def onDataFrame(streamId: Int, end_stream: Boolean, data: ByteBuffer, flowSize: Int): Http2Result = {
       getNode(streamId) match {
         case Some(node) =>
-          val msg = NodeMsg.DataFrame(isLast, data)
-          node.attachment.inboundMessage(msg, flowSize)
-          Continue
+          val msg = NodeMsg.DataFrame(end_stream, data)
+          node.attachment.inboundMessage(msg, flowSize, end_stream)
 
         case None =>
-          if (streamId <= idManager.lastClientId()) Continue // NOOP, might be old stream
-          else Error(PROTOCOL_ERROR(s"DATA frame on invalid stream: $streamId"))
+          if (streamId <= idManager.lastClientId()) {
+            channelWrite(codec.mkRstStreamFrame(streamId, STREAM_CLOSED.code))
+            Continue
+          }  // NOOP, might be old stream
+          else Error(PROTOCOL_ERROR(s"DATA frame on invalid stream: $streamId", streamId))
       }
     }
 
@@ -330,7 +357,6 @@ final class Http2ServerHubStage[HType](headerDecoder: HeaderDecoder[HType],
 
     override def onWindowUpdateFrame(streamId: Int, sizeIncrement: Int): Http2Result = {
       FlowControl.onWindowUpdateFrame(streamId, sizeIncrement)
-      Continue
     }
   }
 
@@ -356,10 +382,24 @@ final class Http2ServerHubStage[HType](headerDecoder: HeaderDecoder[HType],
     }
   }
 
+  private def sendRstStreamFrame(streamId: Int, e: Http2Exception): Unit = {
+    channelWrite(codec.mkRstStreamFrame(streamId, e.code))
+  }
+
+
   private def sendGoAway(e: Http2Exception): Future[Unit] = lock.synchronized {
-    val lastStream = idManager.lastClientId()
-    val buffs = codec.mkGoAwayFrame(lastStream, e.code, e.msgBuffer())
-    channelWrite(buffs, 10.seconds)
+    val lastStream = {
+      val lastStream = idManager.lastClientId()
+      if (lastStream > 0) lastStream else 1
+    }
+
+    val goAwayBuffs = codec.mkGoAwayFrame(lastStream, e.code, e.msgBuffer())
+
+    val buffs = e.stream.foreach{ streamId => // make a RstStreamFrame, if possible.
+      if (streamId > 0) sendRstStreamFrame(streamId, e)
+    }
+
+    channelWrite(goAwayBuffs, 10.seconds)
   }
 
   /////////////////////////////////////////////////////////////////////////////////////////////
@@ -371,8 +411,19 @@ final class Http2ServerHubStage[HType](headerDecoder: HeaderDecoder[HType],
 
     def newNodeState(id: Int): NodeState = new NodeState(id, outbound_initial_window_size)
 
-    def onWindowUpdateFrame(streamId: Int, sizeIncrement: Int): Unit = {
-      if (streamId == 0) {
+    def onWindowUpdateFrame(streamId: Int, sizeIncrement: Int): MaybeError = {
+
+      logger.debug(s"Updated window of stream $streamId by $sizeIncrement. ConnectionOutbound: $outboundConnectionWindow")
+
+      if (sizeIncrement <= 0) {
+        if (streamId == 0) Error(PROTOCOL_ERROR(s"Invalid WINDOW_UPDATE size: $sizeIncrement"))
+        else {
+          channelWrite(codec.mkRstStreamFrame(streamId, PROTOCOL_ERROR.code))
+          getNode(streamId).foreach(removeNode)
+          Continue
+        }
+      }
+      else if (streamId == 0) {
         outboundConnectionWindow += sizeIncrement
 
         // Allow all the nodes to attempt to write if they want to
@@ -380,10 +431,12 @@ final class Http2ServerHubStage[HType](headerDecoder: HeaderDecoder[HType],
           node.attachment.incrementOutboundWindow(0)
           outboundConnectionWindow > 0
         }
+        Continue
       }
-      else getNode(streamId).foreach(_.attachment.incrementOutboundWindow(sizeIncrement))
-
-      logger.debug(s"Updated window of stream $streamId by $sizeIncrement. ConnectionOutbound: $outboundConnectionWindow")
+      else {
+        getNode(streamId).foreach(_.attachment.incrementOutboundWindow(sizeIncrement))
+        Continue
+      }
     }
 
     def onInitialWindowSizeChange(newWindow: Int): Unit = {
@@ -403,6 +456,8 @@ final class Http2ServerHubStage[HType](headerDecoder: HeaderDecoder[HType],
         extends NodeMsgEncoder[HType](id, codec, headerEncoder)
     {
       private var streamInboundWindow: Int = inboundWindow
+      
+      private var closed = false
 
       private var pendingOutboundFrames: (Promise[Unit], Seq[Http2Msg]) = null
 
@@ -439,17 +494,21 @@ final class Http2ServerHubStage[HType](headerDecoder: HeaderDecoder[HType],
         }
       }
 
-      def inboundMessage(msg: Http2Msg, flowSize: Int): Http2Result = {
-        val r = decrementInboundWindow(flowSize)
-        if (r.success) {
-          if (pendingInboundPromise != null) {
-            val p = pendingInboundPromise
-            pendingInboundPromise = null
-            p.success(msg)
+      def inboundMessage(msg: Http2Msg, flowSize: Int, end_stream: Boolean): MaybeError = {
+        if (closed) Error(STREAM_CLOSED("", id))
+        else {
+          closed = end_stream
+          val r = decrementInboundWindow(flowSize)
+          if (r.success) {
+            if (pendingInboundPromise != null) {
+              val p = pendingInboundPromise
+              pendingInboundPromise = null
+              p.success(msg)
+            }
+            else pendingInboundMessages.offer(msg)
           }
-          else pendingInboundMessages.offer(msg)
+          r
         }
-        r
       }
 
       private def encodeMessages(msgs: Seq[Http2Msg], acc: mutable.Buffer[ByteBuffer]): Seq[Http2Msg] = {
