@@ -33,9 +33,9 @@ class Http2ActorHub[T](headerDecoder: HeaderDecoder[T],
 
   sealed trait ActorMsg
   sealed trait StreamMsg extends ActorMsg { def stream: Stream }
+
   case object ShutdownCmd extends ActorMsg
   case class InboundBuffer(buffer: ByteBuffer) extends ActorMsg
-  
   case class StreamWrite(stream: Stream, msgs: Seq[Http2Msg], p: Promise[Unit]) extends StreamMsg
   case class StreamRead(stream: Stream, p: Promise[Http2Msg]) extends StreamMsg
   case class StreamCmd(stream: Stream, cmd: Cmd.OutboundCommand) extends StreamMsg
@@ -46,23 +46,18 @@ class Http2ActorHub[T](headerDecoder: HeaderDecoder[T],
   
   override def name: String = "Http2ConnectionStage"
   
-  private val actor = Actors.make(actorMsg)(ec)
+  private val actor = Actors.make(actorMsg, actorFailure)(ec)
   private val nodeMap = new HashMap[Int, Stream]()
+
+  private val idManager = new StreamIdManager
+  private val http2Settings = new Settings
+
+  private var receivedGoAway = false
 
   private val codec = new Http20FrameCodec(FrameHandler) with HeaderHttp20Encoder {
     override type Headers = T
     override protected val headerEncoder = hub.headerEncoder
   }
-
-  private val idManager = new StreamIdManager
-
-  private var outbound_initial_window_size = Default.INITIAL_WINDOW_SIZE
-  private var push_enable = Default.ENABLE_PUSH                           // initially enabled
-  private var max_outbound_streams = Default.MAX_CONCURRENT_STREAMS       // initially unbounded.
-  private var max_frame_size = Default.MAX_FRAME_SIZE
-  private var max_header_size = Default.MAX_HEADER_LIST_SIZE              // initially unbounded
-
-  private var receivedGoAway = false
   
   private def actorMsg(msg: ActorMsg): Unit = {
     logger.trace(s"Actor message: $msg")
@@ -78,6 +73,9 @@ class Http2ActorHub[T](headerDecoder: HeaderDecoder[T],
       case ShutdownCmd => closeAllNodes()
     }
   }
+
+  private def actorFailure(t: Throwable, msg: ActorMsg): Unit =
+    onFailure(t, s"actorFailure($msg)")
 
   private def closeAllNodes(): Unit = {
     val values = nodeMap.values().iterator()
@@ -319,14 +317,14 @@ class Http2ActorHub[T](headerDecoder: HeaderDecoder[T],
             Continue
 
           case Setting(Settings.ENABLE_PUSH, v) =>
-            if (v == 0) { push_enable = false; Continue }
-            else if (v == 1) {  push_enable = true; Continue }
+            if (v == 0) { http2Settings.push_enable = false; Continue }
+            else if (v == 1) {  http2Settings.push_enable = true; Continue }
             else Error(PROTOCOL_ERROR(s"Invalid ENABLE_PUSH setting value: $v"))
 
           case Setting(Settings.MAX_CONCURRENT_STREAMS, v) =>
             if (v > Integer.MAX_VALUE) {
               Error(PROTOCOL_ERROR(s"To large MAX_CONCURRENT_STREAMS: $v"))
-            } else { max_outbound_streams = v.toInt; Continue }
+            } else { http2Settings.max_outbound_streams = v.toInt; Continue }
 
           case Setting(Settings.INITIAL_WINDOW_SIZE, v) =>
             if (v > Integer.MAX_VALUE) Error(FLOW_CONTROL_ERROR(s"Invalid initial window size: $v"))
@@ -335,12 +333,12 @@ class Http2ActorHub[T](headerDecoder: HeaderDecoder[T],
           case Setting(Settings.MAX_FRAME_SIZE, v) =>
             // max of 2^24-1 http/2.0 draft 16 spec
             if (v < Default.MAX_FRAME_SIZE || v > 16777215) Error(PROTOCOL_ERROR(s"Invalid frame size: $v"))
-            else { max_frame_size = v.toInt; Continue }
+            else { http2Settings.max_frame_size = v.toInt; Continue }
 
 
           case Setting(Settings.MAX_HEADER_LIST_SIZE, v) =>
             if (v > Integer.MAX_VALUE) Error(PROTOCOL_ERROR(s"SETTINGS_MAX_HEADER_LIST_SIZE to large: $v"))
-            else { max_header_size = v.toInt; Continue }
+            else { http2Settings.max_header_size = v.toInt; Continue }
 
           case Setting(k, v) =>
             logger.warn(s"Unknown setting ($k, $v)")
@@ -406,7 +404,7 @@ class Http2ActorHub[T](headerDecoder: HeaderDecoder[T],
 
   protected object FlowControl {
 
-    private val oConnectionWindow = new FlowWindow(outbound_initial_window_size)
+    private val oConnectionWindow = new FlowWindow(http2Settings.outbound_initial_window_size)
     private val iConnectionWindow = new FlowWindow(inboundWindow)
 
     def makeStream(streamId: Int): Stream = {
@@ -444,9 +442,9 @@ class Http2ActorHub[T](headerDecoder: HeaderDecoder[T],
     }
 
     def onInitialWindowSizeChange(newWindow: Int): Unit = {
-      val diff = newWindow - outbound_initial_window_size
+      val diff = newWindow - http2Settings.outbound_initial_window_size
       logger.trace(s"Adjusting outbound windows by $diff")
-      outbound_initial_window_size = newWindow
+      http2Settings.outbound_initial_window_size = newWindow
       oConnectionWindow.window += diff
 
       nodes().foreach { node =>
@@ -455,18 +453,16 @@ class Http2ActorHub[T](headerDecoder: HeaderDecoder[T],
     }
     
     final class Stream(streamId: Int)
-        extends SmallStream[T](streamId,
+        extends AbstractStream[T](streamId,
           new FlowWindow(inboundWindow),
-          new FlowWindow(outbound_initial_window_size),
+          new FlowWindow(http2Settings.outbound_initial_window_size),
           iConnectionWindow,
           oConnectionWindow,
-          max_frame_size, codec, headerEncoder) with HeadStage[Http2Msg] {
+          http2Settings,
+          codec,
+          headerEncoder) with HeadStage[Http2Msg] {
 
       override def name: String = s"Stream[$streamId]"
-
-      def startNode(): Unit = {
-        inboundCommand(Cmd.Connected)
-      }
 
       ///////////////////////////////////////////////////////////////
 
@@ -498,7 +494,8 @@ class Http2ActorHub[T](headerDecoder: HeaderDecoder[T],
       override def outboundCommand(cmd: OutboundCommand): Unit =
         actor ! StreamCmd(this, cmd)
 
-      override protected def channelWrite(data: Seq[ByteBuffer]): Future[Unit] = hub.channelWrite(data)
+      override protected def writeBuffers(data: Seq[ByteBuffer]): Future[Unit] =
+        hub.channelWrite(data)
 
       override def readRequest(size: Int): Future[Http2Msg] = {
         val p = Promise[Http2Msg]

@@ -43,3 +43,13 @@ object Settings {
     def MAX_HEADER_LIST_SIZE = Integer.MAX_VALUE //(infinite)     // Section 6.5.2
   }
 }
+
+final class Settings {
+  import org.http4s.blaze.http.http20.Settings.DefaultSettings
+
+  var outbound_initial_window_size = DefaultSettings.INITIAL_WINDOW_SIZE
+  var push_enable = DefaultSettings.ENABLE_PUSH                           // initially enabled
+  var max_outbound_streams = DefaultSettings.MAX_CONCURRENT_STREAMS       // initially unbounded.
+  var max_frame_size = DefaultSettings.MAX_FRAME_SIZE
+  var max_header_size = DefaultSettings.MAX_HEADER_LIST_SIZE              // initially unbounded
+}

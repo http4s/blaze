@@ -11,16 +11,18 @@ import scala.collection.mutable
 import scala.collection.mutable.ArrayBuffer
 import scala.concurrent.{Future, Promise}
 
-// All mutations in here must happen in the actor thread
-abstract class SmallStream[T](val streamId: Int,
-                              iStreamWindow: FlowWindow,
-                              oStreamWindow: FlowWindow,
-                          iConnectionWindow: FlowWindow,
-                          oConnectionWindow: FlowWindow,
-                           var maxFrameSize: Int,
-                                      codec: Http20FrameCodec with HeaderHttp20Encoder,
-                              headerEncoder: HeaderEncoder[T])
-{
+/** Represents a basis for a Http2 Stream
+  *
+  * All operations should only be handled in a thread safe manner
+  */
+private[http20] abstract class AbstractStream[T](val streamId: Int,
+                                                iStreamWindow: FlowWindow,
+                                                oStreamWindow: FlowWindow,
+                                            iConnectionWindow: FlowWindow,
+                                            oConnectionWindow: FlowWindow,
+                                                     settings: Settings,
+                                                        codec: Http20FrameCodec with HeaderHttp20Encoder,
+                                                headerEncoder: HeaderEncoder[T]) {
 
   private type Http2Msg = NodeMsg.Http2Msg[T]
 
@@ -38,7 +40,7 @@ abstract class SmallStream[T](val streamId: Int,
 
   protected def logger: Logger
 
-  protected def channelWrite(data: Seq[ByteBuffer]): Future[Unit]
+  protected def writeBuffers(data: Seq[ByteBuffer]): Future[Unit]
 
   def closeStream(t: Throwable): Unit = nodeState match {
     case CloseStream(_) => // NOOP
@@ -77,7 +79,7 @@ abstract class SmallStream[T](val streamId: Int,
       else {
         val acc = new ArrayBuffer[ByteBuffer]()
         val rem = encodeMessages(data, acc)
-        val f = channelWrite(acc)
+        val f = writeBuffers(acc)
         if (rem.isEmpty) p.completeWith(f)
         else {
           pendingOutboundFrames = (p, rem)
@@ -119,7 +121,7 @@ abstract class SmallStream[T](val streamId: Int,
       pendingOutboundFrames = null
       val acc = new ArrayBuffer[ByteBuffer]()
       val rem = encodeMessages(frames, acc)
-      val f = channelWrite(acc)
+      val f = writeBuffers(acc)
 
       if (rem.isEmpty) p.completeWith(f)
       else {
@@ -152,7 +154,7 @@ abstract class SmallStream[T](val streamId: Int,
           buff::bf1
         } else bf1
 
-      if (buffs.nonEmpty) channelWrite(buffs)
+      if (buffs.nonEmpty) writeBuffers(buffs)
 
       Continue
     }
@@ -161,7 +163,7 @@ abstract class SmallStream[T](val streamId: Int,
   // Mutates the state of the flow control windows
   private def encodeMessages(msgs: Seq[Http2Msg], acc: mutable.Buffer[ByteBuffer]): Seq[Http2Msg] = {
     val maxWindow = math.min(oConnectionWindow(), oStreamWindow())
-    val (bytes, rem) = msgEncoder.encodeMessages(maxFrameSize, maxWindow, msgs, acc)
+    val (bytes, rem) = msgEncoder.encodeMessages(settings.max_frame_size, maxWindow, msgs, acc)
     // track the bytes written and write the buffers
     oStreamWindow.window -= bytes
     oConnectionWindow.window -= bytes
