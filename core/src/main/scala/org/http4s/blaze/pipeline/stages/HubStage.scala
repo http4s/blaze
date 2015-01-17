@@ -17,40 +17,14 @@ abstract class HubStage[I] extends TailStage[I] {
   
   type Out                  // type of messages accepted by the nodes
   type Key                  // type that will uniquely determine the nodes
-  protected type Attachment // state that can be appended to the node
+  protected type NodeT <: Node with HeadStage[I] // state that can be appended to the node
 
-  /** Will serve as the attachment point for each attached pipeline */
-  sealed trait Node {
-    /** Identifier of this node */
-    val key: Key
-
-    val attachment: Attachment
-
-    def inboundCommand(command: InboundCommand): Unit
-
-    /** Shuts down the [[Node]]
-      * Any pending read requests are sent [[EOF]], and removes it from the [[HubStage]] */
-    def stageShutdown(): Unit
-
-    final def startNode(): Unit = inboundCommand(Connected)
-
-    override def toString: String = s"Node[$key]"
-  }
-
-  /** called when a node requests a write operation */
-  protected def onNodeWrite(node: Node, data: Seq[Out]): Future[Unit]
-
-  /** called when a node needs more data */
-  protected def onNodeRead(node: Node, size: Int): Future[Out]
-
-  /** called when a node sends an outbound command
-    * This includes Disconnect commands to give the Hub notice so
-    * it can change any related state it may have */
-  protected def onNodeCommand(node: Node, cmd: OutboundCommand): Unit
+  /** Construct a new `NodeT` */
+  protected def newNode(key: Key): NodeT
 
   ////////////////////////////////////////////////////////////////////////////////////
 
-  private val nodeMap = new HashMap[Key, NodeHead]()
+  private val nodeMap = new HashMap[Key, NodeT]()
 
   final protected def nodeCount(): Int = nodeMap.size()
 
@@ -59,9 +33,9 @@ abstract class HubStage[I] extends TailStage[I] {
     * @return the newly created node in an unstarted state. To begin the node
     *         send a [[Connected]] command or call its `startNode()` method
     */
-  protected def makeNode(key: Key, builder: LeafBuilder[Out], attachment: => Attachment): Option[Node] = {
+  protected def makeNode(key: Key, builder: LeafBuilder[Out]): Option[NodeT] = {
     if (!nodeMap.containsKey(key)) {
-      val node = new NodeHead(key, attachment)
+      val node = newNode(key)
       nodeMap.put(key, node)
       builder.base(node)
       Some(node)
@@ -73,10 +47,10 @@ abstract class HubStage[I] extends TailStage[I] {
     * @param key K specifying the [[Node]] of interest
     * @return `Option[Node]`
     */
-  final protected def getNode(key: Key): Option[Node] = Option(nodeMap.get(key))
+  final protected def getNode(key: Key): Option[NodeT] = Option(nodeMap.get(key))
 
   /** Get an iterator over the nodes attached to this [[HubStage]] */
-  final protected def nodes(): Seq[Node] =
+  final protected def nodes(): Seq[NodeT] =
     mutable.WrappedArray.make(nodeMap.values().toArray())
 
   /** Closes all the nodes of this hub stage */
@@ -112,63 +86,27 @@ abstract class HubStage[I] extends TailStage[I] {
 
   ////////////////////////////////////////////////////////////
 
-  private def checkShutdown(node: NodeHead): Unit = {
+  private def checkShutdown(node: NodeT): Unit = {
     if (node.isConnected()) node.inboundCommand(Disconnected)
   }
 
   ////////////////////////////////////////////////////////////
 
-  private[HubStage] final class NodeHead(val key: Key, val attachment: Attachment)
-    extends HeadStage[Out] with Node
-  {
-    private sealed trait NodeState
-    private case object NotInitialized extends NodeState
-    private case object Open extends NodeState
-    private case class CloseStream(t: Throwable) extends NodeState
+  trait Node extends HeadStage[Out] {
 
-    // TODO: these are no fun as volatile
-    @volatile private var state: NodeState = NotInitialized
-    @volatile private var initialized = false
+//    private sealed trait NodeState
+//    private case object NotInitialized extends NodeState
+//    private case object Open extends NodeState
+//    private case class CloseStream(t: Throwable) extends NodeState
 
-    def name: String = "HubStage_NodeHead"
+    def isConnected(): Boolean
 
-    def isConnected(): Boolean = state == Open
+    val key: Key
+
+    final def startNode(): Unit = inboundCommand(Connected)
+
+    override def toString: String = s"Node[$key]"
 
     override def writeRequest(data: Out): Future[Unit] = writeRequest(data::Nil)
-
-    override def writeRequest(data: Seq[Out]): Future[Unit] = state match {
-      case Open => onNodeWrite(this, data)
-      case NotInitialized => onNotReady()
-      case CloseStream(t) => Future.failed(t)
-    }
-
-    override def readRequest(size: Int): Future[Out] = state match {
-      case Open => onNodeRead(this, size)
-      case NotInitialized => onNotReady()
-      case CloseStream(t) => Future.failed(t)
-    }
-
-    override def outboundCommand(cmd: OutboundCommand): Unit =
-      onNodeCommand(this, cmd)
-
-    override def stageStartup(): Unit = {
-      super.stageStartup()
-      state = Open
-      initialized = true
-    }
-
-    override def stageShutdown(): Unit = {
-      state = CloseStream(EOF)
-      removeNode(key)
-      super.stageShutdown()
-    }
-
-    private def onNotReady(): Future[Nothing] = {
-      if (!initialized) {
-        logger.error(s"Disconnected node with key $key attempting IO request")
-        Future.failed(new NotYetConnectedException)
-      }
-      else Future.failed(EOF)
-    }
   }
 }

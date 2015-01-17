@@ -11,11 +11,12 @@ import org.http4s.blaze.pipeline.stages.SSLStage
 
 class Http2Server(port: Int) {
   private val sslContext = ExampleKeystore.sslContext()
+  val ec = scala.concurrent.ExecutionContext.global
 
   private val f: BufferPipelineBuilder = { _ =>
     val eng = sslContext.createSSLEngine()
     eng.setUseClientMode(false)
-    TrunkBuilder(new SSLStage(eng)).cap(ProtocolSelector(eng, ExampleService.service(None), 16*1024))
+    TrunkBuilder(new SSLStage(eng)).cap(ProtocolSelector(eng, ExampleService.service(None), 16*1024, ec))
   }
 
   private val factory = new NIO1SocketServerChannelFactory(f, workerThreads = Consts.poolSize)

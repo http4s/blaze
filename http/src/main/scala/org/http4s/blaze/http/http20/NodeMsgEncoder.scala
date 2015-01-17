@@ -6,9 +6,9 @@ import scala.annotation.tailrec
 import scala.collection.mutable.Buffer
 
 
-private[http20] abstract class NodeMsgEncoder[HType](id: Int,
-                                               fencoder: Http20FrameEncoder,
-                                               hencoder: HeaderEncoder[HType]) {
+private[http20] class NodeMsgEncoder[HType](id: Int,
+                                      fencoder: Http20FrameEncoder,
+                                      hencoder: HeaderEncoder[HType]) {
 
   import NodeMsg.{ DataFrame, HeadersFrame }
 
@@ -23,7 +23,7 @@ private[http20] abstract class NodeMsgEncoder[HType](id: Int,
     * @return the number of flow control bytes written and any unused frames. Note that the
     *         ByteBuffers of data frames may have changed, but the references will be the same.
     */
-  protected def encodeMessages(maxPayloadSize: Int, maxWindow: Int, msgs: Seq[Http2Msg], acc: Buffer[ByteBuffer]): (Int, Seq[Http2Msg]) = {
+  def encodeMessages(maxPayloadSize: Int, maxWindow: Int, msgs: Seq[Http2Msg], acc: Buffer[ByteBuffer]): (Int, Seq[Http2Msg]) = {
 
     @tailrec
     def go(msgs: Seq[Http2Msg], windowDiff: Int): (Int, Seq[Http2Msg]) = {

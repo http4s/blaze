@@ -57,7 +57,7 @@ abstract class HeaderDecoder[To](maxHeaderSize: Int,
 
       Continue
 
-    } catch { case t: Throwable => Error(COMPRESSION_ERROR("", streamId)) }
+    } catch { case t: Throwable => Error(COMPRESSION_ERROR(streamId)) }
   }
 
   final def setMaxTableSize(max: Int): Unit = decoder.setMaxHeaderTableSize(max)

@@ -21,6 +21,7 @@ object Http2Exception {
   final class ErrorGen private[http20](val code: Int, val name: String) {
     def apply(): Http2Exception = Http2Exception(code, name)(name, None)
     def apply(msg: String): Http2Exception = Http2Exception(code, name)(name + ": " + msg, None)
+    def apply(stream: Int): Http2Exception = Http2Exception(code, name)(name, Some(stream))
     def apply(msg: String, stream: Int): Http2Exception = Http2Exception(code, name)(msg, Some(stream))
 
     def unapply(ex: Http2Exception): Option[(String, Option[Int])] = {
