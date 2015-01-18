@@ -244,10 +244,10 @@ class Http20FrameCodecSpec extends Specification {
 
       val decoder = dec(1, None, true, hs)
 
-      decoder.inHeaderSequence() must_== false
+      decoder.handler.inHeaderSequence() must_== false
       decoder.decodeBuffer(BufferTools.joinBuffers(bs)) must_== Continue
 
-      decoder.inHeaderSequence() must_== true
+      decoder.handler.inHeaderSequence() must_== true
 
       val bs2 = hencoder.mkContinuationFrame(1, true, Nil)
       decoder.decodeBuffer(BufferTools.joinBuffers(bs2)) must_== Halt
@@ -259,10 +259,10 @@ class Http20FrameCodecSpec extends Specification {
 
       val decoder = dec(1, None, true, hs)
 
-      decoder.inHeaderSequence() must_== false
+      decoder.handler.inHeaderSequence() must_== false
       decoder.decodeBuffer(BufferTools.joinBuffers(bs)) must_== Continue
 
-      decoder.inHeaderSequence() must_== true
+      decoder.handler.inHeaderSequence() must_== true
 
       val bs2 = hencoder.mkContinuationFrame(1, true, hs)
       decoder.decodeBuffer(BufferTools.joinBuffers(bs2)) must_== Halt
@@ -275,10 +275,10 @@ class Http20FrameCodecSpec extends Specification {
 
       val decoder = dec(1, None, true, hs1 ++ hs2)
 
-      decoder.inHeaderSequence() must_== false
+      decoder.handler.inHeaderSequence() must_== false
       decoder.decodeBuffer(BufferTools.joinBuffers(bs)) must_== Continue
 
-      decoder.inHeaderSequence() must_== true
+      decoder.handler.inHeaderSequence() must_== true
 
       val bs2 = hencoder.mkContinuationFrame(1, true, hs2)
       decoder.decodeBuffer(BufferTools.joinBuffers(bs2)) must_== Halt
@@ -291,10 +291,10 @@ class Http20FrameCodecSpec extends Specification {
 
       val decoder = dec(1, None, true, hs1 ++ hs2)
 
-      decoder.inHeaderSequence() must_== false
+      decoder.handler.inHeaderSequence() must_== false
       decoder.decodeBuffer(BufferTools.joinBuffers(bs)) must_== Continue
 
-      decoder.inHeaderSequence() must_== true
+      decoder.handler.inHeaderSequence() must_== true
 
       val bs2 = hencoder.mkContinuationFrame(2, true, hs2)
       decoder.decodeBuffer(BufferTools.joinBuffers(bs2)) must beAnInstanceOf[Error]
@@ -307,10 +307,10 @@ class Http20FrameCodecSpec extends Specification {
 
       val decoder = dec(1, None, true, hs1 ++ hs2)
 
-      decoder.inHeaderSequence() must_== false
+      decoder.handler.inHeaderSequence() must_== false
       decoder.decodeBuffer(BufferTools.joinBuffers(bs)) must_== Continue
 
-      decoder.inHeaderSequence() must_== true
+      decoder.handler.inHeaderSequence() must_== true
 
       val bs2 = hencoder.mkWindowUpdateFrame(2, 1)
       decoder.decodeBuffer(bs2) must beAnInstanceOf[Error]
@@ -390,10 +390,10 @@ class Http20FrameCodecSpec extends Specification {
 
       val decoder = dec(1, 2, hs)
 
-      decoder.inHeaderSequence() must_== false
+      decoder.handler.inHeaderSequence() must_== false
       decoder.decodeBuffer(BufferTools.joinBuffers(bs)) must_== Continue
 
-      decoder.inHeaderSequence() must_== true
+      decoder.handler.inHeaderSequence() must_== true
 
       val bs2 = hencoder.mkContinuationFrame(1, true, Nil)
       decoder.decodeBuffer(BufferTools.joinBuffers(bs2)) must_== Halt
@@ -405,10 +405,10 @@ class Http20FrameCodecSpec extends Specification {
 
       val decoder = dec(1, 2, hs)
 
-      decoder.inHeaderSequence() must_== false
+      decoder.handler.inHeaderSequence() must_== false
       decoder.decodeBuffer(BufferTools.joinBuffers(bs)) must_== Continue
 
-      decoder.inHeaderSequence() must_== true
+      decoder.handler.inHeaderSequence() must_== true
 
       val bs2 = hencoder.mkContinuationFrame(1, true, hs)
       decoder.decodeBuffer(BufferTools.joinBuffers(bs2)) must_== Halt
@@ -421,10 +421,10 @@ class Http20FrameCodecSpec extends Specification {
 
       val decoder = dec(1, 2, hs1 ++ hs2)
 
-      decoder.inHeaderSequence() must_== false
+      decoder.handler.inHeaderSequence() must_== false
       decoder.decodeBuffer(BufferTools.joinBuffers(bs)) must_== Continue
 
-      decoder.inHeaderSequence() must_== true
+      decoder.handler.inHeaderSequence() must_== true
 
       val bs2 = hencoder.mkContinuationFrame(1, true, hs2)
       decoder.decodeBuffer(BufferTools.joinBuffers(bs2)) must_== Halt

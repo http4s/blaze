@@ -44,8 +44,10 @@ object Settings {
   }
 }
 
-final class Settings {
+final class Settings(val inboundWindow: Int) {
   import org.http4s.blaze.http.http20.Settings.DefaultSettings
+
+  var receivedGoAway = false
 
   var outbound_initial_window_size = DefaultSettings.INITIAL_WINDOW_SIZE
   var push_enable = DefaultSettings.ENABLE_PUSH                           // initially enabled

@@ -21,7 +21,7 @@ private[http20] abstract class AbstractStream[T](val streamId: Int,
                                             iConnectionWindow: FlowWindow,
                                             oConnectionWindow: FlowWindow,
                                                      settings: Settings,
-                                                        codec: Http20FrameCodec with HeaderHttp20Encoder,
+                                                        codec: Http20FrameDecoder with Http20FrameEncoder,
                                                 headerEncoder: HeaderEncoder[T]) {
 
   private type Http2Msg = NodeMsg.Http2Msg[T]
@@ -41,6 +41,10 @@ private[http20] abstract class AbstractStream[T](val streamId: Int,
   protected def logger: Logger
 
   protected def writeBuffers(data: Seq[ByteBuffer]): Future[Unit]
+
+  def handleNodeCommand(cmd: Cmd.OutboundCommand): Unit
+
+  /////////////////////////////////////////////////////////////////////////////
 
   def closeStream(t: Throwable): Unit = nodeState match {
     case CloseStream(_) => // NOOP

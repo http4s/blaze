@@ -69,9 +69,6 @@ trait Http20FrameDecoder {
 
     return r
   }
-
-  /** true if the decoder is decoding CONTINUATION frames */
-  final def inHeaderSequence(): Boolean = handler.inHeaderSequence()
   
   /** Overriding this method allows for easily supporting extension frames */
   def onExtensionFrame(code: Int, streamId: Int, flags: Byte, buffer: ByteBuffer): Http2Result =
