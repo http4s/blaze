@@ -15,10 +15,11 @@ import scala.concurrent.ExecutionContext
 import scala.concurrent.duration.Duration
 import scala.util.{Success, Failure}
 
-class BasicHttpStage(maxBody: Long,
-                     timeout: Duration,
-                          ec: ExecutionContext,
-                     service: HttpService) extends TailStage[NodeMsg.Http2Msg[Headers]] {
+class BasicHttpStage(streamId: Int,
+                      maxBody: Long,
+                      timeout: Duration,
+                           ec: ExecutionContext,
+                      service: HttpService) extends TailStage[NodeMsg.Http2Msg[Headers]] {
 
   import BasicHttpStage._
 
@@ -47,14 +48,14 @@ class BasicHttpStage(maxBody: Long,
         else getBody(hs, 0, new ArrayBuffer[ByteBuffer](16))
 
       case Success(frame) =>
-        val e = PROTOCOL_ERROR(s"Received invalid frame: $frame")
+        val e = PROTOCOL_ERROR(s"Received invalid frame: $frame", streamId, fatal = true)
         shutdownWithCommand(Cmd.Error(e))
 
       case Failure(Cmd.EOF) => shutdownWithCommand(Cmd.Disconnect)
 
       case Failure(t) =>
         logger.error(t)("Unknown error in readHeaders")
-        val e = INTERNAL_ERROR(s"Unknown error")
+        val e = INTERNAL_ERROR(s"Unknown error", streamId, fatal = true)
         shutdownWithCommand(Cmd.Error(e))
     }
   }
@@ -75,10 +76,10 @@ class BasicHttpStage(maxBody: Long,
       logger.info("Appending trailers: " + ts)
       checkAndRunRequest(hs ++ ts, BufferTools.joinBuffers(acc))
 
-    case Success(other) =>
+    case Success(other) =>  // This should cover it
       val msg = "Received invalid frame while accumulating body: " + other
       logger.info(msg)
-      val e = PROTOCOL_ERROR(msg)
+      val e = PROTOCOL_ERROR(msg, fatal = true)
       shutdownWithCommand(Cmd.Error(e))
 
     case Failure(Cmd.EOF) =>
@@ -87,7 +88,7 @@ class BasicHttpStage(maxBody: Long,
 
     case Failure(t) =>
       logger.error(t)("Error in getBody(). Headers: " + hs)
-      val e = INTERNAL_ERROR()
+      val e = INTERNAL_ERROR(streamId, fatal = true)
       shutdownWithCommand(Cmd.Error(e))
   }
 
@@ -147,7 +148,7 @@ class BasicHttpStage(maxBody: Long,
       error += s"Invalid request: missing pseudo headers. Method: $method, Scheme: $scheme, path: $path. "
     }
 
-    if (error.length() > 0) shutdownWithCommand(Cmd.Error(PROTOCOL_ERROR(error)))
+    if (error.length() > 0) shutdownWithCommand(Cmd.Error(PROTOCOL_ERROR(error, fatal = false)))
     else service(method, path, normalHeaders, body).onComplete {
       case Success(resp) => renderResponse(resp)
       case Failure(t) => shutdownWithCommand(Cmd.Error(t))
@@ -173,7 +174,7 @@ class BasicHttpStage(maxBody: Long,
     case other =>
       val msg = "Unsupported response type: " + other
       logger.error(msg)
-      shutdownWithCommand(Cmd.Error(INTERNAL_ERROR(msg)))
+      shutdownWithCommand(Cmd.Error(INTERNAL_ERROR(msg, fatal = false)))
   }
 }
 

@@ -3,7 +3,7 @@ package org.http4s.blaze.http.http20
 import java.io.{IOException, InputStream}
 import java.nio.ByteBuffer
 
-final private[http20] class ByteBufferInputStream(buffer: ByteBuffer) extends InputStream {
+final private class ByteBufferInputStream(buffer: ByteBuffer) extends InputStream {
 
   private var markSize = 0
 

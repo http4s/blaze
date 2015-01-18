@@ -57,7 +57,7 @@ abstract class DecodingFrameHandler extends FrameHandler {
                                       buffer: ByteBuffer): Http2Result = {
 
     if (inHeaderSequence()) {
-      return Error(PROTOCOL_ERROR("Received HEADERS frame while in in headers sequence"))
+      return Error(PROTOCOL_ERROR("Received HEADERS frame while in in headers sequence", fatal = true))
     }
 
     if (end_headers) {
@@ -80,7 +80,8 @@ abstract class DecodingFrameHandler extends FrameHandler {
                                           buffer: ByteBuffer): Http2Result = {
 
     if (inHeaderSequence()) {
-      return Error(PROTOCOL_ERROR("Received HEADERS frame while in in headers sequence"))
+      val msg = "Received HEADERS frame while in in headers sequence"
+      return Error(PROTOCOL_ERROR(msg, fatal = true))
     }
 
     if (end_headers) {
@@ -102,7 +103,7 @@ abstract class DecodingFrameHandler extends FrameHandler {
                                            buffer: ByteBuffer): Http2Result = {
 
     if (!inHeaderSequence() || hInfo.streamId != streamId) {
-      return Error(PROTOCOL_ERROR(s"Invalid CONTINUATION frame", streamId))
+      return Error(PROTOCOL_ERROR(s"Invalid CONTINUATION frame", streamId, fatal = true))
     }
 
     val newBuffer = BufferTools.concatBuffers(hInfo.buffer, buffer)

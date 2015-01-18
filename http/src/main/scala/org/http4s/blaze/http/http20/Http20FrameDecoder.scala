@@ -39,7 +39,7 @@ trait Http20FrameDecoder {
     
     // Make sure we are not in the middle of some header frames
     if (handler.inHeaderSequence() && frameType != FrameTypes.CONTINUATION) {
-      return Error(PROTOCOL_ERROR(s"Received frame type $frameType while in in headers sequence"))
+      return protoError(s"Received frame type $frameType while in in headers sequence")
     }
 
     // set frame sizes in the ByteBuffer and decode
@@ -80,7 +80,7 @@ trait Http20FrameDecoder {
   private def decodeDataFrame(buffer: ByteBuffer, streamId: Int, flags: Byte): Http2Result = {
 
     if (streamId == 0) {
-      return Error(PROTOCOL_ERROR("Data frame with streamID 0x0"))
+      return protoError("Data frame with streamID 0x0")
     }
 
     val payload = buffer.remaining()
@@ -96,7 +96,7 @@ trait Http20FrameDecoder {
   //////////// HEADERS ///////////////
   private def decodeHeaderFrame(buffer: ByteBuffer, streamId: Int, flags: Byte): Http2Result = {
     if (streamId == 0) {
-      return Error(PROTOCOL_ERROR("Headers frame with streamID 0x0"))
+      return protoError("Headers frame with streamID 0x0")
     }
 
     if (Flags.PADDED(flags)) {
@@ -115,16 +115,19 @@ trait Http20FrameDecoder {
   private def decodePriorityFrame(buffer: ByteBuffer, streamId: Int, flags: Byte): Http2Result = {
 
     if (streamId == 0) {
-      return Error(PROTOCOL_ERROR("Priority frame with streamID 0x0"))
+      return protoError("Priority frame with streamID 0x0")
     }
 
     if (buffer.remaining() != 5) {    // Make sure the frame has the right amount of data
-      return Error(FRAME_SIZE_ERROR("Invalid PRIORITY frame size, required 5, received" + buffer.remaining(), streamId))
+      val msg = "Invalid PRIORITY frame size, required 5, received" + buffer.remaining()
+      return protoError(msg, streamId)
     }
 
     val priority = getPriority(buffer)
 
-    if (priority.dependentStreamId == 0) Error(PROTOCOL_ERROR("Priority frame with stream dependency 0x0"))
+    if (priority.dependentStreamId == 0) {
+      protoError("Priority frame with stream dependency 0x0")
+    }
     else handler.onPriorityFrame(streamId, priority)
   }
 
@@ -138,11 +141,12 @@ trait Http20FrameDecoder {
   //////////// RST_STREAM ///////////////
   private def decodeRstStreamFrame(buffer: ByteBuffer, streamId: Int): Http2Result = {
     if (buffer.remaining() != 4) {
-      return Error(FRAME_SIZE_ERROR("Invalid RST_STREAM frame size, required 4, received " + buffer.remaining(), streamId))
+      val msg = "Invalid RST_STREAM frame size, required 4, received " + buffer.remaining()
+      return protoError(msg, streamId)
     }
 
     if (streamId == 0) {
-      return Error(PROTOCOL_ERROR("RST_STREAM frame with stream ID 0"))
+      return protoError("RST_STREAM frame with stream ID 0")
     }
 
     val code = buffer.getInt()
@@ -158,15 +162,17 @@ trait Http20FrameDecoder {
     val isAck = Flags.ACK(flags)
 
     if (len % 6 != 0) { // Invalid frame size
-      return Error(FRAME_SIZE_ERROR(s"SETTINGS frame payload must be multiple of 6 bytes, size: $len", streamId))
+      val msg = s"SETTINGS frame payload must be multiple of 6 bytes, size: $len"
+      return Error(FRAME_SIZE_ERROR(msg, streamId, fatal = true))
     }
 
     if (isAck && settingsCount != 0) {
-      return Error(FRAME_SIZE_ERROR("SETTINGS ACK frame with settings payload", streamId))
+      val msg = "SETTINGS ACK frame with settings payload"
+      return Error(FRAME_SIZE_ERROR(msg, streamId, fatal = true))
     }
 
     if (streamId != 0x0) {
-      return Error(PROTOCOL_ERROR(s"SETTINGS frame with invalid stream id", streamId))
+      return protoError(s"SETTINGS frame with invalid stream id: $streamId")
     }
 
     val settings = new ArrayBuffer[Setting](settingsCount)
@@ -185,7 +191,7 @@ trait Http20FrameDecoder {
   //////////// PUSH_PROMISE ///////////////
   private def decodePushPromiseFrame(buffer: ByteBuffer, streamId: Int, flags: Byte): Http2Result = {
     if (streamId == 0) {
-      return Error(PROTOCOL_ERROR("Data frame with streamID 0x0"))
+      return protoError("Data frame with streamID 0x0")
     }
 
     if (Flags.PADDED(flags)) {
@@ -203,11 +209,12 @@ trait Http20FrameDecoder {
     val pingSize = 8
 
     if (streamId != 0) {
-      return Error(PROTOCOL_ERROR("PING frame with streamID != 0x0"))
+      return protoError("PING frame with streamID != 0x0")
     }
 
     if (buffer.remaining() != pingSize) {
-      return Error(FRAME_SIZE_ERROR("Invalid PING frame size. Expected 4, received " + buffer.remaining()))
+      val msg = "Invalid PING frame size. Expected 4, received " + buffer.remaining()
+      return Error(FRAME_SIZE_ERROR(msg, fatal = true))
     }
 
     val pingBytes = new Array[Byte](pingSize)
@@ -220,11 +227,12 @@ trait Http20FrameDecoder {
   private def decodeGoAwayFrame(buffer: ByteBuffer, streamId: Int): Http2Result = {
 
     if (buffer.remaining() < 8) {
-      return Error(FRAME_SIZE_ERROR("GOAWAY frame is wrong size. Expected 8, received " + buffer.remaining()))
+      val msg = "GOAWAY frame is wrong size. Expected  > 8, received " + buffer.remaining()
+      return Error(FRAME_SIZE_ERROR(msg, fatal = true))
     }
 
     if (streamId != 0) {
-      return Error(PROTOCOL_ERROR("GOAWAY frame with streamID != 0x0"))
+      return protoError("GOAWAY frame with streamID != 0x0")
     }
 
     val lastStream = Flags.DepID(buffer.getInt)
@@ -236,8 +244,8 @@ trait Http20FrameDecoder {
   //////////// WINDOW_UPDATE ///////////////
   private def decodeWindowUpdateFrame(buffer: ByteBuffer, streamId: Int): Http2Result = {
     if (buffer.remaining() != 4) {
-      return Error(FRAME_SIZE_ERROR("WINDOW_UPDATE frame frame is wrong size. Expected 8, received " +
-                        buffer.remaining(), streamId))
+      val msg = "WINDOW_UPDATE frame frame is wrong size. Expected 8, received " + buffer.remaining()
+      return Error(FRAME_SIZE_ERROR(msg, streamId, fatal = true))
     }
 
     val size = buffer.getInt() & Masks.int31
@@ -249,10 +257,16 @@ trait Http20FrameDecoder {
   private def decodeContinuationFrame(buffer: ByteBuffer, streamId: Int, flags: Byte): Http2Result = {
     if (streamId <= 0) {
       val msg = s"CONTINUATION frame with invalid stream dependency: 0x${Integer.toHexString(streamId)}"
-      Error(PROTOCOL_ERROR(msg))
+      protoError(msg)
     }
     else handler.onContinuationFrame(streamId, Flags.END_HEADERS(flags), buffer.slice())
   }
+
+  private def protoError(msg: String): Error =
+    Error(PROTOCOL_ERROR(msg, fatal = true))
+
+  private def protoError(msg: String, stream: Int): Error =
+    Error(PROTOCOL_ERROR(msg, stream, fatal = true))
 
 
   @inline
@@ -260,7 +274,7 @@ trait Http20FrameDecoder {
     val padding = buffer.get() & 0xff
     if (padding > 0) {
       if (padding >= buffer.remaining()) {
-        Error(PROTOCOL_ERROR(s"Padding, $padding, exceeds payload length: ${buffer.remaining}"))
+        protoError(s"Padding, $padding, exceeds payload length: ${buffer.remaining}")
       }
       else {
         buffer.limit(buffer.limit() - padding)

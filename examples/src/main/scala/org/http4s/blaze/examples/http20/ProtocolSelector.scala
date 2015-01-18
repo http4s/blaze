@@ -26,8 +26,12 @@ object ProtocolSelector {
   }
 
   private def http2Stage(service: HttpService, maxBody: Long, maxHeadersLength: Int, ec: ExecutionContext): TailStage[ByteBuffer] = {
-    def newNode(): LeafBuilder[Http2Meg] = LeafBuilder(new BasicHttpStage(maxBody, Duration.Inf, trampoline, service))
-    new Http2ActorHub[Headers](
+
+    def newNode(streamId: Int): LeafBuilder[Http2Meg] = {
+      LeafBuilder(new BasicHttpStage(streamId, maxBody, Duration.Inf, trampoline, service))
+    }
+
+    new Http2Stage[Headers](
       new TupleHeaderDecoder(maxHeadersLength),
       new TupleHeaderEncoder(),
       node_builder = newNode,

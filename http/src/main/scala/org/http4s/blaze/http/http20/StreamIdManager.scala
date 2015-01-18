@@ -1,6 +1,6 @@
 package org.http4s.blaze.http.http20
 
-class StreamIdManager {
+private class StreamIdManager {
   private var _lastClientId: Int = 0
   private var _nextServerId: Int = 2
 

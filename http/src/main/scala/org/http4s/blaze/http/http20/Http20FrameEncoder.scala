@@ -165,7 +165,7 @@ trait Http20FrameEncoder {
   }
 
   def mkGoAwayFrame(lastStreamId: Int, error: Long, debugData: ByteBuffer): Seq[ByteBuffer] = {
-    require(lastStreamId > 0, "Invalid last stream id for GOAWAY frame")
+    require(lastStreamId >= 0, "Invalid last stream id for GOAWAY frame")
     val size = 8
 
     val buffer = BufferTools.allocate(HeaderSize + size)

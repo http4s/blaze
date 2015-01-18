@@ -40,59 +40,81 @@ private[http20] abstract class AbstractStream[T](val streamId: Int,
 
   protected def logger: Logger
 
+  /** Write the data to the socket */
   protected def writeBuffers(data: Seq[ByteBuffer]): Future[Unit]
-
-  def handleNodeCommand(cmd: Cmd.OutboundCommand): Unit
 
   /////////////////////////////////////////////////////////////////////////////
 
-  def closeStream(t: Throwable): Unit = nodeState match {
-    case CloseStream(_) => // NOOP
-    case _ => nodeState = CloseStream(t)
+  /** Closes the queues of the stream */
+  protected def closeStream(t: Throwable): Unit = {
+    nodeState match {
+      case CloseStream(Cmd.EOF) => nodeState = CloseStream(t)
+      case CloseStream(_) => // NOOP
+      case _ => nodeState = CloseStream(t)
+    }
+
+    if (pendingOutboundFrames != null) {
+      val (p, _) = pendingOutboundFrames
+      pendingOutboundFrames = null
+      p.tryFailure(t)
+    }
+
+    if (pendingInboundPromise != null) {
+      val p = pendingInboundPromise
+      pendingInboundPromise = null
+      p.tryFailure(t)
+    }
+
+    pendingInboundMessages.clear()
   }
 
-  def isConnected(): Boolean = nodeState == Open
+  def isConnected(): Boolean = nodeState == Open || nodeState == HalfClosed
 
-  def handleRead(p: Promise[Http2Msg]): Unit = nodeState match {
+  def handleRead(): Future[Http2Msg] = nodeState match {
     case Open  =>
       if (pendingInboundPromise != null) {
-        p.failure(new IndexOutOfBoundsException("Cannot have more than one pending read request"))
+        Future.failed(new IndexOutOfBoundsException("Cannot have more than one pending read request"))
       } else {
         val data = pendingInboundMessages.poll()
         if (data == null) {
+          val p = Promise[Http2Msg]
           pendingInboundPromise = p
+          p.future
         }
-        else  p.trySuccess(data)
+        else  Future.successful(data)
       }
 
     case HalfClosed =>
       val data = pendingInboundMessages.poll()
-      if (data == null) p.failure(Cmd.EOF)
-      else p.trySuccess(data)
+      if (data == null) Future.failed(Cmd.EOF)
+      else Future.successful(data)
 
-    case CloseStream(t) => p.failure(t)
+    case CloseStream(t) => Future.failed(t)
   }
 
-  def handleWrite(data: Seq[Http2Msg], p: Promise[Unit]): Unit = nodeState match {
+  def handleWrite(data: Seq[Http2Msg]): Future[Unit] = nodeState match {
     case Open | HalfClosed =>
       logger.trace(s"Node $streamId sending $data")
 
       if (pendingOutboundFrames != null) {
-        p.failure(new IndexOutOfBoundsException("Cannot have more than one pending write request"))
+        Future.failed(new IndexOutOfBoundsException("Cannot have more than one pending write request"))
       }
       else {
         val acc = new ArrayBuffer[ByteBuffer]()
         val rem = encodeMessages(data, acc)
         val f = writeBuffers(acc)
-        if (rem.isEmpty) p.completeWith(f)
+        if (rem.isEmpty) f
         else {
+          val p = Promise[Unit]
           pendingOutboundFrames = (p, rem)
+          p.future
         }
       }
 
-    case CloseStream(t) => p.failure(t)
+    case CloseStream(t) => Future.failed(t)
   }
 
+  /** Stores the inbound message and deals with stream errors, if applicable */
   def inboundMessage(msg: Http2Msg, flowSize: Int, end_stream: Boolean): MaybeError = {
     nodeState match {
       case Open =>
@@ -108,12 +130,20 @@ private[http20] abstract class AbstractStream[T](val streamId: Int,
         }
         r
 
-      case HalfClosed =>
-        Error(STREAM_CLOSED(streamId))
+      case HalfClosed => // This is a connection error
+        val e = STREAM_CLOSED(streamId, fatal = true)
+        closeStream(e)
+        Error(e)
 
-      case CloseStream(t: Http2Exception) => Error(t)
+      case CloseStream(Cmd.EOF) => // May have been removed: extra messages.
+        Error(STREAM_CLOSED(streamId, fatal = false))
 
-      case CloseStream(t) => Error(INTERNAL_ERROR(s"Stream($streamId) closed with error: ${t.getMessage}"))
+      case CloseStream(t: Http2Exception) =>
+        Error(t)
+
+      case CloseStream(t) =>
+        val msg = s"Stream($streamId) closed with error: ${t.getMessage}"
+        Error(INTERNAL_ERROR(msg, fatal = true))
     }
   }
 
@@ -137,7 +167,7 @@ private[http20] abstract class AbstractStream[T](val streamId: Int,
   /** Decrements the inbound window and if not backed up, sends a window update if the level drops below 50% */
   private def decrementInboundWindow(size: Int): MaybeError = {
     if (size > iStreamWindow() || size > iConnectionWindow()) {
-      Error(FLOW_CONTROL_ERROR("Inbound flow control overflow", streamId))
+      Error(FLOW_CONTROL_ERROR("Inbound flow control overflow", streamId, fatal = true))
     } else {
       iStreamWindow.window -= size
       iConnectionWindow.window -= size

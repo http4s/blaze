@@ -12,11 +12,10 @@ import org.log4s.getLogger
 import scala.collection.mutable
 import scala.concurrent.Future
 
-private class FlowControl[T](http2Stage: Http2Stage[T],
+private class FlowControl[T](http2Stage: Http2StageConcurrentOps[T],
                           inboundWindow: Int,
                           http2Settings: Settings,
                                   codec: Http20FrameDecoder with Http20FrameEncoder,
-                           node_builder: () => LeafBuilder[NodeMsg.Http2Msg[T]],
                           headerEncoder: HeaderEncoder[T]) { self =>
 
   private type Http2Msg = NodeMsg.Http2Msg[T]
@@ -33,10 +32,11 @@ private class FlowControl[T](http2Stage: Http2Stage[T],
 
   def nodeCount(): Int = nodeMap.size()
 
-  def removeNode(streamId: Int): Option[Stream] = {
+  def removeNode(streamId: Int, reason: Throwable, sendDisconnect: Boolean): Option[Stream] = {
     val node = nodeMap.remove(streamId)
-    if (node != null) {
-      if (node.isConnected()) node.inboundCommand(Cmd.Disconnected)
+    if (node != null && node.isConnected()) {
+      node.closeStream(reason)
+      if(sendDisconnect) node.inboundCommand(Cmd.Disconnected)
       Some(node)
     }
     else None
@@ -45,37 +45,25 @@ private class FlowControl[T](http2Stage: Http2Stage[T],
   def nodes(): Seq[Stream] =
     mutable.WrappedArray.make(nodeMap.values().toArray())
 
-  def closeAllNodes(): Unit = {
-    val values = nodeMap.values().iterator()
-    while (values.hasNext) {
-      val node = values.next()
-      values.remove()
-      if (node.isConnected()) {
-        node.closeStream(Cmd.EOF)
-        node.inboundCommand(Cmd.Disconnected)
-      }
-    }
+  def closeAllNodes(): Unit = nodes().foreach { node =>
+    removeNode(node.streamId, Cmd.EOF, true)
   }
 
   ////////////////////////////////////////////////////////////////////////////////////
 
   def makeStream(streamId: Int): Stream = {
-    val stream = node_builder().base(new Stream(streamId))
+    val stream = http2Stage.makePipeline(streamId).base(new Stream(streamId))
     nodeMap.put(streamId, stream)
     stream.inboundCommand(Cmd.Connected)
     stream
   }
 
   def onWindowUpdateFrame(streamId: Int, sizeIncrement: Int): MaybeError = {
-    logger.debug(s"Updated window of stream $streamId by $sizeIncrement. ConnectionOutbound: $oConnectionWindow")
+    logger.trace(s"Updated window of stream $streamId by $sizeIncrement. ConnectionOutbound: $oConnectionWindow")
 
     if (sizeIncrement <= 0) {
-      if (streamId == 0) Error(PROTOCOL_ERROR(s"Invalid WINDOW_UPDATE size: $sizeIncrement"))
-      else {
-        sendRstStreamFrame(streamId, PROTOCOL_ERROR())
-        getNode(streamId).foreach(node => removeNode(node.streamId))
-        Continue
-      }
+      if (streamId == 0) Error(PROTOCOL_ERROR(s"Invalid WINDOW_UPDATE size: $sizeIncrement", fatal = true))
+      else Error(PROTOCOL_ERROR(streamId, fatal = false))
     }
     else if (streamId == 0) {
       oConnectionWindow.window += sizeIncrement
@@ -118,29 +106,8 @@ private class FlowControl[T](http2Stage: Http2Stage[T],
 
     ///////////////////////////////////////////////////////////////
 
-    def handleNodeCommand(cmd: Cmd.OutboundCommand): Unit = {
-      def checkGoAway(): Unit = {
-        if (http2Settings.receivedGoAway && nodes().isEmpty) {  // we must be done
-          http2Stage.shutdownConnection()
-        }
-      }
 
-      cmd match {
-        case Cmd.Disconnect =>
-          removeNode(streamId)
-          checkGoAway()
-
-        case Cmd.Error(t: Http2Exception) =>
-          sendRstStreamFrame(streamId, t)
-          removeNode(streamId)
-          checkGoAway()
-
-        case Cmd.Error(t) =>
-          http2Stage.onFailure(t, s"handleNodeCommand(stream[$streamId])")
-
-        case cmd            => logger.warn(s"$name is ignoring unhandled command ($cmd) from $this.") // Flush, Connect...
-      }
-    }
+    override protected[FlowControl] def closeStream(t: Throwable): Unit = super.closeStream(t)
 
     override def outboundCommand(cmd: OutboundCommand): Unit =
       http2Stage.streamCommand(this, cmd)
@@ -156,11 +123,5 @@ private class FlowControl[T](http2Stage: Http2Stage[T],
 
     override def writeRequest(data: Seq[Http2Msg]): Future[Unit] =
       http2Stage.streamWrite(this, data)
-  }
-
-  /////////////////////////////////////////////////////////////////////////////
-
-  private def sendRstStreamFrame(streamId: Int, e: Http2Exception): Unit = {
-    http2Stage.writeBuffers(codec.mkRstStreamFrame(streamId, e.code)::Nil)
   }
 }

@@ -5,7 +5,7 @@ import java.nio.charset.StandardCharsets.UTF_8
 
 import scala.collection.mutable
 
-final case class Http2Exception(code: Int, name: String)(val msg: String, val stream: Option[Int])
+final case class Http2Exception(code: Int, name: String, stream: Option[Int], fatal: Boolean)(val msg: String)
   extends Exception(msg)
 {
   def msgBuffer(): ByteBuffer = ByteBuffer.wrap(msg.getBytes(UTF_8))
@@ -19,10 +19,10 @@ object Http2Exception {
                                .getOrElse(s"UNKNOWN_ERROR(0x${Integer.toHexString(id)}")
 
   final class ErrorGen private[http20](val code: Int, val name: String) {
-    def apply(): Http2Exception = Http2Exception(code, name)(name, None)
-    def apply(msg: String): Http2Exception = Http2Exception(code, name)(name + ": " + msg, None)
-    def apply(stream: Int): Http2Exception = Http2Exception(code, name)(name, Some(stream))
-    def apply(msg: String, stream: Int): Http2Exception = Http2Exception(code, name)(msg, Some(stream))
+    def apply(fatal: Boolean): Http2Exception = Http2Exception(code, name, None, fatal)(name)
+    def apply(msg: String, fatal: Boolean): Http2Exception = Http2Exception(code, name, None, fatal)(name + ": " + msg)
+    def apply(stream: Int, fatal: Boolean): Http2Exception = Http2Exception(code, name, Some(stream), fatal)(name)
+    def apply(msg: String, stream: Int, fatal: Boolean): Http2Exception = Http2Exception(code, name, Some(stream), fatal)(msg)
 
     def unapply(ex: Http2Exception): Option[(String, Option[Int])] = {
       if (ex.code == code) Some(( ex.msg, ex.stream))
