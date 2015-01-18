@@ -88,7 +88,7 @@ private[nio1] abstract class NIO1HeadStage(ch: SelectableChannel,
         writeData = null
         writePromise.set(null)
         unsetOp(SelectionKey.OP_WRITE)
-        p.success(())
+        p.trySuccess(())
 
       case Incomplete => /* Need to wait for another go around to try and send more data */
         BufferTools.dropEmpty(buffers)
