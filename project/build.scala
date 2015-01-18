@@ -59,7 +59,7 @@ object ApplicationBuild extends Build {
 
     version := "0.5.0-SNAPSHOT",
 
-    scalaVersion := "2.11.4",
+    scalaVersion := "2.11.5",
 
     crossScalaVersions := Seq("2.10.4", "2.11.4"),
 
