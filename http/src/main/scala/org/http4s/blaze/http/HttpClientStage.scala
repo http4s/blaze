@@ -134,7 +134,7 @@ class HttpClientStage(timeout: Duration = Duration.Inf)
 
           if (contentComplete()) {
             val b = BufferTools.joinBuffers(bodyBuffers.result())
-            val r = SimpleHttpResponse(this.reason, this.code, hdrs.result(), b)
+            val r = HttpResponse(this.code, this.reason, hdrs.result(), b)
             reset()
 
             p.success(r)

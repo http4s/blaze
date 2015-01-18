@@ -33,7 +33,7 @@ object WebSocketServer {
 
 /** this stage can be seen as the "route" of the example. It handles requests and returns responses */
 class ExampleWebSocketHttpServerStage
-  extends HttpServerStage(10*1024)(ExampleWebSocketHttpServerStage.handleRequest)
+  extends HttpServerStage(1024*1024, 10*1024)(ExampleWebSocketHttpServerStage.handleRequest)
 
 /** This represents the actual web socket interactions */
 class SocketStage extends WSStage {
@@ -67,6 +67,6 @@ object ExampleWebSocketHttpServerStage {
       // Note the use of WSStage.segment. This makes a pipeline segment that includes a serializer so we
       // can safely write as many messages as we want without worrying about clashing with pending writes
       Future.successful(WSResponse(WSStage.bufferingSegment(new SocketStage)))
-    } else Future.successful(SimpleHttpResponse.Ok("Use a websocket!\n" + uri))
+    } else Future.successful(HttpResponse.Ok("Use a websocket!\n" + uri))
   }
 }

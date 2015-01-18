@@ -22,7 +22,8 @@ import java.nio.ByteBuffer
 
 import org.http4s.blaze.util.BufferTools
 
-class HttpServerStage(maxReqBody: Int)(handleRequest: HttpService) extends Http1ServerParser with TailStage[ByteBuffer] {
+class HttpServerStage(maxReqBody: Long, maxNonbody: Int)(handleRequest: HttpService)
+  extends Http1ServerParser(maxNonbody, maxNonbody, 5*1024) with TailStage[ByteBuffer] {
   import HttpServerStage._
 
   private implicit def ec = trampoline
@@ -65,15 +66,7 @@ class HttpServerStage(maxReqBody: Int)(handleRequest: HttpService) extends Http1
 
       // TODO: need to check if we need a Host header or otherwise validate the request
       // we have enough to start the request
-      gatherBody(buff, new ArrayBuffer[ByteBuffer]).onComplete {
-        case Success(b) =>
-          val hdrs = headers
-          headers = new ArrayBuffer[(String, String)](hdrs.size + 10)
-          runRequest(b, hdrs)
-
-        case Failure(Cmd.EOF) => // NOOP
-        case Failure(t)       => shutdownWithCommand(Cmd.Error(t))
-      }
+      gatherBody(buff, 0, new ArrayBuffer[ByteBuffer])
     }
     catch { case t: Throwable => shutdownWithCommand(Cmd.Error(t)) }
   }
@@ -89,7 +82,7 @@ class HttpServerStage(maxReqBody: Int)(handleRequest: HttpService) extends Http1
 
   private def runRequest(buffer: ByteBuffer, reqHeaders: Headers): Unit = {
     try handleRequest(method, uri, reqHeaders, buffer).flatMap {
-      case r: SimpleHttpResponse    => handleHttpResponse(r, reqHeaders)
+      case r: HttpResponse    => handleHttpResponse(r, reqHeaders, false)
       case WSResponse(stage)        => handleWebSocket(reqHeaders, stage)
     }.onComplete {       // See if we should restart the loop
       case Success(Reload)          => resetStage(); requestLoop()
@@ -102,22 +95,22 @@ class HttpServerStage(maxReqBody: Int)(handleRequest: HttpService) extends Http1
       case NonFatal(e) =>
         logger.error(e)("Error during `handleRequest` of HttpServerStage")
         val body = ByteBuffer.wrap("Internal Service Error".getBytes(StandardCharsets.ISO_8859_1))
-        val resp = SimpleHttpResponse("OK", 200, Nil, body)
+        val resp = HttpResponse(200, "OK", Nil, body)
 
-        handleHttpResponse(resp, reqHeaders).onComplete { _ =>
+        handleHttpResponse(resp, reqHeaders, false).onComplete { _ =>
           shutdownWithCommand(Cmd.Error(e))
         }
     }
   }
 
   /** Deal with route responses of standard HTTP form */
-  private def handleHttpResponse(resp: SimpleHttpResponse, reqHeaders: Headers): Future[RouteResult] = {
+  private def handleHttpResponse(resp: HttpResponse, reqHeaders: Headers, forceClose: Boolean): Future[RouteResult] = {
     val sb = new StringBuilder(512)
-    sb.append("HTTP/").append(1).append('.')
-      .append(minor).append(' ').append(resp.code)
-      .append(' ').append(resp.status).append('\r').append('\n')
+    sb.append("HTTP/").append(1).append('.').append(minor).append(' ')
+      .append(resp.code).append(' ')
+      .append(resp.status).append('\r').append('\n')
 
-    val keepAlive = isKeepAlive(reqHeaders)
+    val keepAlive = !forceClose && isKeepAlive(reqHeaders)
 
     if (!keepAlive) sb.append("Connection: close\r\n")
     else if (minor == 0 && keepAlive) sb.append("Connection: Keep-Alive\r\n")
@@ -179,22 +172,31 @@ class HttpServerStage(maxReqBody: Int)(handleRequest: HttpService) extends Http1
     sb.append('\r').append('\n')
   }
 
-  private def gatherBody(buffer: ByteBuffer, buffers: ArrayBuffer[ByteBuffer]): Future[ByteBuffer] = {
+  // TODO: this will generate a long chain of Futures
+  private def gatherBody(buffer: ByteBuffer, bodySize: Long, buffers: ArrayBuffer[ByteBuffer]): Unit = {
     if (!contentComplete()) {
-      buffers += parseContent(buffer)
-      channelRead().flatMap(gatherBody(_, buffers))
-    } else {
-      val total = buffers.size match {
-        case 0 => BufferTools.emptyBuffer
-        case 1 => buffers.head
-        case _ =>
-          val sz = buffers.foldLeft(0)(_ + _.remaining())
-          val b = BufferTools.allocate(sz)
-          buffers.foreach(b.put)
-          b.flip()
-          b
+      val buff = parseContent(buffer)
+      val totalBodySize = bodySize + buff.remaining()
+      if (maxReqBody > 0 && totalBodySize > maxReqBody) {
+        val hs = headers
+        headers = new ArrayBuffer[(String, String)](0)
+        handleHttpResponse(HttpResponse.EntityTooLarge(), hs, false)
       }
-      Future.successful(total)
+      else {
+        buffers += buff
+        channelRead().onComplete {
+          case Success(newbuff) => gatherBody(BufferTools.concatBuffers(buffer, newbuff), totalBodySize, buffers)
+          case Failure(Cmd.EOF) => stageShutdown(); sendOutboundCommand(Cmd.Disconnect)
+          case Failure(t)       => shutdownWithCommand(Cmd.Error(t))
+        }
+      }
+
+    }
+    else {
+      val total = BufferTools.joinBuffers(buffers)
+      val hs = headers
+      headers = new ArrayBuffer[(String, String)](hs.size + 10)
+      runRequest(total, hs)
     }
   }
 
@@ -205,18 +207,23 @@ class HttpServerStage(maxReqBody: Int)(handleRequest: HttpService) extends Http1
 
   private def isKeepAlive(headers: Headers): Boolean = {
     val h = headers.find {
-      case ("Connection", _) => true
-      case _ => false
+      case (k, _) if k.equalsIgnoreCase("connection") => true
+      case _                                          => false
     }
 
-    if (h.isDefined) {
-      if (h.get._2.equalsIgnoreCase("Keep-Alive")) true
-      else if (h.get._2.equalsIgnoreCase("close")) false
-      else if (h.get._2.equalsIgnoreCase("Upgrade")) true
-      else { logger.info(s"Bad Connection header value: '${h.get._2}'. Closing after request."); false }
+    h match {
+      case Some((k, v)) =>
+        if (v.equalsIgnoreCase("Keep-Alive")) true
+        else if (v.equalsIgnoreCase("close")) false
+        else if (v.equalsIgnoreCase("Upgrade")) true
+        else {
+          logger.info(s"Bad Connection header value: '$v'. Closing after request.")
+          false
+        }
+
+      case None if minor == 0 => false
+      case None               => true
     }
-    else if (minor == 0) false
-    else true
   }
 
   override protected def stageShutdown(): Unit = {

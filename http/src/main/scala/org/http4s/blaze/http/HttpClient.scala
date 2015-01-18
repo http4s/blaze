@@ -62,10 +62,10 @@ trait HttpClient {
   }
 
   def GET(url: String, headers: Seq[(String, String)] = Nil, timeout: Duration = Duration.Inf)
-         (implicit ec: ExecutionContext = Execution.trampoline): Future[SimpleHttpResponse] = {
+         (implicit ec: ExecutionContext = Execution.trampoline): Future[HttpResponse] = {
     val r = runReq("GET", url, headers, BufferTools.emptyBuffer, timeout)
     r.flatMap {
-      case r: SimpleHttpResponse => Future.successful(r)
+      case r: HttpResponse => Future.successful(r)
       case r => Future.failed(new Exception(s"Received invalid response type: ${r.getClass}"))
     }(Execution.directec)
   }

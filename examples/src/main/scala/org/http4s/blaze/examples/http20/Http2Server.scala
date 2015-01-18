@@ -16,7 +16,7 @@ class Http2Server(port: Int) {
   private val f: BufferPipelineBuilder = { _ =>
     val eng = sslContext.createSSLEngine()
     eng.setUseClientMode(false)
-    TrunkBuilder(new SSLStage(eng)).cap(ProtocolSelector(eng, ExampleService.service(None), 16*1024, ec))
+    TrunkBuilder(new SSLStage(eng)).cap(ProtocolSelector(eng, ExampleService.service(None), 1024*1024, 16*1024, ec))
   }
 
   private val factory = new NIO1SocketServerChannelFactory(f, workerThreads = Consts.poolSize)

@@ -15,18 +15,18 @@ import org.http4s.blaze.util.Execution._
 import ALPNPipelineSelector._
 
 object ProtocolSelector {
-  def apply(engine: SSLEngine, service: HttpService, maxNonbodyLength: Int, ec: ExecutionContext): ALPNPipelineSelector = {
+  def apply(engine: SSLEngine, service: HttpService, maxBody: Long, maxNonbodyLength: Int, ec: ExecutionContext): ALPNPipelineSelector = {
     
     def select(s: String): LeafBuilder[ByteBuffer] = s match {
-    case HTTP2 => LeafBuilder(http2Stage(service, maxNonbodyLength, ec))
-    case _     => LeafBuilder(new HttpServerStage(maxNonbodyLength)(service))
+    case HTTP2 => LeafBuilder(http2Stage(service, maxBody, maxNonbodyLength, ec))
+    case _     => LeafBuilder(new HttpServerStage(maxBody, maxNonbodyLength)(service))
     }
     
     new ALPNPipelineSelector(engine, select)
   }
 
-  private def http2Stage(service: HttpService, maxHeadersLength: Int, ec: ExecutionContext): TailStage[ByteBuffer] = {
-    def newNode(): LeafBuilder[Http2Meg] = LeafBuilder(new BasicHttpStage(Duration.Inf, trampoline, service))
+  private def http2Stage(service: HttpService, maxBody: Long, maxHeadersLength: Int, ec: ExecutionContext): TailStage[ByteBuffer] = {
+    def newNode(): LeafBuilder[Http2Meg] = LeafBuilder(new BasicHttpStage(maxBody, Duration.Inf, trampoline, service))
     new Http2ActorHub[Headers](
       new TupleHeaderDecoder(maxHeadersLength),
       new TupleHeaderEncoder(),

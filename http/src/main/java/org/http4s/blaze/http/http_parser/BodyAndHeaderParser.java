@@ -389,7 +389,7 @@ public abstract class BodyAndHeaderParser extends ParserBase {
 
                     if (ch != HttpTokens.LF) {
                         shutdownParser();
-                        throw new BadRequest("Bad chunked encoding char: '" + (char)ch + "'");
+                        throw new BadRequest("Bad chunked encoding char: '" + ch + "'");
                     }
 
                     _chunkState = ChunkState.START;

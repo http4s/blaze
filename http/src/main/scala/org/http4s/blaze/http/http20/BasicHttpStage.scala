@@ -15,7 +15,10 @@ import scala.concurrent.ExecutionContext
 import scala.concurrent.duration.Duration
 import scala.util.{Success, Failure}
 
-class BasicHttpStage(timeout: Duration, ec: ExecutionContext, service: HttpService) extends TailStage[NodeMsg.Http2Msg[Headers]] {
+class BasicHttpStage(maxBody: Long,
+                     timeout: Duration,
+                          ec: ExecutionContext,
+                     service: HttpService) extends TailStage[NodeMsg.Http2Msg[Headers]] {
 
   import BasicHttpStage._
 
@@ -41,7 +44,7 @@ class BasicHttpStage(timeout: Duration, ec: ExecutionContext, service: HttpServi
     channelRead(timeout = timeout).onComplete  {
       case Success(HeadersFrame(_, endStream, hs)) =>
         if (endStream) checkAndRunRequest(hs, BufferTools.emptyBuffer)
-        else getBody(hs, new ArrayBuffer[ByteBuffer](16))
+        else getBody(hs, 0, new ArrayBuffer[ByteBuffer](16))
 
       case Success(frame) =>
         val e = PROTOCOL_ERROR(s"Received invalid frame: $frame")
@@ -56,11 +59,17 @@ class BasicHttpStage(timeout: Duration, ec: ExecutionContext, service: HttpServi
     }
   }
 
-  private def getBody(hs: Headers, acc: ArrayBuffer[ByteBuffer]): Unit = channelRead(timeout = timeout).onComplete {
+  private def getBody(hs: Headers, bytesRead: Long, acc: ArrayBuffer[ByteBuffer]): Unit = channelRead(timeout = timeout).onComplete {
     case Success(DataFrame(last, bytes)) =>
-      if (bytes.hasRemaining()) acc += bytes
-      if (!last) getBody(hs, acc)
-      else checkAndRunRequest(hs, BufferTools.joinBuffers(acc))  // Finished with body
+      val totalBytes = bytesRead + bytes.remaining()
+      if (maxBody > 0 && totalBytes > maxBody) {
+        renderResponse(HttpResponse.EntityTooLarge())
+      }
+      else {
+        if (bytes.hasRemaining()) acc += bytes
+        if (!last) getBody(hs, totalBytes, acc)
+        else checkAndRunRequest(hs, BufferTools.joinBuffers(acc))  // Finished with body
+      }
 
     case Success(HeadersFrame(_, true, ts)) =>
       logger.info("Appending trailers: " + ts)
@@ -130,7 +139,7 @@ class BasicHttpStage(timeout: Duration, ec: ExecutionContext, service: HttpServi
             if (!v.equalsIgnoreCase("trailers")) error += s"HTTP/2.0 forbids TE header values other than 'trailers'. "
           // ignore otherwise
 
-          case header         => ; normalHeaders += header
+          case header => normalHeaders += header
       }
     }
 
@@ -146,10 +155,10 @@ class BasicHttpStage(timeout: Duration, ec: ExecutionContext, service: HttpServi
   }
 
   private def renderResponse(resp: Response): Unit = resp match {
-    case SimpleHttpResponse(_, code, headers, body) =>
+    case HttpResponse(code, _, headers, body) =>
                                                       // probably unnecessary micro-opt
       val hs = new ArrayBuffer[(String, String)](headers match {case b: IndexedSeq[_] => b.size + 1; case _ => 16 })
-      hs += ((Status, code.toString))
+      hs += ((Status, Integer.toString(code)))
       headers.foreach{ case (k, v) => hs += ((k.toLowerCase(Locale.ROOT), v)) }
 
       val msgs = if (body.hasRemaining) HeadersFrame(None, false, hs)::DataFrame(true, body)::Nil

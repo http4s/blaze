@@ -22,8 +22,7 @@ class Http2ActorHub[T](headerDecoder: HeaderDecoder[T],
                    maxInboundStreams: Int = 300,
                        inboundWindow: Int = Default.INITIAL_WINDOW_SIZE,
                                   ec: ExecutionContext)
-  extends TailStage[ByteBuffer] with WriteSerializer[ByteBuffer] with Http2Stage[T]
-{ hub =>
+  extends TailStage[ByteBuffer] with WriteSerializer[ByteBuffer] with Http2Stage[T] {
 
   private type Http2Msg = NodeMsg.Http2Msg[T]
   private type Stream = AbstractStream[T]
