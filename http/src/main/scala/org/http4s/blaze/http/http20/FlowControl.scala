@@ -52,7 +52,8 @@ private class FlowControl[T](http2Stage: Http2StageConcurrentOps[T],
   ////////////////////////////////////////////////////////////////////////////////////
 
   def makeStream(streamId: Int): Stream = {
-    val stream = http2Stage.makePipeline(streamId).base(new Stream(streamId))
+    val stream = new Stream(streamId)
+    http2Stage.makePipeline(streamId).base(stream)
     nodeMap.put(streamId, stream)
     stream.inboundCommand(Cmd.Connected)
     stream
