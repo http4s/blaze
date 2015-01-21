@@ -20,7 +20,8 @@ object ApplicationBuild extends Build {
                     file("http"),
                     settings = buildSettings ++ dependencies ++ Seq(
                       libraryDependencies ++= Seq(http4sWebsocket,
-                                                  twitterHAPCK),
+                                                  twitterHAPCK,
+                                                  alpn_api),
                       libraryDependencies ++= (scalaBinaryVersion.value match {
                         case "2.10" => Seq.empty
                         case "2.11" => Seq(scalaXml)
@@ -35,7 +36,6 @@ object ApplicationBuild extends Build {
                       Seq(
                         dontPublish,
                         libraryDependencies += logbackClassic,
-                        libraryDependencies += alpn_api,
                         libraryDependencies += alpn_boot,
 
                         // Adds ALPN to the boot classpath for Spdy support

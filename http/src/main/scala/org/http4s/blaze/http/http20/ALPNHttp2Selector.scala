@@ -1,18 +1,19 @@
-package org.http4s.blaze.examples.http20
+package org.http4s.blaze.http.http20
 
 import java.nio.ByteBuffer
 import java.util
 import javax.net.ssl.SSLEngine
 
 import org.eclipse.jetty.alpn.ALPN
-import org.http4s.blaze.pipeline.Command.{EOF, Error}
+
+import org.http4s.blaze.pipeline.{ Command => Cmd }
 import org.http4s.blaze.pipeline.{LeafBuilder, TailStage}
 import org.http4s.blaze.util.Execution.trampoline
 
 import scala.util.{Failure, Success}
 
-class ALPNPipelineSelector(engine: SSLEngine, builder: String => LeafBuilder[ByteBuffer]) extends TailStage[ByteBuffer] {
-  import ALPNPipelineSelector._
+class ALPNHttp2Selector(engine: SSLEngine, builder: String => LeafBuilder[ByteBuffer]) extends TailStage[ByteBuffer] {
+  import org.http4s.blaze.http.http20.ALPNHttp2Selector._
 
   ALPN.put(engine, new ServerProvider)
 
@@ -22,23 +23,22 @@ class ALPNPipelineSelector(engine: SSLEngine, builder: String => LeafBuilder[Byt
 
   override protected def stageStartup(): Unit = {
     channelWrite(Nil).onComplete {
-      case Success(_)   => selectPipeline()
-      case Failure(EOF) => // NOOP
-      case Failure(t)   =>
+      case Success(_)       => selectPipeline()
+      case Failure(Cmd.EOF) => // NOOP
+      case Failure(t)       =>
         logger.error(t)(s"$name failed to startup")
-        sendOutboundCommand(Error(t))
+        sendOutboundCommand(Cmd.Error(t))
     }(trampoline)
   }
 
   private def selectPipeline(): Unit = {
     try {
-      val provider = ALPN.get(engine)
       val b = builder(selected)
       this.replaceInline(b, true)
     } catch {
       case t: Throwable =>
         logger.error(t)("Failure building pipeline")
-        sendOutboundCommand(Error(t))
+        sendOutboundCommand(Cmd.Error(t))
     }
   }
 
@@ -60,7 +60,7 @@ class ALPNPipelineSelector(engine: SSLEngine, builder: String => LeafBuilder[Byt
 
 }
 
-object ALPNPipelineSelector {
+object ALPNHttp2Selector {
   val HTTP1 = "http/1.1"
   val HTTP2 = "h2-14"
 }

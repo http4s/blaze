@@ -5,7 +5,7 @@ import java.util.HashMap
 
 import org.http4s.blaze.http.http20.Http2Exception._
 import org.http4s.blaze.pipeline.Command.OutboundCommand
-import org.http4s.blaze.pipeline.{HeadStage, Command => Cmd, LeafBuilder}
+import org.http4s.blaze.pipeline.{ HeadStage, Command => Cmd }
 
 import org.log4s.getLogger
 

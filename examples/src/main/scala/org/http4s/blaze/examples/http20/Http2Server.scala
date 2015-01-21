@@ -5,7 +5,7 @@ import java.net.InetSocketAddress
 import org.http4s.blaze.channel._
 import org.http4s.blaze.channel.nio1.NIO1SocketServerChannelFactory
 import org.http4s.blaze.examples.{Consts, ExampleService, ExampleKeystore}
-import org.http4s.blaze.http.http20.NodeMsg
+import org.http4s.blaze.http.http20.{ProtocolSelector, NodeMsg}
 import org.http4s.blaze.pipeline.{LeafBuilder, TrunkBuilder}
 import org.http4s.blaze.pipeline.stages.SSLStage
 
