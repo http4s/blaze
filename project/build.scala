@@ -101,11 +101,11 @@ object ApplicationBuild extends Build {
     libraryDependencies += log4s
   )
 
-  lazy val specs2              = "org.specs2"                 %% "specs2"              % "2.4"
+  lazy val specs2              = "org.specs2"                 %% "specs2"              % "2.4.13"
   lazy val http4sWebsocket     = "org.http4s"                 %% "http4s-websocket"    % "0.1.1"
-  lazy val logbackClassic      = "ch.qos.logback"             %  "logback-classic"     % "1.0.9"
-  lazy val scalaXml =            "org.scala-lang.modules"     %% "scala-xml"           % "1.0.2"
-  lazy val log4s               = "org.log4s"                  %% "log4s"               % "1.1.2"
+  lazy val logbackClassic      = "ch.qos.logback"             %  "logback-classic"     % "1.1.2"
+  lazy val scalaXml =            "org.scala-lang.modules"     %% "scala-xml"           % "1.0.3"
+  lazy val log4s               = "org.log4s"                  %% "log4s"               % "1.1.3"
   lazy val twitterHAPCK        = "com.twitter"                %  "hpack"               % "0.10.0"
 
 
