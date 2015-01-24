@@ -91,7 +91,10 @@ object ApplicationBuild extends Build {
 //    javaOptions in run += "-Dcom.sun.net.ssl.enableECC=false",
 //    javaOptions in run += "-Djsse.enableSNIExtension=false",
     fork in run := true,
-    resolvers += Resolver.sonatypeRepo("snapshots")
+    resolvers ++= Seq(
+      Resolver.sonatypeRepo("snapshots"),
+      "Scalaz Bintray Repo" at "http://dl.bintray.com/scalaz/releases" // needed for specs2 streamz dep
+    )
   )
 
   /* dependencies */
