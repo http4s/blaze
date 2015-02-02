@@ -1,16 +1,14 @@
 package org.http4s.blaze.channel.nio1
 
 import java.nio.channels._
-import scala.annotation.tailrec
 import java.net.SocketAddress
+
 import org.http4s.blaze.channel._
+
 import scala.util.control.NonFatal
-import org.log4s.getLogger
 
 abstract class NIO1ServerChannelFactory[Channel <: NetworkChannel](pool: SelectorLoopPool)
                 extends ServerChannelFactory[Channel] {
-
-  def this(fixedPoolSize: Int, bufferSize: Int = 8*1024) = this(new FixedSelectorPool(fixedPoolSize, bufferSize))
 
   protected def doBind(address: SocketAddress): Channel
 

@@ -22,7 +22,7 @@ class WebSocketServer(port: Int) {
 
   val group = AsynchronousChannelGroup.withFixedThreadPool(Consts.poolSize, Executors.defaultThreadFactory())
 
-  private val factory = new NIO2SocketServerChannelFactory(f)
+  private val factory = NIO2SocketServerChannelFactory(f)
 
   def run(): Unit = factory.bind(new InetSocketAddress(port)).run()
 }

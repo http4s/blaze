@@ -17,7 +17,7 @@ class NIO2HttpServer(port: Int) {
 
   private val status = new IntervalConnectionMonitor(10.minutes)
   private val f: BufferPipelineBuilder = _ => LeafBuilder(ExampleService.http1Stage(Some(status), 10*1024))
-  private val factory = new NIO2SocketServerChannelFactory(status.wrapBuilder(f))
+  private val factory = NIO2SocketServerChannelFactory(status.wrapBuilder(f))
 
   def run(): Unit = factory.bind(new InetSocketAddress(port)).run()
 }

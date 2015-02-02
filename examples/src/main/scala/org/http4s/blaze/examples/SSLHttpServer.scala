@@ -20,7 +20,7 @@ class SSLHttpServer(port: Int) {
     TrunkBuilder(new SSLStage(eng, 100*1024)).cap(ExampleService.http1Stage(None, 10*1024))
   }
 
-  private val factory = new NIO1SocketServerChannelFactory(f, workerThreads = Consts.poolSize)
+  private val factory = NIO1SocketServerChannelFactory(f, workerThreads = Consts.poolSize)
 
   def run(): Unit = factory.bind(new InetSocketAddress(port)).run()
 }

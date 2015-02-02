@@ -1,26 +1,36 @@
 package org.http4s.blaze
 package channel.nio1
 
+import org.http4s.blaze.util.BufferTools
 import org.http4s.blaze.channel.BufferPipelineBuilder
+import org.http4s.blaze.pipeline.Command.EOF
+
 import java.nio.channels._
 import java.net.SocketAddress
 import java.io.IOException
 import java.nio.ByteBuffer
-import org.http4s.blaze.util.BufferTools
 
 import scala.util.{Failure, Success, Try}
-import org.http4s.blaze.pipeline.Command.EOF
+
 import NIO1HeadStage._
 
-class NIO1SocketServerChannelFactory(pipeFactory: BufferPipelineBuilder,
-                                     pool: SelectorLoopPool)
+object NIO1SocketServerChannelFactory {
+  def apply(pipeFactory: BufferPipelineBuilder, pool: SelectorLoopPool): NIO1SocketServerChannelFactory =
+    new NIO1SocketServerChannelFactory(pipeFactory, pool)
+
+  def apply(pipeFactory: BufferPipelineBuilder,
+            workerThreads: Int = 8, bufferSize: Int = 4*1024): NIO1SocketServerChannelFactory = {
+    val pool = new FixedSelectorPool(workerThreads, bufferSize)
+    new NIO1SocketServerChannelFactory(pipeFactory, pool)
+  }
+}
+
+class NIO1SocketServerChannelFactory private(pipeFactory: BufferPipelineBuilder,
+                                             pool: SelectorLoopPool)
           extends NIO1ServerChannelFactory[ServerSocketChannel](pool)
 {
 
   import org.http4s.blaze.channel.ChannelHead.brokePipeMessages
-
-  def this(pipeFactory: BufferPipelineBuilder, workerThreads: Int = 8, bufferSize: Int = 4*1024) =
-    this(pipeFactory, new FixedSelectorPool(workerThreads, bufferSize))
 
   //////////////// End of constructors /////////////////////////////////////////////////////////
 
