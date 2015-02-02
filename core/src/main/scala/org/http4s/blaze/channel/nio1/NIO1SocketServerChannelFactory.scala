@@ -15,14 +15,23 @@ import scala.util.{Failure, Success, Try}
 import NIO1HeadStage._
 
 object NIO1SocketServerChannelFactory {
+
+  /** Default number of threads used to make a new [[SelectorLoopPool]] if not specified */
+  val defaultPoolSize: Int = Runtime.getRuntime.availableProcessors()*2 + 1
+
+  /** Default size of buffer to use in a [[SelectorLoop]] */
+  val defaultBufferSize: Int = 16*1024
+
   def apply(pipeFactory: BufferPipelineBuilder, pool: SelectorLoopPool): NIO1SocketServerChannelFactory =
     new NIO1SocketServerChannelFactory(pipeFactory, pool)
 
   def apply(pipeFactory: BufferPipelineBuilder,
-            workerThreads: Int = 8, bufferSize: Int = 4*1024): NIO1SocketServerChannelFactory = {
+            workerThreads: Int = defaultPoolSize, bufferSize: Int = defaultBufferSize): NIO1SocketServerChannelFactory = {
     val pool = new FixedSelectorPool(workerThreads, bufferSize)
     new NIO1SocketServerChannelFactory(pipeFactory, pool)
   }
+
+
 }
 
 class NIO1SocketServerChannelFactory private(pipeFactory: BufferPipelineBuilder,
