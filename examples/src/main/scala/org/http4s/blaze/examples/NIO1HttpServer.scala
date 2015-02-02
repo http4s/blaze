@@ -15,7 +15,7 @@ class NIO1HttpServer(port: Int) {
   private val f: BufferPipelineBuilder =
     status.wrapBuilder { _ => LeafBuilder(ExampleService.http1Stage(Some(status), 10*1024)) }
 
-  private val factory = new NIO1SocketServerChannelFactory(f, workerThreads = Consts.poolSize)
+  private val factory = NIO1SocketServerChannelFactory(f, workerThreads = Consts.poolSize)
 
   def run(): Unit = factory.bind(new InetSocketAddress(port)).run()
 }

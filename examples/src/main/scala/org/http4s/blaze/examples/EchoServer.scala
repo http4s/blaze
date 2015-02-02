@@ -23,8 +23,7 @@ class EchoServer {
   def prepare(address: InetSocketAddress): ServerChannel = {
     val f: BufferPipelineBuilder = _ => new EchoStage
 
-    val factory = new NIO2SocketServerChannelFactory(f)
-    factory.bind(address)
+    NIO2SocketServerChannelFactory(f).bind(address)
   }
   
   def run(port: Int) {

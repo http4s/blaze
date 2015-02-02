@@ -9,7 +9,13 @@ import org.http4s.blaze.channel._
 import org.http4s.blaze.pipeline.Command.Connected
 
 
-class NIO2SocketServerChannelFactory(pipeFactory: BufferPipelineBuilder, group: AsynchronousChannelGroup = null)
+object NIO2SocketServerChannelFactory {
+  def apply(pipeFactory: BufferPipelineBuilder, group: Option[AsynchronousChannelGroup] = None): NIO2SocketServerChannelFactory =
+    new NIO2SocketServerChannelFactory(pipeFactory, group.orNull)
+}
+
+class NIO2SocketServerChannelFactory private(pipeFactory: BufferPipelineBuilder,
+                                                   group: AsynchronousChannelGroup = null)
         extends ServerChannelFactory[AsynchronousServerSocketChannel] {
 
   def bind(localAddress: SocketAddress = null): ServerChannel = {
