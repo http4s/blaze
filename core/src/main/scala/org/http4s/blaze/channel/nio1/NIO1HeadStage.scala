@@ -91,9 +91,9 @@ private[nio1] abstract class NIO1HeadStage(ch: SelectableChannel,
     val buffers = writeData // get a local reference so we don't hit the volatile a lot
     performWrite(scratch, buffers) match {
       case Complete =>
+        writeData = null
         val p = writePromise.get()
         writePromise.set(null)
-        writeData = null
         unsetOp(SelectionKey.OP_WRITE)
         p.trySuccess(())
 
