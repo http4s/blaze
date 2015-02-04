@@ -49,7 +49,14 @@ private[nio1] abstract class NIO1HeadStage(ch: SelectableChannel,
     r match {
       case Success(_)   =>
         val p = readPromise.getAndSet(null)
-        p.complete(r)
+        if (!p.tryComplete(r)) p match {
+          case p: PipeClosedPromise[_] => // NOOP: the channel was closed: data not needed.
+          case other =>
+            val msg = this.getClass.getName() +
+              " is in an inconsistent state: readPromise already completed: " +
+              p.toString()
+            closeWithError(new IllegalStateException(msg))
+        }
 
       case Failure(e) =>
         val ee = checkError(e)
@@ -70,7 +77,7 @@ private[nio1] abstract class NIO1HeadStage(ch: SelectableChannel,
     else readPromise.get() match {
       case f :PipeClosedPromise[ByteBuffer] => f.future
       case _                    =>
-        Future.failed(new IndexOutOfBoundsException("Cannot have more than one pending read request"))
+        Future.failed(new IllegalStateException("Cannot have more than one pending read request"))
     }
   }
 
@@ -79,13 +86,13 @@ private[nio1] abstract class NIO1HeadStage(ch: SelectableChannel,
   @volatile private var writeData: Array[ByteBuffer] = null
   private val writePromise = new AtomicReference[Promise[Unit]](null)
 
-  // Will always be called from the SelectorLoop thread
+  // Will always be called from the SelectorLoop thread. Does this mean we don't need to be private?
   final def writeReady(scratch: ByteBuffer): Unit = {
     val buffers = writeData // get a local reference so we don't hit the volatile a lot
     performWrite(scratch, buffers) match {
       case Complete =>
-        val p = writePromise.get()
         writeData = null
+        val p = writePromise.get()
         writePromise.set(null)
         unsetOp(SelectionKey.OP_WRITE)
         p.trySuccess(())
@@ -118,9 +125,9 @@ private[nio1] abstract class NIO1HeadStage(ch: SelectableChannel,
       }
     } else writePromise.get match {
       case f :PipeClosedPromise[Unit] => f.future
-      case p                    =>
+      case p =>
         logger.trace(s"Received bad write request: $p")
-        Future.failed(new IndexOutOfBoundsException("Cannot have more than one pending write request"))
+        Future.failed(new IllegalStateException("Cannot have more than one pending write request"))
     }
   }
 
@@ -153,12 +160,13 @@ private[nio1] abstract class NIO1HeadStage(ch: SelectableChannel,
     if (t != EOF) logger.warn(t)("Abnormal NIO1HeadStage termination")
 
     val r = readPromise.getAndSet(new PipeClosedPromise(t))
-    logger.trace(s"closeWithError($t); promise: $r")
     if (r != null) r.tryFailure(t)
 
     val w = writePromise.getAndSet(new PipeClosedPromise(t))
     writeData = Array()
     if (w != null) w.tryFailure(t)
+
+    logger.trace(s"closeWithError($t); readPromise: $r, writePromise: $w")
 
     try loop.enqueTask(new Runnable {
       def run() = {
