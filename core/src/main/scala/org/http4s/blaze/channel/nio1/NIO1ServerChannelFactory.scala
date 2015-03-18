@@ -29,17 +29,14 @@ abstract class NIO1ServerChannelFactory[Channel <: NetworkChannel](pool: Selecto
 
     type C = Channel
 
-    @volatile private var closed = false
-
     override def close(): Unit = {
-      closed = true
       pool.shutdown()
-      channel.close()
+      super.close()
     }
 
     // The accept thread just accepts connections and pawns them off on the SelectorLoop pool
     final def run(): Unit = {
-      while (channel.isOpen && !closed) {
+      while (channel.isOpen) {
         try {
           val p = pool.nextLoop()
           completeConnection(channel, p)

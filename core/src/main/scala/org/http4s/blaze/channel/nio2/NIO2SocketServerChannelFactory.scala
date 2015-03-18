@@ -1,12 +1,14 @@
 package org.http4s.blaze.channel.nio2
 
 import java.net.SocketAddress
-import java.nio.channels.{AsynchronousServerSocketChannel, AsynchronousChannelGroup}
+import java.nio.channels.{AsynchronousCloseException, AsynchronousServerSocketChannel, AsynchronousChannelGroup}
 
 import scala.annotation.tailrec
 
 import org.http4s.blaze.channel._
 import org.http4s.blaze.pipeline.Command.Connected
+
+import scala.concurrent.ExecutionException
 
 
 object NIO2SocketServerChannelFactory {
@@ -31,7 +33,7 @@ class NIO2SocketServerChannelFactory private(pipeFactory: BufferPipelineBuilder,
     @tailrec
     final def run():Unit = {
       if (channel.isOpen) {
-        var continue = true
+        var continue = false
         try {
           val ch = channel.accept().get() // Will synchronize here
           val addr = ch.getRemoteAddress
@@ -41,13 +43,14 @@ class NIO2SocketServerChannelFactory private(pipeFactory: BufferPipelineBuilder,
                 .base(new ByteBufferHead(ch))
                 .sendInboundCommand(Connected)
 
-        } catch {
-          case e: InterruptedException => continue = false
+          continue = true
 
+        } catch {
+          case e: ExecutionException if e.getCause().isInstanceOf[AsynchronousCloseException] => /* NOOP */
+          case _: InterruptedException        => /* NOOP */
         }
         if (continue) run()
       }
-      else sys.error("Channel closed")
     }
   }
 }

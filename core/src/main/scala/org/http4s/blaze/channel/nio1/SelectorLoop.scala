@@ -144,6 +144,7 @@ final class SelectorLoop(id: String, selector: Selector, bufferSize: Int) extend
   def close(): Unit = {
     logger.info(s"Shutting down SelectorLoop ${getName()}")
     _isClosed = true
+    selector.wakeup()
   }
 
   private def killSelector() {

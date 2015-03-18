@@ -17,7 +17,7 @@ abstract class ServerChannel extends Runnable with Closeable { self =>
 
   type C <: NetworkChannel
 
-  protected def channel: C
+  protected val channel: C
 
   /** Starts the accept loop, handing connections off to a thread pool */
   def run(): Unit
