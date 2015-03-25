@@ -110,20 +110,15 @@ class ServerParserSpec extends Specification {
     }
 
     "Parse the request line for HTTP" in {
-      val p = new Parser()
-      p.parseLine("POST /enlighten/calais.asmx HTTP/1.1\r\n") should_== (true)
+      new Parser().parseLine("POST /enlighten/calais.asmx HTTP/1.1\r\n") should_== (true)
 
-      //      p.s should_== ("Request('POST', '/enlighten/calais.asmx', 'http', 1.1)")
-      //      p.getState() should_== (ParserState.Idle)
+      new Parser().parseLine("POST /enlighten/calais.asmx HTTP/1.1\n") should_== (true)
     }
 
     "Parse the request line for HTTP in segments" in {
       val p = new Parser()
       p.parseLine("POST /enlighten/cala") should_== (false)
       p.parseLine("is.asmx HTTP/1.1\r\n") should_== (true)
-
-      //      p.s should_== ("Request('POST', '/enlighten/calais.asmx', 'http', 1.1)")
-      //      p.getState() should_== (ParserState.Idle)
     }
 
 
