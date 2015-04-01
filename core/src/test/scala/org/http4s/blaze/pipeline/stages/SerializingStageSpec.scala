@@ -10,9 +10,8 @@ import scala.concurrent.Future
 import scala.concurrent.duration._
 import scala.concurrent.Await
 import scala.concurrent.ExecutionContext.Implicits.global
-import org.specs2.time.NoTimeConversions
 
-class SerializingStageSpec extends Specification with NoTimeConversions {
+class SerializingStageSpec extends Specification {
 
   class SlowIntHead extends SlowHead[Int] {
 

@@ -1,13 +1,15 @@
 package org.http4s.blaze.pipeline.stages
 
 import org.specs2.mutable.Specification
-import scala.concurrent.duration._
-import org.http4s.blaze.pipeline.{LeafBuilder, TailStage}
-import java.nio.ByteBuffer
-import org.specs2.time.NoTimeConversions
-import scala.concurrent.{Future, Await}
 
-abstract class TimeoutHelpers extends Specification with NoTimeConversions {
+import org.http4s.blaze.pipeline.{LeafBuilder, TailStage}
+
+import java.nio.ByteBuffer
+
+import scala.concurrent.{Future, Await}
+import scala.concurrent.duration._
+
+abstract class TimeoutHelpers extends Specification {
   
   def genDelayStage(timeout: Duration): TimeoutStageBase[ByteBuffer]
 

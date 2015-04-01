@@ -7,9 +7,8 @@ import java.nio.ByteBuffer
 import scala.concurrent.Await
 import scala.concurrent.duration._
 import org.http4s.blaze.pipeline.LeafBuilder
-import org.specs2.time.NoTimeConversions
 
-class ByteToObjectStageSpec extends Specification with NoTimeConversions {
+class ByteToObjectStageSpec extends Specification {
 
   sealed trait Msg { def tag: Byte }
   case class One(byte: Byte) extends Msg { def tag = 0 }

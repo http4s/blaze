@@ -1,18 +1,17 @@
 package org.http4s.blaze.http.websocket
 
-import org.http4s.websocket.WebsocketBits._
 import org.specs2.mutable._
 
+import org.http4s.websocket.WebsocketBits._
 import org.http4s.blaze.pipeline.{TrunkBuilder, TailStage}
 import org.http4s.blaze.pipeline.stages.SeqHead
 
 import scala.concurrent.Await
 import scala.concurrent.duration._
 import java.net.ProtocolException
-import org.specs2.time.NoTimeConversions
 
 
-class FrameAggregatorSpec extends Specification with NoTimeConversions {
+class FrameAggregatorSpec extends Specification {
 
   case class Sequencer(frames: Seq[WebSocketFrame]) {
     val h = new TailStage[WebSocketFrame] {

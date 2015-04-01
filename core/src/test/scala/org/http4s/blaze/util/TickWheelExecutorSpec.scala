@@ -2,12 +2,10 @@ package org.http4s.blaze.util
 
 import org.specs2.mutable._
 
-
 import java.util.concurrent.atomic.AtomicInteger
-import org.specs2.time.NoTimeConversions
 
 
-class TickWheelExecutorSpec extends Specification with NoTimeConversions {
+class TickWheelExecutorSpec extends Specification {
   import scala.concurrent.duration._
 
   "TickWheelExecutor" should {

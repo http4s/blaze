@@ -8,10 +8,9 @@ import scala.concurrent.ExecutionContext
 import scala.concurrent.duration._
 
 import org.specs2.mutable.Specification
-import org.specs2.time.NoTimeConversions
 
 
-class ActorSpec extends Specification with NoTimeConversions {
+class ActorSpec extends Specification {
 
   import scala.concurrent.ExecutionContext.Implicits.global
 

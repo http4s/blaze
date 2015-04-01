@@ -7,13 +7,16 @@ import SSLEngineResult.HandshakeStatus._
 import org.http4s.blaze.pipeline.Command.Connected
 import org.http4s.blaze.pipeline.LeafBuilder
 import org.http4s.blaze.util.{GenericSSLContext, BufferTools}
+import org.http4s.blaze.util.Execution
+
 import org.specs2.mutable.Specification
-import org.specs2.time.NoTimeConversions
 
 import scala.concurrent.duration._
 import scala.concurrent._
 
-class SSLStageSpec extends Specification with NoTimeConversions {
+class SSLStageSpec extends Specification {
+
+  implicit def ec = Execution.trampoline
 
   def debug = false
 

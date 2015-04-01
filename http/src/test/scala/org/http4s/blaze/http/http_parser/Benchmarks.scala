@@ -11,7 +11,7 @@ class Benchmarks extends Specification {
 
   val request = "POST /enlighten/calais.asmx HTTP/1.1\r\n"
 
-  val header =  "From: someuser@jmarshall.com  \r\n" +
+  val headers =  "From: someuser@jmarshall.com  \r\n" +
     "HOST: www.foo.com\r\n" +
     "User-Agent: HTTPTool/1.0  \r\n" +
     "Some-Header\r\n" +
@@ -20,7 +20,7 @@ class Benchmarks extends Specification {
   val body    = "hello world"
   val chunked = "Transfer-Encoding: chunked\r\n"
 
-  val mockChunked = request + chunked + header + toChunk(body) + toChunk(", " + body + " again!") + "0 \r\n" + "\r\n"
+  val mockChunked = request + chunked + headers + toChunk(body) + toChunk(", " + body + " again!") + "0 \r\n" + "\r\n"
 
   def toChunk(str: String): String = {
     val len = Integer.toHexString(str.length) + "\r\n"

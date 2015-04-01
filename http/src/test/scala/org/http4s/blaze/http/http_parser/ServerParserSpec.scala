@@ -48,12 +48,8 @@ class ServerParserSpec extends Specification {
     }
   }
 
-  def toChunk(str: String): String = {
-    val len = Integer.toHexString(str.length) + "\r\n"
-    len +
-      str +
-      "\r\n"
-  }
+  def toChunk(str: String): String = s"${Integer.toHexString(str.length)}\r\n${str}\r\n"
+
 
   val l_headers = ("From", "someuser@jmarshall.com  ") ::
     ("HOST", "www.foo.com") ::
@@ -66,13 +62,6 @@ class ServerParserSpec extends Specification {
 
   val http10 = "GET /path/file.html HTTP/1.0\r\n"
 
-  //  val header =  "From: someuser@jmarshall.com  \r\n" +
-  //                "HOST: www.foo.com\r\n" +
-  //                "User-Agent: HTTPTool/1.0  \r\n" +
-  //                "Some-Header\r\n" +
-  //                "\r\n"
-
-
   def buildHeaderString(hs: Seq[(String, String)]): String = {
     hs.foldLeft(new StringBuilder) { (sb, h) =>
       sb.append(h._1)
@@ -81,7 +70,7 @@ class ServerParserSpec extends Specification {
     }.append("\r\n").result
   }
 
-  val header = buildHeaderString(l_headers)
+  val headers = buildHeaderString(l_headers)
 
   val body = "hello world"
 
@@ -89,9 +78,9 @@ class ServerParserSpec extends Specification {
 
   val chunked = "Transfer-Encoding: chunked\r\n"
 
-  val mockFiniteLength = request + host + lengthh + header + body
+  val mockFiniteLength = request + host + lengthh + headers + body
 
-  val mockChunked = request + host + chunked + header + toChunk(body) + toChunk(body + " again!") + "0 \r\n" + "\r\n"
+  val mockChunked = request + host + chunked + headers + toChunk(body) + toChunk(body + " again!") + "0 \r\n" + "\r\n"
 
   val twoline = request + host
 
@@ -154,7 +143,7 @@ class ServerParserSpec extends Specification {
 
     "Parse headers" in {
       val p = new Parser()
-      p.parseheaders(header) should_== (true)
+      p.parseheaders(headers) should_== (true)
       p.getContentType should_== (EndOfContent.UNKNOWN_CONTENT)
       p.h.result should_== (l_headers.map { case (a, b) => (a.trim, b.trim)})
     }
@@ -196,8 +185,8 @@ class ServerParserSpec extends Specification {
 
       "need input on partial headers" in {
         val p = new Parser()
-        p.parseHeaders(header.slice(0, 20)) should_== (false)
-        p.parseheaders(header.substring(20)) should_== (true)
+        p.parseHeaders(headers.slice(0, 20)) should_== (false)
+        p.parseheaders(headers.substring(20)) should_== (true)
         p.h.result should_== (l_headers.map { case (a, b) => (a.trim, b.trim)})
       }
 

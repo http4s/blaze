@@ -1,7 +1,6 @@
 package org.http4s.blaze.pipeline.stages
 
 import org.specs2.mutable._
-import org.specs2.time.NoTimeConversions
 
 import org.http4s.blaze.pipeline.{LeafBuilder, TailStage}
 import scala.concurrent.Await
@@ -9,7 +8,7 @@ import java.util.concurrent.TimeoutException
 import scala.concurrent.duration._
 
 
-class StageSpec extends Specification with NoTimeConversions {
+class StageSpec extends Specification {
   
   def intTail = new TailStage[Int] { def name = "Int Tail" }
   def slow(duration: Duration) = new DelayHead[Int](duration) { def next() = 1 }

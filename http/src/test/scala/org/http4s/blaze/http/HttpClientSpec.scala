@@ -4,10 +4,9 @@ import org.specs2.mutable._
 
 import scala.concurrent.Await
 import scala.concurrent.duration._
-import org.specs2.time.NoTimeConversions
 
 
-class HttpClientSpec extends Specification with NoTimeConversions {
+class HttpClientSpec extends Specification {
 
   "HttpClient" should {
 

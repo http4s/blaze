@@ -1,12 +1,14 @@
 package org.http4s.blaze.pipeline
 
+import org.http4s.blaze.util.Execution
 import org.specs2.mutable._
+
 import scala.concurrent.{Future, Await}
-
 import scala.concurrent.duration._
-import org.specs2.time.NoTimeConversions
 
-class PipelineSpec extends Specification with NoTimeConversions {
+class PipelineSpec extends Specification {
+
+  implicit def ec = Execution.trampoline
 
   class IntHead extends HeadStage[Int] {
 
