@@ -118,7 +118,7 @@ object ApplicationBuild extends Build {
   lazy val alpn_api            = "org.eclipse.jetty.alpn"     % "alpn-api"             % "1.1.0.v20141014"
 
   // Note that the alpn_boot version is JVM version specific. Check the docs if getting weird errors
-  lazy val alpn_boot           = "org.mortbay.jetty.alpn"     % "alpn-boot"            % "7.0.0.v20140317" // "8.0.0.v20140317"
+  lazy val alpn_boot           = "org.mortbay.jetty.alpn"     % "alpn-boot"            % "8.0.0.v20140317" // "7.0.0.v20140317"
 
   /* publishing */
   lazy val publishing = Seq(

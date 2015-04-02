@@ -5,7 +5,7 @@ import java.net.InetSocketAddress
 import org.http4s.blaze.channel._
 import org.http4s.blaze.channel.nio1.NIO1SocketServerChannelFactory
 import org.http4s.blaze.examples.{Consts, ExampleService, ExampleKeystore}
-import org.http4s.blaze.http.http20.{ProtocolSelector, NodeMsg}
+import org.http4s.blaze.http.http20.{Http2Selector, NodeMsg}
 import org.http4s.blaze.pipeline.{LeafBuilder, TrunkBuilder}
 import org.http4s.blaze.pipeline.stages.SSLStage
 
@@ -16,7 +16,7 @@ class Http2Server(port: Int) {
   private val f: BufferPipelineBuilder = { _ =>
     val eng = sslContext.createSSLEngine()
     eng.setUseClientMode(false)
-    TrunkBuilder(new SSLStage(eng)).cap(ProtocolSelector(eng, ExampleService.service(None), 1024*1024, 16*1024, ec))
+    TrunkBuilder(new SSLStage(eng)).cap(Http2Selector(eng, ExampleService.service(None), 1024*1024, 16*1024, ec))
   }
 
   private val factory = NIO1SocketServerChannelFactory(f, workerThreads = Consts.poolSize)
