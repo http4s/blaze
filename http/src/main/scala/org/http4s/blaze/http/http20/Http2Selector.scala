@@ -4,7 +4,6 @@ import java.nio.ByteBuffer
 import javax.net.ssl.SSLEngine
 
 import org.http4s.blaze.http._
-import org.http4s.blaze.http.http20.ALPNHttp2Selector._
 import org.http4s.blaze.http.http20.NodeMsg.Http2Msg
 import org.http4s.blaze.pipeline.{LeafBuilder, TailStage}
 import org.http4s.blaze.util.Execution._
@@ -12,15 +11,30 @@ import org.http4s.blaze.util.Execution._
 import scala.concurrent.ExecutionContext
 import scala.concurrent.duration.Duration
 
-object ProtocolSelector {
-  def apply(engine: SSLEngine, service: HttpService, maxBody: Long, maxNonbodyLength: Int, ec: ExecutionContext): ALPNHttp2Selector = {
+object Http2Selector {
+  def apply(engine: SSLEngine, 
+           service: HttpService, 
+           maxBody: Long, 
+  maxNonbodyLength: Int, 
+                ec: ExecutionContext): ALPNSelector = {
+
+    val HTTP_1_1 = "http/1.1"
+    val H2       = "h2"
+    val H2_14    = "h2-14"
     
-    def select(s: String): LeafBuilder[ByteBuffer] = s match {
-    case HTTP2 => LeafBuilder(http2Stage(service, maxBody, maxNonbodyLength, ec))
-    case _     => LeafBuilder(new HttpServerStage(maxBody, maxNonbodyLength)(service))
+    def builder(s: String): LeafBuilder[ByteBuffer] = s match {
+    case H2 | H2_14 => LeafBuilder(http2Stage(service, maxBody, maxNonbodyLength, ec))
+    case _          => LeafBuilder(new HttpServerStage(maxBody, maxNonbodyLength)(service))
     }
+
+    def selector(protocols: Seq[String]): String =
+      protocols.find {
+        case H2    => true
+        case H2_14 => true
+        case _     => false
+      } getOrElse(HTTP_1_1)
     
-    new ALPNHttp2Selector(engine, select)
+    new ALPNSelector(engine, selector, builder)
   }
 
   private def http2Stage(service: HttpService, maxBody: Long, maxHeadersLength: Int, ec: ExecutionContext): TailStage[ByteBuffer] = {
@@ -38,5 +52,4 @@ object ProtocolSelector {
       ec = ec
     )
   }
-} 
-
+}

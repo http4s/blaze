@@ -12,16 +12,24 @@ import org.http4s.blaze.util.Execution.trampoline
 
 import scala.util.{Failure, Success}
 
-class ALPNHttp2Selector(engine: SSLEngine, builder: String => LeafBuilder[ByteBuffer]) extends TailStage[ByteBuffer] {
-  import org.http4s.blaze.http.http20.ALPNHttp2Selector._
+/** Dynamically inject an appropriate pipeline using ALPN
+  *
+  * @param engine the `SSLEngine` in use for the connection
+  * @param selector selects the preferred protocol from the seq of supported clients. May get an empty sequence.
+  * @param builder builds the appropriate pipeline based on the
+  */
+class ALPNSelector(engine: SSLEngine,
+                 selector: Seq[String] => String,
+                  builder: String => LeafBuilder[ByteBuffer]) extends TailStage[ByteBuffer] {
 
   ALPN.put(engine, new ServerProvider)
 
-  private var selected: String = HTTP1
+  private var selected: Option[String] = None
 
   override def name: String = "PipelineSelector"
 
   override protected def stageStartup(): Unit = {
+    // This shouldn't complete until the handshake is done and ALPN has been run.
     channelWrite(Nil).onComplete {
       case Success(_)       => selectPipeline()
       case Failure(Cmd.EOF) => // NOOP
@@ -33,7 +41,7 @@ class ALPNHttp2Selector(engine: SSLEngine, builder: String => LeafBuilder[ByteBu
 
   private def selectPipeline(): Unit = {
     try {
-      val b = builder(selected)
+      val b = builder(selected.getOrElse(selector(Nil)))
       this.replaceInline(b, true)
     } catch {
       case t: Throwable =>
@@ -47,20 +55,15 @@ class ALPNHttp2Selector(engine: SSLEngine, builder: String => LeafBuilder[ByteBu
 
     override def select(protocols: util.List[String]): String = {
       logger.info("Available protocols: " + protocols)
-      if (protocols.exists(_ == HTTP2)) {
-        selected = "h2-14"
-      }
-      selected
+      val s = selector(protocols)
+      selected = Some(s)
+      s
     }
 
     override def unsupported() {
-      logger.info(s"Unsupported protocols, defaulting to $HTTP1")
+      logger.info(s"Unsupported protocols, defaulting to $selected")
     }
   }
 
 }
 
-object ALPNHttp2Selector {
-  val HTTP1 = "http/1.1"
-  val HTTP2 = "h2-14"
-}
