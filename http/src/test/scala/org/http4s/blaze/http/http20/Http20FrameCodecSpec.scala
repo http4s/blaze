@@ -213,7 +213,7 @@ class Http20FrameCodecSpec extends Specification {
   }
 
   def hencoder = new HeaderHttp20Encoder with Http20FrameEncoder {
-    override protected val headerEncoder: HeaderEncoder = new TupleHeaderEncoder()
+    override protected val headerEncoder: HeaderEncoder = new HeaderEncoder()
   }
 
   "HEADERS frame with compressors" should {

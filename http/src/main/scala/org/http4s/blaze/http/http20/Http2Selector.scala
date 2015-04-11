@@ -44,8 +44,7 @@ object Http2Selector {
     }
 
     new Http2Stage(
-      new TupleHeaderDecoder(maxHeadersLength),
-      new TupleHeaderEncoder(),
+      maxHeadersLength,
       node_builder = newNode,
       timeout = Duration.Inf,
       maxInboundStreams = 300,

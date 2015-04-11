@@ -16,18 +16,19 @@ import scala.concurrent.duration._
 import scala.concurrent.{ Future, ExecutionContext }
 import scala.util.{Failure, Success}
 
-class Http2Stage(headerDecoder: HeaderDecoder,
-                 headerEncoder: HeaderEncoder,
-                  node_builder: Int => LeafBuilder[NodeMsg.Http2Msg],
-                       timeout: Duration,
-             maxInboundStreams: Int = 300,
-                 inboundWindow: Int = Default.INITIAL_WINDOW_SIZE,
-                            ec: ExecutionContext)
+class Http2Stage(maxHeadersLength: Int,
+                     node_builder: Int => LeafBuilder[NodeMsg.Http2Msg],
+                          timeout: Duration,
+                maxInboundStreams: Int = 300,
+                    inboundWindow: Int = Default.INITIAL_WINDOW_SIZE,
+                               ec: ExecutionContext)
   extends TailStage[ByteBuffer] with WriteSerializer[ByteBuffer] with Http2StageConcurrentOps {
 
   ///////////////////////////////////////////////////////////////////////////
 
   private val lock = new AnyRef   // The only point of synchronization.
+  private val headerDecoder = new HeaderDecoder(maxHeadersLength)
+  private val headerEncoder = new HeaderEncoder()
   
   override def name: String = "Http2ConnectionStage"
 

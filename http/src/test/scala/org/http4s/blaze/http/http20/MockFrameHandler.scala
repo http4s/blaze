@@ -24,7 +24,7 @@ class MockFrameHandler(inHeaders: Boolean) extends FrameHandler {
 
 
 class MockDecodingFrameHandler extends DecodingFrameHandler {
-  override protected val headerDecoder: HeaderDecoder = new TupleHeaderDecoder(20*1024, 4096)
+  override protected val headerDecoder: HeaderDecoder = new HeaderDecoder(20*1024, 4096)
 
   override def onCompletePushPromiseFrame(streamId: Int, promisedId: Int, headers: Headers): Http2Result = ???
   override def onCompleteHeadersFrame(streamId: Int, priority: Option[Priority], end_stream: Boolean, headers: Headers): Http2Result = ???
