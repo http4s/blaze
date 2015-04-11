@@ -14,6 +14,7 @@ import scala.concurrent.Future
 
 private class FlowControl[T](http2Stage: Http2StageConcurrentOps[T],
                           inboundWindow: Int,
+                              idManager: StreamIdManager,
                           http2Settings: Settings,
                                   codec: Http20FrameDecoder with Http20FrameEncoder,
                           headerEncoder: HeaderEncoder[T]) { self =>
@@ -60,25 +61,36 @@ private class FlowControl[T](http2Stage: Http2StageConcurrentOps[T],
   }
 
   def onWindowUpdateFrame(streamId: Int, sizeIncrement: Int): MaybeError = {
-    logger.trace(s"Updated window of stream $streamId by $sizeIncrement. ConnectionOutbound: $oConnectionWindow")
+    logger.debug(s"Updated window of stream $streamId by $sizeIncrement. ConnectionOutbound: $oConnectionWindow")
 
-    if (sizeIncrement <= 0) {
+    if (streamId > idManager.lastClientId()) { // idle stream: this is a connection PROTOCOL_ERROR
+      val msg = s"Received window update frame for idle stream $streamId. Last opened connectio: ${idManager.lastClientId()}"
+      Error(PROTOCOL_ERROR(msg, streamId, true))
+    }
+    else if (sizeIncrement <= 0) {
       if (streamId == 0) Error(PROTOCOL_ERROR(s"Invalid WINDOW_UPDATE size: $sizeIncrement", fatal = true))
       else Error(PROTOCOL_ERROR(streamId, fatal = false))
     }
     else if (streamId == 0) {
       oConnectionWindow.window += sizeIncrement
 
-      // Allow all the nodes to attempt to write if they want to
-      nodes().forall { node =>
-        node.incrementOutboundWindow(0)
-        oConnectionWindow() > 0
+      if (oConnectionWindow() < 0) {  // overflowed
+        val msg = s"Connection flow control window overflowed with update of $sizeIncrement"
+        Error(FLOW_CONTROL_ERROR(msg, streamId, true))
       }
-      Continue
+      else {
+        // Allow all the nodes to attempt to write if they want to
+        var r: MaybeError = Continue
+        nodes().forall { node =>   // this will halt on an error (should never happen) and just return the error
+          r = node.incrementOutboundWindow(0)
+          oConnectionWindow() > 0 && r.success
+        }
+        r
+      }
     }
-    else {
-      getNode(streamId).foreach(_.incrementOutboundWindow(sizeIncrement))
-      Continue
+    else getNode(streamId) match {
+      case Some(node) => node.incrementOutboundWindow(sizeIncrement)
+      case None       => Continue
     }
   }
 

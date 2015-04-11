@@ -102,8 +102,13 @@ abstract class DecodingFrameHandler extends FrameHandler {
                                       end_headers: Boolean,
                                            buffer: ByteBuffer): Http2Result = {
 
-    if (!inHeaderSequence() || hInfo.streamId != streamId) {
-      return Error(PROTOCOL_ERROR(s"Invalid CONTINUATION frame", streamId, fatal = true))
+    if (!inHeaderSequence()) {
+      return Error(PROTOCOL_ERROR(s"Invalid CONTINUATION frame: not in partial header frame", streamId, fatal = true))
+    }
+
+    if (hInfo.streamId != streamId) {
+      val msg = s"Invalid CONTINUATION frame: stream Id's dont match. Expected ${hInfo.streamId}, received $streamId"
+      return Error(PROTOCOL_ERROR(msg, streamId, fatal = true))
     }
 
     val newBuffer = BufferTools.concatBuffers(hInfo.buffer, buffer)

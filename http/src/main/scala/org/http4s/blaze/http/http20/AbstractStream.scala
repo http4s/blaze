@@ -148,19 +148,27 @@ private[http20] abstract class AbstractStream[T](val streamId: Int,
   }
 
   /** Increments the window and checks to see if there are any pending messages to be sent */
-  def incrementOutboundWindow(size: Int): Unit = {  // likely already acquired lock
+  def incrementOutboundWindow(size: Int): MaybeError = {  // likely already acquired lock
     oStreamWindow.window += size
-    if (oStreamWindow() > 0 && oConnectionWindow() > 0 && pendingOutboundFrames != null) {
-      val (p, frames) = pendingOutboundFrames
-      pendingOutboundFrames = null
-      val acc = new ArrayBuffer[ByteBuffer]()
-      val rem = encodeMessages(frames, acc)
-      val f = writeBuffers(acc)
 
-      if (rem.isEmpty) p.completeWith(f)
-      else {
-        pendingOutboundFrames = (p, rem)
+    if (oStreamWindow() < 0) {   // overflow
+      val msg = s"Stream flow control window overflowed with update of $size"
+      Error(FLOW_CONTROL_ERROR(msg, streamId, false))
+    }
+    else {
+      if (oStreamWindow() > 0 && oConnectionWindow() > 0 && pendingOutboundFrames != null) {
+        val (p, frames) = pendingOutboundFrames
+        pendingOutboundFrames = null
+        val acc = new ArrayBuffer[ByteBuffer]()
+        val rem = encodeMessages(frames, acc)
+        val f = writeBuffers(acc)
+
+        if (rem.isEmpty) p.completeWith(f)
+        else {
+          pendingOutboundFrames = (p, rem)
+        }
       }
+      Continue
     }
   }
 

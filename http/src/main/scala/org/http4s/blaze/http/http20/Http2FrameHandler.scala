@@ -27,8 +27,7 @@ private class Http2FrameHandler[T](http2Stage: Http2StageConcurrentOps[T],
 
   override def handler: FrameHandler = this
 
-  val flowControl = new FlowControl(http2Stage, inboundWindow, http2Settings,
-                                    this, headerEncoder)
+  val flowControl = new FlowControl(http2Stage, inboundWindow, idManager, http2Settings, this, headerEncoder)
 
   override def onCompletePushPromiseFrame(streamId: Int, promisedId: Int, headers: HeaderType): Http2Result =
     Error(PROTOCOL_ERROR("Server received a PUSH_PROMISE frame from a client", streamId, fatal = true))
@@ -162,11 +161,17 @@ private class Http2FrameHandler[T](http2Stage: Http2StageConcurrentOps[T],
     }
   }
 
-  override def onDataFrame(streamId: Int, end_stream: Boolean, data: ByteBuffer, flowSize: Int): Http2Result = {
-    flowControl.getNode(streamId) match {
+  override def onDataFrame(streamId: Int, endStream: Boolean, data: ByteBuffer, flowSize: Int): Http2Result = {
+    logger.debug(s"Received DataFrame: $streamId, $endStream, $data, $flowSize")
+
+    if (flowSize > http2Settings.max_frame_size) {
+      val msg = s"SETTING_MAX_FRAME_SIZE of ${http2Settings.max_frame_size} exceeded. Received frame size: $flowSize"
+      Error(FRAME_SIZE_ERROR(msg, streamId, true))
+    }
+    else flowControl.getNode(streamId) match {
       case Some(node) =>
-        val msg = NodeMsg.DataFrame(end_stream, data)
-        node.inboundMessage(msg, flowSize, end_stream)
+        val msg = NodeMsg.DataFrame(endStream, data)
+        node.inboundMessage(msg, flowSize, endStream)
 
       case None =>
         if (streamId <= idManager.lastClientId()) {
@@ -178,10 +183,12 @@ private class Http2FrameHandler[T](http2Stage: Http2StageConcurrentOps[T],
 
   override def onPriorityFrame(streamId: Int, priority: Priority): Http2Result = {
     // TODO: should we implement some type of priority handling?
+    logger.debug(s"Received PriorityFrame: $streamId, $priority")
     Continue
   }
 
   override def onWindowUpdateFrame(streamId: Int, sizeIncrement: Int): Http2Result = {
+    logger.debug(s"Received window update: stream $streamId, size $sizeIncrement")
     flowControl.onWindowUpdateFrame(streamId, sizeIncrement)
   }
 }
