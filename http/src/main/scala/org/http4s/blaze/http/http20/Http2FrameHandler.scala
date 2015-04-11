@@ -5,23 +5,22 @@ import java.nio.charset.StandardCharsets._
 
 import org.http4s.blaze.http.http20.Http2Exception._
 import org.http4s.blaze.http.http20.Settings.{DefaultSettings => Default, Setting}
-import org.http4s.blaze.pipeline.LeafBuilder
 import org.http4s.blaze.pipeline.{ Command => Cmd }
+import org.http4s.blaze.http.Headers
 
 import org.log4s.getLogger
 
 import scala.annotation.tailrec
 
 
-private class Http2FrameHandler[T](http2Stage: Http2StageConcurrentOps[T],
-                  protected val headerDecoder: HeaderDecoder[T],
-                                headerEncoder: HeaderEncoder[T],
-                                http2Settings: Settings,
-                                    idManager: StreamIdManager,
-                                inboundWindow: Int,
-                            maxInboundStreams: Int)
+private class Http2FrameHandler(http2Stage: Http2StageConcurrentOps,
+               protected val headerDecoder: HeaderDecoder,
+                             headerEncoder: HeaderEncoder,
+                             http2Settings: Settings,
+                                 idManager: StreamIdManager,
+                             inboundWindow: Int,
+                         maxInboundStreams: Int)
   extends DecodingFrameHandler with Http20FrameDecoder with Http20FrameEncoder { self =>
-  override type HeaderType = T
 
   private[this] val logger = getLogger
 
@@ -29,13 +28,13 @@ private class Http2FrameHandler[T](http2Stage: Http2StageConcurrentOps[T],
 
   val flowControl = new FlowControl(http2Stage, inboundWindow, idManager, http2Settings, this, headerEncoder)
 
-  override def onCompletePushPromiseFrame(streamId: Int, promisedId: Int, headers: HeaderType): Http2Result =
+  override def onCompletePushPromiseFrame(streamId: Int, promisedId: Int, headers: Headers): Http2Result =
     Error(PROTOCOL_ERROR("Server received a PUSH_PROMISE frame from a client", streamId, fatal = true))
 
   override def onCompleteHeadersFrame(streamId: Int,
                                       priority: Option[Priority],
                                       end_stream: Boolean,
-                                      headers: HeaderType): Http2Result =
+                                      headers: Headers): Http2Result =
   {
     val msg = NodeMsg.HeadersFrame(priority, end_stream, headers)
 

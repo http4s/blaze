@@ -1,4 +1,5 @@
-package org.http4s.blaze.http.http20
+package org.http4s.blaze.http
+package http20
 
 import java.nio.ByteBuffer
 
@@ -23,11 +24,10 @@ class MockFrameHandler(inHeaders: Boolean) extends FrameHandler {
 
 
 class MockDecodingFrameHandler extends DecodingFrameHandler {
-  override type HeaderType = Seq[(String, String)]
-  override protected val headerDecoder: HeaderDecoder[Seq[(String, String)]] = new TupleHeaderDecoder(20*1024, 4096)
+  override protected val headerDecoder: HeaderDecoder = new TupleHeaderDecoder(20*1024, 4096)
 
-  override def onCompletePushPromiseFrame(streamId: Int, promisedId: Int, headers: HeaderType): Http2Result = ???
-  override def onCompleteHeadersFrame(streamId: Int, priority: Option[Priority], end_stream: Boolean, headers: HeaderType): Http2Result = ???
+  override def onCompletePushPromiseFrame(streamId: Int, promisedId: Int, headers: Headers): Http2Result = ???
+  override def onCompleteHeadersFrame(streamId: Int, priority: Option[Priority], end_stream: Boolean, headers: Headers): Http2Result = ???
   override def onGoAwayFrame(lastStream: Int, errorCode: Long, debugData: ByteBuffer): Http2Result = ???
   override def onPingFrame(ack: Boolean, data: Array[Byte]): Http2Result = ???
   override def onSettingsFrame(ack: Boolean, settings: Seq[Setting]): Http2Result = ???

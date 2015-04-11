@@ -25,8 +25,6 @@ class Http2Server(port: Int) {
 }
 
 object Http2Server {
-  type Http2Meg = NodeMsg.Http2Msg[Seq[(String, String)]]
-
   def main(args: Array[String]) {
     println("Hello world!")
     new Http2Server(4430).run()

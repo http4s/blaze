@@ -2,17 +2,17 @@ package org.http4s.blaze.http.http20
 
 import java.nio.ByteBuffer
 
+import org.http4s.blaze.http.http20.NodeMsg.Http2Msg
+
 import scala.annotation.tailrec
 import scala.collection.mutable.Buffer
 
 
 private[http20] class NodeMsgEncoder[HType](id: Int,
                                       fencoder: Http20FrameEncoder,
-                                      hencoder: HeaderEncoder[HType]) {
+                                      hencoder: HeaderEncoder) {
 
   import NodeMsg.{ DataFrame, HeadersFrame }
-
-  private type Http2Msg = NodeMsg.Http2Msg[HType]
 
   /** Encodes messages until they are all done or maxWindow has been reached
     *
@@ -42,7 +42,7 @@ private[http20] class NodeMsgEncoder[HType](id: Int,
 
         case d: DataFrame => (windowDiff, msgs) // end of window
 
-        case hs: HeadersFrame[HType] =>
+        case hs: HeadersFrame =>
           encodeHeaders(maxPayloadSize, hs, acc)
           go(msgs.tail, windowDiff)
 
@@ -57,17 +57,17 @@ private[http20] class NodeMsgEncoder[HType](id: Int,
   }
 
   /** Encode the HEADERS frame, splitting the payload if required */
-  private def encodeHeaders(maxPayloadSize: Int, hs: HeadersFrame[HType], acc: Buffer[ByteBuffer]): Unit = {
+  private def encodeHeaders(maxPayloadSize: Int, hs: HeadersFrame, acc: Buffer[ByteBuffer]): Unit = {
     val hsBuff = hencoder.encodeHeaders(hs.headers)
     val priorityBytes = if (hs.priority.nonEmpty) 5 else 0
 
     if (hsBuff.remaining() + priorityBytes <= maxPayloadSize) {
-      acc ++= fencoder.mkHeaderFrame(hsBuff, id, hs.priority, true, hs.end_stream, 0)
+      acc ++= fencoder.mkHeaderFrame(hsBuff, id, hs.priority, true, hs.endStream, 0)
     } else {
       // need to split into HEADERS and CONTINUATION frames
       val l = hsBuff.limit()
       hsBuff.limit(hsBuff.position() + maxPayloadSize - priorityBytes)
-      acc ++= fencoder.mkHeaderFrame(hsBuff.slice(), id, hs.priority, false, hs.end_stream, 0)
+      acc ++= fencoder.mkHeaderFrame(hsBuff.slice(), id, hs.priority, false, hs.endStream, 0)
       // Add the rest of the continuation frames
       hsBuff.limit(l)
       mkContinuationFrames(maxPayloadSize, hsBuff, acc)

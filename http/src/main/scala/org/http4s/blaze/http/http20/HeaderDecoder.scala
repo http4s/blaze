@@ -17,9 +17,8 @@ import com.twitter.hpack.{Decoder, HeaderListener}
   *
   * @param maxHeaderSize maximum allowed size of a single header
   * @param maxTableSize maximum compression table to maintain
-  * @tparam To the result of this builder
   */
-abstract class HeaderDecoder[To](maxHeaderSize: Int,
+abstract class HeaderDecoder(maxHeaderSize: Int,
                               val maxTableSize: Int) { self =>
 
   require(maxTableSize >= DefaultSettings.HEADER_TABLE_SIZE)
@@ -30,7 +29,7 @@ abstract class HeaderDecoder[To](maxHeaderSize: Int,
   protected def addHeader(name: String, value: String, sensitive: Boolean): Unit
 
   /** Returns the header collection and clears the builder */
-  def result(): To
+  def result(): Seq[(String,String)]
 
   private val decoder = new Decoder(maxHeaderSize, maxTableSize)
   private val listener = new HeaderListener {

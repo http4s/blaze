@@ -9,8 +9,7 @@ import org.http4s.blaze.http.http20.Settings.DefaultSettings
 
 
 /** Simple Headers type for use in blaze and testing */
-final class TupleHeaderEncoder(private var maxTableSize: Int = DefaultSettings.HEADER_TABLE_SIZE)
-  extends HeaderEncoder[Seq[(String, String)]]
+final class TupleHeaderEncoder(private var maxTableSize: Int = DefaultSettings.HEADER_TABLE_SIZE) extends HeaderEncoder
 {
   require(maxTableSize <= DefaultSettings.HEADER_TABLE_SIZE, "Invalid initial table size")
 

@@ -2,6 +2,7 @@ package org.http4s.blaze.http.http20
 
 import java.nio.ByteBuffer
 
+import org.http4s.blaze.http.Headers
 import org.http4s.blaze.http.http20.Settings.Setting
 import org.http4s.blaze.util.BufferTools
 import org.http4s.blaze.util.BufferTools._
@@ -212,17 +213,16 @@ class Http20FrameCodecSpec extends Specification {
   }
 
   def hencoder = new HeaderHttp20Encoder with Http20FrameEncoder {
-    override type Headers = Seq[(String,String)]
-    override protected val headerEncoder: HeaderEncoder[Headers] = new TupleHeaderEncoder()
+    override protected val headerEncoder: HeaderEncoder = new TupleHeaderEncoder()
   }
 
   "HEADERS frame with compressors" should {
-    def dec(sId: Int, p: Option[Priority], es: Boolean, hs: Seq[(String, String)]) =
+    def dec(sId: Int, p: Option[Priority], es: Boolean, hs: Headers) =
       decoder(new MockDecodingFrameHandler {
         override def onCompleteHeadersFrame(streamId: Int,
                                             priority: Option[Priority],
                                             end_stream: Boolean,
-                                            headers: Seq[(String,String)]): Http2Result = {
+                                            headers: Headers): Http2Result = {
           sId must_== streamId
           p must_== priority
           es must_== end_stream
@@ -363,11 +363,11 @@ class Http20FrameCodecSpec extends Specification {
     }
 
   "PUSH_PROMISE frame with header decoder" should {
-    def dec(sId: Int, pId: Int, hs: Seq[(String, String)]) =
+    def dec(sId: Int, pId: Int, hs: Headers) =
       decoder(new MockDecodingFrameHandler {
         override def onCompletePushPromiseFrame(streamId: Int,
                                               promisedId: Int,
-                                                 headers: HeaderType): Http2Result = {
+                                                 headers: Headers): Http2Result = {
           sId must_== streamId
           pId must_== promisedId
           hs must_== headers

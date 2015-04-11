@@ -4,6 +4,7 @@ import java.nio.ByteBuffer
 import java.util.Locale
 
 import org.http4s.blaze.http._
+import org.http4s.blaze.http.http20.NodeMsg.Http2Msg
 import org.http4s.blaze.pipeline.{ Command => Cmd }
 import org.http4s.blaze.pipeline.TailStage
 import org.http4s.blaze.util.BufferTools
@@ -19,12 +20,10 @@ class BasicHttpStage(streamId: Int,
                       maxBody: Long,
                       timeout: Duration,
                            ec: ExecutionContext,
-                      service: HttpService) extends TailStage[NodeMsg.Http2Msg[Headers]] {
+                      service: HttpService) extends TailStage[Http2Msg] {
 
   import BasicHttpStage._
 
-  private type Http2Msg = NodeMsg.Http2Msg[Headers]
-  private type Http2Hs  = NodeMsg.HeadersFrame[Headers]
   import NodeMsg.{ DataFrame, HeadersFrame }
 
   private implicit def _ec = ec   // for all the onComplete calls

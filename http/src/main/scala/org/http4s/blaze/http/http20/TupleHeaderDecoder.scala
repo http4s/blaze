@@ -7,7 +7,7 @@ import scala.collection.mutable.ArrayBuffer
 /** HeaderDecoder that results in a Seq[(String, String)] */
 final class TupleHeaderDecoder(maxHeaderSize: Int,
                               maxHeaderTable: Int  = DefaultSettings.HEADER_TABLE_SIZE)
-  extends HeaderDecoder[Seq[(String, String)]](maxHeaderSize, maxHeaderTable) {
+  extends HeaderDecoder(maxHeaderSize, maxHeaderTable) {
 
   private var acc = new ArrayBuffer[(String, String)]
 
