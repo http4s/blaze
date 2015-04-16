@@ -119,7 +119,7 @@ class BasicHttpStage(streamId: Int,
         if (pseudoDone) error += "Pseudo header in invalid position. "
 
       case h@(k, _) if k.startsWith(":") => error += s"Invalid pseudo header: $h. "
-      case h@(k, _) if !isLowerCase(k) => error += s"Invalid header key: $k. "
+      case h@(k, _) if !validHeaderName(k) => error += s"Invalid header key: $k. "
 
       case hs =>    // Non pseudo headers
         pseudoDone = true
