@@ -3,6 +3,7 @@ package org.http4s.blaze.http.http20
 import java.nio.ByteBuffer
 import java.nio.charset.StandardCharsets._
 
+import org.http4s.blaze.http.http20.NodeMsg.Http2Msg
 import org.http4s.blaze.http.http20.Settings.{ DefaultSettings => Default, Setting }
 import org.http4s.blaze.pipeline.Command.OutboundCommand
 import org.http4s.blaze.pipeline.{ Command => Cmd, LeafBuilder, TailStage }
@@ -15,21 +16,19 @@ import scala.concurrent.duration._
 import scala.concurrent.{ Future, ExecutionContext }
 import scala.util.{Failure, Success}
 
-class Http2Stage[T](headerDecoder: HeaderDecoder[T],
-                    headerEncoder: HeaderEncoder[T],
-                     node_builder: Int => LeafBuilder[NodeMsg.Http2Msg[T]],
+class Http2Stage(maxHeadersLength: Int,
+                     node_builder: Int => LeafBuilder[NodeMsg.Http2Msg],
                           timeout: Duration,
                 maxInboundStreams: Int = 300,
                     inboundWindow: Int = Default.INITIAL_WINDOW_SIZE,
                                ec: ExecutionContext)
-  extends TailStage[ByteBuffer] with WriteSerializer[ByteBuffer] with Http2StageConcurrentOps[T] {
-
-  private type Http2Msg = NodeMsg.Http2Msg[T]
-  private type Stream = AbstractStream[T]
+  extends TailStage[ByteBuffer] with WriteSerializer[ByteBuffer] with Http2StageConcurrentOps {
 
   ///////////////////////////////////////////////////////////////////////////
 
   private val lock = new AnyRef   // The only point of synchronization.
+  private val headerDecoder = new HeaderDecoder(maxHeadersLength)
+  private val headerEncoder = new HeaderEncoder()
   
   override def name: String = "Http2ConnectionStage"
 
@@ -37,21 +36,21 @@ class Http2Stage[T](headerDecoder: HeaderDecoder[T],
 
   val http2Settings = new Settings(inboundWindow)
 
-  private val frameHandler = new Http2FrameHandler[T](this, headerDecoder, headerEncoder, http2Settings,
+  private val frameHandler = new Http2FrameHandler(this, headerDecoder, headerEncoder, http2Settings,
                                                       idManager, inboundWindow, maxInboundStreams)
 
   //////////////////////// Http2Stage methods ////////////////////////////////
 
-  override def makePipeline(streamId: Int): LeafBuilder[NodeMsg.Http2Msg[T]] =
+  override def makePipeline(streamId: Int): LeafBuilder[Http2Msg] =
     node_builder(streamId)
 
-  override def streamRead(stream: AbstractStream[T]): Future[Http2Msg] =
+  override def streamRead(stream: AbstractStream): Future[Http2Msg] =
     lock.synchronized { stream.handleRead() }
 
-  override def streamWrite(stream: AbstractStream[T], data: Seq[Http2Msg]): Future[Unit] =
+  override def streamWrite(stream: AbstractStream, data: Seq[Http2Msg]): Future[Unit] =
     lock.synchronized { stream.handleWrite(data) }
 
-  override def streamCommand(stream: AbstractStream[T], cmd: OutboundCommand): Unit = lock.synchronized {
+  override def streamCommand(stream: AbstractStream, cmd: OutboundCommand): Unit = lock.synchronized {
 
       def checkGoAway(): Unit = {
         if (http2Settings.receivedGoAway && frameHandler.flowControl.nodes().isEmpty) {  // we must be done

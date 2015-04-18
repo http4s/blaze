@@ -39,13 +39,12 @@ object Http2Selector {
 
   private def http2Stage(service: HttpService, maxBody: Long, maxHeadersLength: Int, ec: ExecutionContext): TailStage[ByteBuffer] = {
 
-    def newNode(streamId: Int): LeafBuilder[Http2Msg[Headers]] = {
+    def newNode(streamId: Int): LeafBuilder[Http2Msg] = {
       LeafBuilder(new BasicHttpStage(streamId, maxBody, Duration.Inf, trampoline, service))
     }
 
-    new Http2Stage[Headers](
-      new TupleHeaderDecoder(maxHeadersLength),
-      new TupleHeaderEncoder(),
+    new Http2Stage(
+      maxHeadersLength,
       node_builder = newNode,
       timeout = Duration.Inf,
       maxInboundStreams = 300,

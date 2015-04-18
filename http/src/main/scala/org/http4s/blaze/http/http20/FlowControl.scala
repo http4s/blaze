@@ -4,6 +4,7 @@ import java.nio.ByteBuffer
 import java.util.HashMap
 
 import org.http4s.blaze.http.http20.Http2Exception._
+import org.http4s.blaze.http.http20.NodeMsg.Http2Msg
 import org.http4s.blaze.pipeline.Command.OutboundCommand
 import org.http4s.blaze.pipeline.{ HeadStage, Command => Cmd }
 
@@ -12,14 +13,13 @@ import org.log4s.getLogger
 import scala.collection.mutable
 import scala.concurrent.Future
 
-private class FlowControl[T](http2Stage: Http2StageConcurrentOps[T],
-                          inboundWindow: Int,
-                              idManager: StreamIdManager,
-                          http2Settings: Settings,
-                                  codec: Http20FrameDecoder with Http20FrameEncoder,
-                          headerEncoder: HeaderEncoder[T]) { self =>
+private class FlowControl(http2Stage: Http2StageConcurrentOps,
+                       inboundWindow: Int,
+                           idManager: StreamIdManager,
+                       http2Settings: Settings,
+                               codec: Http20FrameDecoder with Http20FrameEncoder,
+                       headerEncoder: HeaderEncoder) { self =>
 
-  private type Http2Msg = NodeMsg.Http2Msg[T]
 
   private val logger = getLogger
   private val nodeMap = new HashMap[Int, Stream]()
@@ -64,7 +64,7 @@ private class FlowControl[T](http2Stage: Http2StageConcurrentOps[T],
     logger.debug(s"Updated window of stream $streamId by $sizeIncrement. ConnectionOutbound: $oConnectionWindow")
 
     if (streamId > idManager.lastClientId()) { // idle stream: this is a connection PROTOCOL_ERROR
-      val msg = s"Received window update frame for idle stream $streamId. Last opened connectio: ${idManager.lastClientId()}"
+      val msg = s"Received window update frame for idle stream $streamId. Last opened connection: ${idManager.lastClientId()}"
       Error(PROTOCOL_ERROR(msg, streamId, true))
     }
     else if (sizeIncrement <= 0) {
@@ -106,7 +106,7 @@ private class FlowControl[T](http2Stage: Http2StageConcurrentOps[T],
   }
 
   final class Stream(streamId: Int)
-    extends AbstractStream[T](streamId,
+    extends AbstractStream(streamId,
       new FlowWindow(inboundWindow),
       new FlowWindow(http2Settings.outbound_initial_window_size),
       iConnectionWindow,

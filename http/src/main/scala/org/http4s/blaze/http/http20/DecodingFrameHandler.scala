@@ -2,6 +2,7 @@ package org.http4s.blaze.http.http20
 
 import java.nio.ByteBuffer
 
+import org.http4s.blaze.http.Headers
 import org.http4s.blaze.util.BufferTools
 import Http2Exception.PROTOCOL_ERROR
 
@@ -13,9 +14,7 @@ import Http2Exception.PROTOCOL_ERROR
   */
 abstract class DecodingFrameHandler extends FrameHandler {
 
-  type HeaderType
-
-  protected val headerDecoder: HeaderDecoder[HeaderType]
+  protected val headerDecoder: HeaderDecoder
 
   private sealed trait PartialFrame {
     def streamId: Int
@@ -39,10 +38,10 @@ abstract class DecodingFrameHandler extends FrameHandler {
   def onCompleteHeadersFrame(streamId: Int,
                              priority: Option[Priority],
                            end_stream: Boolean,
-                              headers: HeaderType): Http2Result
+                              headers: Headers): Http2Result
 
 
-  def onCompletePushPromiseFrame(streamId: Int, promisedId: Int, headers: HeaderType): Http2Result
+  def onCompletePushPromiseFrame(streamId: Int, promisedId: Int, headers: Headers): Http2Result
 
   ////////////////////////////////////////////////////////////////////////////
 

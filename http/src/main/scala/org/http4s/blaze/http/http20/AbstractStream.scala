@@ -4,6 +4,7 @@ import java.nio.ByteBuffer
 import java.util
 
 import org.http4s.blaze.http.http20.Http2Exception._
+import org.http4s.blaze.http.http20.NodeMsg.Http2Msg
 import org.http4s.blaze.pipeline.{ Command => Cmd }
 import org.log4s.Logger
 
@@ -15,16 +16,14 @@ import scala.concurrent.{Future, Promise}
   *
   * All operations should only be handled in a thread safe manner
   */
-private[http20] abstract class AbstractStream[T](val streamId: Int,
-                                                iStreamWindow: FlowWindow,
-                                                oStreamWindow: FlowWindow,
-                                            iConnectionWindow: FlowWindow,
-                                            oConnectionWindow: FlowWindow,
-                                                     settings: Settings,
-                                                        codec: Http20FrameDecoder with Http20FrameEncoder,
-                                                headerEncoder: HeaderEncoder[T]) {
-
-  private type Http2Msg = NodeMsg.Http2Msg[T]
+private[http20] abstract class AbstractStream(val streamId: Int,
+                                             iStreamWindow: FlowWindow,
+                                             oStreamWindow: FlowWindow,
+                                         iConnectionWindow: FlowWindow,
+                                         oConnectionWindow: FlowWindow,
+                                                  settings: Settings,
+                                                     codec: Http20FrameDecoder with Http20FrameEncoder,
+                                             headerEncoder: HeaderEncoder) {
 
   private sealed trait NodeState
   private case object Open extends NodeState
@@ -36,7 +35,7 @@ private[http20] abstract class AbstractStream[T](val streamId: Int,
   private var pendingInboundPromise: Promise[Http2Msg] = null
   private val pendingInboundMessages = new util.ArrayDeque[Http2Msg](16)
 
-  private val msgEncoder = new NodeMsgEncoder[T](streamId, codec, headerEncoder)
+  private val msgEncoder = new NodeMsgEncoder(streamId, codec, headerEncoder)
 
   protected def logger: Logger
 

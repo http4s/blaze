@@ -4,12 +4,12 @@ import java.nio.ByteBuffer
 import java.util.Locale
 
 import org.http4s.blaze.http._
+import org.http4s.blaze.http.http20.NodeMsg.Http2Msg
 import org.http4s.blaze.pipeline.{ Command => Cmd }
 import org.http4s.blaze.pipeline.TailStage
 import org.http4s.blaze.util.BufferTools
 import Http2Exception.{ PROTOCOL_ERROR, INTERNAL_ERROR }
 
-import scala.annotation.tailrec
 import scala.collection.mutable.ArrayBuffer
 import scala.concurrent.ExecutionContext
 import scala.concurrent.duration.Duration
@@ -19,12 +19,10 @@ class BasicHttpStage(streamId: Int,
                       maxBody: Long,
                       timeout: Duration,
                            ec: ExecutionContext,
-                      service: HttpService) extends TailStage[NodeMsg.Http2Msg[Headers]] {
+                      service: HttpService) extends TailStage[Http2Msg] {
 
-  import BasicHttpStage._
+  import Http2StageTools._
 
-  private type Http2Msg = NodeMsg.Http2Msg[Headers]
-  private type Http2Hs  = NodeMsg.HeadersFrame[Headers]
   import NodeMsg.{ DataFrame, HeadersFrame }
 
   private implicit def _ec = ec   // for all the onComplete calls
@@ -121,7 +119,7 @@ class BasicHttpStage(streamId: Int,
         if (pseudoDone) error += "Pseudo header in invalid position. "
 
       case h@(k, _) if k.startsWith(":") => error += s"Invalid pseudo header: $h. "
-      case h@(k, _) if !isLowerCase(k) => error += s"Invalid header key: $k. "
+      case h@(k, _) if !validHeaderName(k) => error += s"Invalid header key: $k. "
 
       case hs =>    // Non pseudo headers
         pseudoDone = true
@@ -178,29 +176,3 @@ class BasicHttpStage(streamId: Int,
   }
 }
 
-private object BasicHttpStage {
-  // Request pseudo headers
-  val Method = ":method"
-  val Scheme = ":scheme"
-  val Path   = ":path"
-  val Authority = ":authority"
-
-  // Response pseudo header
-  val Status = ":status"
-  val Connection = "connection"
-  val TE = "te"
-  val ContentLength = "content-length"
-
-  def isLowerCase(str: String): Boolean = {
-    @tailrec
-    def go(i: Int): Boolean = {
-      if (i == str.length) true
-      else {
-        val ch = str.charAt(i)
-        if ('A' <= ch && ch <= 'Z') false
-        else go(i + 1)
-      }
-    }
-    go(0)
-  }
-}

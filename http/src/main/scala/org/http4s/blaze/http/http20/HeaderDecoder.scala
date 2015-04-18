@@ -9,6 +9,8 @@ import org.http4s.blaze.util.BufferTools
 
 import com.twitter.hpack.{Decoder, HeaderListener}
 
+import scala.collection.mutable.ArrayBuffer
+
 /** Abstract representation of a `Headers` builder
   *
   * This is much like the scala collection `Builder`s with the
@@ -17,20 +19,24 @@ import com.twitter.hpack.{Decoder, HeaderListener}
   *
   * @param maxHeaderSize maximum allowed size of a single header
   * @param maxTableSize maximum compression table to maintain
-  * @tparam To the result of this builder
   */
-abstract class HeaderDecoder[To](maxHeaderSize: Int,
-                              val maxTableSize: Int) { self =>
+class HeaderDecoder(maxHeaderSize: Int,
+                 val maxTableSize: Int = DefaultSettings.HEADER_TABLE_SIZE) { self =>
 
   require(maxTableSize >= DefaultSettings.HEADER_TABLE_SIZE)
 
   private var leftovers: ByteBuffer = null
+  private var acc = new ArrayBuffer[(String, String)]
 
   /** abstract method that adds the key value pair to the internal representation */
-  protected def addHeader(name: String, value: String, sensitive: Boolean): Unit
+  protected def addHeader(name: String, value: String, sensitive: Boolean): Unit = acc += ((name, value))
 
   /** Returns the header collection and clears the builder */
-  def result(): To
+  def result(): Seq[(String,String)] = {
+    val r = acc
+    acc = new ArrayBuffer[(String, String)](r.size + 10)
+    r
+  }
 
   private val decoder = new Decoder(maxHeaderSize, maxTableSize)
   private val listener = new HeaderListener {
