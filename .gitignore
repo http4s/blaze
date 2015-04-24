@@ -16,3 +16,5 @@ atlassian-ide-plugin.xml
 .tags_sorted_by_file
 .ensime_lucene
 *.class
+
+*.swp
