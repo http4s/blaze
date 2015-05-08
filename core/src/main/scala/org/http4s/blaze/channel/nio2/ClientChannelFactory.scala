@@ -7,6 +7,7 @@ import java.nio.channels.{CompletionHandler, AsynchronousSocketChannel, Asynchro
 import java.net.SocketAddress
 
 import scala.concurrent.{Future, Promise}
+import scala.util.control.NonFatal
 
 
 /** A factory for opening TCP connections to remote sockets
@@ -21,16 +22,19 @@ class ClientChannelFactory(bufferSize: Int = 8*1024, group: AsynchronousChannelG
   def connect(remoteAddress: SocketAddress, bufferSize: Int = bufferSize): Future[HeadStage[ByteBuffer]] = {
     val p = Promise[HeadStage[ByteBuffer]]
 
-    val ch = AsynchronousSocketChannel.open(group)
-    ch.connect(remoteAddress, null: Null, new CompletionHandler[Void, Null] {
-      def failed(exc: Throwable, attachment: Null) {
-        p.failure(exc)
-      }
+    try {
+      val ch = AsynchronousSocketChannel.open(group)
+      ch.connect(remoteAddress, null: Null, new CompletionHandler[Void, Null] {
+        def failed(exc: Throwable, attachment: Null) {
+          p.failure(exc)
+        }
 
-      def completed(result: Void, attachment: Null) {
-        p.success(new ByteBufferHead(ch, bufferSize = bufferSize))
-      }
-    })
+        def completed(result: Void, attachment: Null) {
+          p.success(new ByteBufferHead(ch, bufferSize = bufferSize))
+        }
+      })
+    }
+    catch {case NonFatal(t) => p.tryFailure(t) }
 
     p.future
   }
