@@ -34,24 +34,23 @@ object NIO1SocketServerChannelFactory {
 
 }
 
+/** A concrete type for TCP servers */
 class NIO1SocketServerChannelFactory private(pipeFactory: BufferPipelineBuilder,
                                              pool: SelectorLoopPool)
           extends NIO1ServerChannelFactory[ServerSocketChannel](pool)
 {
-
   import org.http4s.blaze.channel.ChannelHead.brokePipeMessages
 
-  //////////////// End of constructors /////////////////////////////////////////////////////////
+  override protected def doBind(address: SocketAddress): ServerSocketChannel =
+    ServerSocketChannel.open().bind(address)
 
-  def doBind(address: SocketAddress): ServerSocketChannel = ServerSocketChannel.open().bind(address)
-
-  override def completeConnection(serverChannel: ServerSocketChannel, loop: SelectorLoop): Boolean = {
+  override protected def completeConnection(serverChannel: ServerSocketChannel, loop: SelectorLoop): Boolean =
     try {
       val ch = serverChannel.accept()
-      val addr = ch.getRemoteAddress
+      val address = ch.getRemoteAddress
 
       // check to see if we want to keep this connection
-      if (doAcceptConnection(addr)) {
+      if (doAcceptConnection(address)) {
         ch.setOption(java.net.StandardSocketOptions.TCP_NODELAY, java.lang.Boolean.FALSE)
         loop.initChannel(pipeFactory, ch, key => new SocketChannelHead(ch, loop, key))
         true
@@ -59,17 +58,16 @@ class NIO1SocketServerChannelFactory private(pipeFactory: BufferPipelineBuilder,
         ch.close()
         false
       }
-
-    } catch {
+    }
+    catch {
       case e: IOException => false
     }
-  }
 
   private class SocketChannelHead(ch: SocketChannel,
                                 loop: SelectorLoop,
                                  key: SelectionKey) extends NIO1HeadStage(ch, loop, key)
   {
-    override def performRead(scratch: ByteBuffer): Try[ByteBuffer] = {
+    override protected def performRead(scratch: ByteBuffer): Try[ByteBuffer] = {
       try {
         scratch.clear()
         val bytes = ch.read(scratch)
@@ -90,7 +88,7 @@ class NIO1SocketServerChannelFactory private(pipeFactory: BufferPipelineBuilder,
       }
     }
 
-    override def performWrite(scratch: ByteBuffer, buffers: Array[ByteBuffer]): WriteResult = {
+    override protected def performWrite(scratch: ByteBuffer, buffers: Array[ByteBuffer]): WriteResult = {
       try {
         ch.write(buffers)
         if (util.BufferTools.checkEmpty(buffers)) Complete

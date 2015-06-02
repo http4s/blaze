@@ -37,7 +37,7 @@ trait ChannelHead extends HeadStage[ByteBuffer] {
 object ChannelHead {
 
   // If the connection is forcibly closed, we might get an IOException with one of the following messages
-  private [blaze] val brokePipeMessages = Seq(
+  private [blaze] val brokePipeMessages = Set(
     "Connection timed out",       // Found on linux NIO1
     "Connection reset by peer",   // Found on Linux
     "An existing connection was forcibly closed by the remote host",    // Found on windows

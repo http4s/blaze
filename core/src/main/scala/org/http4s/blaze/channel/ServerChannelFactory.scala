@@ -9,7 +9,7 @@ import org.log4s._
 abstract class ServerChannelFactory[C <: NetworkChannel] {
   protected val logger = getLogger
 
-  def bind(localAddress: SocketAddress = null): ServerChannel
+  def bind(localAddress: SocketAddress): ServerChannel
 
   /** Decide whether to accept the incoming connection or not */
   protected def acceptConnection(connection: SocketAddress): Boolean = true

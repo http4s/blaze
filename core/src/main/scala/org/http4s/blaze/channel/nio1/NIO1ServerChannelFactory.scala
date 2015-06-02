@@ -14,18 +14,17 @@ abstract class NIO1ServerChannelFactory[Channel <: NetworkChannel](pool: Selecto
 
   protected def completeConnection(ch: Channel, loop: SelectorLoop): Boolean
 
-  protected def makeSelector: Selector = Selector.open()
+  final protected def makeSelector: Selector = Selector.open()
 
-  protected def createServerChannel(channel: Channel): ServerChannel =
+  final protected def createServerChannel(channel: Channel): ServerChannel =
     new NIO1ServerChannel(channel, pool)
 
-  override def bind(localAddress: SocketAddress = null): ServerChannel = {
+  override def bind(localAddress: SocketAddress): ServerChannel = {
     val c = doBind(localAddress)
     createServerChannel(c)
   }
 
-  /** This class can be extended to change the way selector loops are provided */
-  protected class NIO1ServerChannel(val channel: Channel, pool: SelectorLoopPool) extends ServerChannel {
+  private class NIO1ServerChannel(val channel: Channel, pool: SelectorLoopPool) extends ServerChannel {
 
     type C = Channel
 
