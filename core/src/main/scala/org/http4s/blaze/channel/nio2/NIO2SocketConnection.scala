@@ -4,7 +4,7 @@ import org.http4s.blaze.channel.SocketConnection
 import java.nio.channels.AsynchronousSocketChannel
 import java.net.SocketAddress
 
-case class NIO2SocketConnection(connection: AsynchronousSocketChannel) extends SocketConnection {
+private[nio2] final class NIO2SocketConnection(connection: AsynchronousSocketChannel) extends SocketConnection {
 
   override def remote: SocketAddress = connection.getRemoteAddress
 
