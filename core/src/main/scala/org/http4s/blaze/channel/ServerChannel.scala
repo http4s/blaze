@@ -1,11 +1,12 @@
 package org.http4s.blaze.channel
 
-import java.nio.channels.NetworkChannel
 import java.io.Closeable
 import java.util.concurrent.atomic.AtomicReference
+
 import scala.annotation.tailrec
 import scala.compat.Platform.EOL
 import scala.util.control.NonFatal
+
 import org.log4s.getLogger
 
 
@@ -15,15 +16,14 @@ abstract class ServerChannel extends Runnable with Closeable { self =>
 
   private val shutdownHooks = new AtomicReference[Vector[()=> Unit]](Vector.empty)
 
-  type C <: NetworkChannel
-
-  protected val channel: C
+  /** Close out any resources associated with the [[ServerChannel]] */
+  protected def closeChannel(): Unit
 
   /** Starts the accept loop, handing connections off to a thread pool */
   def run(): Unit
 
-  def close(): Unit = {
-    channel.close()
+  final def close(): Unit = {
+    closeChannel()
     runShutdownHooks()
   }
 
@@ -54,11 +54,10 @@ abstract class ServerChannel extends Runnable with Closeable { self =>
     }
   }
 
-  def runAsync(): Thread = {
+  final def runAsync(): Thread = {
     logger.debug("Starting server loop on new thread")
     val t = new Thread(this)
     t.start()
     t
   }
-
 }

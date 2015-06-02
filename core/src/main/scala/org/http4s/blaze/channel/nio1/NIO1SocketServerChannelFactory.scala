@@ -50,7 +50,7 @@ class NIO1SocketServerChannelFactory private(pipeFactory: BufferPipelineBuilder,
       val address = ch.getRemoteAddress
 
       // check to see if we want to keep this connection
-      if (doAcceptConnection(address)) {
+      if (acceptConnection(address)) {
         ch.setOption(java.net.StandardSocketOptions.TCP_NODELAY, java.lang.Boolean.FALSE)
         loop.initChannel(pipeFactory, ch, key => new SocketChannelHead(ch, loop, key))
         true

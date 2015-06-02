@@ -9,31 +9,14 @@ import org.log4s._
 abstract class ServerChannelFactory[C <: NetworkChannel] {
   protected val logger = getLogger
 
+  /** Create a [[ServerChannel]] that will serve on the specified socket */
   def bind(localAddress: SocketAddress): ServerChannel
 
-  /** Decide whether to accept the incoming connection or not */
-  protected def acceptConnection(connection: SocketAddress): Boolean = true
-
-  /** perform some stateful operation when an connection is accepted */
-  protected def onAccepted(address: SocketAddress): Unit = {
-    logger.debug(s"Connection to $address accepted at ${new Date}")
-  }
-
-  /** perform some stateful operation when an connection is rejected */
-  protected def onRejected(address: SocketAddress): Unit = {
-    logger.debug(s"Connection to $address being denied at ${new Date}")
-  }
-
-  /** This method should be used by the backends to ensure uniform behavior with
-    * respect to the above methods
-    */
-  final protected def doAcceptConnection(connection: SocketAddress): Boolean = {
-    if (acceptConnection(connection)) {
-      onAccepted(connection)
-      true
-    } else {
-      onRejected(connection)
-      false
-    }
+  /** Decide whether to accept the incoming connection or not
+    *
+    * Should also be used for any requisite logging purposes. */
+  protected def acceptConnection(address: SocketAddress): Boolean = {
+    logger.info(s"Connection to $address accepted at ${new Date}.")
+    true
   }
 }

@@ -25,10 +25,10 @@ class NIO2SocketServerChannelFactory private(pipeFactory: BufferPipelineBuilder,
     new NIO2ServerChannel(AsynchronousServerSocketChannel.open(group).bind(localAddress))
   }
 
-  private class NIO2ServerChannel(protected val channel: AsynchronousServerSocketChannel)
+  private class NIO2ServerChannel(channel: AsynchronousServerSocketChannel)
                 extends ServerChannel {
 
-    type C = AsynchronousServerSocketChannel
+    override protected def closeChannel(): Unit = channel.close()
 
     @tailrec
     final def run():Unit = {
@@ -38,7 +38,7 @@ class NIO2SocketServerChannelFactory private(pipeFactory: BufferPipelineBuilder,
           val ch = channel.accept().get() // Will synchronize here
           val addr = ch.getRemoteAddress
 
-          if (!doAcceptConnection(addr)) ch.close()
+          if (!acceptConnection(addr)) ch.close()
           else pipeFactory(NIO2SocketConnection(ch))
                 .base(new ByteBufferHead(ch))
                 .sendInboundCommand(Connected)
