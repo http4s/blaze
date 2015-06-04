@@ -12,7 +12,7 @@ import java.util.Date
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import org.http4s.blaze.pipeline.Command.EOF
-import org.http4s.blaze.channel.nio2.NIO2SocketServerChannelFactory
+import org.http4s.blaze.channel.nio2.NIO2SocketServerGroup
 import org.log4s.getLogger
 
 
@@ -23,7 +23,7 @@ class EchoServer {
   def prepare(address: InetSocketAddress): ServerChannel = {
     val f: BufferPipelineBuilder = _ => new EchoStage
 
-    NIO2SocketServerChannelFactory(f).bind(address)
+    NIO2SocketServerGroup().bind(address, f).getOrElse(sys.error("Failed to start server."))
   }
   
   def run(port: Int) {
@@ -31,7 +31,7 @@ class EchoServer {
     val channel = prepare(address)
 
     logger.info(s"Starting server on address $address at time ${new Date}")
-    channel.run()
+    channel.join()
   }
 
   private class EchoStage extends TailStage[ByteBuffer] {

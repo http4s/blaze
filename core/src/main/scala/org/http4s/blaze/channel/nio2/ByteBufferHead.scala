@@ -6,7 +6,6 @@ import org.http4s.blaze.pipeline.Command._
 import org.http4s.blaze.util.BufferTools
 
 import scala.concurrent.{Promise, Future}
-import scala.annotation.tailrec
 
 import java.nio.channels._
 import java.nio.ByteBuffer
@@ -15,8 +14,7 @@ import java.util.Date
 import java.util.concurrent.TimeUnit
 import java.lang.{Long => JLong}
 
-final class ByteBufferHead(channel: AsynchronousSocketChannel,
-                        bufferSize: Int = 8*1024) extends ChannelHead {
+private[nio2] final class ByteBufferHead(channel: AsynchronousSocketChannel, bufferSize: Int) extends ChannelHead {
 
   def name: String = "ByteBufferHeadStage"
 

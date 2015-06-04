@@ -9,7 +9,7 @@ import java.net.InetSocketAddress
 import org.http4s.blaze.examples.{Consts, ExampleKeystore}
 import org.http4s.blaze.channel._
 import org.http4s.blaze.pipeline.stages.SSLStage
-import org.http4s.blaze.channel.nio2.NIO2SocketServerChannelFactory
+import org.http4s.blaze.channel.nio2.NIO2SocketServerGroup
 import org.http4s.blaze.http.spdy.Spdy3_1FrameCodec
 import org.http4s.blaze.pipeline.TrunkBuilder
 
@@ -26,14 +26,14 @@ class SpdyServer(port: Int) {
 
   val group = AsynchronousChannelGroup.withFixedThreadPool(Consts.poolSize, Executors.defaultThreadFactory())
 
-  private val factory = NIO2SocketServerChannelFactory(f)
+  private val factory = NIO2SocketServerGroup()
 
-  def run(): Unit = factory.bind(new InetSocketAddress(port)).run()
+  def run(): ServerChannel = factory.bind(new InetSocketAddress(port), f).getOrElse(sys.error("Failed to start server."))
 }
 
 object SpdyServer {
   def main(args: Array[String]) {
     println("Hello world!")
-    new SpdyServer(4430).run()
+    new SpdyServer(4430).run().join()
   }
 }

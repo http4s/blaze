@@ -29,6 +29,13 @@ final class SelectorLoop(id: String, selector: Selector, bufferSize: Int) extend
   private val scratch = BufferTools.allocate(bufferSize)
   @volatile private var _isClosed = false
 
+  /** Signal to the [[SelectorLoop]] that it should close */
+  def close(): Unit = {
+    logger.info(s"Shutting down SelectorLoop ${getName()}")
+    _isClosed = true
+    selector.wakeup()
+  }
+
   def executeTask(r: Runnable) {
     if (Thread.currentThread() == thisLoop) r.run()
     else enqueTask(r)
@@ -43,6 +50,26 @@ final class SelectorLoop(id: String, selector: Selector, bufferSize: Int) extend
       queueTail.set(node)
       selector.wakeup()
     } else head.lazySet(node)
+  }
+
+  def initChannel(builder: BufferPipelineBuilder, ch: SelectableChannel, mkStage: SelectionKey => NIO1HeadStage) {
+    enqueTask( new Runnable {
+      def run() {
+        try {
+          ch.configureBlocking(false)
+          val key = ch.register(selector, 0)
+
+          val head = mkStage(key)
+          key.attach(head)
+
+          // construct the pipeline
+          builder(NIO1Connection(ch)).base(head)
+
+          head.inboundCommand(Command.Connected)
+          logger.debug("Started channel.")
+        } catch { case e: Throwable => logger.error(e)("Caught error during channel init.") }
+      }
+    })
   }
 
   private def runTasks() {
@@ -140,13 +167,6 @@ final class SelectorLoop(id: String, selector: Selector, bufferSize: Int) extend
     killSelector()
   }
 
-  /** Signal to the [[SelectorLoop]] that it should close */
-  def close(): Unit = {
-    logger.info(s"Shutting down SelectorLoop ${getName()}")
-    _isClosed = true
-    selector.wakeup()
-  }
-
   private def killSelector() {
     import scala.collection.JavaConversions._
 
@@ -166,25 +186,5 @@ final class SelectorLoop(id: String, selector: Selector, bufferSize: Int) extend
 
       selector.close()
     } catch { case t: Throwable => logger.warn(t)("Killing selector resulted in an exception") }
-  }
-
-  def initChannel(builder: BufferPipelineBuilder, ch: SelectableChannel, mkStage: SelectionKey => NIO1HeadStage) {
-   enqueTask( new Runnable {
-      def run() {
-        try {
-          ch.configureBlocking(false)
-          val key = ch.register(selector, 0)
-
-          val head = mkStage(key)
-          key.attach(head)
-
-          // construct the pipeline
-          builder(NIO1Connection(ch)).base(head)
-
-          head.inboundCommand(Command.Connected)
-          logger.debug("Started channel.")
-        } catch { case e: Throwable => logger.error(e)("Caught error during channel init.") }
-      }
-    })
   }
 }

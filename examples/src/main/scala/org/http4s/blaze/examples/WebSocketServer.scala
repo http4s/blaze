@@ -6,7 +6,7 @@ import org.http4s.blaze.http.websocket.WSStage
 import org.http4s.blaze.channel._
 import org.http4s.websocket.WebsocketBits._
 import org.http4s.websocket.WebsocketHandshake
-import org.http4s.blaze.channel.nio2.NIO2SocketServerChannelFactory
+import org.http4s.blaze.channel.nio2.NIO2SocketServerGroup
 
 import java.nio.channels.AsynchronousChannelGroup
 import java.net.InetSocketAddress
@@ -22,13 +22,13 @@ class WebSocketServer(port: Int) {
 
   val group = AsynchronousChannelGroup.withFixedThreadPool(Consts.poolSize, Executors.defaultThreadFactory())
 
-  private val factory = NIO2SocketServerChannelFactory(f)
+  private val factory = NIO2SocketServerGroup()
 
-  def run(): Unit = factory.bind(new InetSocketAddress(port)).run()
+  def run(): ServerChannel = factory.bind(new InetSocketAddress(port), f).getOrElse(sys.error("Failed to bind server"))
 }
 
 object WebSocketServer {
-  def main(args: Array[String]): Unit = new WebSocketServer(8080).run()
+  def main(args: Array[String]): Unit = new WebSocketServer(8080).run().join()
 }
 
 /** this stage can be seen as the "route" of the example. It handles requests and returns responses */
