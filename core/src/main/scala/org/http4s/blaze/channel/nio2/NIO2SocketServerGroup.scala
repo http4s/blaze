@@ -67,7 +67,7 @@ class NIO2SocketServerGroup private(bufferSize: Int, group: AsynchronousChannelG
       if (ch.isOpen()) {
         logger.info(s"Closing NIO2 channel $address at ${new Date}")
         try ch.close()
-        catch { case NonFatal(_) => /* NOOP */ }
+        catch { case NonFatal(t) => logger.debug(t)("Failure during channel close") }
       }
 
     def errorClose(e: Throwable): Unit = {

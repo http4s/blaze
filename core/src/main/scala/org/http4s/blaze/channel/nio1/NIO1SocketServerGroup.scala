@@ -102,7 +102,7 @@ class NIO1SocketServerGroup(pool: SelectorLoopPool) extends ServerChannelGroup {
             case NonFatal(t) =>
               logger.error(t)("Error during channel registration: " + ch.channel.getLocalAddress())
               try ch.close()
-              catch { case NonFatal(_) => /* NOOP */ }
+              catch { case NonFatal(t) => logger.debug(t)("Failure during channel close") }
           }
         }
 
@@ -125,33 +125,26 @@ class NIO1SocketServerGroup(pool: SelectorLoopPool) extends ServerChannelGroup {
 
               // check to see if we want to keep this connection
               if (acceptConnection(address)) {
-                clientChannel.setOption(java.net.StandardSocketOptions.TCP_NODELAY, java.lang.Boolean.FALSE)
+                clientChannel.setOption[java.lang.Boolean](java.net.StandardSocketOptions.TCP_NODELAY, false)
                 loop.initChannel(service, clientChannel, key => new SocketChannelHead(clientChannel, loop, key))
               }
               else clientChannel.close()
             }
           }
           catch {
-            case s: SecurityException => logger.info(s)("Connection rejected by SecurityManager.")
-
-            case e: ClosedChannelException =>
-              logger.warn(s"Channel ${serverChannel.getLocalAddress()} is closed.")
-              key.cancel()
-              channel.close()
-
-            case e: IOException =>
+            case NonFatal(e) =>
               val localAddress = serverChannel.getLocalAddress()
-              logger.warn(e)(s"Error accepting connection on address $localAddress")
+              logger.error(e)(s"Error accepting connection on address $localAddress")
 
               // If the server channel cannot go on, disconnect it.
               if (!serverChannel.isOpen()) {
-                logger.warn(s"Channel for address $localAddress")
+                logger.error(s"Channel bound to address $localAddress has been unexpectedly closed.")
                 key.cancel()
                 channel.close()
               }
 
             case t: Throwable =>
-              logger.error(t)("Fatal error in selector. Closing Group")
+              logger.error(t)("Fatal error in connection accept loop. Closing Group.")
               closeGroup() // will cause the closing of the attached channels
           }
         }
@@ -173,12 +166,12 @@ class NIO1SocketServerGroup(pool: SelectorLoopPool) extends ServerChannelGroup {
       // clear out the queue
       queue.getAndSet(null).foreach { ch =>
         try ch.close()
-        catch { case NonFatal(_) => /* NOOP */ }
+        catch { case NonFatal(t) => logger.debug(t)("Failure during channel close") }
       }
 
       // Finally close the selector
       try s.close()
-      catch { case NonFatal(_) => /* NOOP */ }
+      catch { case NonFatal(t) => logger.debug(t)("Failure during selector close") }
     }
   } // thread
 
@@ -190,7 +183,7 @@ class NIO1SocketServerGroup(pool: SelectorLoopPool) extends ServerChannelGroup {
     override protected def closeChannel() {
       logger.info(s"Closing NIO1 channel ${channel.getLocalAddress()} at ${new Date}")
       try channel.close()
-      catch { case NonFatal(_) => /* NOOP */ }
+      catch { case NonFatal(t) => logger.debug(t)("Failure during channel close") }
     }
   }
 
