@@ -101,9 +101,11 @@ class NIO2SocketServerGroup private(bufferSize: Int, group: AsynchronousChannelG
             case _: ClosedChannelException                                                      => normalClose()
             case _: ShutdownChannelGroupException                                               => normalClose()
 
-            case s: SecurityException =>
-              logger.info(s)("Connection rejected by SecurityManager.")
-              listen(channel, pipeFactory)
+            case NonFatal(e) =>
+              logger.error(e)(s"Error accepting connection on address $address")
+
+              // If the server channel cannot go on, disconnect it.
+              if (!channel.isOpen()) errorClose(e)
 
             case e: Throwable                                                                   => errorClose(e)
           }
