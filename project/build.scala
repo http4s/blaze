@@ -38,7 +38,7 @@ object ApplicationBuild extends Build {
                         libraryDependencies += logbackClassic,
                         libraryDependencies += alpn_boot,
 
-                        // Adds ALPN to the boot classpath for Spdy support
+                        // Adds ALPN to the boot classpath for Http2 support
                         javaOptions in run <++= (managedClasspath in Runtime) map { attList =>
                           for {
                             file <- attList.map(_.data)
@@ -112,9 +112,7 @@ object ApplicationBuild extends Build {
   lazy val twitterHAPCK        = "com.twitter"                %  "hpack"               % "0.10.1"
 
 
-  // Needed for Spdy Support. Perhaps it should be a sub-project?
-  // Interesting note: Http2.0 will use the TSLALPN extension which, unfortunate
-  // as it is not implemented in java SSL yet.
+  // Needed for Http2 support until implemented in the JDK
   lazy val alpn_api            = "org.eclipse.jetty.alpn"     % "alpn-api"             % "1.1.0.v20141014"
 
   // Note that the alpn_boot version is JVM version specific. Check the docs if getting weird errors
