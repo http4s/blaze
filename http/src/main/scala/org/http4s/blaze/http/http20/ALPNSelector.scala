@@ -54,14 +54,14 @@ class ALPNSelector(engine: SSLEngine,
     import scala.collection.JavaConversions._
 
     override def select(protocols: util.List[String]): String = {
-      logger.info("Available protocols: " + protocols)
+      logger.debug("Available protocols: " + protocols)
       val s = selector(protocols)
       selected = Some(s)
       s
     }
 
     override def unsupported() {
-      logger.info(s"Unsupported protocols, defaulting to $selected")
+      logger.debug(s"Unsupported protocols, defaulting to $selected")
     }
   }
 
