@@ -113,10 +113,11 @@ object ApplicationBuild extends Build {
 
 
   // Needed for Http2 support until implemented in the JDK
-  lazy val alpn_api            = "org.eclipse.jetty.alpn"     % "alpn-api"             % "1.1.0.v20141014"
+  lazy val alpn_api            = "org.eclipse.jetty.alpn"     % "alpn-api"             % "1.1.2.v20150522"
 
-  // Note that the alpn_boot version is JVM version specific. Check the docs if getting weird errors
-  lazy val alpn_boot           = "org.mortbay.jetty.alpn"     % "alpn-boot"            % "8.0.0.v20140317" // "7.0.0.v20140317"
+  // Note that the alpn_boot version is JVM version specific. Check the docs if getting weird errors.
+  // Also note that only java8 and above has the require cipher suite for http2.
+  lazy val alpn_boot           = "org.mortbay.jetty.alpn"     % "alpn-boot"            % "8.1.3.v20150130"
 
   /* publishing */
   lazy val publishing = Seq(
