@@ -128,6 +128,27 @@ class ServerParserSpec extends Specification {
       p.parseLine("POST=/enlighten/calais.asmx HKTTPS/1.1\r\n") should throwA[BadRequest]
     }
 
+    "Give bad request on negative content-length" in {
+      val p = new Parser()
+      val line = "GET /enlighten/calais.asmx HTTPS/1.0\r\n"
+      p.parseLine(line) must_== true
+      p.parseheaders(buildHeaderString(Seq("content-length" -> "-1"))) should throwA[BadRequest]
+    }
+
+    "Accept multiple same length content-length headers" in {
+      val p = new Parser()
+      val line = "GET /enlighten/calais.asmx HTTPS/1.0\r\n"
+      p.parseLine(line) must_== true
+      p.parseheaders(buildHeaderString(Seq("content-length" -> "1", "content-length" -> "1"))) must_== true
+    }
+
+    "Give bad request on multiple different content-length headers" in {
+      val p = new Parser()
+      val line = "GET /enlighten/calais.asmx HTTPS/1.0\r\n"
+      p.parseLine(line) must_== true
+      p.parseheaders(buildHeaderString(Seq("content-length" -> "1", "content-length" -> "2"))) should throwA[BadRequest]
+    }
+
     "Match Http1.0 requests" in {
       val p = new Parser()
       p.parseLine("POST /enlighten/calais.asmx HTTPS/1.0\r\n")
@@ -143,8 +164,10 @@ class ServerParserSpec extends Specification {
 
     "Parse headers" in {
       val p = new Parser()
+      val line = "GET /enlighten/calais.asmx HTTPS/1.0\r\n"
+      p.parseLine(line)
       p.parseheaders(headers) should_== (true)
-      p.getContentType should_== (EndOfContent.UNKNOWN_CONTENT)
+      p.getContentType should_== (EndOfContent.END)
       p.h.result should_== (l_headers.map { case (a, b) => (a.trim, b.trim)})
     }
 
@@ -173,193 +196,188 @@ class ServerParserSpec extends Specification {
         val hs = (k, h + ch + t) :: Nil
         p.parseheaders(buildHeaderString(hs)) must_== true
       }
+    }
 
-      "Accept headers without values" in {
-        val hsStr = "If-Modified-Since\r\nIf-Modified-Since:\r\nIf-Modified-Since: \r\nIf-Modified-Since:\t\r\n\r\n"
-        val p = new Parser()
-        p.parseheaders(hsStr) should_== (true)
-        p.getContentType should_== (EndOfContent.UNKNOWN_CONTENT)
-        p.h.result should_== List.fill(4)(("If-Modified-Since", ""))
+    "Accept headers without values" in {
+      val hsStr = "If-Modified-Since\r\nIf-Modified-Since:\r\nIf-Modified-Since: \r\nIf-Modified-Since:\t\r\n\r\n"
+      val p = new Parser()
+      p.parseheaders(hsStr) should_== (true)
+      p.getContentType should_== (EndOfContent.UNKNOWN_CONTENT)
+      p.h.result should_== List.fill(4)(("If-Modified-Since", ""))
+    }
 
+    "need input on partial headers" in {
+      val p = new Parser()
+      p.parseHeaders(headers.slice(0, 20)) should_== (false)
+      p.parseheaders(headers.substring(20)) should_== (true)
+      p.h.result should_== (l_headers.map { case (a, b) => (a.trim, b.trim)})
+    }
+
+    "Parse a full request" in {
+      val p = new Parser()
+      val b = ByteBuffer.wrap(mockFiniteLength.getBytes())
+
+      p.parseLine(b) should_== (true)
+
+      p.parseheaders(b) should_== (true)
+
+      p.sb.result() should_== ("")
+
+      p.parsecontent(b) should_!= (null)
+      p.sb.result() should_== (body)
+      p.contentComplete() should_== (true)
+
+
+      p.reset()
+      p.requestLineComplete() should_== (false)
+    }
+
+    "Parse a full request in fragments" in {
+      val p = new Parser()
+      val b = ByteBuffer.wrap(mockFiniteLength.getBytes())
+
+      val blim = b.limit()
+
+      b.limit(1)
+
+      while (!p.requestLineComplete() && !p.parseLine(b)) {
+        b.limit(b.limit() + 1)
       }
 
-      "need input on partial headers" in {
-        val p = new Parser()
-        p.parseHeaders(headers.slice(0, 20)) should_== (false)
-        p.parseheaders(headers.substring(20)) should_== (true)
-        p.h.result should_== (l_headers.map { case (a, b) => (a.trim, b.trim)})
+      while (!p.headersComplete() && !p.parseheaders(b)) {
+        b.limit(b.limit() + 1)
       }
 
-      "Parse a full request" in {
-        val p = new Parser()
-        val b = ByteBuffer.wrap(mockFiniteLength.getBytes())
-
-        p.parseLine(b) should_== (true)
-
-        p.parseheaders(b) should_== (true)
-
-        p.sb.result() should_== ("")
-
-        p.parsecontent(b) should_!= (null)
-        p.sb.result() should_== (body)
-        p.contentComplete() should_== (true)
-
-
-        p.reset()
-        p.requestLineComplete() should_== (false)
+      while (!p.contentComplete()) {
+        if (null == p.parsecontent(b)) b.limit(b.limit() + 1)
       }
 
-      "Parse a full request in fragments" in {
-        val p = new Parser()
-        val b = ByteBuffer.wrap(mockFiniteLength.getBytes())
+      p.sb.result() should_== (body)
 
-        val blim = b.limit()
+      p.reset()
+      p.requestLineComplete() should_== (false)
+    }
 
-        b.limit(1)
+    "Parse a chunked request" in {
+      val p = new Parser()
+      val b = ByteBuffer.wrap(mockChunked.getBytes())
 
-        while (!p.requestLineComplete() && !p.parseLine(b)) {
-          b.limit(b.limit() + 1)
-        }
+      p.parseLine(b) should_== (true)
 
-        while (!p.headersComplete() && !p.parseheaders(b)) {
-          b.limit(b.limit() + 1)
-        }
+      p.parseheaders(b) should_== (true)
+      p.sb.result() should_== ("")
 
-        while (!p.contentComplete()) {
-          if (null == p.parsecontent(b)) b.limit(b.limit() + 1)
-        }
+      p.parsecontent(b) should_!= (null)
+      p.parsecontent(b) should_!= (null)
+      // two real messages
+      p.parsecontent(b).remaining() should_== (0)
+      p.sb.result() should_== (body + body + " again!")
 
-        p.sb.result() should_== (body)
+      p.reset()
+      true should_== true
+    }
 
-        p.reset()
-        p.requestLineComplete() should_== (false)
+    "Parse a chunked request with trailers" in {
+      val p = new Parser()
+      val req = mockChunked.substring(0, mockChunked.length - 2) + "Foo\r\n\r\n"
+      val b = ByteBuffer.wrap(req.getBytes())
+
+      println(mockChunked)
+
+      p.parseLine(b) should_== (true)
+
+      p.parseheaders(b) should_== (true)
+      p.sb.result() should_== ("")
+      p.h.clear()
+
+      p.parsecontent(b) should_!= (null)
+      p.parsecontent(b) should_!= (null)
+      // two real messages
+      p.parsecontent(b).remaining() should_== (0)
+      p.h.result should_== (("Foo", "") :: Nil)
+      p.sb.result() should_== (body + body + " again!")
+
+      p.reset()
+      true should_== true
+    }
+
+    "Give parse a chunked request in fragments" in {
+      val p = new Parser()
+      val b = ByteBuffer.wrap(mockChunked.getBytes())
+      val blim = b.limit()
+
+      // Do it one char at a time /////////////////////////////////////////
+      b.limit(1)
+      b.position(0)
+      p.sb.clear()
+
+
+      while (!p.requestLineComplete() && !p.parseLine(b)) {
+        b.limit(b.limit() + 1)
       }
 
-      "Parse a chunked request" in {
-        val p = new Parser()
-        val b = ByteBuffer.wrap(mockChunked.getBytes())
-
-        p.parseLine(b) should_== (true)
-
-        p.parseheaders(b) should_== (true)
-        p.sb.result() should_== ("")
-
-        p.parsecontent(b) should_!= (null)
-        p.parsecontent(b) should_!= (null)
-        // two real messages
-        p.parsecontent(b).remaining() should_== (0)
-        p.sb.result() should_== (body + body + " again!")
-
-        p.reset()
-        true should_== true
+      while (!p.headersComplete() && !p.parseheaders(b)) {
+        b.limit(b.limit() + 1)
       }
 
-      "Parse a chunked request with trailers" in {
-        val p = new Parser()
-        val req = mockChunked.substring(0, mockChunked.length - 2) + "Foo\r\n\r\n"
-        val b = ByteBuffer.wrap(req.getBytes())
+      p.contentComplete() should_== (false)
 
-        println(mockChunked)
-
-        p.parseLine(b) should_== (true)
-
-        p.parseheaders(b) should_== (true)
-        p.sb.result() should_== ("")
-        p.h.clear()
-
-        p.parsecontent(b) should_!= (null)
-        p.parsecontent(b) should_!= (null)
-        // two real messages
-        p.parsecontent(b).remaining() should_== (0)
-        p.h.result should_== (("Foo", "") :: Nil)
-        p.sb.result() should_== (body + body + " again!")
-
-        p.reset()
-        true should_== true
+      while (!p.contentComplete()) {
+        p.parsecontent(b)
+        if (b.limit < blim) b.limit(b.limit() + 1)
       }
 
-      "Give parse a chunked request in fragments" in {
-        val p = new Parser()
-        val b = ByteBuffer.wrap(mockChunked.getBytes())
-        val blim = b.limit()
+      p.contentComplete() should_== (true)
+      p.sb.result() should_== (body + body + " again!")
+    }
 
-        // Do it one char at a time /////////////////////////////////////////
-        b.limit(1)
-        b.position(0)
-        p.sb.clear()
+    "Give parse a chunked request in fragments with a trailer" in {
+      val p = new Parser()
+      val req = mockChunked.substring(0, mockChunked.length - 2) + "Foo\r\n\r\n"
+      val b = ByteBuffer.wrap(req.getBytes())
+      val blim = b.limit()
+
+      // Do it one char at a time /////////////////////////////////////////
+      b.limit(1)
+      b.position(0)
+      p.sb.clear()
 
 
-        while (!p.requestLineComplete() && !p.parseLine(b)) {
-          b.limit(b.limit() + 1)
-        }
-
-        while (!p.headersComplete() && !p.parseheaders(b)) {
-          b.limit(b.limit() + 1)
-        }
-
-        p.contentComplete() should_== (false)
-
-        while (!p.contentComplete()) {
-          p.parsecontent(b)
-          if (b.limit < blim) b.limit(b.limit() + 1)
-        }
-
-        p.contentComplete() should_== (true)
-        p.sb.result() should_== (body + body + " again!")
+      while (!p.requestLineComplete() && !p.parseLine(b)) {
+        b.limit(b.limit() + 1)
       }
 
-      "Give parse a chunked request in fragments with a trailer" in {
-        val p = new Parser()
-        val req = mockChunked.substring(0, mockChunked.length - 2) + "Foo\r\n\r\n"
-        val b = ByteBuffer.wrap(req.getBytes())
-        val blim = b.limit()
-
-        // Do it one char at a time /////////////////////////////////////////
-        b.limit(1)
-        b.position(0)
-        p.sb.clear()
-
-
-        while (!p.requestLineComplete() && !p.parseLine(b)) {
-          b.limit(b.limit() + 1)
-        }
-
-        while (!p.headersComplete() && !p.parseheaders(b)) {
-          b.limit(b.limit() + 1)
-        }
-
-        p.h.clear
-
-        p.contentComplete() should_== (false)
-
-        while (!p.contentComplete()) {
-          p.parsecontent(b)
-          if (b.limit < blim) b.limit(b.limit() + 1)
-        }
-        p.h.result should_== (("Foo", "") :: Nil)
-        p.contentComplete() should_== (true)
-        p.sb.result() should_== (body + body + " again!")
+      while (!p.headersComplete() && !p.parseheaders(b)) {
+        b.limit(b.limit() + 1)
       }
 
-      "throw an error if the headers are too long" in {
-        val header = "From: someuser@jmarshall.com  \r\n" +
-          "HOST: www.foo.com\r\n" +
-          "User-Agent: HTTPTool/1.0  \r\n" +
-          "Some-Header\r\n"
+      p.h.clear
 
-        val p = new Parser(maxHeader = header.length - 1)
-        p.parseheaders(header) should throwA[BadRequest]
+      p.contentComplete() should_== (false)
+
+      while (!p.contentComplete()) {
+        p.parsecontent(b)
+        if (b.limit < blim) b.limit(b.limit() + 1)
       }
+      p.h.result should_== (("Foo", "") :: Nil)
+      p.contentComplete() should_== (true)
+      p.sb.result() should_== (body + body + " again!")
+    }
 
-      "throw an error if the request line is too long" in {
+    "throw an error if the headers are too long" in {
+      val header = "From: someuser@jmarshall.com  \r\n" +
+        "HOST: www.foo.com\r\n" +
+        "User-Agent: HTTPTool/1.0  \r\n" +
+        "Some-Header\r\n"
 
-        val p = new Parser(maxReq = request.length - 1)
-        p.parseLine(request) should throwA[BadRequest]
-      }
+      val p = new Parser(maxHeader = header.length - 1)
+      p.parseheaders(header) should throwA[BadRequest]
+    }
 
+    "throw an error if the request line is too long" in {
+
+      val p = new Parser(maxReq = request.length - 1)
+      p.parseLine(request) should throwA[BadRequest]
     }
   }
 }
-
-
-

@@ -19,6 +19,7 @@ public class BaseExceptions {
         }
     }
 
+    // TODO: make exceptions that can be represented as a response
     public static class BadRequest extends ParserException {
         public BadRequest(String msg) {
             super(msg);

@@ -210,6 +210,23 @@ class ClientParserSpec extends Specification {
       ISO_8859_1.decode(out).toString should_==(body)
     }
 
+    "Parse a body with a Content-Length and `Transfer-Encoding: identity` header" in {
+      val p = new TestParser
+      val full = resp + content_length + "Transfer-Encoding: identity\r\n" + l_headersstr + body
+      val bts = wrap(full.getBytes(ISO_8859_1))
+
+      p.parseResponse(bts) should_== (true)
+      p.parseheaders(bts) should_== (true)
+
+      p.contentComplete() should_==(false)
+
+      val out = p.parsebody(bts)
+      out.remaining() should_==(body.length)
+
+      p.contentComplete() should_==(true)
+
+      ISO_8859_1.decode(out).toString should_==(body)
+    }
   }
 
 }

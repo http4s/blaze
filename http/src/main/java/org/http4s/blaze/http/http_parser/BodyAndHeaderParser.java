@@ -130,8 +130,8 @@ public abstract class BodyAndHeaderParser extends ParserBase {
 
     @Override
     public void shutdownParser() {
-        _hstate = HeaderState.END;
-        _chunkState = ChunkState.END;
+        _hstate       = HeaderState.END;
+        _chunkState   = ChunkState.END;
         _endOfContent = EndOfContent.END;
         super.shutdownParser();
     }
@@ -163,11 +163,12 @@ public abstract class BodyAndHeaderParser extends ParserBase {
                         _hstate = HeaderState.END;
 
                         // Finished with the whole request
-                        if (_chunkState == ChunkState.CHUNK_TRAILERS) shutdownParser();
-
-                            // TODO: perhaps we should check if method is GET, OPTION, or HEAD.
-                        else if ((_endOfContent == EndOfContent.UNKNOWN_CONTENT &&
-                                !mayHaveBody())) shutdownParser();
+                        if (_chunkState == ChunkState.CHUNK_TRAILERS) {
+                            shutdownParser();
+                        }
+                        else if ((_endOfContent == EndOfContent.UNKNOWN_CONTENT && !mayHaveBody())) {
+                            shutdownParser();
+                        }
 
                         // Done parsing headers
                         return true;
@@ -198,7 +199,7 @@ public abstract class BodyAndHeaderParser extends ParserBase {
                     try { value = getTrimmedString(); }
                     catch (BaseExceptions.BadRequest e) {
                         shutdownParser();
-                        throw new BadRequest(e.msg());
+                        throw e;
                     }
                     clearBuffer();
 
@@ -208,27 +209,51 @@ public abstract class BodyAndHeaderParser extends ParserBase {
                         // Check for submitContent type if its still not determined
                         // or if a Content-Length is present, it can be overridden by
                         // a Transfer encoding header
+                        // https://tools.ietf.org/html/rfc7230#page-32
                         if (_endOfContent == EndOfContent.UNKNOWN_CONTENT ||
-                            _endOfContent == EndOfContent.CONTENT_LENGTH) {
+                            _endOfContent == EndOfContent.CONTENT_LENGTH  ||
+                            _endOfContent == EndOfContent.EOF_CONTENT ) {
                             if (_headerName.equalsIgnoreCase("Transfer-Encoding")) {
-                                if (!value.equalsIgnoreCase("chunked") && !value.equalsIgnoreCase("identity")) {
+                                if (value.equalsIgnoreCase("chunked")) {
+                                    _endOfContent = EndOfContent.CHUNKED_CONTENT;
+                                }
+                                else if (value.equalsIgnoreCase("identity")) {
+                                    _endOfContent = EndOfContent.EOF_CONTENT;
+                                }
+                                else {
                                     shutdownParser();
+                                    // TODO: server should return 501 - https://tools.ietf.org/html/rfc7230#page-30
                                     throw new BadRequest("Unknown Transfer-Encoding: " + value);
                                 }
-
-                                _endOfContent = EndOfContent.CHUNKED_CONTENT;
                             }
                             else if (_headerName.equalsIgnoreCase("Content-Length")) {
                                 try {
-                                    _contentLength = Long.parseLong(value);
+                                    long len = Long.parseLong(value);
+                                    if (_contentLength > 0 && len != _contentLength) {
+                                        // Multiple different Content-Length headers are an error
+                                        // https://tools.ietf.org/html/rfc7230#page-31
+                                        long oldLen = _contentLength;
+                                        shutdownParser();
+                                        throw new BadRequest("Duplicate Content-Length headers detected: " +
+                                                                oldLen + " and " + len + "\n");
+                                    }
+                                    else if (len > 0) {
+                                        _contentLength = len;
+                                        _endOfContent = EndOfContent.CONTENT_LENGTH;
+                                    }
+                                    else if (len == 0) {
+                                        _contentLength = len;
+                                        _endOfContent = EndOfContent.NO_CONTENT;
+                                    }
+                                    else { // negative content-length
+                                        shutdownParser();
+                                        throw new BadRequest("Cannot have negative Content-Length: '" + len + "'\n");
+                                    }
                                 }
                                 catch (NumberFormatException t) {
                                     shutdownParser();
                                     throw new BadRequest("Invalid Content-Length: '" + value + "'\n");
                                 }
-
-                                _endOfContent = _contentLength <= 0 ?
-                                        EndOfContent.NO_CONTENT: EndOfContent.CONTENT_LENGTH;
                             }
                         }
                     }
