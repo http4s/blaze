@@ -2,7 +2,7 @@ package org.http4s.blaze.pipeline.stages
 
 import org.specs2.mutable.Specification
 
-import org.http4s.blaze.pipeline.{LeafBuilder, TailStage}
+import org.http4s.blaze.pipeline.{Command, LeafBuilder, TailStage}
 
 import java.nio.ByteBuffer
 
@@ -31,9 +31,12 @@ abstract class TimeoutHelpers extends Specification {
 
   def makePipeline(delay: Duration, timeout: Duration): TailStage[ByteBuffer] = {
     val leaf = bufferTail
+    val head = slow(delay)
     LeafBuilder(leaf)
       .prepend(genDelayStage(timeout))
-      .base(slow(delay))
+      .base(head)
+
+    head.sendInboundCommand(Command.Connected)
 
     leaf
   }

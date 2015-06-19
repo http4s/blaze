@@ -7,28 +7,31 @@ import scala.concurrent.Future
 import scala.concurrent.duration.Duration
 
 
+/** Shut down the pipeline after a period of inactivity */
 class QuietTimeoutStage[T](timeout: Duration, exec: TickWheelExecutor = scheduler) extends TimeoutStageBase[T](timeout, exec) {
 
   ////////////////////////////////////////////////////////////////////////////////
 
+  override protected def stageStartup(): Unit = {
+    super.stageStartup()
+    startTimeout()
+  }
+
   override def readRequest(size: Int): Future[T] = {
-    resetTimeout()
     val f = channelRead(size)
-    f.onComplete { _ => cancelTimeout() }(directec)
+    f.onComplete { _ => resetTimeout() }(directec)
     f
   }
 
   override def writeRequest(data: Seq[T]): Future[Unit] = {
-    resetTimeout()
     val f = channelWrite(data)
-    f.onComplete { _ => cancelTimeout() }(directec)
+    f.onComplete { _ => resetTimeout() }(directec)
     f
   }
 
   override def writeRequest(data: T): Future[Unit] = {
-    resetTimeout()
     val f = channelWrite(data)
-    f.onComplete { _ => cancelTimeout() }(directec)
+    f.onComplete { _ => resetTimeout() }(directec)
     f
   }
 }

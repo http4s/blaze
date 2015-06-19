@@ -43,12 +43,11 @@ abstract class TimeoutStageBase[T](timeout: Duration, exec: TickWheelExecutor) e
   /////////// Protected impl bits //////////////////////////////////////////
 
   override protected def stageShutdown(): Unit = {
-    val prev = lastTimeout.getAndSet(null)
-    if (prev != null) prev.cancel()
+    cancelTimeout()
     super.stageShutdown()
   }
 
-  final protected def resetTimeout(): Unit = setAndCancel(scheduler.schedule(killswitch, timeout))
+  final protected def resetTimeout(): Unit = setAndCancel(exec.schedule(killswitch, timeout))
 
   final protected def cancelTimeout(): Unit = setAndCancel(null)
 
