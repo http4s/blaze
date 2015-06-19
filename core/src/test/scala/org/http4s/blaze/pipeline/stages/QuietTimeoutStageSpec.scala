@@ -20,7 +20,7 @@ class QuietTimeoutStageSpec extends TimeoutHelpers {
     }
 
     "timeout properly" in {
-      val pipe = makePipeline(10.seconds, 100.milliseconds)
+      val pipe = makePipeline(delay = 10.seconds, timeout = 100.milliseconds)
       checkFuture(pipe.channelRead(), 5.second) should throwA[Command.EOF.type]
     }
 
