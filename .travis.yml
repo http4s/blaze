@@ -14,5 +14,3 @@ script: sbt ++$TRAVIS_SCALA_VERSION test
 after_success:
 - test $TRAVIS_PULL_REQUEST == "false" && test $TRAVIS_BRANCH == "master" && sbt ++$TRAVIS_SCALA_VERSION publish
 - test $TRAVIS_SCALA_VERSION == "2.11.5" && test $TRAVIS_PULL_REQUEST == "false" && test $TRAVIS_BRANCH == "master"
-notifications:
-  irc: "chat.freenode.net#http4s"
