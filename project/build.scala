@@ -53,15 +53,17 @@ object ApplicationBuild extends Build {
 
   val JvmTarget = "1.7"
 
+  val primaryScalaVerison = "2.11.7"
+
   /* global build settings */
   lazy val buildSettings = Defaults.defaultSettings ++ publishing ++ Seq(
     organization := "org.http4s",
 
     version := "0.9.0-SNAPSHOT",
 
-    scalaVersion := "2.11.6",
+    scalaVersion := primaryScalaVerison,
 
-    crossScalaVersions := Seq("2.10.5", "2.11.6"),
+    crossScalaVersions := Seq("2.10.5", primaryScalaVerison),
 
     description := "NIO Framework for Scala",
 
@@ -107,7 +109,7 @@ object ApplicationBuild extends Build {
   lazy val specs2              = "org.specs2"                 %% "specs2-core"         % "3.3"
   lazy val http4sWebsocket     = "org.http4s"                 %% "http4s-websocket"    % "0.1.1"
   lazy val logbackClassic      = "ch.qos.logback"             %  "logback-classic"     % "1.1.3"
-  lazy val log4s               = "org.log4s"                  %% "log4s"               % "1.1.3"
+  lazy val log4s               = "org.log4s"                  %% "log4s"               % "1.1.5"
   lazy val scalaXml =            "org.scala-lang.modules"     %% "scala-xml"           % "1.0.3"
   lazy val twitterHAPCK        = "com.twitter"                %  "hpack"               % "v1.0.1"
 
