@@ -273,12 +273,5 @@ class TickWheelExecutor(wheelSize: Int = 512, tick: Duration = 200.milli) {
   }
 }
 
-sealed trait Cancellable {
-  def cancel(): Unit
-}
 
-object Cancellable {
-  private[util] val noopCancel = new Cancellable {
-    def cancel(): Unit = {}
-  }
-}
+

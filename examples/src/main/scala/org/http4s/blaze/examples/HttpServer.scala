@@ -7,7 +7,7 @@ import java.util.concurrent.atomic.AtomicReference
 import org.http4s.blaze.channel._
 import org.http4s.blaze.channel.nio1.NIO1SocketServerGroup
 import org.http4s.blaze.channel.nio2.NIO2SocketServerGroup
-import org.http4s.blaze.pipeline.stages.SSLStage
+import org.http4s.blaze.pipeline.stages.{QuietTimeoutStage, SSLStage}
 import org.http4s.blaze.pipeline.{TrunkBuilder, LeafBuilder}
 import org.http4s.blaze.pipeline.stages.monitors.IntervalConnectionMonitor
 
@@ -23,7 +23,11 @@ class HttpServer(factory: ServerChannelGroup, port: Int, ports: Int*) {
     (port +: ports).map { i =>
       val ref = new AtomicReference[ServerChannel](null)
       val f: BufferPipelineBuilder =
-      status.wrapBuilder { _ => trans(LeafBuilder(ExampleService.http1Stage(Some(status), 10*1024, Some(ref)))) }
+      status.wrapBuilder { _ => trans(
+        LeafBuilder(ExampleService.http1Stage(Some(status), 10*1024, Some(ref)))
+                .prepend(new QuietTimeoutStage[ByteBuffer](30.seconds))
+      )
+      }
 
       val ch = factory.bind(new InetSocketAddress(i), f).getOrElse(sys.error("Failed to start server."))
       ref.set(ch)
