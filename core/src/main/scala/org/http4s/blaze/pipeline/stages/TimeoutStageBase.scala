@@ -20,7 +20,7 @@ abstract class TimeoutStageBase[T](timeout: Duration, exec: TickWheelExecutor) e
 
   /////////// Private impl bits //////////////////////////////////////////
 
-  private val lastTimeout = new AtomicReference[Cancellable](null)
+  private val lastTimeout = new AtomicReference[Cancellable](Cancellable.noopCancel)
 
   private val killswitch = new Runnable {
     override def run(): Unit = {
@@ -35,10 +35,10 @@ abstract class TimeoutStageBase[T](timeout: Duration, exec: TickWheelExecutor) e
     val prev = lastTimeout.getAndSet(next)
     if (prev == closedTag && next != closedTag) {
       // woops... we submitted a new cancellation when we were closed!
-      if (next != null) next.cancel()
+      next.cancel()
       setAndCancel(closedTag)
     }
-    else if (prev != null) prev.cancel()
+    else prev.cancel()
   }
 
   /////////// Pass through implementations ////////////////////////////////
@@ -58,7 +58,7 @@ abstract class TimeoutStageBase[T](timeout: Duration, exec: TickWheelExecutor) e
 
   final protected def resetTimeout(): Unit = setAndCancel(exec.schedule(killswitch, timeout))
 
-  final protected def cancelTimeout(): Unit = setAndCancel(null)
+  final protected def cancelTimeout(): Unit = setAndCancel(Cancellable.noopCancel)
 
   final protected def startTimeout(): Unit = resetTimeout()
 }
