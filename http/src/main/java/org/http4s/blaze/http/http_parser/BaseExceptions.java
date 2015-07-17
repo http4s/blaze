@@ -8,10 +8,6 @@ public class BaseExceptions {
             super(msg);
         }
 
-        public final String msg() {
-            return this.getMessage();
-        }
-
         // We will be using this for
         @Override
         public synchronized Throwable fillInStackTrace() {

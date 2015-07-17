@@ -188,7 +188,7 @@ public abstract class Http1ClientParser extends BodyAndHeaderParser {
             }        // while loop
         } catch (BaseExceptions.BadRequest ex) {
             shutdownParser();
-            throw new BadResponse(ex.msg());
+            throw new BadResponse(ex.getMessage());
         }
     }
 }
