@@ -1,5 +1,8 @@
 package org.http4s.blaze.pipeline.stages
 
+import java.util.concurrent.atomic.AtomicInteger
+
+import org.http4s.blaze.pipeline.Command.{Disconnected, InboundCommand}
 import org.specs2.mutable.Specification
 
 import org.http4s.blaze.pipeline.{Command, LeafBuilder, TailStage}
@@ -27,10 +30,9 @@ abstract class TimeoutHelpers extends Specification {
   }
 
   def slow(duration: Duration) = new DelayHead[ByteBuffer](duration) { def next() = newBuff }
-  def bufferTail = new TailStage[ByteBuffer] { def name = "ByteBuffer Tail" }
 
-  def makePipeline(delay: Duration, timeout: Duration): TailStage[ByteBuffer] = {
-    val leaf = bufferTail
+  def makePipeline(delay: Duration, timeout: Duration): TestTail = {
+    val leaf = new TestTail
     val head = slow(delay)
     LeafBuilder(leaf)
       .prepend(genDelayStage(timeout))
@@ -39,5 +41,21 @@ abstract class TimeoutHelpers extends Specification {
     head.sendInboundCommand(Command.Connected)
 
     leaf
+  }
+
+  class TestTail extends TailStage[ByteBuffer] {
+    def name = "TestTail"
+
+    private val disconnectCount = new AtomicInteger(0)
+
+    def getDisconnects = disconnectCount.get()
+
+    override def inboundCommand(cmd: InboundCommand): Unit = {
+      super.inboundCommand(cmd)
+      cmd match {
+        case Disconnected => disconnectCount.incrementAndGet()
+        case _ => ()
+      }
+    }
   }
 }
