@@ -41,7 +41,7 @@ sealed trait Stage {
     * This method should not effect other stages by sending commands etc unless it creates them.
     * It is not impossible that the stage will receive other commands besides [[Connected]]
     * before this method is called. It is not impossible for this method to be called multiple
-    * times by misbehaving stages. It is therefor recommended that the method be idempotent.
+    * times by misbehaving stages. It is therefore recommended that the method be idempotent.
     */
   protected def stageStartup(): Unit = logger.debug(s"${getClass.getName} starting up at ${new Date}")
 
@@ -51,7 +51,7 @@ sealed trait Stage {
     * `inboundCommand` method is overridden. It is not impossible that this will not be called
     * due to failure for other stages to propagate shutdown commands. Conversely, it is also
     * possible for this to be called more than once due to the reception of multiple disconnect
-    * commands. It is therefor recommended that the method be idempotent.
+    * commands. It is therefore recommended that the method be idempotent.
     */
   protected def stageShutdown(): Unit = logger.debug(s"${getClass.getName} shutting down at ${new Date}")
 
