@@ -43,7 +43,7 @@ sealed trait Stage {
     * before this method is called. It is not impossible for this method to be called multiple
     * times by misbehaving stages. It is therefore recommended that the method be idempotent.
     */
-  protected def stageStartup(): Unit = logger.debug(s"${getClass.getName} starting up at ${new Date}")
+  protected def stageStartup(): Unit = logger.debug(s"${getClass.getSimpleName} starting up at ${new Date}")
 
   /** Shuts down the stage, deallocating resources, etc.
     *
@@ -53,7 +53,7 @@ sealed trait Stage {
     * possible for this to be called more than once due to the reception of multiple disconnect
     * commands. It is therefore recommended that the method be idempotent.
     */
-  protected def stageShutdown(): Unit = logger.debug(s"${getClass.getName} shutting down at ${new Date}")
+  protected def stageShutdown(): Unit = logger.debug(s"${getClass.getSimpleName} shutting down at ${new Date}")
 
   /** Handle basic startup and shutdown commands.
     * This should clearly be overridden in all cases except possibly TailStages
@@ -79,8 +79,6 @@ sealed trait Tail[I] extends Stage {
     }  catch { case t: Throwable => return Future.failed(t) }
   }
 
-
-
   def channelWrite(data: I): Future[Unit] = {
     if (_prevStage != null) {
       try _prevStage.writeRequest(data)
@@ -105,17 +103,29 @@ sealed trait Tail[I] extends Stage {
     checkTimeout(timeout, f)
   }
 
+  final def spliceBefore(stage: MidStage[I, I]): Unit = {
+    if (_prevStage != null) {
+      stage._prevStage = _prevStage
+      stage._nextStage = this
+      _prevStage._nextStage = stage
+      _prevStage = stage
+    } else {
+      val e = new Exception("Cannot splice stage before a disconnected stage")
+      logger.error(e)("")
+      throw e
+    }
+  }
+
   final def sendOutboundCommand(cmd: OutboundCommand): Unit = {
-    logger.debug(s"Stage ${getClass.getName} sending outbound command: $cmd")
+    logger.debug(s"Stage ${getClass.getSimpleName} sending outbound command: $cmd")
     if (_prevStage != null) {
       try _prevStage.outboundCommand(cmd)
       catch { case t: Throwable => logger.error(t)("Outbound command caused an error") }
     } else {
-      val e = new Exception("cannot send outbound command on disconnected stage")
+      val e = new Exception("Cannot send outbound command on disconnected stage")
       logger.error(e)("")
       throw e
     }
-
   }
 
   final def findOutboundStage(name: String): Option[Stage] = {
@@ -223,12 +233,12 @@ sealed trait Head[O] extends Stage {
   }
 
   final def sendInboundCommand(cmd: InboundCommand): Unit = {
-    logger.debug(s"Stage ${getClass.getName} sending inbound command: $cmd")
+    logger.debug(s"Stage ${getClass.getSimpleName} sending inbound command: $cmd")
     if (_nextStage != null) {
       try _nextStage.inboundCommand(cmd)
       catch { case t: Throwable => outboundCommand(Error(t)) }
     } else {
-      val e = new Exception("cannot send inbound command on disconnected stage")
+      val e = new Exception("Cannot send inbound command on disconnected stage")
       logger.error(e)("")
       throw e
     }
@@ -246,20 +256,18 @@ sealed trait Head[O] extends Stage {
   def outboundCommand(cmd: OutboundCommand): Unit = cmd match {
     case Connect    => stageStartup()
     case Disconnect => stageShutdown()
-
-    case Error(e)   =>
-      logger.error(e)(s"$name received unhandled error command")
-
+    case Error(e)   => logger.error(e)(s"$name received unhandled error command")
     case cmd        => logger.warn(s"$name received unhandled outbound command: $cmd")
   }
 
-  final def spliceAfter(stage: MidStage[O, O]): stage.type = {
+  final def spliceAfter(stage: MidStage[O, O]): Unit = {
     if (_nextStage != null) {
+      stage._nextStage = _nextStage
+      stage._prevStage = this
       _nextStage._prevStage = stage
       _nextStage = stage
-      stage
     } else {
-      val e = new Exception("cannot send outbound command on disconnected stage")
+      val e = new Exception("Cannot splice stage after disconnected stage")
       logger.error(e)("")
       throw e
     }
@@ -314,17 +322,17 @@ trait MidStage[I, O] extends Tail[I] with Head[O] {
 
   final def replaceNext(stage: LeafBuilder[O]): Tail[O] = _nextStage.replaceInline(stage)
 
-  final def removeStage(implicit ev: MidStage[I,O] =:= MidStage[I, I]): this.type = {
+  final def removeStage(implicit ev: MidStage[I,O] =:= MidStage[I, I]): Unit = {
     stageShutdown()
 
-    if (_prevStage == null || _nextStage == null) return this
+    if (_prevStage != null && _nextStage != null) {
+      val me: MidStage[I, I] = ev(this)
+      _prevStage._nextStage = me._nextStage
+      me._nextStage._prevStage = me._prevStage
 
-    val me: MidStage[I, I] = ev(this)
-    _prevStage._nextStage = me._nextStage
-    me._nextStage._prevStage = me._prevStage
-
-    _nextStage = null
-    _prevStage = null
-    this
+      _nextStage = null
+      _prevStage = null
+    }
+    else logger.warn(s"Cannot remove a disconnected stage ${this.getClass.getSimpleName}")
   }
 }

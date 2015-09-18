@@ -11,30 +11,29 @@ class PipelineSpec extends Specification {
   implicit def ec = Execution.trampoline
 
   class IntHead extends HeadStage[Int] {
-
     def name = "IntHead"
-
     @volatile
     var lastWrittenInt: Int = 0
-
     def writeRequest(data: Int): Future[Unit] = {
       lastWrittenInt = data
       Future.successful(())
     }
-
     def readRequest(size: Int): Future[Int] = Future(54)
   }
 
   class IntToString extends MidStage[Int, String] {
-
     def name = "IntToString"
-
     def readRequest(size: Int): Future[String] = channelRead(1) map (_.toString)
-
     def writeRequest(data: String): Future[Unit] = {
       try channelWrite(data.toInt)
       catch { case t: NumberFormatException => Future.failed(t) }
     }
+  }
+
+  class Noop[T] extends MidStage[T, T] {
+    def name: String = "NOOP"
+    def readRequest(size: Int): Future[T] = channelRead(size)
+    def writeRequest(data: T): Future[Unit] = channelWrite(data)
   }
 
   class StringEnd extends TailStage[String] {
@@ -59,27 +58,37 @@ class PipelineSpec extends Specification {
     }
 
     "Be able to find and remove stages with identical arguments" in {
-
-      class Noop extends MidStage[Int, Int] {
-        def name: String = "NOOP"
-
-        def readRequest(size: Int): Future[Int] = channelRead(size)
-
-        def writeRequest(data: Int): Future[Unit] = channelWrite(data)
-      }
-
-      val noop = new Noop
-
+      val noop = new Noop[Int]
       val p = TrunkBuilder(noop).append(new IntToString).cap(new StringEnd).base(new IntHead)
 
-      p.findInboundStage(classOf[Noop]).get should_== noop
+      p.findInboundStage(classOf[Noop[Int]]).get should_== noop
       p.findInboundStage(noop.name).get should_== noop
       noop.removeStage
-      p.findInboundStage(classOf[Noop]).isDefined should_== false
+      p.findInboundStage(classOf[Noop[Int]]) must_== None
     }
 
+    "Splice after" in {
+      val noop = new Noop[Int]
+      val p = TrunkBuilder(new IntToString).cap(new StringEnd).base(new IntHead)
+      p.spliceAfter(noop)
+
+      p.findInboundStage(classOf[Noop[Int]]).get should_== noop
+      p.findInboundStage(noop.name).get should_== noop
+      noop.removeStage
+      p.findInboundStage(classOf[Noop[Int]]) must_== None
+    }
+
+    "Splice before" in {
+      val noop = new Noop[String]
+      val end = new StringEnd
+      val p = LeafBuilder(end).prepend(new IntToString).base(new IntHead)
+      end.spliceBefore(noop)
+
+      p.findInboundStage(classOf[Noop[String]]).get should_== noop
+      p.findInboundStage(noop.name).get should_== noop
+      noop.removeStage
+      p.findInboundStage(classOf[Noop[String]]) must_== None
+    }
   }
-
-
 
 }
