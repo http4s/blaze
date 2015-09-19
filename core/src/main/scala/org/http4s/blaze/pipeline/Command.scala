@@ -37,9 +37,10 @@ object Command {
     override def toString() = getMessage
   }
 
-  /** Signals that an unknown error has occured and the tail stages have likely
-    * shut down. If the stage cannot recover it should propegate the error. If the
-    * [[Error]] reaches the [[HeadStage]], the [[HeadStage]] should shutdown the pipeline.
+  /** Signals that an unknown error has occurred. In this even the tail stages have likely
+    * shut down but that is not guarenteed. If the stage cannot recover it should propagate
+    * the error. If the [[Error]] reaches the [[HeadStage]], the [[HeadStage]] _should_
+    * shutdown the pipeline.
     *
     * @param e Throwable that was unhandled by the tail of the pipeline.
     */

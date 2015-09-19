@@ -122,7 +122,7 @@ private[nio2] final class ByteBufferHead(channel: AsynchronousSocketChannel, buf
   override protected def closeWithError(t: Throwable): Unit = {
     t match {
       case EOF => logger.debug(s"closeWithError(EOF)")
-      case t   => logger.error(t)("NIO2 channel closed with unexpected error")
+      case t   => logger.error(t)("NIO2 channel closed with an unexpected error")
     }
 
     try channel.close()
