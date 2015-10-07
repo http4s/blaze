@@ -20,7 +20,7 @@ object ApplicationBuild extends Build {
                     file("http"),
                     settings = buildSettings ++ dependencies ++ Seq(
                       libraryDependencies ++= Seq(http4sWebsocket,
-                                                  twitterHAPCK,
+                                                  twitterHPACK,
                                                   alpn_api),
                       libraryDependencies ++= (scalaBinaryVersion.value match {
                         case "2.10" => Seq.empty
@@ -107,11 +107,11 @@ object ApplicationBuild extends Build {
   )
 
   lazy val specs2              = "org.specs2"                 %% "specs2-core"         % "3.3"
-  lazy val http4sWebsocket     = "org.http4s"                 %% "http4s-websocket"    % "0.1.1"
+  lazy val http4sWebsocket     = "org.http4s"                 %% "http4s-websocket"    % "0.1.3"
   lazy val logbackClassic      = "ch.qos.logback"             %  "logback-classic"     % "1.1.3"
-  lazy val log4s               = "org.log4s"                  %% "log4s"               % "1.1.5"
-  lazy val scalaXml =            "org.scala-lang.modules"     %% "scala-xml"           % "1.0.3"
-  lazy val twitterHAPCK        = "com.twitter"                %  "hpack"               % "v1.0.1"
+  lazy val log4s               = "org.log4s"                  %% "log4s"               % "1.2.0"
+  lazy val scalaXml =            "org.scala-lang.modules"     %% "scala-xml"           % "1.0.5"
+  lazy val twitterHPACK        = "com.twitter"                %  "hpack"               % "v1.0.1"
 
 
   // Needed for Http2 support until implemented in the JDK
@@ -119,7 +119,7 @@ object ApplicationBuild extends Build {
 
   // Note that the alpn_boot version is JVM version specific. Check the docs if getting weird errors.
   // Also note that only java8 and above has the require cipher suite for http2.
-  lazy val alpn_boot           = "org.mortbay.jetty.alpn"     % "alpn-boot"            % "8.1.3.v20150130"
+  lazy val alpn_boot           = "org.mortbay.jetty.alpn"     % "alpn-boot"            % "8.1.5.v20150921"
 
   /* publishing */
   lazy val publishing = Seq(
