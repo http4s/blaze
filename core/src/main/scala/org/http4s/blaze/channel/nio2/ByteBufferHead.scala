@@ -20,7 +20,7 @@ private[nio2] final class ByteBufferHead(channel: AsynchronousSocketChannel, buf
 
   private val buffer = BufferTools.allocate(bufferSize)
 
-  final override def writeRequest(data: ByteBuffer): Future[Unit] = {
+  override def writeRequest(data: ByteBuffer): Future[Unit] = {
 
     if (!data.hasRemaining() && data.position > 0) {
       logger.warn("Received write request with non-zero position but ZERO available" +
@@ -50,7 +50,7 @@ private[nio2] final class ByteBufferHead(channel: AsynchronousSocketChannel, buf
     p.future
   }
 
-  final override def writeRequest(data: Seq[ByteBuffer]): Future[Unit] = {
+  override def writeRequest(data: Seq[ByteBuffer]): Future[Unit] = {
 
     val p = Promise[Unit]
     val srcs = data.toArray
@@ -127,5 +127,15 @@ private[nio2] final class ByteBufferHead(channel: AsynchronousSocketChannel, buf
 
     try channel.close()
     catch { case e: IOException => /* Don't care */ }
+  }
+
+  override protected def finalize(): Unit = {
+    if (channel.isOpen) {
+      logger.warn("ByteBufferHead hasn't been shutdown before going " +
+                  "out of scope, potentially leaking a file descriptor.")
+      try channel.close()
+      catch { case e: IOException => /* Don't care */ }
+    }
+    super.finalize()
   }
 }
