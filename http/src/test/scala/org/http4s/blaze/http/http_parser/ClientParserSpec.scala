@@ -120,6 +120,22 @@ class ClientParserSpec extends Specification {
       val badLf = "HTTP/1.1 200 OK\r\r\n"
       p.parseResponse(wrap(badLf.getBytes(ISO_8859_1))) should throwA[BadResponse]
     }
+    
+    "not fail on missing reason" in {
+      val p = new TestParser
+      val missingReason = "HTTP/1.1 200 \r\n"
+      p.parseResponse(wrap(missingReason.getBytes(ISO_8859_1))) should_== true
+      p.responseLineComplete() should_== true
+      p.code should_== 200
+      p.reason should_== ""
+      
+      p.reset()
+      val missingReasonAndSpace = "HTTP/1.1 200\r\n"
+      p.parseResponse(wrap(missingReasonAndSpace.getBytes(ISO_8859_1))) should_== true
+      p.responseLineComplete() should_== true
+      p.code should_== 200
+      p.reason should_== ""
+    }
 
     "throw invalid state if trying to parse the response line more than once" in {
       val p = new TestParser
