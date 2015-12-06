@@ -138,15 +138,20 @@ public abstract class Http1ClientParser extends BodyAndHeaderParser {
 
                         if (ch == 0) return false;  // Need more data
 
-                        if (!HttpTokens.isWhiteSpace(ch)) {
-                            shutdownParser();
-                            throw new BadResponse("Invalid request: Expected SPACE but found '" + (char)ch + "'");
-                        }
-
                         if (_statusCode < 100 || _statusCode >= 600) {
                             shutdownParser();
                             throw new BadResponse("Invalid status code '" +
                                     _statusCode + "'. Must be between 100 and 599");
+                        }
+
+                        if (ch == HttpTokens.LF) {
+                        	endResponseLineParsing("");
+                            return true;
+                        }
+
+                        if (!HttpTokens.isWhiteSpace(ch)) {
+                            shutdownParser();
+                            throw new BadResponse("Invalid request: Expected SPACE but found '" + (char)ch + "'");
                         }
 
                         _requestLineState = RequestLineState.SPACE2;
@@ -158,8 +163,8 @@ public abstract class Http1ClientParser extends BodyAndHeaderParser {
                         if (ch == 0) return false;
 
                         if (ch == HttpTokens.LF) {
-                            shutdownParser();
-                            throw new BadResponse("Response lacks status Reason");
+                        	endResponseLineParsing("");
+                            return true;
                         }
 
                         putChar(ch);
@@ -174,11 +179,7 @@ public abstract class Http1ClientParser extends BodyAndHeaderParser {
 
 
                         String reason = getTrimmedString();
-                        clearBuffer();
-
-                        // We are through parsing the request line
-                        _requestLineState = RequestLineState.END;
-                        submitResponseLine(_statusCode, reason, _lineScheme, _majorVersion, _minorVersion);
+                        endResponseLineParsing(reason);
                         return true;
 
                     default:
@@ -190,5 +191,13 @@ public abstract class Http1ClientParser extends BodyAndHeaderParser {
             shutdownParser();
             throw new BadResponse(ex.getMessage());
         }
+    }
+
+    private void endResponseLineParsing(String reason) {
+    	clearBuffer();
+
+        // We are through parsing the request line
+        _requestLineState = RequestLineState.END;
+        submitResponseLine(_statusCode, reason, _lineScheme, _majorVersion, _minorVersion);
     }
 }
