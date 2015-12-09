@@ -15,6 +15,7 @@ public abstract class BodyAndHeaderParser extends ParserBase {
         START,
         HEADER_IN_NAME,
         HEADER_IN_VALUE,
+        HEADER_SKIP,
         END
     }
 
@@ -63,8 +64,8 @@ public abstract class BodyAndHeaderParser extends ParserBase {
 
     /* Constructor --------------------------------------------------------- */
 
-    protected BodyAndHeaderParser(int initialBufferSize, int headerSizeLimit, int maxChunkSize) {
-        super(initialBufferSize);
+    protected BodyAndHeaderParser(int initialBufferSize, int headerSizeLimit, int maxChunkSize, boolean isLenient) {
+        super(initialBufferSize, isLenient);
         this.headerSizeLimit = headerSizeLimit;
         this.maxChunkSize = maxChunkSize;
 
@@ -153,9 +154,20 @@ public abstract class BodyAndHeaderParser extends ParserBase {
                     resetLimit(headerSizeLimit);
 
                 case HEADER_IN_NAME:
-                    for(ch = next(in, false); ch != ':' && ch != HttpTokens.LF; ch = next(in, false)) {
-                        if (ch == 0) return false;
-                        putChar(ch);
+                    try {
+                        for(ch = next(in, false); ch != ':' && ch != HttpTokens.LF; ch = next(in, false)) {
+                            if (ch == 0) return false;
+                            putChar(ch);
+                        }
+                    } catch (BaseExceptions.BadCharacter c) {
+                        if (isLenient()) {
+                            _hstate = HeaderState.HEADER_SKIP;
+                            continue headerLoop;
+                        }
+                        else {
+                            shutdownParser();
+                            throw c;
+                        }
                     }
 
                     // Must be done with headers
@@ -190,9 +202,21 @@ public abstract class BodyAndHeaderParser extends ParserBase {
                     _hstate = HeaderState.HEADER_IN_VALUE;
 
                 case HEADER_IN_VALUE:
-                    for(ch = next(in, true); ch != HttpTokens.LF; ch = next(in, true)) {
-                        if (ch == 0) return false;
-                        putChar(ch);
+
+                    try {
+                        for(ch = next(in, true); ch != HttpTokens.LF; ch = next(in, true)) {
+                            if (ch == 0) return false;
+                            putChar(ch);
+                        }
+                    } catch (BaseExceptions.BadCharacter c) {
+                        if (isLenient()) {
+                            _hstate = HeaderState.HEADER_SKIP;
+                            continue headerLoop;
+                        }
+                        else {
+                            shutdownParser();
+                            throw c;
+                        }
                     }
 
                     String value;
@@ -268,6 +292,15 @@ public abstract class BodyAndHeaderParser extends ParserBase {
                     }
 
                     break;
+
+                case HEADER_SKIP:
+                    // discard the header
+                    clearBuffer();
+                    byte b;
+                    for(b = nextByte(in); b != HttpTokens.LF && b != 0; b = nextByte(in));
+                    if (b == 0) return false;
+                    _hstate = HeaderState.HEADER_IN_NAME;
+                    continue headerLoop;
 
                 case END:
                     shutdownParser();

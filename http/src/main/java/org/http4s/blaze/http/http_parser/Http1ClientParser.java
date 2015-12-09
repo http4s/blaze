@@ -5,19 +5,24 @@ import org.http4s.blaze.http.http_parser.BaseExceptions.*;
 
 public abstract class Http1ClientParser extends BodyAndHeaderParser {
 
-    public Http1ClientParser(int maxRequestLineSize, int maxHeaderLength, int initialBufferSize, int maxChunkSize) {
-        super(initialBufferSize, maxHeaderLength, maxChunkSize);
+    public Http1ClientParser(int maxRequestLineSize, int maxHeaderLength, int initialBufferSize, int maxChunkSize,
+                             boolean isLenient) {
+        super(initialBufferSize, maxHeaderLength, maxChunkSize, isLenient);
         this.maxRequestLineSize = maxRequestLineSize;
 
         _internalReset();
     }
 
-    public Http1ClientParser(int initialBufferSize) {
-        this(2048, 40*1024, initialBufferSize, Integer.MAX_VALUE);
+    public Http1ClientParser(int initialBufferSize, boolean isLenient) {
+        this(2048, 40*1024, initialBufferSize, Integer.MAX_VALUE, isLenient);
+    }
+
+    public Http1ClientParser(boolean isLenient) {
+        this(10*1024, isLenient);
     }
 
     public Http1ClientParser() {
-        this(10*1024);
+        this(false);
     }
 
     // Status-Line = HTTP-Version SP Status-Code SP Reason-Phrase CRLF
