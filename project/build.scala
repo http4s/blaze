@@ -4,6 +4,9 @@ import scala.util.Properties
 
 import spray.revolver.RevolverPlugin._
 
+import com.typesafe.tools.mima.plugin.MimaPlugin.mimaDefaultSettings
+import com.typesafe.tools.mima.plugin.MimaKeys._
+
 object ApplicationBuild extends Build {
 
   /* Projects */
@@ -14,11 +17,11 @@ object ApplicationBuild extends Build {
 
   lazy val core = Project("blaze-core",
                       file("core"),
-                      settings = buildSettings ++ dependencies)
+                      settings = buildSettings ++ mimaSettings ++ dependencies)
 
   lazy val http = Project("blaze-http",
                     file("http"),
-                    settings = buildSettings ++ dependencies ++ Seq(
+                    settings = buildSettings ++ mimaSettings ++ dependencies ++ Seq(
                       libraryDependencies ++= Seq(http4sWebsocket,
                                                   twitterHPACK,
                                                   alpn_api),
@@ -99,6 +102,13 @@ object ApplicationBuild extends Build {
     )
   )
 
+  lazy val mimaSettings = mimaDefaultSettings ++ Seq(
+    failOnProblem <<= version(compatibleVersion(_).isDefined),
+    previousArtifact <<= (version, organization, scalaBinaryVersion,   moduleName)((ver, org, binVer, mod) => compatibleVersion(ver) map {
+      org % s"${mod}_${binVer}" % _
+    })
+  )
+
   /* dependencies */
   lazy val dependencies = Seq(
     libraryDependencies += specs2 % "test",
@@ -156,4 +166,18 @@ object ApplicationBuild extends Build {
     )
   )
 
+  def compatibleVersion(version: String) = {
+    val currentVersionWithoutSnapshot = version.replaceAll("-SNAPSHOT$", "")
+    val (targetMajor, targetMinor) = extractApiVersion(version)
+    val targetVersion = s"${targetMajor}.${targetMinor}.0"
+    if (targetVersion != currentVersionWithoutSnapshot) Some(targetVersion)
+    else None
+  }
+
+  def extractApiVersion(version: String) = {
+    val VersionExtractor = """(\d+)\.(\d+)\..*""".r
+    version match {
+      case VersionExtractor(major, minor) => (major.toInt, minor.toInt)
+    }
+  }
 }
