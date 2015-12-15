@@ -40,9 +40,11 @@ private[nio1] abstract class NIO1HeadStage(ch: SelectableChannel,
 
   // Called by the selector loop when this channel has data to read
   final def readReady(scratch: ByteBuffer): Unit = {
+    assert(Thread.currentThread() == loop,
+           s"Expected to be called only by SelectorLoop thread, was called by ${Thread.currentThread.name}")
+
     val r = performRead(scratch)
     unsetOp(SelectionKey.OP_READ)
-
 
     // if we successfully read some data, unset the interest and
     // complete the promise, otherwise fail appropriately
@@ -54,7 +56,7 @@ private[nio1] abstract class NIO1HeadStage(ch: SelectableChannel,
           case other =>
             val msg = this.getClass.getName() +
               " is in an inconsistent state: readPromise already completed: " +
-              p.toString()
+              p.toString
             closeWithError(new IllegalStateException(msg))
         }
 
@@ -70,8 +72,7 @@ private[nio1] abstract class NIO1HeadStage(ch: SelectableChannel,
     val p = Promise[ByteBuffer]
 
     if (readPromise.compareAndSet(null, p)) {
-      if (Thread.currentThread() == loop) _readTask.run()  // Already in SelectorLoop
-      else loop.enqueTask(_readTask)
+      loop.executeTask(_readTask)
       p.future
     }
     else readPromise.get() match {
@@ -86,21 +87,24 @@ private[nio1] abstract class NIO1HeadStage(ch: SelectableChannel,
   @volatile private var writeData: Array[ByteBuffer] = null
   private val writePromise = new AtomicReference[Promise[Unit]](null)
 
-  // Will always be called from the SelectorLoop thread. Does this mean we don't need to be private?
+  // Called by the selector loop when this channel can be written to
   final def writeReady(scratch: ByteBuffer): Unit = {
+    assert(Thread.currentThread() == loop,
+           s"Expected to be called only by SelectorLoop thread, was called by ${Thread.currentThread.name}")
+
     val buffers = writeData // get a local reference so we don't hit the volatile a lot
     performWrite(scratch, buffers) match {
       case Complete =>
         writeData = null
-        val p = writePromise.get()
-        writePromise.set(null)
         unsetOp(SelectionKey.OP_WRITE)
+        val p = writePromise.getAndSet(null)
         p.trySuccess(())
 
       case Incomplete => /* Need to wait for another go around to try and send more data */
         BufferTools.dropEmpty(buffers)
 
       case WriteError(t) =>
+        unsetOp(SelectionKey.OP_WRITE)
         sendInboundCommand(Disconnected)
         closeWithError(t)
     }
@@ -115,8 +119,7 @@ private[nio1] abstract class NIO1HeadStage(ch: SelectableChannel,
       val writes = data.toArray
       if (!BufferTools.checkEmpty(writes)) {  // Non-empty buffer
         writeData = writes
-        if (Thread.currentThread() == loop) _writeTask.run()  // Already in SelectorLoop
-        else loop.enqueTask(_writeTask)
+        loop.executeTask(_writeTask)
         p.future
       } else {                                // Empty buffer, just return success
         writePromise.set(null)
@@ -150,8 +153,7 @@ private[nio1] abstract class NIO1HeadStage(ch: SelectableChannel,
 
   /** Perform the write operation for this channel
     * @param buffers buffers to be written to the channel
-    * @return a Try that is either a Success(Any), a Failure with an appropriate error,
-    *         or null if this operation is not complete
+    * @return a WriteResult that is one of Complete, Incomplete or WriteError(e: Exception)
     */
   protected def performWrite(scratch: ByteBuffer, buffers: Array[ByteBuffer]): WriteResult
 
@@ -190,11 +192,13 @@ private[nio1] abstract class NIO1HeadStage(ch: SelectableChannel,
 
   /** Sets a channel interest */
   private def unsetOp(op: Int) {
-    if (Thread.currentThread() == loop) _unsetOp(op)  // Already in SelectorLoop
-    else loop.enqueTask(new Runnable { def run() = _unsetOp(op) })
+    loop.executeTask(new Runnable { def run() = _unsetOp(op) })
   }
 
   private def _unsetOp(op: Int) {
+    assert(Thread.currentThread() == loop,
+           s"Expected to be called only by SelectorLoop thread, was called by ${Thread.currentThread.name}")
+
     try {
       val ops = key.interestOps()
       if ((ops & op) != 0) {
@@ -208,6 +212,9 @@ private[nio1] abstract class NIO1HeadStage(ch: SelectableChannel,
   }
 
   private def _setOp(op: Int) {
+    assert(Thread.currentThread() == loop,
+           s"Expected to be called only by SelectorLoop thread, was called by ${Thread.currentThread.name}")
+
     try {
       val ops = key.interestOps()
       if ((ops & op) == 0) {

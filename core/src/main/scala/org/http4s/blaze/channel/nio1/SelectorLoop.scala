@@ -21,12 +21,15 @@ final class SelectorLoop(id: String, selector: Selector, bufferSize: Int) extend
 
   private[this] val logger = getLogger
 
+  // a node in the task queue with a reference to the next task
   private class Node(val runnable: Runnable) extends AtomicReference[Node]
 
+  // a reference to the latest added Node
   private val queueHead = new AtomicReference[Node](null)
+  // a reference to the first added Node
   private val queueTail = new AtomicReference[Node](null)
 
-  private val scratch = BufferTools.allocate(bufferSize)
+  private val scratch = BufferTools.allocate(bufferSize) // could be allocateDirect ?
   @volatile private var _isClosed = false
 
   /** Signal to the [[SelectorLoop]] that it should close */
