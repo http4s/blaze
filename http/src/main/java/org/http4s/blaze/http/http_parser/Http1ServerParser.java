@@ -91,8 +91,10 @@ public abstract class Http1ServerParser extends BodyAndHeaderParser {
     /* ------------------------------------------------------------------ */
 
     @Override
-    public boolean mayHaveBody() {
-        return _methodString == null || _methodString == "POST" || _methodString == "PUT";
+    public boolean mustNotHaveBody() {
+      // A request must always indicate with either content-length or
+      // transfer-encoding if it is going to have a body.
+      return !(definedContentLength() || isChunked());
     }
 
     /* ------------------------------------------------------------------ */

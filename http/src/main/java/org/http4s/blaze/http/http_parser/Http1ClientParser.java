@@ -70,11 +70,10 @@ public abstract class Http1ClientParser extends BodyAndHeaderParser {
     }
 
     @Override
-    public boolean mayHaveBody() {
-        return contentComplete() ||
-            (_statusCode >= 200 &&
-             _statusCode != 204 &&
-             _statusCode != 304);
+    public boolean mustNotHaveBody() {
+        return _statusCode < 200 ||
+          _statusCode != 204 ||
+          _statusCode != 304; // TODO: or request was HEAD
     }
 
     /** parses the request line. Returns true if completed successfully, false if needs input */

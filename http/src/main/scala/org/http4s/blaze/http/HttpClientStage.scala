@@ -124,24 +124,28 @@ class HttpClientStage(timeout: Duration = Duration.Inf)
 
       @tailrec
       def parseBuffer(b: ByteBuffer): Unit = {
-        val body = parseContent(b)
+        if (contentComplete()) {
+          val b = BufferTools.joinBuffers(bodyBuffers.result())
+          val r = HttpResponse(this.code, this.reason, hdrs.result(), b)
+          reset()
 
-        if (body != null) {
-
-          if (body.remaining() > 0) {
-            bodyBuffers += body.slice()
-          }
-
-          if (contentComplete()) {
-            val b = BufferTools.joinBuffers(bodyBuffers.result())
-            val r = HttpResponse(this.code, this.reason, hdrs.result(), b)
-            reset()
-
-            p.success(r)
-          }
-          else parseBuffer(b)  // We have sufficient data, but need to continue parsing. Probably chunking
+          p.success(r)
         }
-        else parserLoop(p)  // Need to get more data off the line
+        else {
+          val body = parseContent(b) // returns null if b doesn't have enought data
+
+          if (body != null) {
+            if (body.remaining() > 0) {
+              bodyBuffers += body.slice()
+            }
+
+            parseBuffer(b) // Note: b may have more data or we may be
+                           // at the end of content, we'll see on next
+                           // iteration
+          } else {
+            parserLoop(p)  // Need to get more data off the line
+          }
+        }
       }
 
       parseBuffer(b)
