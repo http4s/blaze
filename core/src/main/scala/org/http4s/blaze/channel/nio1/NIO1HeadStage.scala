@@ -40,8 +40,8 @@ private[nio1] abstract class NIO1HeadStage(ch: SelectableChannel,
 
   // Called by the selector loop when this channel has data to read
   final def readReady(scratch: ByteBuffer): Unit = {
-    assert(Thread.currentThread() == loop,
-           s"Expected to be called only by SelectorLoop thread, was called by ${Thread.currentThread.name}")
+    // assert(Thread.currentThread() == loop,
+    //       s"Expected to be called only by SelectorLoop thread, was called by ${Thread.currentThread.getName}")
 
     val r = performRead(scratch)
     unsetOp(SelectionKey.OP_READ)
@@ -89,8 +89,8 @@ private[nio1] abstract class NIO1HeadStage(ch: SelectableChannel,
 
   // Called by the selector loop when this channel can be written to
   final def writeReady(scratch: ByteBuffer): Unit = {
-    assert(Thread.currentThread() == loop,
-           s"Expected to be called only by SelectorLoop thread, was called by ${Thread.currentThread.name}")
+    //assert(Thread.currentThread() == loop,
+    //       s"Expected to be called only by SelectorLoop thread, was called by ${Thread.currentThread.getName}")
 
     val buffers = writeData // get a local reference so we don't hit the volatile a lot
     performWrite(scratch, buffers) match {
@@ -195,9 +195,10 @@ private[nio1] abstract class NIO1HeadStage(ch: SelectableChannel,
     loop.executeTask(new Runnable { def run() = _unsetOp(op) })
   }
 
+  // only to be called by the SelectorLoop thread
   private def _unsetOp(op: Int) {
-    assert(Thread.currentThread() == loop,
-           s"Expected to be called only by SelectorLoop thread, was called by ${Thread.currentThread.name}")
+    // assert(Thread.currentThread() == loop,
+    //       s"Expected to be called only by SelectorLoop thread, was called by ${Thread.currentThread.getName}")
 
     try {
       val ops = key.interestOps()
@@ -211,9 +212,10 @@ private[nio1] abstract class NIO1HeadStage(ch: SelectableChannel,
     }
   }
 
+  // only to be called by the SelectorLoop thread
   private def _setOp(op: Int) {
-    assert(Thread.currentThread() == loop,
-           s"Expected to be called only by SelectorLoop thread, was called by ${Thread.currentThread.name}")
+    // assert(Thread.currentThread() == loop,
+    //       s"Expected to be called only by SelectorLoop thread, was called by ${Thread.currentThread.getName}")
 
     try {
       val ops = key.interestOps()

@@ -39,7 +39,8 @@ final class SelectorLoop(id: String, selector: Selector, bufferSize: Int) extend
     selector.wakeup()
   }
 
-  def executeTask(r: Runnable) {
+  @inline
+  final def executeTask(r: Runnable) {
     if (Thread.currentThread() == thisLoop) r.run()
     else enqueTask(r)
   }
