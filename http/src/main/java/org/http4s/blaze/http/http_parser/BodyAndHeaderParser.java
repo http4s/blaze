@@ -288,20 +288,12 @@ public abstract class BodyAndHeaderParser extends ParserBase {
         } else {
             switch (_endOfContent) {
             case UNKNOWN_CONTENT:
-                // Need Content-Length or Transfer-Encoding to signal a body for GET
-                // rfc2616 Sec 4.4 for more info
-                // What about custom verbs which may have a body?
-                // We could also CONSIDER doing a BAD Request here.
+                // This makes sense only for response parsing. Requests must always have
+                // either Content-Length or Transfer-Encoding
 
-                if (mustNotHaveBody()) {
-                    _endOfContent = EndOfContent.END;
-                    return BufferTools.emptyBuffer();
-                }
-                else {
-                    _endOfContent = EndOfContent.EOF_CONTENT;
-                    _contentLength = Long.MAX_VALUE;    // Its up to the user to limit a body size
-                    return parseContent(in);
-                }
+                _endOfContent = EndOfContent.EOF_CONTENT;
+                _contentLength = Long.MAX_VALUE;    // Its up to the user to limit a body size
+                return parseContent(in);
 
             case CONTENT_LENGTH:
             case EOF_CONTENT:
