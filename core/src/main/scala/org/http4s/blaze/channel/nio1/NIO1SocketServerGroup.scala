@@ -73,7 +73,7 @@ class NIO1SocketServerGroup(pool: SelectorLoopPool) extends ServerChannelGroup {
   private class AcceptThread extends Thread("NIO1SocketServerGroup Acceptor") {
     setDaemon(true)
 
-  private val queue = new AtomicReference[List[NIO1ServerChannel]](Nil)
+    private val queue = new AtomicReference[List[NIO1ServerChannel]](Nil)
 
     /** Add a channel to the selector loop */
     def listenOnChannel(channel: NIO1ServerChannel) {
@@ -121,7 +121,7 @@ class NIO1SocketServerGroup(pool: SelectorLoopPool) extends ServerChannelGroup {
             val clientChannel = serverChannel.accept()
 
             if (clientChannel != null) {                       // This should never be `null`
-            val address = clientChannel.getRemoteAddress()
+              val address = clientChannel.getRemoteAddress()
 
               // check to see if we want to keep this connection
               if (acceptConnection(address)) {
