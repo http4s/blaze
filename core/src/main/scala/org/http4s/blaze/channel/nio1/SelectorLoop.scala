@@ -29,7 +29,6 @@ final class SelectorLoop(id: String, selector: Selector, bufferSize: Int) extend
   // a reference to the first added Node
   private val queueTail = new AtomicReference[Node](null)
 
-  private val scratch = BufferTools.allocate(bufferSize) // could be allocateDirect ?
   @volatile private var _isClosed = false
 
   /** Signal to the [[SelectorLoop]] that it should close */
@@ -105,6 +104,7 @@ final class SelectorLoop(id: String, selector: Selector, bufferSize: Int) extend
 
   // Main thread method. The loop will break if the Selector loop is closed
   override def run() {
+    val scratch = BufferTools.allocate(bufferSize) // could be allocateDirect ?
 
     try while(!_isClosed) {
       // Run any pending tasks. These may set interest ops, just compute something, etc.

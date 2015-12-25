@@ -170,7 +170,7 @@ private[nio1] abstract class NIO1HeadStage(ch: SelectableChannel,
 
     logger.trace(s"closeWithError($t); readPromise: $r, writePromise: $w")
 
-    try loop.enqueTask(new Runnable {
+    try loop.executeTask(new Runnable {
       def run() = {
         if (key.isValid) key.interestOps(0)
         key.attach(null)
@@ -182,21 +182,18 @@ private[nio1] abstract class NIO1HeadStage(ch: SelectableChannel,
 
   // These are just here to be reused
   private val _readTask = new Runnable {
-    def run() { _setOp(SelectionKey.OP_READ) }
+    def run() { setOp(SelectionKey.OP_READ) }
   }
 
   // These are just here to be reused
   private val _writeTask = new Runnable {
-    def run() { _setOp(SelectionKey.OP_WRITE) }
+    def run() { setOp(SelectionKey.OP_WRITE) }
   }
 
-  /** Sets a channel interest */
+  /** Unsets a channel interest
+   *  only to be called by the SelectorLoop thread
+   **/
   private def unsetOp(op: Int) {
-    loop.executeTask(new Runnable { def run() = _unsetOp(op) })
-  }
-
-  // only to be called by the SelectorLoop thread
-  private def _unsetOp(op: Int) {
     // assert(Thread.currentThread() == loop,
     //       s"Expected to be called only by SelectorLoop thread, was called by ${Thread.currentThread.getName}")
 
@@ -213,7 +210,7 @@ private[nio1] abstract class NIO1HeadStage(ch: SelectableChannel,
   }
 
   // only to be called by the SelectorLoop thread
-  private def _setOp(op: Int) {
+  private def setOp(op: Int) {
     // assert(Thread.currentThread() == loop,
     //       s"Expected to be called only by SelectorLoop thread, was called by ${Thread.currentThread.getName}")
 
