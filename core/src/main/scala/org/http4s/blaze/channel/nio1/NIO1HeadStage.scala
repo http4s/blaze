@@ -68,7 +68,7 @@ private[nio1] abstract class NIO1HeadStage(ch: SelectableChannel,
   }
 
   final override def readRequest(size: Int): Future[ByteBuffer] = {
-    logger.trace("NIOHeadStage received a read request")
+    logger.trace(s"NIOHeadStage received a read request of size $size")
     val p = Promise[ByteBuffer]
 
     if (readPromise.compareAndSet(null, p)) {
@@ -113,7 +113,7 @@ private[nio1] abstract class NIO1HeadStage(ch: SelectableChannel,
   final override def writeRequest(data: ByteBuffer): Future[Unit] = writeRequest(data::Nil)
 
   final override def writeRequest(data: Seq[ByteBuffer]): Future[Unit] = {
-//    logger.trace("NIO1HeadStage Write Request.")
+    logger.trace(s"NIO1HeadStage Write Request: $data")
     val p = Promise[Unit]
     if (writePromise.compareAndSet(null, p)) {
       val writes = data.toArray
@@ -129,8 +129,9 @@ private[nio1] abstract class NIO1HeadStage(ch: SelectableChannel,
     } else writePromise.get match {
       case f :PipeClosedPromise[Unit] => f.future
       case p =>
-        logger.trace(s"Received bad write request: $p")
-        Future.failed(new IllegalStateException("Cannot have more than one pending write request"))
+        val t = new IllegalStateException("Cannot have more than one pending write request")
+        logger.error(t)(s"Received bad write request: $p")
+        Future.failed(t)
     }
   }
 
@@ -159,7 +160,7 @@ private[nio1] abstract class NIO1HeadStage(ch: SelectableChannel,
 
   // Cleanup any read or write requests with the exception
   final override def closeWithError(t: Throwable): Unit = {
-    if (t != EOF) logger.warn(t)("Abnormal NIO1HeadStage termination")
+    if (t != EOF) logger.error(t)("Abnormal NIO1HeadStage termination")
 
     val r = readPromise.getAndSet(new PipeClosedPromise(t))
     if (r != null) r.tryFailure(t)
@@ -177,7 +178,7 @@ private[nio1] abstract class NIO1HeadStage(ch: SelectableChannel,
         ch.close()
       }
     })
-    catch { case NonFatal(t) => logger.warn(t)("Caught exception while closing channel") }
+    catch { case NonFatal(t) => logger.error(t)("Caught exception while closing channel") }
   }
 
   // These are just here to be reused
