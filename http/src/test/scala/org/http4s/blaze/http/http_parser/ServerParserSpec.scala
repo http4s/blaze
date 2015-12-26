@@ -202,7 +202,7 @@ class ServerParserSpec extends Specification {
       val hsStr = "If-Modified-Since\r\nIf-Modified-Since:\r\nIf-Modified-Since: \r\nIf-Modified-Since:\t\r\n\r\n"
       val p = new Parser()
       p.parseheaders(hsStr) should_== (true)
-      p.getContentType should_== (EndOfContent.UNKNOWN_CONTENT)
+      p.getContentType should_== (EndOfContent.END) // since the headers didn't indicate any content
       p.h.result should_== List.fill(4)(("If-Modified-Since", ""))
     }
 
