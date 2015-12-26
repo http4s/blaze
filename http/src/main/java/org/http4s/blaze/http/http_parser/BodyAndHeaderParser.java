@@ -33,7 +33,6 @@ public abstract class BodyAndHeaderParser extends ParserBase {
         NO_CONTENT,
         CONTENT_LENGTH,
         CHUNKED_CONTENT,
-        SELF_DEFINING_CONTENT,
         EOF_CONTENT,
         END,
     }
@@ -79,8 +78,8 @@ public abstract class BodyAndHeaderParser extends ParserBase {
      */
     protected abstract boolean headerComplete(String name, String value) throws BaseExceptions.BadRequest;
 
-    /** determines if a body may follow the headers */
-    public abstract boolean mayHaveBody();
+    /** determines if a body must not follow the headers */
+    public abstract boolean mustNotHaveBody();
 
     /* Status methods ---------------------------------------------------- */
 
@@ -89,8 +88,9 @@ public abstract class BodyAndHeaderParser extends ParserBase {
     }
 
     public final boolean contentComplete() {
-        return _endOfContent == EndOfContent.END ||
-               _endOfContent == EndOfContent.NO_CONTENT;
+        return mustNotHaveBody() ||
+            _endOfContent == EndOfContent.END ||
+            _endOfContent == EndOfContent.NO_CONTENT;
     }
 
     public final boolean isChunked() {
@@ -166,7 +166,7 @@ public abstract class BodyAndHeaderParser extends ParserBase {
                         if (_chunkState == ChunkState.CHUNK_TRAILERS) {
                             shutdownParser();
                         }
-                        else if ((_endOfContent == EndOfContent.UNKNOWN_CONTENT && !mayHaveBody())) {
+                        else if ((_endOfContent == EndOfContent.UNKNOWN_CONTENT && mustNotHaveBody())) {
                             shutdownParser();
                         }
 
@@ -205,55 +205,55 @@ public abstract class BodyAndHeaderParser extends ParserBase {
 
                     // If we are not parsing trailer headers, look for some that are of interest to the request
                     if (_chunkState != ChunkState.CHUNK_TRAILERS) {
-
-                        // Check for submitContent type if its still not determined
-                        // or if a Content-Length is present, it can be overridden by
-                        // a Transfer encoding header
-                        // https://tools.ietf.org/html/rfc7230#page-32
-                        if (_endOfContent == EndOfContent.UNKNOWN_CONTENT ||
-                            _endOfContent == EndOfContent.CONTENT_LENGTH  ||
-                            _endOfContent == EndOfContent.EOF_CONTENT ) {
-                            if (_headerName.equalsIgnoreCase("Transfer-Encoding")) {
-                                if (value.equalsIgnoreCase("chunked")) {
+                        if (_headerName.equalsIgnoreCase("Transfer-Encoding")) {
+                            if (value.equalsIgnoreCase("chunked")) {
+                                // chunked always overrides Content-Length
+                                if (_endOfContent != EndOfContent.END) {
                                     _endOfContent = EndOfContent.CHUNKED_CONTENT;
                                 }
-                                else if (value.equalsIgnoreCase("identity")) {
-                                    _endOfContent = EndOfContent.EOF_CONTENT;
-                                }
-                                else {
+                            } else if (value.equalsIgnoreCase("identity")) {
+                                // TODO: remove support for identity Transfer-Encoding.
+                                // It  was removed from the specification before it was published 
+                                // (althoug some traces of it remained until errata was released: 
+                                // http://lists.w3.org/Archives/Public/ietf-http-wg-old/2001SepDec/0018.html
+                                // if (_endOfContent == EndOfContent.UNKNOWN_CONTENT) {
+                                //     _endOfContent = EndOfContent.EOF_CONTENT; 
+                                // }
+                            }
+                            else {
+                                shutdownParser();
+                                // TODO: server should return 501 - https://tools.ietf.org/html/rfc7230#page-30
+                                throw new BadRequest("Unknown Transfer-Encoding: " + value);
+                            }
+                        }
+                        else if (_endOfContent != EndOfContent.CHUNKED_CONTENT && _headerName.equalsIgnoreCase("Content-Length")) {
+                            try {
+                                long len = Long.parseLong(value);
+                                if ((_endOfContent == EndOfContent.NO_CONTENT || 
+                                     _endOfContent == EndOfContent.CONTENT_LENGTH) && len != _contentLength) {
+                                    // Multiple different Content-Length headers are an error
+                                    // https://tools.ietf.org/html/rfc7230#page-31
+                                    long oldLen = _contentLength;
                                     shutdownParser();
-                                    // TODO: server should return 501 - https://tools.ietf.org/html/rfc7230#page-30
-                                    throw new BadRequest("Unknown Transfer-Encoding: " + value);
+                                    throw new BadRequest("Duplicate Content-Length headers detected: " +
+                                                         oldLen + " and " + len + "\n");
+                                }
+                                else if (len > 0) {
+                                    _contentLength = len;
+                                    _endOfContent = EndOfContent.CONTENT_LENGTH;
+                                }
+                                else if (len == 0) {
+                                    _contentLength = len;
+                                    _endOfContent = EndOfContent.NO_CONTENT;
+                                }
+                                else { // negative content-length
+                                    shutdownParser();
+                                    throw new BadRequest("Cannot have negative Content-Length: '" + len + "'\n");
                                 }
                             }
-                            else if (_headerName.equalsIgnoreCase("Content-Length")) {
-                                try {
-                                    long len = Long.parseLong(value);
-                                    if (_contentLength > 0 && len != _contentLength) {
-                                        // Multiple different Content-Length headers are an error
-                                        // https://tools.ietf.org/html/rfc7230#page-31
-                                        long oldLen = _contentLength;
-                                        shutdownParser();
-                                        throw new BadRequest("Duplicate Content-Length headers detected: " +
-                                                                oldLen + " and " + len + "\n");
-                                    }
-                                    else if (len > 0) {
-                                        _contentLength = len;
-                                        _endOfContent = EndOfContent.CONTENT_LENGTH;
-                                    }
-                                    else if (len == 0) {
-                                        _contentLength = len;
-                                        _endOfContent = EndOfContent.NO_CONTENT;
-                                    }
-                                    else { // negative content-length
-                                        shutdownParser();
-                                        throw new BadRequest("Cannot have negative Content-Length: '" + len + "'\n");
-                                    }
-                                }
-                                catch (NumberFormatException t) {
-                                    shutdownParser();
-                                    throw new BadRequest("Invalid Content-Length: '" + value + "'\n");
-                                }
+                            catch (NumberFormatException t) {
+                                shutdownParser();
+                                throw new BadRequest("Invalid Content-Length: '" + value + "'\n");
                             }
                         }
                     }
@@ -283,22 +283,17 @@ public abstract class BodyAndHeaderParser extends ParserBase {
      * @throws BaseExceptions.ParserException
      */
     protected final ByteBuffer parseContent(ByteBuffer in) throws BaseExceptions.ParserException {
-        switch (_endOfContent) {
+        if (contentComplete()) {
+            throw new BaseExceptions.InvalidState("content already complete: " + _endOfContent);
+        } else {
+            switch (_endOfContent) {
             case UNKNOWN_CONTENT:
-                // Need Content-Length or Transfer-Encoding to signal a body for GET
-                // rfc2616 Sec 4.4 for more info
-                // What about custom verbs which may have a body?
-                // We could also CONSIDER doing a BAD Request here.
+                // This makes sense only for response parsing. Requests must always have
+                // either Content-Length or Transfer-Encoding
 
-                if (mayHaveBody()) {
-                    _endOfContent = EndOfContent.EOF_CONTENT;
-                    _contentLength = Long.MAX_VALUE;    // Its up to the user to limit a body size
-                    return parseContent(in);
-                }
-                else {
-                    _endOfContent = EndOfContent.END;
-                    return BufferTools.emptyBuffer();
-                }
+                _endOfContent = EndOfContent.EOF_CONTENT;
+                _contentLength = Long.MAX_VALUE;    // Its up to the user to limit a body size
+                return parseContent(in);
 
             case CONTENT_LENGTH:
             case EOF_CONTENT:
@@ -307,13 +302,9 @@ public abstract class BodyAndHeaderParser extends ParserBase {
             case CHUNKED_CONTENT:
                 return chunkedContent(in);
 
-            case END:
-                return BufferTools.emptyBuffer();
-
-            case SELF_DEFINING_CONTENT:
-
             default:
                 throw new BaseExceptions.InvalidState("not implemented: " + _endOfContent);
+            }
         }
     }
 

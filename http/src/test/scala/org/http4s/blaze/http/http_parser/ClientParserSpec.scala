@@ -76,7 +76,7 @@ class ClientParserSpec extends Specification {
       p.majorversion should_== 1
       p.minorversion should_== 1
 
-      p.mayHaveBody() should_== true
+      p.mustNotHaveBody() should_== false
 
       //
       p.reset()
