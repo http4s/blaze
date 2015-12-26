@@ -113,7 +113,7 @@ public abstract class Http1ServerParser extends BodyAndHeaderParser {
                         putChar(ch);
                     }
 
-                    if (ch == 0) return false;
+                    if (ch == HttpTokens.EMPTY_BUFF) return false;
 
                     _methodString = getString();
                     clearBuffer();
@@ -131,14 +131,14 @@ public abstract class Http1ServerParser extends BodyAndHeaderParser {
                     // Eat whitespace
                     for(ch = next(in, false); ch == HttpTokens.SPACE || ch == HttpTokens.TAB; ch = next(in, false));
 
-                    if (ch == 0) return false;
+                    if (ch == HttpTokens.EMPTY_BUFF) return false;
 
                     putChar(ch);
                     _lineState = LineState.URI;
 
                 case URI:
                     for(ch = next(in, false); ch != HttpTokens.SPACE && ch != HttpTokens.TAB; ch = next(in, false)) {
-                        if (ch == 0) return false;
+                        if (ch == HttpTokens.EMPTY_BUFF) return false;
                         putChar(ch);
                     }
 
@@ -151,7 +151,7 @@ public abstract class Http1ServerParser extends BodyAndHeaderParser {
                     // Eat whitespace
                     for(ch = next(in, false); ch == HttpTokens.SPACE || ch == HttpTokens.TAB; ch = next(in, false));
 
-                    if (ch == 0) return false;
+                    if (ch == HttpTokens.EMPTY_BUFF) return false;
 
                     if (ch != 'H') {
                         shutdownParser();
@@ -163,7 +163,7 @@ public abstract class Http1ServerParser extends BodyAndHeaderParser {
 
                 case REQUEST_VERSION:
                     for(ch = next(in, false); ch != HttpTokens.LF; ch = next(in, false)) {
-                        if (ch == 0) return false;
+                        if (ch == HttpTokens.EMPTY_BUFF) return false;
                         putChar(ch);
                     }
 

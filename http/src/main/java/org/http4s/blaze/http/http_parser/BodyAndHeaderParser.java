@@ -15,7 +15,6 @@ public abstract class BodyAndHeaderParser extends ParserBase {
         START,
         HEADER_IN_NAME,
         HEADER_IN_VALUE,
-        HEADER_SKIP,
         END
     }
 
@@ -154,20 +153,9 @@ public abstract class BodyAndHeaderParser extends ParserBase {
                     resetLimit(headerSizeLimit);
 
                 case HEADER_IN_NAME:
-                    try {
-                        for(ch = next(in, false); ch != ':' && ch != HttpTokens.LF; ch = next(in, false)) {
-                            if (ch == 0) return false;
-                            putChar(ch);
-                        }
-                    } catch (BaseExceptions.BadCharacter c) {
-                        if (isLenient()) {
-                            _hstate = HeaderState.HEADER_SKIP;
-                            continue headerLoop;
-                        }
-                        else {
-                            shutdownParser();
-                            throw c;
-                        }
+                    for(ch = next(in, false); ch != ':' && ch != HttpTokens.LF; ch = next(in, false)) {
+                        if (ch == HttpTokens.EMPTY_BUFF) return false;
+                        putChar(ch);
                     }
 
                     // Must be done with headers
@@ -202,21 +190,9 @@ public abstract class BodyAndHeaderParser extends ParserBase {
                     _hstate = HeaderState.HEADER_IN_VALUE;
 
                 case HEADER_IN_VALUE:
-
-                    try {
-                        for(ch = next(in, true); ch != HttpTokens.LF; ch = next(in, true)) {
-                            if (ch == 0) return false;
-                            putChar(ch);
-                        }
-                    } catch (BaseExceptions.BadCharacter c) {
-                        if (isLenient()) {
-                            _hstate = HeaderState.HEADER_SKIP;
-                            continue headerLoop;
-                        }
-                        else {
-                            shutdownParser();
-                            throw c;
-                        }
+                    for(ch = next(in, true); ch != HttpTokens.LF; ch = next(in, true)) {
+                        if (ch == HttpTokens.EMPTY_BUFF) return false;
+                        putChar(ch);
                     }
 
                     String value;
@@ -293,15 +269,6 @@ public abstract class BodyAndHeaderParser extends ParserBase {
 
                     break;
 
-                case HEADER_SKIP:
-                    // discard the header
-                    clearBuffer();
-                    byte b;
-                    for(b = nextByte(in); b != HttpTokens.LF && b != 0; b = nextByte(in));
-                    if (b == 0) return false;
-                    _hstate = HeaderState.HEADER_IN_NAME;
-                    continue headerLoop;
-
                 case END:
                     shutdownParser();
                     throw new InvalidState("Header parser reached invalid position.");
@@ -375,7 +342,7 @@ public abstract class BodyAndHeaderParser extends ParserBase {
                     while (true) {
 
                         ch = next(in, false);
-                        if (ch == 0) return null;
+                        if (ch == HttpTokens.EMPTY_BUFF) return null;
 
                         if (HttpTokens.isWhiteSpace(ch) || ch == HttpTokens.SEMI_COLON) {
                             _chunkState = ChunkState.CHUNK_PARAMS;
@@ -403,7 +370,7 @@ public abstract class BodyAndHeaderParser extends ParserBase {
                 case CHUNK_PARAMS:
                     // Don't store them, for now.
                     for(ch = next(in, false); ch != HttpTokens.LF; ch = next(in, false)) {
-                        if (ch == 0) return null;
+                        if (ch == HttpTokens.EMPTY_BUFF) return null;
                     }
 
                     // Check to see if this was the last chunk
@@ -434,7 +401,7 @@ public abstract class BodyAndHeaderParser extends ParserBase {
 
                 case CHUNK_LF:
                     ch = next(in, false);
-                    if (ch == 0) return null;
+                    if (ch == HttpTokens.EMPTY_BUFF) return null;
 
                     if (ch != HttpTokens.LF) {
                         shutdownParser();

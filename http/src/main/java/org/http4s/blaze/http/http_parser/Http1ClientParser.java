@@ -93,7 +93,7 @@ public abstract class Http1ClientParser extends BodyAndHeaderParser {
 
                     case VERSION:
                         for(ch = next(in, false); ch != HttpTokens.SPACE && ch != HttpTokens.TAB; ch = next(in, false)) {
-                            if (ch == 0) return false;
+                            if (ch == HttpTokens.EMPTY_BUFF) return false;
                             putChar(ch);
                         }
 
@@ -125,7 +125,7 @@ public abstract class Http1ClientParser extends BodyAndHeaderParser {
                         // Eat whitespace
                         for(ch = next(in, false); ch == HttpTokens.SPACE || ch == HttpTokens.TAB; ch = next(in, false));
 
-                        if (ch == 0) return false;
+                        if (ch == HttpTokens.EMPTY_BUFF) return false;
 
                         if (!HttpTokens.isDigit(ch)) {
                             shutdownParser();
@@ -136,11 +136,10 @@ public abstract class Http1ClientParser extends BodyAndHeaderParser {
 
                     case STATUS_CODE:
                         for(ch = next(in, false); HttpTokens.isDigit(ch); ch = next(in, false)) {
-                            if (ch == 0) return false;
                             _statusCode = 10*_statusCode + (ch - HttpTokens.ZERO);
                         }
 
-                        if (ch == 0) return false;  // Need more data
+                        if (ch == HttpTokens.EMPTY_BUFF) return false;  // Need more data
 
                         if (_statusCode < 100 || _statusCode >= 600) {
                             shutdownParser();
@@ -164,7 +163,7 @@ public abstract class Http1ClientParser extends BodyAndHeaderParser {
                         // Eat whitespace
                         for(ch = next(in, false); ch == HttpTokens.SPACE || ch == HttpTokens.TAB; ch = next(in, false));
 
-                        if (ch == 0) return false;
+                        if (ch == HttpTokens.EMPTY_BUFF) return false;
 
                         if (ch == HttpTokens.LF) {
                         	endResponseLineParsing("");
@@ -176,7 +175,7 @@ public abstract class Http1ClientParser extends BodyAndHeaderParser {
 
                     case REASON:
                         for(ch = next(in, false); ch != HttpTokens.LF; ch = next(in, false)) {
-                            if (ch == 0) return false;
+                            if (ch == HttpTokens.EMPTY_BUFF) return false;
                             putChar(ch);
                         }
 

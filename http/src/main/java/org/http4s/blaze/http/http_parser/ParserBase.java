@@ -14,10 +14,11 @@ public abstract class ParserBase {
         clearBuffer();
     }
 
+    private final boolean _isLenient;
+
     private int _bufferPosition = 0;
     private char[] _internalBuffer;
 
-    private boolean _isLenient;
 
     // Signals if the last char was a '\r' and if the next one needs to be a '\n'
     private boolean _cr;
@@ -135,9 +136,10 @@ public abstract class ParserBase {
         _segmentBytePosition = 0;
     }
 
-    final protected byte nextByte(final ByteBuffer buffer) throws BaseExceptions.BadRequest {
+    // Removes CRs but returns LFs
+    final protected char next(final ByteBuffer buffer, boolean allow8859) throws BaseExceptions.BadRequest {
 
-        if (!buffer.hasRemaining()) return 0;
+        if (!buffer.hasRemaining()) return HttpTokens.EMPTY_BUFF;
 
         if (_segmentByteLimit <= _segmentBytePosition) {
             shutdownParser();
@@ -146,16 +148,6 @@ public abstract class ParserBase {
 
         final byte b = buffer.get();
         _segmentBytePosition++;
-
-        return b;
-
-    }
-
-    // Removes CRs but returns LFs
-    final protected char next(final ByteBuffer buffer, boolean allow8859) throws BaseExceptions.BadRequest {
-
-        final byte b = nextByte(buffer);
-        if (b==0) return 0;
 
         // If we ended on a CR, make sure we are
         if (_cr) {
@@ -178,8 +170,11 @@ public abstract class ParserBase {
             else if (b == HttpTokens.LF) {
                 return (char)b; // A backend should accept a bare linefeed. http://tools.ietf.org/html/rfc2616#section-19.3
             }
+            else if (isLenient()) {
+                return (char)(b & 0xff);
+            }
             else {
-                if (!_isLenient) shutdownParser();
+                shutdownParser();
                 throw new BadCharacter("Invalid char: '" + (char)(b & 0xff) + "', 0x" + Integer.toHexString(b));
             }
         }
