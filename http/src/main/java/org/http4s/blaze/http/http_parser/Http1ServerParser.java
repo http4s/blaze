@@ -72,7 +72,7 @@ public abstract class Http1ServerParser extends BodyAndHeaderParser {
     // the sole Constructor
 
     public Http1ServerParser(int maxReqLen, int maxHeaderLength, int initialBufferSize, int maxChunkSize) {
-        super(initialBufferSize, maxHeaderLength, maxChunkSize);
+        super(initialBufferSize, maxHeaderLength, maxChunkSize, false);
 
         this.maxRequestLineSize = maxReqLen;
         _internalReset();

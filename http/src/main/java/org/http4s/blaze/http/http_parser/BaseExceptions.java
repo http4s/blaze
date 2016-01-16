@@ -22,6 +22,12 @@ public class BaseExceptions {
         }
     }
 
+    public static class BadCharacter extends BadRequest {
+        public BadCharacter(String msg) {
+            super(msg);
+        }
+    }
+
     public static class BadResponse extends ParserException {
         public BadResponse(String msg) {
             super(msg);
