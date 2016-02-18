@@ -171,7 +171,7 @@ public abstract class ParserBase {
                 return (char)b; // A backend should accept a bare linefeed. http://tools.ietf.org/html/rfc2616#section-19.3
             }
             else if (isLenient()) {
-                return (char)(b & 0xff);
+                return HttpTokens.REPLACEMENT;
             }
             else {
                 shutdownParser();

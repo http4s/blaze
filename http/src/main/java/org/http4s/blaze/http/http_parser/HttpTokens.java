@@ -8,6 +8,9 @@ public final class HttpTokens
     // Needs more input
     static final char EMPTY_BUFF = 0xFFFF;
 
+    // replacement for invalid octets
+    static final char REPLACEMENT= 0xFFFD;
+
     // Terminal symbols.
     static final char COLON      = ':';
     static final char TAB        = '\t';
