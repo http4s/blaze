@@ -1,10 +1,16 @@
 package org.http4s.blaze.http.http_parser;
 
-import org.http4s.blaze.http.http_parser.BaseExceptions.BadRequest;
+import org.http4s.blaze.http.http_parser.BaseExceptions.BadCharacter;
 
 
 public final class HttpTokens
 {
+    // Needs more input
+    static final char EMPTY_BUFF = 0xFFFF;
+
+    // replacement for invalid octets
+    static final char REPLACEMENT= 0xFFFD;
+
     // Terminal symbols.
     static final char COLON      = ':';
     static final char TAB        = '\t';
@@ -23,7 +29,7 @@ public final class HttpTokens
     final static byte f    = 'f';
     final static byte z    = 'z';
 
-    public static int hexCharToInt(final char ch) throws BadRequest {
+    public static int hexCharToInt(final char ch) throws BadCharacter {
         if (ZERO <= ch && ch <= NINE) {
             return ch - ZERO;
         }
@@ -34,7 +40,7 @@ public final class HttpTokens
             return ch - A + 10;
         }
         else {
-            throw new BadRequest("Bad hex char: " + (char)ch);
+            throw new BadCharacter("Bad hex char: " + (char)ch);
         }
     }
 

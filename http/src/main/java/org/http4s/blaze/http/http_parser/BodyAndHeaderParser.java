@@ -62,8 +62,8 @@ public abstract class BodyAndHeaderParser extends ParserBase {
 
     /* Constructor --------------------------------------------------------- */
 
-    protected BodyAndHeaderParser(int initialBufferSize, int headerSizeLimit, int maxChunkSize) {
-        super(initialBufferSize);
+    protected BodyAndHeaderParser(int initialBufferSize, int headerSizeLimit, int maxChunkSize, boolean isLenient) {
+        super(initialBufferSize, isLenient);
         this.headerSizeLimit = headerSizeLimit;
         this.maxChunkSize = maxChunkSize;
 
@@ -154,7 +154,7 @@ public abstract class BodyAndHeaderParser extends ParserBase {
 
                 case HEADER_IN_NAME:
                     for(ch = next(in, false); ch != ':' && ch != HttpTokens.LF; ch = next(in, false)) {
-                        if (ch == 0) return false;
+                        if (ch == HttpTokens.EMPTY_BUFF) return false;
                         putChar(ch);
                     }
 
@@ -191,7 +191,7 @@ public abstract class BodyAndHeaderParser extends ParserBase {
 
                 case HEADER_IN_VALUE:
                     for(ch = next(in, true); ch != HttpTokens.LF; ch = next(in, true)) {
-                        if (ch == 0) return false;
+                        if (ch == HttpTokens.EMPTY_BUFF) return false;
                         putChar(ch);
                     }
 
@@ -342,7 +342,7 @@ public abstract class BodyAndHeaderParser extends ParserBase {
                     while (true) {
 
                         ch = next(in, false);
-                        if (ch == 0) return null;
+                        if (ch == HttpTokens.EMPTY_BUFF) return null;
 
                         if (HttpTokens.isWhiteSpace(ch) || ch == HttpTokens.SEMI_COLON) {
                             _chunkState = ChunkState.CHUNK_PARAMS;
@@ -370,7 +370,7 @@ public abstract class BodyAndHeaderParser extends ParserBase {
                 case CHUNK_PARAMS:
                     // Don't store them, for now.
                     for(ch = next(in, false); ch != HttpTokens.LF; ch = next(in, false)) {
-                        if (ch == 0) return null;
+                        if (ch == HttpTokens.EMPTY_BUFF) return null;
                     }
 
                     // Check to see if this was the last chunk
@@ -401,7 +401,7 @@ public abstract class BodyAndHeaderParser extends ParserBase {
 
                 case CHUNK_LF:
                     ch = next(in, false);
-                    if (ch == 0) return null;
+                    if (ch == HttpTokens.EMPTY_BUFF) return null;
 
                     if (ch != HttpTokens.LF) {
                         shutdownParser();

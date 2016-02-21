@@ -3,16 +3,22 @@ package org.http4s.blaze.http.http_parser;
 
 import java.nio.ByteBuffer;
 import org.http4s.blaze.http.http_parser.BaseExceptions.BadRequest;
+import org.http4s.blaze.http.http_parser.BaseExceptions.BadCharacter;
+
 
 public abstract class ParserBase {
 
-    ParserBase(int initialBufferSize) {
+    ParserBase(int initialBufferSize, boolean isLenient) {
         _internalBuffer = new char[initialBufferSize];
+        _isLenient = isLenient;
         clearBuffer();
     }
 
+    private final boolean _isLenient;
+
     private int _bufferPosition = 0;
     private char[] _internalBuffer;
+
 
     // Signals if the last char was a '\r' and if the next one needs to be a '\n'
     private boolean _cr;
@@ -45,6 +51,10 @@ public abstract class ParserBase {
 
     final protected int bufferPosition() {
         return _bufferPosition;
+    }
+
+    final protected boolean isLenient() {
+        return _isLenient;
     }
 
     final protected void clearBuffer() {
@@ -129,7 +139,7 @@ public abstract class ParserBase {
     // Removes CRs but returns LFs
     final protected char next(final ByteBuffer buffer, boolean allow8859) throws BaseExceptions.BadRequest {
 
-        if (!buffer.hasRemaining()) return 0;
+        if (!buffer.hasRemaining()) return HttpTokens.EMPTY_BUFF;
 
         if (_segmentByteLimit <= _segmentBytePosition) {
             shutdownParser();
@@ -142,7 +152,7 @@ public abstract class ParserBase {
         // If we ended on a CR, make sure we are
         if (_cr) {
             if (b != HttpTokens.LF) {
-                throw new BadRequest("Invalid sequence: LF didn't follow CR: " + b);
+                throw new BadCharacter("Invalid sequence: LF didn't follow CR: " + b);
             }
             _cr = false;
             return (char)b;  // must be LF
@@ -158,11 +168,14 @@ public abstract class ParserBase {
                 return (char)(b & 0xff);
             }
             else if (b == HttpTokens.LF) {
-                    return (char)b; // A backend should accept a bare linefeed. http://tools.ietf.org/html/rfc2616#section-19.3
+                return (char)b; // A backend should accept a bare linefeed. http://tools.ietf.org/html/rfc2616#section-19.3
+            }
+            else if (isLenient()) {
+                return HttpTokens.REPLACEMENT;
             }
             else {
                 shutdownParser();
-                throw new BadRequest("Invalid char: '" + (char)(b & 0xff) + "', 0x" + Integer.toHexString(b));
+                throw new BadCharacter("Invalid char: '" + (char)(b & 0xff) + "', 0x" + Integer.toHexString(b));
             }
         }
 

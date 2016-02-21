@@ -5,19 +5,24 @@ import org.http4s.blaze.http.http_parser.BaseExceptions.*;
 
 public abstract class Http1ClientParser extends BodyAndHeaderParser {
 
-    public Http1ClientParser(int maxRequestLineSize, int maxHeaderLength, int initialBufferSize, int maxChunkSize) {
-        super(initialBufferSize, maxHeaderLength, maxChunkSize);
+    public Http1ClientParser(int maxRequestLineSize, int maxHeaderLength, int initialBufferSize, int maxChunkSize,
+                             boolean isLenient) {
+        super(initialBufferSize, maxHeaderLength, maxChunkSize, isLenient);
         this.maxRequestLineSize = maxRequestLineSize;
 
         _internalReset();
     }
 
-    public Http1ClientParser(int initialBufferSize) {
-        this(2048, 40*1024, initialBufferSize, Integer.MAX_VALUE);
+    public Http1ClientParser(int initialBufferSize, boolean isLenient) {
+        this(2048, 40*1024, initialBufferSize, Integer.MAX_VALUE, isLenient);
+    }
+
+    public Http1ClientParser(boolean isLenient) {
+        this(10*1024, isLenient);
     }
 
     public Http1ClientParser() {
-        this(10*1024);
+        this(false);
     }
 
     // Status-Line = HTTP-Version SP Status-Code SP Reason-Phrase CRLF
@@ -88,7 +93,7 @@ public abstract class Http1ClientParser extends BodyAndHeaderParser {
 
                     case VERSION:
                         for(ch = next(in, false); ch != HttpTokens.SPACE && ch != HttpTokens.TAB; ch = next(in, false)) {
-                            if (ch == 0) return false;
+                            if (ch == HttpTokens.EMPTY_BUFF) return false;
                             putChar(ch);
                         }
 
@@ -120,7 +125,7 @@ public abstract class Http1ClientParser extends BodyAndHeaderParser {
                         // Eat whitespace
                         for(ch = next(in, false); ch == HttpTokens.SPACE || ch == HttpTokens.TAB; ch = next(in, false));
 
-                        if (ch == 0) return false;
+                        if (ch == HttpTokens.EMPTY_BUFF) return false;
 
                         if (!HttpTokens.isDigit(ch)) {
                             shutdownParser();
@@ -131,11 +136,10 @@ public abstract class Http1ClientParser extends BodyAndHeaderParser {
 
                     case STATUS_CODE:
                         for(ch = next(in, false); HttpTokens.isDigit(ch); ch = next(in, false)) {
-                            if (ch == 0) return false;
                             _statusCode = 10*_statusCode + (ch - HttpTokens.ZERO);
                         }
 
-                        if (ch == 0) return false;  // Need more data
+                        if (ch == HttpTokens.EMPTY_BUFF) return false;  // Need more data
 
                         if (_statusCode < 100 || _statusCode >= 600) {
                             shutdownParser();
@@ -159,7 +163,7 @@ public abstract class Http1ClientParser extends BodyAndHeaderParser {
                         // Eat whitespace
                         for(ch = next(in, false); ch == HttpTokens.SPACE || ch == HttpTokens.TAB; ch = next(in, false));
 
-                        if (ch == 0) return false;
+                        if (ch == HttpTokens.EMPTY_BUFF) return false;
 
                         if (ch == HttpTokens.LF) {
                         	endResponseLineParsing("");
@@ -171,7 +175,7 @@ public abstract class Http1ClientParser extends BodyAndHeaderParser {
 
                     case REASON:
                         for(ch = next(in, false); ch != HttpTokens.LF; ch = next(in, false)) {
-                            if (ch == 0) return false;
+                            if (ch == HttpTokens.EMPTY_BUFF) return false;
                             putChar(ch);
                         }
 
