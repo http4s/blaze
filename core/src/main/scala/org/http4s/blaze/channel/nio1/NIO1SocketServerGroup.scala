@@ -5,7 +5,7 @@ package nio1
 import java.io.IOException
 import java.nio.ByteBuffer
 import java.nio.channels._
-import java.net.SocketAddress
+import java.net.{InetSocketAddress, SocketAddress}
 import java.util.Date
 import java.util.concurrent.ConcurrentLinkedQueue
 import java.util.concurrent.atomic.AtomicReference
@@ -58,7 +58,7 @@ class NIO1SocketServerGroup(pool: SelectorLoopPool) extends ServerChannelGroup {
 
 
   /** Create a [[ServerChannel]] that will serve the services on the requisite sockets */
-  override def bind(address: SocketAddress, service: BufferPipelineBuilder): Try[ServerChannel] = {
+  override def bind(address: InetSocketAddress, service: BufferPipelineBuilder): Try[ServerChannel] = {
     Try{
       val ch = ServerSocketChannel.open().bind(address)
       val serverChannel = new NIO1ServerChannel(ch, service)
@@ -121,7 +121,7 @@ class NIO1SocketServerGroup(pool: SelectorLoopPool) extends ServerChannelGroup {
             val clientChannel = serverChannel.accept()
 
             if (clientChannel != null) {                       // This should never be `null`
-              val address = clientChannel.getRemoteAddress()
+              val address = clientChannel.getRemoteAddress().asInstanceOf[InetSocketAddress]
 
               // check to see if we want to keep this connection
               if (acceptConnection(address)) {
@@ -185,6 +185,9 @@ class NIO1SocketServerGroup(pool: SelectorLoopPool) extends ServerChannelGroup {
       try channel.close()
       catch { case NonFatal(t) => logger.debug(t)("Failure during channel close") }
     }
+
+    def socketAddress: InetSocketAddress =
+      channel.getLocalAddress.asInstanceOf[InetSocketAddress]
   }
 
   // Implementation of the channel head that can deal explicitly with a SocketChannel

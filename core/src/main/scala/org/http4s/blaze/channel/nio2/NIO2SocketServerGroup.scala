@@ -1,6 +1,6 @@
 package org.http4s.blaze.channel.nio2
 
-import java.net.SocketAddress
+import java.net.InetSocketAddress
 import java.nio.channels._
 import java.util.Date
 import java.util.concurrent.ThreadFactory
@@ -48,24 +48,24 @@ class NIO2SocketServerGroup private(bufferSize: Int, group: AsynchronousChannelG
     else throw new IllegalStateException("Cannot shut down the system default AsynchronousChannelGroup.")
   }
 
-  def bind(address: SocketAddress, service: BufferPipelineBuilder): Try[ServerChannel] = {
+  def bind(address: InetSocketAddress, service: BufferPipelineBuilder): Try[ServerChannel] = {
     Try {
       val ch = AsynchronousServerSocketChannel.open(group).bind(address)
-      val serverChannel = new NIO2ServerChannel(ch.getLocalAddress(), ch, service)
+      val serverChannel = new NIO2ServerChannel(ch.getLocalAddress.asInstanceOf[InetSocketAddress], ch, service)
       serverChannel.run()
       serverChannel
     }
   }
 
 
-  private class NIO2ServerChannel(address: SocketAddress,
+  private class NIO2ServerChannel(val socketAddress: InetSocketAddress,
                                   ch: AsynchronousServerSocketChannel,
                                   service: BufferPipelineBuilder) extends ServerChannel
   {
 
     override protected def closeChannel(): Unit =
       if (ch.isOpen()) {
-        logger.info(s"Closing NIO2 channel $address at ${new Date}")
+        logger.info(s"Closing NIO2 channel $socketAddress at ${new Date}")
         try ch.close()
         catch { case NonFatal(t) => logger.debug(t)("Failure during channel close") }
       }
@@ -85,7 +85,7 @@ class NIO2SocketServerGroup private(bufferSize: Int, group: AsynchronousChannelG
     def listen(channel: AsynchronousServerSocketChannel, pipeFactory: BufferPipelineBuilder): Unit = {
       channel.accept(null: Null, new CompletionHandler[AsynchronousSocketChannel, Null] {
         override def completed(ch: AsynchronousSocketChannel, attachment: Null): Unit = {
-          val address = ch.getRemoteAddress()
+          val address = ch.getRemoteAddress().asInstanceOf[InetSocketAddress]
 
           if (!acceptConnection(address)) ch.close()
           else pipeFactory(new NIO2SocketConnection(ch))
@@ -102,7 +102,7 @@ class NIO2SocketServerGroup private(bufferSize: Int, group: AsynchronousChannelG
             case _: ShutdownChannelGroupException                                               => normalClose()
 
             case NonFatal(e) =>
-              logger.error(e)(s"Error accepting connection on address $address")
+              logger.error(e)(s"Error accepting connection on address $socketAddress")
 
               // If the server channel cannot go on, disconnect it.
               if (!channel.isOpen()) errorClose(e)
