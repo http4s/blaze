@@ -2,6 +2,7 @@ package org.http4s.blaze.channel
 
 
 import java.io.Closeable
+import java.net.InetSocketAddress
 import java.nio.channels.ClosedChannelException
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.atomic.AtomicReference
@@ -62,4 +63,7 @@ abstract class ServerChannel extends Closeable { self =>
       }
     }
   }
+
+  /* Return the bound socket address for this server channel */
+  def socketAddress: InetSocketAddress
 }
