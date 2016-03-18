@@ -16,28 +16,41 @@ import scala.concurrent.duration._
 import scala.concurrent.{ Future, ExecutionContext }
 import scala.util.{Failure, Success}
 
-class Http2Stage(maxHeadersLength: Int,
-                     node_builder: Int => LeafBuilder[NodeMsg.Http2Msg],
-                          timeout: Duration,
-                maxInboundStreams: Int = 300,
-                    inboundWindow: Int = Default.INITIAL_WINDOW_SIZE,
-                               ec: ExecutionContext)
+object Http2Stage {
+  /** Construct a new Http2Stage */
+  def apply(node_builder: Int => LeafBuilder[NodeMsg.Http2Msg],
+            timeout: Duration,
+            ec: ExecutionContext,
+            maxHeadersLength: Int = 40*1024,
+            maxInboundStreams: Int = Default.MAX_CONCURRENT_STREAMS,
+            inboundWindow: Int = Default.INITIAL_WINDOW_SIZE,
+            maxFrameSize: Int = Default.MAX_FRAME_SIZE): Http2Stage = {
+
+    val headerDecoder = new HeaderDecoder(maxHeadersLength)
+    val headerEncoder = new HeaderEncoder()
+    val http2Settings = new Settings(inboundWindow = inboundWindow, max_inbound_streams = maxInboundStreams)
+
+    new Http2Stage(node_builder, timeout, http2Settings, headerDecoder, headerEncoder, ec)
+  }
+}
+
+class Http2Stage private(node_builder: Int => LeafBuilder[NodeMsg.Http2Msg],
+                              timeout: Duration,
+                        http2Settings: Settings,
+                        headerDecoder: HeaderDecoder,
+                        headerEncoder: HeaderEncoder,
+                                   ec: ExecutionContext)
   extends TailStage[ByteBuffer] with WriteSerializer[ByteBuffer] with Http2StageConcurrentOps {
 
   ///////////////////////////////////////////////////////////////////////////
 
   private val lock = new AnyRef   // The only point of synchronization.
-  private val headerDecoder = new HeaderDecoder(maxHeadersLength)
-  private val headerEncoder = new HeaderEncoder()
   
   override def name: String = "Http2ConnectionStage"
 
   private val idManager = new StreamIdManager
 
-  val http2Settings = new Settings(inboundWindow)
-
-  private val frameHandler = new Http2FrameHandler(this, headerDecoder, headerEncoder, http2Settings,
-                                                      idManager, inboundWindow, maxInboundStreams)
+  private val frameHandler = new Http2FrameHandler(this, headerDecoder, headerEncoder, http2Settings, idManager)
 
   //////////////////////// Http2Stage methods ////////////////////////////////
 
@@ -91,18 +104,22 @@ class Http2Stage(maxHeadersLength: Int,
 
     implicit val ec = Execution.trampoline
 
-    var settings = Vector.empty :+ Setting(Settings.MAX_CONCURRENT_STREAMS, maxInboundStreams)
+    var newSettings: Vector[Setting] = Vector.empty
 
-    if (inboundWindow != Default.INITIAL_WINDOW_SIZE) {
-      settings :+= Setting(Settings.INITIAL_WINDOW_SIZE, inboundWindow)
+    if (http2Settings.max_inbound_streams != Default.MAX_CONCURRENT_STREAMS) {
+      newSettings :+= Setting(Settings.MAX_CONCURRENT_STREAMS, http2Settings.max_inbound_streams)
+    }
+
+    if (http2Settings.inboundWindow != Default.INITIAL_WINDOW_SIZE) {
+      newSettings :+= Setting(Settings.INITIAL_WINDOW_SIZE, http2Settings.inboundWindow)
     }
 
     if (headerDecoder.maxTableSize != Default.HEADER_TABLE_SIZE) {
-      settings :+= Setting(Settings.HEADER_TABLE_SIZE, headerDecoder.maxTableSize)
+      newSettings :+= Setting(Settings.HEADER_TABLE_SIZE, headerDecoder.maxTableSize)
     }
 
-    logger.trace(s"Sending settings: " + settings)
-    val buff = frameHandler.mkSettingsFrame(false, settings)
+    logger.trace(s"Sending settings: " + newSettings)
+    val buff = frameHandler.mkSettingsFrame(false, newSettings)
 
     channelWrite(buff, timeout).flatMap(_ => channelRead()).onComplete {
       case Success(buff) => doHandshake(buff)

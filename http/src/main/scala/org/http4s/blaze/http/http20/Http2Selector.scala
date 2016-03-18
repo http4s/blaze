@@ -43,12 +43,11 @@ object Http2Selector {
       LeafBuilder(new BasicHttpStage(streamId, maxBody, Duration.Inf, trampoline, service))
     }
 
-    new Http2Stage(
-      maxHeadersLength,
+    Http2Stage(
       node_builder = newNode,
       timeout = Duration.Inf,
-      maxInboundStreams = 300,
-      ec = ec
+      ec = ec,
+      maxHeadersLength = maxHeadersLength
     )
   }
 }

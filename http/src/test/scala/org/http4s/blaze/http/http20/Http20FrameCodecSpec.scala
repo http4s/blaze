@@ -44,10 +44,12 @@ class Http20FrameCodecSpec extends Specification {
     joinBuffers(buffers :+ ByteBuffer.allocate(bonusSize))
   }
 
-  def decoder(h: FrameHandler, inHeaders: Boolean = false) = new Http20FrameDecoder {
-    def handler = h
 
+  class TestHttp20FrameDecoder(val handler: FrameHandler) extends Http20FrameDecoder {
+    override val http2Settings = new Settings()
   }
+
+  def decoder(h: FrameHandler, inHeaders: Boolean = false) = new TestHttp20FrameDecoder(h)
 
   def encoder = new Http20FrameEncoder {}
 

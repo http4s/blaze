@@ -13,10 +13,10 @@ import scala.collection.mutable.ArrayBuffer
 trait Http20FrameDecoder {
   import bits._
 
-  def handler: FrameHandler
+  protected val handler: FrameHandler
+  protected val http2Settings: Settings
 
-  /** Decode a data frame. false signals "not enough data" */
-
+  /** Decode a data frame. */
   def decodeBuffer(buffer: ByteBuffer): Http2Result = {
     if (buffer.remaining() < HeaderSize) {
       return BufferUnderflow
@@ -27,47 +27,48 @@ trait Http20FrameDecoder {
                    ((buffer.get() & 0xff) << 8 ) |
                     (buffer.get() & 0xff)
 
-    if (len + 6 > buffer.remaining()) {   // We still don't have a full frame
-      buffer.reset()
-      return BufferUnderflow
-    }
-
-    // we have a full frame, get the header information
     val frameType = buffer.get()
+    // we have a full frame, get the header information
     val flags = buffer.get()
-    val streamId = buffer.getInt() & Masks.STREAMID // this concludes the 9 byte header. `in` is now to the payload
-    
-    // Make sure we are not in the middle of some header frames
-    if (handler.inHeaderSequence() && frameType != FrameTypes.CONTINUATION) {
-      return protoError(s"Received frame type $frameType while in in headers sequence")
-    }
+    val streamId = buffer.getInt() & Masks.STREAMID
+    // this concludes the 9 byte header. `in` is now to the payload
 
-    // set frame sizes in the ByteBuffer and decode
-    val oldLimit = buffer.limit()
-    val endOfFrame = buffer.position() + len
-    buffer.limit(endOfFrame)
+    if (len > http2Settings.max_frame_size) {
+      protoError(s"HTTP2 packet is to large to handle.", streamId)
+    } else if (handler.inHeaderSequence() && frameType != FrameTypes.CONTINUATION) {
+    // We are in the middle of some header frames which is a no-go
+      protoError(s"Received frame type $frameType while in in headers sequence")
+    } else if (len > buffer.remaining()) {   // We still don't have a full frame
+      buffer.reset()
+      BufferUnderflow
+    } else { // full frame. Decode.
+      // set frame sizes in the ByteBuffer and decode
+      val oldLimit = buffer.limit()
+      val endOfFrame = buffer.position() + len
+      buffer.limit(endOfFrame)
 
-    val r = frameType match {
-      case FrameTypes.DATA          => decodeDataFrame(buffer, streamId, flags)
-      case FrameTypes.HEADERS       => decodeHeaderFrame(buffer, streamId, flags)
-      case FrameTypes.PRIORITY      => decodePriorityFrame(buffer, streamId, flags)
-      case FrameTypes.RST_STREAM    => decodeRstStreamFrame(buffer, streamId)
-      case FrameTypes.SETTINGS      => decodeSettingsFrame(buffer, streamId, flags)
-      case FrameTypes.PUSH_PROMISE  => decodePushPromiseFrame(buffer, streamId, flags)
-      case FrameTypes.PING          => decodePingFrame(buffer, streamId, flags)
-      case FrameTypes.GOAWAY        => decodeGoAwayFrame(buffer, streamId)
-      case FrameTypes.WINDOW_UPDATE => decodeWindowUpdateFrame(buffer, streamId)
-      case FrameTypes.CONTINUATION  => decodeContinuationFrame(buffer, streamId, flags)
-        
+      val r = frameType match {
+        case FrameTypes.DATA          => decodeDataFrame(buffer, streamId, flags)
+        case FrameTypes.HEADERS       => decodeHeaderFrame(buffer, streamId, flags)
+        case FrameTypes.PRIORITY      => decodePriorityFrame(buffer, streamId, flags)
+        case FrameTypes.RST_STREAM    => decodeRstStreamFrame(buffer, streamId)
+        case FrameTypes.SETTINGS      => decodeSettingsFrame(buffer, streamId, flags)
+        case FrameTypes.PUSH_PROMISE  => decodePushPromiseFrame(buffer, streamId, flags)
+        case FrameTypes.PING          => decodePingFrame(buffer, streamId, flags)
+        case FrameTypes.GOAWAY        => decodeGoAwayFrame(buffer, streamId)
+        case FrameTypes.WINDOW_UPDATE => decodeWindowUpdateFrame(buffer, streamId)
+        case FrameTypes.CONTINUATION  => decodeContinuationFrame(buffer, streamId, flags)
+
         // this concludes the types established by HTTP/2.0, but it could be an extension
-      case code                     => onExtensionFrame(code, streamId, flags, buffer.slice())
+        case code                     => onExtensionFrame(code, streamId, flags, buffer.slice())
+      }
+
+      // reset buffer limits
+      buffer.limit(oldLimit)
+      buffer.position(endOfFrame)
+
+      r
     }
-
-    // reset buffer limits
-    buffer.limit(oldLimit)
-    buffer.position(endOfFrame)
-
-    return r
   }
   
   /** Overriding this method allows for easily supporting extension frames */

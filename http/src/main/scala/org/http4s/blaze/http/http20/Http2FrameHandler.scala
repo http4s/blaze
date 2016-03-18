@@ -16,17 +16,15 @@ import scala.annotation.tailrec
 private class Http2FrameHandler(http2Stage: Http2StageConcurrentOps,
                protected val headerDecoder: HeaderDecoder,
                              headerEncoder: HeaderEncoder,
-                             http2Settings: Settings,
-                                 idManager: StreamIdManager,
-                             inboundWindow: Int,
-                         maxInboundStreams: Int)
+               protected val http2Settings: Settings,
+                                 idManager: StreamIdManager)
   extends DecodingFrameHandler with Http20FrameDecoder with Http20FrameEncoder { self =>
 
   private[this] val logger = getLogger
 
-  override def handler: FrameHandler = this
+  override protected val handler: FrameHandler = this
 
-  val flowControl = new FlowControl(http2Stage, inboundWindow, idManager, http2Settings, this, headerEncoder)
+  val flowControl = new FlowControl(http2Stage, idManager, http2Settings, this, headerEncoder)
 
   override def onCompletePushPromiseFrame(streamId: Int, promisedId: Int, headers: Headers): Http2Result =
     Error(PROTOCOL_ERROR("Server received a PUSH_PROMISE frame from a client", streamId, fatal = true))
@@ -41,7 +39,7 @@ private class Http2FrameHandler(http2Stage: Http2StageConcurrentOps,
     flowControl.getNode(streamId) match {
       case None =>
         if (!idManager.validateClientId(streamId)) Error(PROTOCOL_ERROR(s"Invalid streamId", streamId, fatal = true))
-        else if (flowControl.nodeCount() >= maxInboundStreams) {
+        else if (flowControl.nodeCount() >= http2Settings.max_inbound_streams) {
           Error(FLOW_CONTROL_ERROR(s"MAX_CONCURRENT_STREAMS setting exceeded: ${flowControl.nodeCount()}", fatal = true))
         }
         else {

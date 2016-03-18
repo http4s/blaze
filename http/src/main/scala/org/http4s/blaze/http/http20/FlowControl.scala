@@ -14,7 +14,6 @@ import scala.collection.mutable
 import scala.concurrent.Future
 
 private class FlowControl(http2Stage: Http2StageConcurrentOps,
-                       inboundWindow: Int,
                            idManager: StreamIdManager,
                        http2Settings: Settings,
                                codec: Http20FrameDecoder with Http20FrameEncoder,
@@ -107,7 +106,7 @@ private class FlowControl(http2Stage: Http2StageConcurrentOps,
 
   final class Stream(streamId: Int)
     extends AbstractStream(streamId,
-      new FlowWindow(inboundWindow),
+      new FlowWindow(http2Settings.inboundWindow),
       new FlowWindow(http2Settings.outbound_initial_window_size),
       iConnectionWindow,
       oConnectionWindow,
