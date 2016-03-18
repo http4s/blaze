@@ -14,16 +14,16 @@ import scala.collection.mutable
 import scala.concurrent.Future
 
 private class FlowControl(http2Stage: Http2StageConcurrentOps,
-                           idManager: StreamIdManager,
-                       http2Settings: Settings,
-                               codec: Http20FrameDecoder with Http20FrameEncoder,
-                       headerEncoder: HeaderEncoder) { self =>
+                          idManager: StreamIdManager,
+                          http2Settings: Http2Settings,
+                          codec: Http20FrameDecoder with Http20FrameEncoder,
+                          headerEncoder: HeaderEncoder) { self =>
 
 
   private val logger = getLogger
   private val nodeMap = new HashMap[Int, Stream]()
 
-  private val oConnectionWindow = new FlowWindow(http2Settings.outbound_initial_window_size)
+  private val oConnectionWindow = new FlowWindow(http2Settings.outboundInitialWindowSize)
   private val iConnectionWindow = new FlowWindow(http2Settings.inboundWindow)
 
   /////////////////////////// Stream management //////////////////////////////////////
@@ -94,9 +94,9 @@ private class FlowControl(http2Stage: Http2StageConcurrentOps,
   }
 
   def onInitialWindowSizeChange(newWindow: Int): Unit = {
-    val diff = newWindow - http2Settings.outbound_initial_window_size
+    val diff = newWindow - http2Settings.outboundInitialWindowSize
     logger.trace(s"Adjusting outbound windows by $diff")
-    http2Settings.outbound_initial_window_size = newWindow
+    http2Settings.outboundInitialWindowSize = newWindow
     oConnectionWindow.window += diff
 
     nodes().foreach { node =>
@@ -107,7 +107,7 @@ private class FlowControl(http2Stage: Http2StageConcurrentOps,
   final class Stream(streamId: Int)
     extends AbstractStream(streamId,
       new FlowWindow(http2Settings.inboundWindow),
-      new FlowWindow(http2Settings.outbound_initial_window_size),
+      new FlowWindow(http2Settings.outboundInitialWindowSize),
       iConnectionWindow,
       oConnectionWindow,
       http2Settings,

@@ -4,7 +4,7 @@ import java.nio.ByteBuffer
 import java.nio.charset.StandardCharsets._
 
 import org.http4s.blaze.http.http20.Http2Exception._
-import org.http4s.blaze.http.http20.Settings.{DefaultSettings => Default, Setting}
+import org.http4s.blaze.http.http20.Http2Settings.{DefaultSettings => Default, Setting}
 import org.http4s.blaze.pipeline.{ Command => Cmd }
 import org.http4s.blaze.http.Headers
 
@@ -14,10 +14,10 @@ import scala.annotation.tailrec
 
 
 private class Http2FrameHandler(http2Stage: Http2StageConcurrentOps,
-               protected val headerDecoder: HeaderDecoder,
-                             headerEncoder: HeaderEncoder,
-               protected val http2Settings: Settings,
-                                 idManager: StreamIdManager)
+                                protected val headerDecoder: HeaderDecoder,
+                                headerEncoder: HeaderEncoder,
+                                protected val http2Settings: Http2Settings,
+                                idManager: StreamIdManager)
   extends DecodingFrameHandler with Http20FrameDecoder with Http20FrameEncoder { self =>
 
   private[this] val logger = getLogger
@@ -39,7 +39,7 @@ private class Http2FrameHandler(http2Stage: Http2StageConcurrentOps,
     flowControl.getNode(streamId) match {
       case None =>
         if (!idManager.validateClientId(streamId)) Error(PROTOCOL_ERROR(s"Invalid streamId", streamId, fatal = true))
-        else if (flowControl.nodeCount() >= http2Settings.max_inbound_streams) {
+        else if (flowControl.nodeCount() >= http2Settings.maxInboundStreams) {
           Error(FLOW_CONTROL_ERROR(s"MAX_CONCURRENT_STREAMS setting exceeded: ${flowControl.nodeCount()}", fatal = true))
         }
         else {
@@ -95,33 +95,33 @@ private class Http2FrameHandler(http2Stage: Http2StageConcurrentOps,
     if (settings.isEmpty) Continue
     else {
       val r = settings.head match {
-        case Setting(Settings.HEADER_TABLE_SIZE, v) =>
+        case Setting(Http2Settings.HEADER_TABLE_SIZE, v) =>
           headerEncoder.setMaxTableSize(v.toInt)
           Continue
 
-        case Setting(Settings.ENABLE_PUSH, v) =>
+        case Setting(Http2Settings.ENABLE_PUSH, v) =>
           if (v == 0) { http2Settings.push_enable = false; Continue }
           else if (v == 1) {  http2Settings.push_enable = true; Continue }
           else Error(PROTOCOL_ERROR(s"Invalid ENABLE_PUSH setting value: $v", fatal = true))
 
-        case Setting(Settings.MAX_CONCURRENT_STREAMS, v) =>
+        case Setting(Http2Settings.MAX_CONCURRENT_STREAMS, v) =>
           if (v > Integer.MAX_VALUE) {
             Error(PROTOCOL_ERROR(s"To large MAX_CONCURRENT_STREAMS: $v", fatal = true))
-          } else { http2Settings.max_outbound_streams = v.toInt; Continue }
+          } else { http2Settings.maxOutboundStreams = v.toInt; Continue }
 
-        case Setting(Settings.INITIAL_WINDOW_SIZE, v) =>
+        case Setting(Http2Settings.INITIAL_WINDOW_SIZE, v) =>
           if (v > Integer.MAX_VALUE) Error(FLOW_CONTROL_ERROR(s"Invalid initial window size: $v", fatal = true))
           else { flowControl.onInitialWindowSizeChange(v.toInt); Continue }
 
-        case Setting(Settings.MAX_FRAME_SIZE, v) =>
+        case Setting(Http2Settings.MAX_FRAME_SIZE, v) =>
           // max of 2^24-1 http/2.0 draft 16 spec
           if (v < Default.MAX_FRAME_SIZE || v > 16777215) Error(PROTOCOL_ERROR(s"Invalid frame size: $v", fatal = true))
-          else { http2Settings.max_frame_size = v.toInt; Continue }
+          else { http2Settings.maxFrameSize = v.toInt; Continue }
 
 
-        case Setting(Settings.MAX_HEADER_LIST_SIZE, v) =>
+        case Setting(Http2Settings.MAX_HEADER_LIST_SIZE, v) =>
           if (v > Integer.MAX_VALUE) Error(PROTOCOL_ERROR(s"SETTINGS_MAX_HEADER_LIST_SIZE to large: $v", fatal = true))
-          else { http2Settings.max_header_size = v.toInt; Continue }
+          else { http2Settings.maxHeaderSize = v.toInt; Continue }
 
         case Setting(k, v) =>
           logger.warn(s"Unknown setting ($k, $v)")
@@ -161,8 +161,8 @@ private class Http2FrameHandler(http2Stage: Http2StageConcurrentOps,
   override def onDataFrame(streamId: Int, endStream: Boolean, data: ByteBuffer, flowSize: Int): Http2Result = {
     logger.debug(s"Received DataFrame: $streamId, $endStream, $data, $flowSize")
 
-    if (flowSize > http2Settings.max_frame_size) {
-      val msg = s"SETTING_MAX_FRAME_SIZE of ${http2Settings.max_frame_size} exceeded. Received frame size: $flowSize"
+    if (flowSize > http2Settings.maxFrameSize) {
+      val msg = s"SETTING_MAX_FRAME_SIZE of ${http2Settings.maxFrameSize} exceeded. Received frame size: $flowSize"
       Error(FRAME_SIZE_ERROR(msg, streamId, true))
     }
     else flowControl.getNode(streamId) match {

@@ -2,7 +2,7 @@ package org.http4s.blaze.http.http20
 
 import java.nio.ByteBuffer
 
-import Settings.Setting
+import Http2Settings.Setting
 import Http2Exception._
 
 import scala.collection.mutable.ArrayBuffer
@@ -14,7 +14,7 @@ trait Http20FrameDecoder {
   import bits._
 
   protected val handler: FrameHandler
-  protected val http2Settings: Settings
+  protected val http2Settings: Http2Settings
 
   /** Decode a data frame. */
   def decodeBuffer(buffer: ByteBuffer): Http2Result = {
@@ -33,7 +33,7 @@ trait Http20FrameDecoder {
     val streamId = buffer.getInt() & Masks.STREAMID
     // this concludes the 9 byte header. `in` is now to the payload
 
-    if (len > http2Settings.max_frame_size) {
+    if (len > http2Settings.maxFrameSize) {
       protoError(s"HTTP2 packet is to large to handle.", streamId)
     } else if (handler.inHeaderSequence() && frameType != FrameTypes.CONTINUATION) {
     // We are in the middle of some header frames which is a no-go

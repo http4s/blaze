@@ -4,7 +4,7 @@ import java.nio.ByteBuffer
 import java.nio.charset.StandardCharsets.US_ASCII
 
 import org.http4s.blaze.http.http20.Http2Exception._
-import org.http4s.blaze.http.http20.Settings.DefaultSettings
+import org.http4s.blaze.http.http20.Http2Settings.DefaultSettings
 import org.http4s.blaze.util.BufferTools
 
 import com.twitter.hpack.{Decoder, HeaderListener}

@@ -1,10 +1,10 @@
 package org.http4s.blaze.http.http20
 
-import org.http4s.blaze.http.http20.Settings.DefaultSettings
+import org.http4s.blaze.http.http20.Http2Settings.DefaultSettings
 
 import scala.collection.mutable
 
-object Settings {
+object Http2Settings {
 
   type SettingValue = Long
 
@@ -46,14 +46,14 @@ object Settings {
   }
 }
 
-final class Settings(
-  var inboundWindow: Int = DefaultSettings.INITIAL_WINDOW_SIZE,
-  var outbound_initial_window_size: Int = DefaultSettings.INITIAL_WINDOW_SIZE,
-  var push_enable: Boolean = DefaultSettings.ENABLE_PUSH,                       // initially enabled
-  var max_inbound_streams: Int = DefaultSettings.MAX_CONCURRENT_STREAMS,        // initially unbounded
-  var max_outbound_streams: Int = DefaultSettings.MAX_CONCURRENT_STREAMS,       // initially unbounded
-  var max_frame_size: Int = DefaultSettings.MAX_FRAME_SIZE,
-  var max_header_size: Int = DefaultSettings.MAX_HEADER_LIST_SIZE               // initially unbounded
+final class Http2Settings(
+                           var inboundWindow: Int = DefaultSettings.INITIAL_WINDOW_SIZE,
+                           var outboundInitialWindowSize: Int = DefaultSettings.INITIAL_WINDOW_SIZE,
+                           var push_enable: Boolean = DefaultSettings.ENABLE_PUSH, // initially enabled
+                           var maxInboundStreams: Int = DefaultSettings.MAX_CONCURRENT_STREAMS, // initially unbounded
+                           var maxOutboundStreams: Int = DefaultSettings.MAX_CONCURRENT_STREAMS, // initially unbounded
+                           var maxFrameSize: Int = DefaultSettings.MAX_FRAME_SIZE,
+                           var maxHeaderSize: Int = DefaultSettings.MAX_HEADER_LIST_SIZE // initially unbounded
 ) {
   var receivedGoAway = false
 }

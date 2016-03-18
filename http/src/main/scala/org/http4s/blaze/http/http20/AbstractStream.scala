@@ -17,13 +17,13 @@ import scala.concurrent.{Future, Promise}
   * All operations should only be handled in a thread safe manner
   */
 private[http20] abstract class AbstractStream(val streamId: Int,
-                                             iStreamWindow: FlowWindow,
-                                             oStreamWindow: FlowWindow,
-                                         iConnectionWindow: FlowWindow,
-                                         oConnectionWindow: FlowWindow,
-                                                  settings: Settings,
-                                                     codec: Http20FrameDecoder with Http20FrameEncoder,
-                                             headerEncoder: HeaderEncoder) {
+                                              iStreamWindow: FlowWindow,
+                                              oStreamWindow: FlowWindow,
+                                              iConnectionWindow: FlowWindow,
+                                              oConnectionWindow: FlowWindow,
+                                              settings: Http2Settings,
+                                              codec: Http20FrameDecoder with Http20FrameEncoder,
+                                              headerEncoder: HeaderEncoder) {
 
   private sealed trait NodeState
   private case object Open extends NodeState
@@ -204,7 +204,7 @@ private[http20] abstract class AbstractStream(val streamId: Int,
   // Mutates the state of the flow control windows
   private def encodeMessages(msgs: Seq[Http2Msg], acc: mutable.Buffer[ByteBuffer]): Seq[Http2Msg] = {
     val maxWindow = math.min(oConnectionWindow(), oStreamWindow())
-    val (bytes, rem) = msgEncoder.encodeMessages(settings.max_frame_size, maxWindow, msgs, acc)
+    val (bytes, rem) = msgEncoder.encodeMessages(settings.maxFrameSize, maxWindow, msgs, acc)
     // track the bytes written and write the buffers
     oStreamWindow.window -= bytes
     oConnectionWindow.window -= bytes

@@ -44,7 +44,7 @@ object Http2Selector {
     }
 
     Http2Stage(
-      node_builder = newNode,
+      nodeBuilder = newNode,
       timeout = Duration.Inf,
       ec = ec,
       maxHeadersLength = maxHeadersLength

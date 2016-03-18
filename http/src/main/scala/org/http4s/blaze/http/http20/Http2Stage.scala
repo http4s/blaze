@@ -4,7 +4,7 @@ import java.nio.ByteBuffer
 import java.nio.charset.StandardCharsets._
 
 import org.http4s.blaze.http.http20.NodeMsg.Http2Msg
-import org.http4s.blaze.http.http20.Settings.{ DefaultSettings => Default, Setting }
+import org.http4s.blaze.http.http20.Http2Settings.{ DefaultSettings => Default, Setting }
 import org.http4s.blaze.pipeline.Command.OutboundCommand
 import org.http4s.blaze.pipeline.{ Command => Cmd, LeafBuilder, TailStage }
 import org.http4s.blaze.pipeline.stages.addons.WriteSerializer
@@ -18,7 +18,7 @@ import scala.util.{Failure, Success}
 
 object Http2Stage {
   /** Construct a new Http2Stage */
-  def apply(node_builder: Int => LeafBuilder[NodeMsg.Http2Msg],
+  def apply(nodeBuilder: Int => LeafBuilder[NodeMsg.Http2Msg],
             timeout: Duration,
             ec: ExecutionContext,
             maxHeadersLength: Int = 40*1024,
@@ -28,18 +28,18 @@ object Http2Stage {
 
     val headerDecoder = new HeaderDecoder(maxHeadersLength)
     val headerEncoder = new HeaderEncoder()
-    val http2Settings = new Settings(inboundWindow = inboundWindow, max_inbound_streams = maxInboundStreams)
+    val http2Settings = new Http2Settings(inboundWindow = inboundWindow, maxInboundStreams = maxInboundStreams)
 
-    new Http2Stage(node_builder, timeout, http2Settings, headerDecoder, headerEncoder, ec)
+    new Http2Stage(nodeBuilder, timeout, http2Settings, headerDecoder, headerEncoder, ec)
   }
 }
 
 class Http2Stage private(node_builder: Int => LeafBuilder[NodeMsg.Http2Msg],
-                              timeout: Duration,
-                        http2Settings: Settings,
-                        headerDecoder: HeaderDecoder,
-                        headerEncoder: HeaderEncoder,
-                                   ec: ExecutionContext)
+                         timeout: Duration,
+                         http2Settings: Http2Settings,
+                         headerDecoder: HeaderDecoder,
+                         headerEncoder: HeaderEncoder,
+                         ec: ExecutionContext)
   extends TailStage[ByteBuffer] with WriteSerializer[ByteBuffer] with Http2StageConcurrentOps {
 
   ///////////////////////////////////////////////////////////////////////////
@@ -106,16 +106,16 @@ class Http2Stage private(node_builder: Int => LeafBuilder[NodeMsg.Http2Msg],
 
     var newSettings: Vector[Setting] = Vector.empty
 
-    if (http2Settings.max_inbound_streams != Default.MAX_CONCURRENT_STREAMS) {
-      newSettings :+= Setting(Settings.MAX_CONCURRENT_STREAMS, http2Settings.max_inbound_streams)
+    if (http2Settings.maxInboundStreams != Default.MAX_CONCURRENT_STREAMS) {
+      newSettings :+= Setting(Http2Settings.MAX_CONCURRENT_STREAMS, http2Settings.maxInboundStreams)
     }
 
     if (http2Settings.inboundWindow != Default.INITIAL_WINDOW_SIZE) {
-      newSettings :+= Setting(Settings.INITIAL_WINDOW_SIZE, http2Settings.inboundWindow)
+      newSettings :+= Setting(Http2Settings.INITIAL_WINDOW_SIZE, http2Settings.inboundWindow)
     }
 
     if (headerDecoder.maxTableSize != Default.HEADER_TABLE_SIZE) {
-      newSettings :+= Setting(Settings.HEADER_TABLE_SIZE, headerDecoder.maxTableSize)
+      newSettings :+= Setting(Http2Settings.HEADER_TABLE_SIZE, headerDecoder.maxTableSize)
     }
 
     logger.trace(s"Sending settings: " + newSettings)

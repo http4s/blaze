@@ -5,7 +5,7 @@ import java.nio.ByteBuffer
 import java.nio.charset.StandardCharsets.US_ASCII
 
 import com.twitter.hpack.Encoder
-import org.http4s.blaze.http.http20.Settings.DefaultSettings
+import org.http4s.blaze.http.http20.Http2Settings.DefaultSettings
 
 
 /** Simple Headers type for use in blaze and testing */

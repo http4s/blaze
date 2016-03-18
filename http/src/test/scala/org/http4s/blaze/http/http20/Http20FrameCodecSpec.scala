@@ -3,7 +3,7 @@ package org.http4s.blaze.http.http20
 import java.nio.ByteBuffer
 
 import org.http4s.blaze.http.Headers
-import org.http4s.blaze.http.http20.Settings.Setting
+import org.http4s.blaze.http.http20.Http2Settings.Setting
 import org.http4s.blaze.util.BufferTools
 import org.http4s.blaze.util.BufferTools._
 
@@ -46,7 +46,7 @@ class Http20FrameCodecSpec extends Specification {
 
 
   class TestHttp20FrameDecoder(val handler: FrameHandler) extends Http20FrameDecoder {
-    override val http2Settings = new Settings()
+    override val http2Settings = new Http2Settings()
   }
 
   def decoder(h: FrameHandler, inHeaders: Boolean = false) = new TestHttp20FrameDecoder(h)
