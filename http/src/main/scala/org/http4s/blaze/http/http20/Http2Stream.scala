@@ -13,7 +13,8 @@ import scala.concurrent.{Future, Promise}
 
 /** Represents a basis for a Http2 Stream
   *
-  * All operations should only be handled in a thread safe manner
+  * All operations should only be handled in a thread safe manner from
+  * within the provided [[Http2StreamOps]]
   */
 private[http20] final class Http2Stream(val streamId: Int,
                                         iStreamWindow: FlowWindow,
@@ -73,6 +74,7 @@ private[http20] final class Http2Stream(val streamId: Int,
 
   def isConnected(): Boolean = nodeState == Open || nodeState == HalfClosed
 
+  /** Handle reading frames. This must be called from the ops to manage concurrency */
   def handleRead(): Future[Http2Msg] = nodeState match {
     case Open  =>
       if (pendingInboundPromise != null) {
@@ -94,7 +96,8 @@ private[http20] final class Http2Stream(val streamId: Int,
 
     case CloseStream(t) => Future.failed(t)
   }
-  
+
+  /** Handle writing frames. This must be called from the ops to manage concurrency */
   def handleWrite(data: Seq[Http2Msg]): Future[Unit] = nodeState match {
     case Open | HalfClosed =>
       logger.trace(s"Node $streamId sending $data")

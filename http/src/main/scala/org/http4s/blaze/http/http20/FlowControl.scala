@@ -15,7 +15,6 @@ private class FlowControl(nodeBuilder: Int => LeafBuilder[NodeMsg.Http2Msg],
                           codec: Http20FrameDecoder with Http20FrameEncoder,
                           headerEncoder: HeaderEncoder) { self =>
 
-
   private val logger = getLogger
   private val nodeMap = new HashMap[Int, Http2Stream]()
 

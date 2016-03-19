@@ -11,7 +11,6 @@ import org.log4s.getLogger
 
 import scala.annotation.tailrec
 
-
 private class Http2FrameHandler(nodeBuilder: Int => LeafBuilder[NodeMsg.Http2Msg],
                                 http2Stage: Http2StreamOps,
                                 protected val headerDecoder: HeaderDecoder,
@@ -77,7 +76,7 @@ private class Http2FrameHandler(nodeBuilder: Int => LeafBuilder[NodeMsg.Http2Msg
 
   override def onSettingsFrame(ack: Boolean, settings: Seq[Setting]): Http2Result = {
     logger.trace(s"Received settings frames: $settings, ACK: $ack")
-    if (ack) Continue    // TODO: ensure client sends acknolegments?
+    if (ack) Continue    // TODO: ensure client sends acknowledgments?
     else {
       val r = processSettings(settings)
       if (r.success) {
