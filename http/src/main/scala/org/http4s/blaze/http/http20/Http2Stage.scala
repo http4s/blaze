@@ -34,13 +34,13 @@ object Http2Stage {
   }
 }
 
-class Http2Stage private(node_builder: Int => LeafBuilder[NodeMsg.Http2Msg],
+class Http2Stage private(nodeBuilder: Int => LeafBuilder[NodeMsg.Http2Msg],
                          timeout: Duration,
                          http2Settings: Http2Settings,
                          headerDecoder: HeaderDecoder,
                          headerEncoder: HeaderEncoder,
                          ec: ExecutionContext)
-  extends TailStage[ByteBuffer] with WriteSerializer[ByteBuffer] with Http2StageConcurrentOps {
+  extends TailStage[ByteBuffer] with WriteSerializer[ByteBuffer] with Http2StreamOps {
 
   ///////////////////////////////////////////////////////////////////////////
 
@@ -50,20 +50,18 @@ class Http2Stage private(node_builder: Int => LeafBuilder[NodeMsg.Http2Msg],
 
   private val idManager = new StreamIdManager
 
-  private val frameHandler = new Http2FrameHandler(this, headerDecoder, headerEncoder, http2Settings, idManager)
+  private val frameHandler = new Http2FrameHandler(nodeBuilder, this, headerDecoder,
+                                                   headerEncoder, http2Settings, idManager)
 
   //////////////////////// Http2Stage methods ////////////////////////////////
 
-  override def makePipeline(streamId: Int): LeafBuilder[Http2Msg] =
-    node_builder(streamId)
-
-  override def streamRead(stream: AbstractStream): Future[Http2Msg] =
+  override def streamRead(stream: Http2Stream): Future[Http2Msg] =
     lock.synchronized { stream.handleRead() }
 
-  override def streamWrite(stream: AbstractStream, data: Seq[Http2Msg]): Future[Unit] =
+  override def streamWrite(stream: Http2Stream, data: Seq[Http2Msg]): Future[Unit] =
     lock.synchronized { stream.handleWrite(data) }
 
-  override def streamCommand(stream: AbstractStream, cmd: OutboundCommand): Unit = lock.synchronized {
+  override def streamCommand(stream: Http2Stream, cmd: OutboundCommand): Unit = lock.synchronized {
 
       def checkGoAway(): Unit = {
         if (http2Settings.receivedGoAway && frameHandler.flowControl.nodes().isEmpty) {  // we must be done

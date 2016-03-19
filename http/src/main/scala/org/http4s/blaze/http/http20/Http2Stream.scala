@@ -15,17 +15,17 @@ import scala.concurrent.{Future, Promise}
   *
   * All operations should only be handled in a thread safe manner
   */
-private[http20] final class AbstractStream(val streamId: Int,
-                                    iStreamWindow: FlowWindow,
-                                    oStreamWindow: FlowWindow,
-                                    iConnectionWindow: FlowWindow,
-                                    oConnectionWindow: FlowWindow,
-                                    settings: Http2Settings,
-                                    codec: Http20FrameDecoder with Http20FrameEncoder,
-                                    ops: Http2StageConcurrentOps,
-                                    headerEncoder: HeaderEncoder)
-  extends HeadStage[Http2Msg] {
-
+private[http20] final class Http2Stream(val streamId: Int,
+                                        iStreamWindow: FlowWindow,
+                                        oStreamWindow: FlowWindow,
+                                        iConnectionWindow: FlowWindow,
+                                        oConnectionWindow: FlowWindow,
+                                        settings: Http2Settings,
+                                        codec: Http20FrameDecoder with Http20FrameEncoder,
+                                        ops: Http2StreamOps,
+                                        headerEncoder: HeaderEncoder)
+  extends HeadStage[Http2Msg]
+{
   private sealed trait NodeState
   private case object Open extends NodeState
   private case object HalfClosed extends NodeState
@@ -94,7 +94,7 @@ private[http20] final class AbstractStream(val streamId: Int,
 
     case CloseStream(t) => Future.failed(t)
   }
-
+  
   def handleWrite(data: Seq[Http2Msg]): Future[Unit] = nodeState match {
     case Open | HalfClosed =>
       logger.trace(s"Node $streamId sending $data")

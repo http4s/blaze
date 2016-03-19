@@ -1,12 +1,15 @@
 package org.http4s.blaze.http.http20
 
 import java.util.HashMap
+
 import org.http4s.blaze.http.http20.Http2Exception._
-import org.http4s.blaze.pipeline.{ Command => Cmd }
+import org.http4s.blaze.pipeline.{LeafBuilder, Command => Cmd}
 import org.log4s.getLogger
+
 import scala.collection.mutable
 
-private class FlowControl(http2Stage: Http2StageConcurrentOps,
+private class FlowControl(nodeBuilder: Int => LeafBuilder[NodeMsg.Http2Msg],
+                          http2Stage: Http2StreamOps,
                           idManager: StreamIdManager,
                           http2Settings: Http2Settings,
                           codec: Http20FrameDecoder with Http20FrameEncoder,
@@ -14,18 +17,18 @@ private class FlowControl(http2Stage: Http2StageConcurrentOps,
 
 
   private val logger = getLogger
-  private val nodeMap = new HashMap[Int, AbstractStream]()
+  private val nodeMap = new HashMap[Int, Http2Stream]()
 
   private val oConnectionWindow = new FlowWindow(http2Settings.outboundInitialWindowSize)
   private val iConnectionWindow = new FlowWindow(http2Settings.inboundWindow)
 
   /////////////////////////// Stream management //////////////////////////////////////
 
-  def getNode(streamId: Int): Option[AbstractStream] = Option(nodeMap.get(streamId))
+  def getNode(streamId: Int): Option[Http2Stream] = Option(nodeMap.get(streamId))
 
   def nodeCount(): Int = nodeMap.size()
 
-  def removeNode(streamId: Int, reason: Throwable, sendDisconnect: Boolean): Option[AbstractStream] = {
+  def removeNode(streamId: Int, reason: Throwable, sendDisconnect: Boolean): Option[Http2Stream] = {
     val node = nodeMap.remove(streamId)
     if (node != null && node.isConnected()) {
       node.closeStream(reason)
@@ -35,7 +38,7 @@ private class FlowControl(http2Stage: Http2StageConcurrentOps,
     else None
   }
 
-  def nodes(): Seq[AbstractStream] =
+  def nodes(): Seq[Http2Stream] =
     mutable.WrappedArray.make(nodeMap.values().toArray())
 
   def closeAllNodes(): Unit = nodes().foreach { node =>
@@ -44,8 +47,8 @@ private class FlowControl(http2Stage: Http2StageConcurrentOps,
 
   ////////////////////////////////////////////////////////////////////////////////////
 
-  def makeStream(streamId: Int): AbstractStream = {
-    val stream = new AbstractStream(streamId,
+  def makeStream(streamId: Int): Http2Stream = {
+    val stream = new Http2Stream(streamId,
           new FlowWindow(http2Settings.inboundWindow),
             new FlowWindow(http2Settings.outboundInitialWindowSize),
             iConnectionWindow,
@@ -55,7 +58,7 @@ private class FlowControl(http2Stage: Http2StageConcurrentOps,
             http2Stage,
             headerEncoder)
 
-    http2Stage.makePipeline(streamId).base(stream)
+    nodeBuilder(streamId).base(stream)
     nodeMap.put(streamId, stream)
     stream.inboundCommand(Cmd.Connected)
     stream

@@ -4,16 +4,16 @@ import java.nio.ByteBuffer
 import java.nio.charset.StandardCharsets._
 
 import org.http4s.blaze.http.http20.Http2Exception._
-import org.http4s.blaze.http.http20.Http2Settings.{DefaultSettings => Default, Setting}
-import org.http4s.blaze.pipeline.{ Command => Cmd }
+import org.http4s.blaze.http.http20.Http2Settings.{Setting, DefaultSettings => Default}
+import org.http4s.blaze.pipeline.{LeafBuilder, Command => Cmd}
 import org.http4s.blaze.http.Headers
-
 import org.log4s.getLogger
 
 import scala.annotation.tailrec
 
 
-private class Http2FrameHandler(http2Stage: Http2StageConcurrentOps,
+private class Http2FrameHandler(nodeBuilder: Int => LeafBuilder[NodeMsg.Http2Msg],
+                                http2Stage: Http2StreamOps,
                                 protected val headerDecoder: HeaderDecoder,
                                 headerEncoder: HeaderEncoder,
                                 protected val http2Settings: Http2Settings,
@@ -21,10 +21,9 @@ private class Http2FrameHandler(http2Stage: Http2StageConcurrentOps,
   extends DecodingFrameHandler with Http20FrameDecoder with Http20FrameEncoder { self =>
 
   private[this] val logger = getLogger
-
   override protected val handler: FrameHandler = this
 
-  val flowControl = new FlowControl(http2Stage, idManager, http2Settings, this, headerEncoder)
+  val flowControl = new FlowControl(nodeBuilder, http2Stage, idManager, http2Settings, this, headerEncoder)
 
   override def onCompletePushPromiseFrame(streamId: Int, promisedId: Int, headers: Headers): Http2Result =
     Error(PROTOCOL_ERROR("Server received a PUSH_PROMISE frame from a client", streamId, fatal = true))
