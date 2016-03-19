@@ -5,8 +5,7 @@ import java.util
 
 import org.http4s.blaze.http.http20.Http2Exception._
 import org.http4s.blaze.http.http20.NodeMsg.Http2Msg
-import org.http4s.blaze.pipeline.{ Command => Cmd }
-import org.log4s.Logger
+import org.http4s.blaze.pipeline.{HeadStage, Command => Cmd}
 
 import scala.collection.mutable
 import scala.collection.mutable.ArrayBuffer
@@ -16,14 +15,16 @@ import scala.concurrent.{Future, Promise}
   *
   * All operations should only be handled in a thread safe manner
   */
-private[http20] abstract class AbstractStream(val streamId: Int,
-                                              iStreamWindow: FlowWindow,
-                                              oStreamWindow: FlowWindow,
-                                              iConnectionWindow: FlowWindow,
-                                              oConnectionWindow: FlowWindow,
-                                              settings: Http2Settings,
-                                              codec: Http20FrameDecoder with Http20FrameEncoder,
-                                              headerEncoder: HeaderEncoder) {
+private[http20] final class AbstractStream(val streamId: Int,
+                                    iStreamWindow: FlowWindow,
+                                    oStreamWindow: FlowWindow,
+                                    iConnectionWindow: FlowWindow,
+                                    oConnectionWindow: FlowWindow,
+                                    settings: Http2Settings,
+                                    codec: Http20FrameDecoder with Http20FrameEncoder,
+                                    ops: Http2StageConcurrentOps,
+                                    headerEncoder: HeaderEncoder)
+  extends HeadStage[Http2Msg] {
 
   private sealed trait NodeState
   private case object Open extends NodeState
@@ -37,15 +38,18 @@ private[http20] abstract class AbstractStream(val streamId: Int,
 
   private val msgEncoder = new NodeMsgEncoder(streamId, codec, headerEncoder)
 
-  protected def logger: Logger
-
-  /** Write the data to the socket */
-  protected def writeBuffers(data: Seq[ByteBuffer]): Future[Unit]
-
   /////////////////////////////////////////////////////////////////////////////
 
+  override def name: String = s"Http2Stream($streamId)"
+
+  override def readRequest(size: Int): Future[Http2Msg] = ops.streamRead(this)
+
+  override def writeRequest(data: Http2Msg): Future[Unit] = writeRequest(data::Nil)
+
+  override def writeRequest(data: Seq[Http2Msg]): Future[Unit] = ops.streamWrite(this, data)
+
   /** Closes the queues of the stream */
-  protected def closeStream(t: Throwable): Unit = {
+  def closeStream(t: Throwable): Unit = {
     nodeState match {
       case CloseStream(Cmd.EOF) => nodeState = CloseStream(t)
       case CloseStream(_) => // NOOP
@@ -101,7 +105,7 @@ private[http20] abstract class AbstractStream(val streamId: Int,
       else {
         val acc = new ArrayBuffer[ByteBuffer]()
         val rem = encodeMessages(data, acc)
-        val f = writeBuffers(acc)
+        val f = ops.writeBuffers(acc)
         if (rem.isEmpty) f
         else {
           val p = Promise[Unit]
@@ -160,7 +164,7 @@ private[http20] abstract class AbstractStream(val streamId: Int,
         pendingOutboundFrames = null
         val acc = new ArrayBuffer[ByteBuffer]()
         val rem = encodeMessages(frames, acc)
-        val f = writeBuffers(acc)
+        val f = ops.writeBuffers(acc)
 
         if (rem.isEmpty) p.completeWith(f)
         else {
@@ -195,7 +199,7 @@ private[http20] abstract class AbstractStream(val streamId: Int,
           buff::bf1
         } else bf1
 
-      if (buffs.nonEmpty) writeBuffers(buffs)
+      if (buffs.nonEmpty) ops.writeBuffers(buffs)
 
       Continue
     }
