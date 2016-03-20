@@ -45,13 +45,13 @@ class Http20FrameCodecSpec extends Specification {
   }
 
 
-  class TestHttp20FrameDecoder(val handler: FrameHandler) extends Http20FrameDecoder {
+  private class TestHttp20FrameDecoder(val handler: FrameHandler) extends Http20FrameDecoder {
     override val http2Settings = new Http2Settings()
   }
 
-  def decoder(h: FrameHandler, inHeaders: Boolean = false) = new TestHttp20FrameDecoder(h)
+  private def decoder(h: FrameHandler, inHeaders: Boolean = false) = new TestHttp20FrameDecoder(h)
 
-  def encoder = new Http20FrameEncoder {}
+  private def encoder = new Http20FrameEncoder {}
 
   "DATA frame" should {
 
@@ -214,7 +214,7 @@ class Http20FrameCodecSpec extends Specification {
     }
   }
 
-  def hencoder = new HeaderHttp20Encoder with Http20FrameEncoder {
+  private def hencoder = new HeaderHttp20Encoder with Http20FrameEncoder {
     override protected val headerEncoder: HeaderEncoder = new HeaderEncoder()
   }
 

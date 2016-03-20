@@ -6,7 +6,7 @@ import org.http4s.blaze.pipeline.Command.OutboundCommand
 import scala.concurrent.Future
 
 /** Operations necessary for the [[Http2Stage]] */
-private[http20]trait Http2StreamOps {
+private trait Http2StreamOps {
 
   /** Write the buffers to the socket */
   def writeBuffers(data: Seq[ByteBuffer]): Future[Unit]

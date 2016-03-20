@@ -10,7 +10,7 @@ import scala.collection.mutable.ArrayBuffer
 
 /* The job of the Http20FrameCodec is to slice the ByteBuffers. It does
    not attempt to decode headers or perform any size limiting operations */
-trait Http20FrameDecoder {
+private trait Http20FrameDecoder {
   import bits._
 
   protected val handler: FrameHandler

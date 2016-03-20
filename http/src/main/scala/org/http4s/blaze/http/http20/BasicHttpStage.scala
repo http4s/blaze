@@ -9,25 +9,24 @@ import org.http4s.blaze.pipeline.{ Command => Cmd }
 import org.http4s.blaze.pipeline.TailStage
 import org.http4s.blaze.util.BufferTools
 import Http2Exception.{ PROTOCOL_ERROR, INTERNAL_ERROR }
+import NodeMsg.{ DataFrame, HeadersFrame }
+import Http2StageTools._
 
 import scala.collection.mutable.ArrayBuffer
 import scala.concurrent.ExecutionContext
 import scala.concurrent.duration.Duration
 import scala.util.{Success, Failure}
 
+/** Basic implementation of a http2 stream [[TailStage]] */
 class BasicHttpStage(streamId: Int,
                       maxBody: Long,
                       timeout: Duration,
                            ec: ExecutionContext,
                       service: HttpService) extends TailStage[Http2Msg] {
 
-  import Http2StageTools._
-
-  import NodeMsg.{ DataFrame, HeadersFrame }
-
   private implicit def _ec = ec   // for all the onComplete calls
 
-  override def name = "BasicHTTPNode"
+  override def name = s"Http2StreamStage($streamId)"
 
   override protected def stageStartup(): Unit = {
     super.stageStartup()

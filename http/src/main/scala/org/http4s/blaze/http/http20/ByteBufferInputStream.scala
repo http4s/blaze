@@ -3,6 +3,10 @@ package org.http4s.blaze.http.http20
 import java.io.{IOException, InputStream}
 import java.nio.ByteBuffer
 
+/** Wrap a `ByteBuffer` in an `InputStream` interface.
+  * This is just an adapter to work with the twitter hpack
+  * implementation. I would really like to get rid of it.
+  */
 final private class ByteBufferInputStream(buffer: ByteBuffer) extends InputStream {
 
   private var markSize = 0
@@ -24,7 +28,6 @@ final private class ByteBufferInputStream(buffer: ByteBuffer) extends InputStrea
       buffer.get(b, off, readSize)
       readSize
     }
-
   }
 
   override def available(): Int = buffer.remaining()

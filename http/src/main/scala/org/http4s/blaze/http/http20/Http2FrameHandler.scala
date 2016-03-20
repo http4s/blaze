@@ -13,11 +13,11 @@ import scala.annotation.tailrec
 
 private class Http2FrameHandler(nodeBuilder: Int => LeafBuilder[NodeMsg.Http2Msg],
                                 http2Stage: Http2StreamOps,
-                                protected val headerDecoder: HeaderDecoder,
+                                headerDecoder: HeaderDecoder,
                                 headerEncoder: HeaderEncoder,
                                 protected val http2Settings: Http2Settings,
                                 idManager: StreamIdManager)
-  extends DecodingFrameHandler with Http20FrameDecoder with Http20FrameEncoder { self =>
+  extends DecodingFrameHandler(headerDecoder) with Http20FrameDecoder with Http20FrameEncoder { self =>
 
   private[this] val logger = getLogger
   override protected val handler: FrameHandler = this
