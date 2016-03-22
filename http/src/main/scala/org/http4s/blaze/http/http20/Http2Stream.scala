@@ -5,6 +5,7 @@ import java.util
 
 import org.http4s.blaze.http.http20.Http2Exception._
 import org.http4s.blaze.http.http20.NodeMsg.Http2Msg
+import org.http4s.blaze.pipeline.Command.OutboundCommand
 import org.http4s.blaze.pipeline.{HeadStage, Command => Cmd}
 
 import scala.collection.mutable
@@ -48,6 +49,8 @@ private[http20] final class Http2Stream(val streamId: Int,
   override def writeRequest(data: Http2Msg): Future[Unit] = writeRequest(data::Nil)
 
   override def writeRequest(data: Seq[Http2Msg]): Future[Unit] = ops.streamWrite(this, data)
+
+  override def outboundCommand(cmd: OutboundCommand): Unit = ops.streamCommand(this, cmd)
 
   /** Closes the queues of the stream */
   def closeStream(t: Throwable): Unit = {
