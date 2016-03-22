@@ -61,8 +61,8 @@ class HeaderDecoder(maxHeaderSize: Int,
         leftovers = b
       }
 
-      if (endHeaders && decoder.endHeaderBlock()) {
-        // TODO: This means we've truncated headers. Maybe this should be a warning?
+      if (endHeaders) {
+        decoder.endHeaderBlock()
       }
 
       Continue
