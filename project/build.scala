@@ -129,7 +129,7 @@ object ApplicationBuild extends Build {
 
   // Note that the alpn_boot version is JVM version specific. Check the docs if getting weird errors.
   // Also note that only java8 and above has the require cipher suite for http2.
-  lazy val alpn_boot           = "org.mortbay.jetty.alpn"     % "alpn-boot"            % "8.1.5.v20150921"
+  lazy val alpn_boot           = "org.mortbay.jetty.alpn"     % "alpn-boot"            % "8.1.7.v20160121"
 
   /* publishing */
   lazy val publishing = Seq(

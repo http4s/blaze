@@ -58,7 +58,7 @@ private[http20] abstract class DecodingFrameHandler(headerDecoder: HeaderDecoder
     }
 
     if (end_headers) {
-      val r = headerDecoder.decode(buffer, streamId)
+      val r = headerDecoder.decode(buffer, streamId, true)
       if (r.success) {
         val hs = headerDecoder.result()
         onCompleteHeadersFrame(streamId, priority, end_stream, hs)
@@ -82,7 +82,7 @@ private[http20] abstract class DecodingFrameHandler(headerDecoder: HeaderDecoder
     }
 
     if (end_headers) {
-      val r = headerDecoder.decode(buffer, streamId)
+      val r = headerDecoder.decode(buffer, streamId, true)
       if (r.success) {
         val hs = headerDecoder.result()
         onCompletePushPromiseFrame(streamId, promisedId, hs)
@@ -108,7 +108,7 @@ private[http20] abstract class DecodingFrameHandler(headerDecoder: HeaderDecoder
     val newBuffer = BufferTools.concatBuffers(hInfo.buffer, buffer)
     
     if (end_headers) {
-      val r = headerDecoder.decode(newBuffer, streamId)
+      val r = headerDecoder.decode(newBuffer, streamId, true)
       if (r.success) {
         val hs = headerDecoder.result()
 

@@ -94,7 +94,9 @@ private class Http2FrameHandler(nodeBuilder: Int => LeafBuilder[NodeMsg.Http2Msg
     else {
       val r = settings.head match {
         case Setting(Http2Settings.HEADER_TABLE_SIZE, v) =>
-          headerEncoder.setMaxTableSize(v.toInt)
+          // Limit ourselves to 2 GB although 4 GB is legal
+          val vv = math.min(v, Int.MaxValue)
+          headerEncoder.setMaxTableSize(vv.toInt)
           Continue
 
         case Setting(Http2Settings.ENABLE_PUSH, v) =>

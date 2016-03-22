@@ -61,7 +61,7 @@ class BasicHttpStage(streamId: Int,
     case Success(DataFrame(last, bytes)) =>
       val totalBytes = bytesRead + bytes.remaining()
       if (maxBody > 0 && totalBytes > maxBody) {
-        renderResponse(HttpResponse.EntityTooLarge())
+        renderResponse(HttpResponse.EntityTooLarge(), false)
       }
       else {
         if (bytes.hasRemaining()) acc += bytes
@@ -147,20 +147,20 @@ class BasicHttpStage(streamId: Int,
 
     if (error.length() > 0) shutdownWithCommand(Cmd.Error(PROTOCOL_ERROR(error, fatal = false)))
     else service(method, path, normalHeaders, body).onComplete {
-      case Success(resp) => renderResponse(resp)
+      case Success(resp) => renderResponse(resp, method == "HEAD")
       case Failure(t) => shutdownWithCommand(Cmd.Error(t))
     }
   }
 
-  private def renderResponse(resp: Response): Unit = resp match {
+  private def renderResponse(resp: Response, isHeadRequest: Boolean): Unit = resp match {
     case HttpResponse(code, _, headers, body) =>
                                                       // probably unnecessary micro-opt
       val hs = new ArrayBuffer[(String, String)](headers match {case b: IndexedSeq[_] => b.size + 1; case _ => 16 })
       hs += ((Status, Integer.toString(code)))
       headers.foreach{ case (k, v) => hs += ((k.toLowerCase(Locale.ROOT), v)) }
 
-      val msgs = if (body.hasRemaining) HeadersFrame(None, false, hs)::DataFrame(true, body)::Nil
-                 else                   HeadersFrame(None, true, hs)::Nil
+      val msgs = if (body.hasRemaining && !isHeadRequest) HeadersFrame(None, false, hs)::DataFrame(true, body)::Nil
+                 else                                     HeadersFrame(None, true, hs)::Nil
 
       channelWrite(msgs, timeout).onComplete {
         case Success(_)       => shutdownWithCommand(Cmd.Disconnect)

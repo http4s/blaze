@@ -101,7 +101,9 @@ private class FlowControl(nodeBuilder: Int => LeafBuilder[NodeMsg.Http2Msg],
     val diff = newWindow - http2Settings.outboundInitialWindowSize
     logger.trace(s"Adjusting outbound windows by $diff")
     http2Settings.outboundInitialWindowSize = newWindow
-    oConnectionWindow.window += diff
+
+    // We only adjust the stream windows
+    // 6.9.2: The connection low-control window can only be changed using WINDOW_UPDATE frames.
 
     nodes().foreach { node =>
       node.incrementOutboundWindow(diff)

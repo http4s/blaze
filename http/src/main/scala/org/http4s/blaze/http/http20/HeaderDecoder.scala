@@ -47,7 +47,7 @@ class HeaderDecoder(maxHeaderSize: Int,
     }
   }
 
-  final def decode(buffer: ByteBuffer, streamId: Int): MaybeError = {
+  final def decode(buffer: ByteBuffer, streamId: Int, endHeaders: Boolean): MaybeError = {
     try {
       val buff = BufferTools.concatBuffers(leftovers, buffer)
       val is = new ByteBufferInputStream(buff)
@@ -61,9 +61,14 @@ class HeaderDecoder(maxHeaderSize: Int,
         leftovers = b
       }
 
-      Continue
+      if (endHeaders && decoder.endHeaderBlock()) {
+        // TODO: This means we've truncated headers. Maybe this should be a warning?
+      }
 
-    } catch { case t: Throwable => Error(COMPRESSION_ERROR(streamId, fatal = true)) }
+      Continue
+    } catch { case t: Throwable =>
+      Error(COMPRESSION_ERROR(streamId, fatal = true))
+    }
   }
 
   final def setMaxTableSize(max: Int): Unit = decoder.setMaxHeaderTableSize(max)
