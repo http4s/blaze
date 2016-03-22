@@ -145,12 +145,12 @@ class Http20FrameCodecSpec extends Specification {
       })
 
     "make a round trip" in {
-      val buff1 = encoder.mkPriorityFrame(1, Priority(1, true, 1))
-      dec(1, Priority(1, true, 1)).decodeBuffer(buff1) must_== Continue
+      val buff1 = encoder.mkPriorityFrame(1, Priority(2, true, 1))
+      dec(1, Priority(2, true, 1)).decodeBuffer(buff1) must_== Continue
       buff1.remaining() must_== 0
 
-      val buff2 = encoder.mkPriorityFrame(1, Priority(1, false, 10))
-      dec(1, Priority(1, false, 10)).decodeBuffer(buff2) must_== Continue
+      val buff2 = encoder.mkPriorityFrame(1, Priority(2, false, 10))
+      dec(1, Priority(2, false, 10)).decodeBuffer(buff2) must_== Continue
       buff2.remaining() must_== 0
     }
 
