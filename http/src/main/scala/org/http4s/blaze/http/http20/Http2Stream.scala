@@ -124,11 +124,11 @@ private[http20] final class Http2Stream(val streamId: Int,
   }
 
   /** Stores the inbound message and deals with stream errors, if applicable */
-  def inboundMessage(msg: Http2Msg, flowSize: Int, end_stream: Boolean): MaybeError = {
+  def inboundMessage(msg: Http2Msg): MaybeError = {
     nodeState match {
       case Open =>
-        if (end_stream) nodeState = HalfClosed
-        val r = decrementInboundWindow(flowSize)
+        if (msg.endStream) nodeState = HalfClosed
+        val r = decrementInboundWindow(msg)
         if (r.success) {
           if (pendingInboundPromise != null) {
             val p = pendingInboundPromise
@@ -157,12 +157,13 @@ private[http20] final class Http2Stream(val streamId: Int,
   }
 
   /** Increments the window and checks to see if there are any pending messages to be sent */
-  def incrementOutboundWindow(size: Int): MaybeError = {  // likely already acquired lock
+  def incrementOutboundWindow(size: Int): Unit = {  // likely already acquired lock
     oStreamWindow.window += size
 
-    if (oStreamWindow() < 0) {   // overflow
-      val msg = s"Stream flow control window overflowed with update of $size"
-      Error(FLOW_CONTROL_ERROR(msg, streamId, false))
+    if (oStreamWindow() < 0) {   // overflow, close the stream and log some stuff.
+      val msg = s"$name flow control window overflowed with update of $size. Resulting window: ${oStreamWindow()}"
+      logger.info(msg)
+      outboundCommand(Cmd.Error(FLOW_CONTROL_ERROR(msg, streamId, false)))
     }
     else {
       if (oStreamWindow() > 0 && oConnectionWindow() > 0 && pendingOutboundFrames != null) {
@@ -177,38 +178,41 @@ private[http20] final class Http2Stream(val streamId: Int,
           pendingOutboundFrames = (p, rem)
         }
       }
-      Continue
     }
   }
 
   /** Decrements the inbound window and if not backed up, sends a window update if the level drops below 50% */
-  private def decrementInboundWindow(size: Int): MaybeError = {
-    if (size > iStreamWindow() || size > iConnectionWindow()) {
-      Error(FLOW_CONTROL_ERROR("Inbound flow control overflow", streamId, fatal = true))
-    } else {
-      iStreamWindow.window -= size
-      iConnectionWindow.window -= size
+  private def decrementInboundWindow(msg: NodeMsg.Http2Msg): MaybeError = msg match {
+    case NodeMsg.DataFrame(_,_,flowSize) =>
+      if (flowSize > iStreamWindow() || flowSize > iConnectionWindow()) {
+        // If we overflow the connection or the stream window we kill the connection.
+        Error(FLOW_CONTROL_ERROR("Inbound flow control overflow", streamId, fatal = true))
+      } else {
+        iStreamWindow.window -= flowSize
+        iConnectionWindow.window -= flowSize
 
-      // If we drop below 50 % and there are no pending messages, top it up
-      val bf1 =
-        if (iStreamWindow() < 0.5 * iStreamWindow.maxWindow && pendingInboundMessages.isEmpty) {
-          val buff = codec.mkWindowUpdateFrame(streamId, iStreamWindow.maxWindow - iStreamWindow())
-          iStreamWindow.window = iStreamWindow.maxWindow
-          buff::Nil
-        } else Nil
+        // If we drop below 50 % and there are no pending messages, top it up
+        val bf1 =
+          if (iStreamWindow() < 0.5 * iStreamWindow.maxWindow && pendingInboundMessages.isEmpty) {
+            val buff = codec.mkWindowUpdateFrame(streamId, iStreamWindow.maxWindow - iStreamWindow())
+            iStreamWindow.window = iStreamWindow.maxWindow
+            buff::Nil
+          } else Nil
 
-      // TODO: should we check to see if all the streams are backed up?
-      val buffs =
-        if (iConnectionWindow() < 0.5 * iConnectionWindow.maxWindow) {
-          val buff = codec.mkWindowUpdateFrame(0, iConnectionWindow.maxWindow - iConnectionWindow())
-          iConnectionWindow.window = iConnectionWindow.maxWindow
-          buff::bf1
-        } else bf1
+        // TODO: should we check to see if all the streams are backed up?
+        val buffs =
+          if (iConnectionWindow() < 0.5 * iConnectionWindow.maxWindow) {
+            val buff = codec.mkWindowUpdateFrame(0, iConnectionWindow.maxWindow - iConnectionWindow())
+            iConnectionWindow.window = iConnectionWindow.maxWindow
+            buff::bf1
+          } else bf1
 
-      if (buffs.nonEmpty) ops.writeBuffers(buffs)
+        if (buffs.nonEmpty) ops.writeBuffers(buffs)
 
-      Continue
-    }
+        Continue
+      }
+
+    case _ => Continue
   }
 
   // Mutates the state of the flow control windows

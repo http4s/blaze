@@ -127,7 +127,7 @@ private[http20] class NodeMsgEncoder[HType](id: Int,
         windowDiff += maxPayload
       }
       else {
-        acc ++= fencoder.mkDataFrame(data, id, frame.isLast, 0)
+        acc ++= fencoder.mkDataFrame(data, id, frame.endStream, 0)
         windowDiff += sz
       }
 

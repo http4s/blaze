@@ -58,7 +58,7 @@ class BasicHttpStage(streamId: Int,
   }
 
   private def getBody(hs: Headers, bytesRead: Long, acc: ArrayBuffer[ByteBuffer]): Unit = channelRead(timeout = timeout).onComplete {
-    case Success(DataFrame(last, bytes)) =>
+    case Success(DataFrame(last, bytes,_)) =>
       val totalBytes = bytesRead + bytes.remaining()
       if (maxBody > 0 && totalBytes > maxBody) {
         renderResponse(HttpResponse.EntityTooLarge(), false)
