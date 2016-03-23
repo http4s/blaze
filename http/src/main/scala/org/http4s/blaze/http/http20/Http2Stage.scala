@@ -34,36 +34,22 @@ object Http2Stage {
   }
 }
 
-class Http2Stage private(node_builder: Int => LeafBuilder[NodeMsg.Http2Msg],
+class Http2Stage private(nodeBuilder: Int => LeafBuilder[NodeMsg.Http2Msg],
                          timeout: Duration,
                          http2Settings: Http2Settings,
                          headerDecoder: HeaderDecoder,
                          headerEncoder: HeaderEncoder,
                          ec: ExecutionContext)
-  extends TailStage[ByteBuffer] with WriteSerializer[ByteBuffer] with Http2StageConcurrentOps {
+  extends TailStage[ByteBuffer] with WriteSerializer[ByteBuffer] { http2Stage =>
 
-  ///////////////////////////////////////////////////////////////////////////
-
-  private val lock = new AnyRef   // The only point of synchronization.
-  
-  override def name: String = "Http2ConnectionStage"
-
-  private val idManager = new StreamIdManager
-
-  private val frameHandler = new Http2FrameHandler(this, headerDecoder, headerEncoder, http2Settings, idManager)
-
-  //////////////////////// Http2Stage methods ////////////////////////////////
-
-  override def makePipeline(streamId: Int): LeafBuilder[Http2Msg] =
-    node_builder(streamId)
-
-  override def streamRead(stream: AbstractStream): Future[Http2Msg] =
-    lock.synchronized { stream.handleRead() }
-
-  override def streamWrite(stream: AbstractStream, data: Seq[Http2Msg]): Future[Unit] =
+  private class OpsImpl extends Http2StreamOps {
+  override def streamWrite(stream: Http2Stream, data: Seq[Http2Msg]): Future[Unit] =
     lock.synchronized { stream.handleWrite(data) }
 
-  override def streamCommand(stream: AbstractStream, cmd: OutboundCommand): Unit = lock.synchronized {
+    override def onFailure(t: Throwable, position: String): Unit =
+      http2Stage.onFailure(t, position)
+
+    override def streamCommand(stream: Http2Stream, cmd: OutboundCommand): Unit = lock.synchronized {
 
       def checkGoAway(): Unit = {
         if (http2Settings.receivedGoAway && frameHandler.flowControl.nodes().isEmpty) {  // we must be done
@@ -74,7 +60,7 @@ class Http2Stage private(node_builder: Int => LeafBuilder[NodeMsg.Http2Msg],
 
       cmd match {
         case Cmd.Disconnect =>
-            frameHandler.flowControl.removeNode(stream.streamId, Cmd.EOF, false)
+          frameHandler.flowControl.removeNode(stream.streamId, Cmd.EOF, false)
           checkGoAway()
 
         case Cmd.Error(t@Http2Exception(_, _, _, false)) =>
@@ -89,11 +75,30 @@ class Http2Stage private(node_builder: Int => LeafBuilder[NodeMsg.Http2Msg],
         case cmd =>
           logger.warn(s"$name is ignoring unhandled command ($cmd) from $this.") // Flush, Connect...
       }
+    }
+
+    // Doesn't need to be synchronized, leveraging the WriteSerializer
+    override def writeBuffers(data: Seq[ByteBuffer]): Future[Unit] =
+      channelWrite(data)
+
+    /** Manage a stream read request */
+    override def streamRead(stream: Http2Stream): Future[Http2Msg] =
+      lock.synchronized { stream.handleRead() }
   }
 
-  // Doesn't need to be synchronized, leveraging the WriteSerializer
-  override def writeBuffers(data: Seq[ByteBuffer]): Future[Unit] =
-    channelWrite(data)
+  ///////////////////////////////////////////////////////////////////////////
+
+  private val lock = new AnyRef   // The only point of synchronization.
+  
+  override def name: String = "Http2Stage"
+
+  private val idManager = new StreamIdManager
+  private val streamOps = new OpsImpl
+  private val frameHandler = new Http2FrameHandler(nodeBuilder, streamOps, headerDecoder,
+                                                   headerEncoder, http2Settings, idManager)
+
+
+  //////////////////////// Http2Stage methods ////////////////////////////////
 
 
   ////////////////////////////////////////////////////////////////////////////
@@ -187,7 +192,7 @@ class Http2Stage private(node_builder: Int => LeafBuilder[NodeMsg.Http2Msg],
     catch { case t: Throwable => onFailure(t, "readLoop uncaught exception") }
   }
 
-  def onFailure(t: Throwable, location: String): Unit = {
+  private def onFailure(t: Throwable, location: String): Unit = {
     logger.debug(t)("Failure: " + location)
     t match {
       case Cmd.EOF =>

@@ -9,25 +9,24 @@ import org.http4s.blaze.pipeline.{ Command => Cmd }
 import org.http4s.blaze.pipeline.TailStage
 import org.http4s.blaze.util.BufferTools
 import Http2Exception.{ PROTOCOL_ERROR, INTERNAL_ERROR }
+import NodeMsg.{ DataFrame, HeadersFrame }
+import Http2StageTools._
 
 import scala.collection.mutable.ArrayBuffer
 import scala.concurrent.ExecutionContext
 import scala.concurrent.duration.Duration
 import scala.util.{Success, Failure}
 
+/** Basic implementation of a http2 stream [[TailStage]] */
 class BasicHttpStage(streamId: Int,
                       maxBody: Long,
                       timeout: Duration,
                            ec: ExecutionContext,
                       service: HttpService) extends TailStage[Http2Msg] {
 
-  import Http2StageTools._
-
-  import NodeMsg.{ DataFrame, HeadersFrame }
-
   private implicit def _ec = ec   // for all the onComplete calls
 
-  override def name = "BasicHTTPNode"
+  override def name = s"Http2StreamStage($streamId)"
 
   override protected def stageStartup(): Unit = {
     super.stageStartup()
@@ -59,10 +58,10 @@ class BasicHttpStage(streamId: Int,
   }
 
   private def getBody(hs: Headers, bytesRead: Long, acc: ArrayBuffer[ByteBuffer]): Unit = channelRead(timeout = timeout).onComplete {
-    case Success(DataFrame(last, bytes)) =>
+    case Success(DataFrame(last, bytes,_)) =>
       val totalBytes = bytesRead + bytes.remaining()
       if (maxBody > 0 && totalBytes > maxBody) {
-        renderResponse(HttpResponse.EntityTooLarge())
+        renderResponse(HttpResponse.EntityTooLarge(), false)
       }
       else {
         if (bytes.hasRemaining()) acc += bytes
@@ -148,20 +147,20 @@ class BasicHttpStage(streamId: Int,
 
     if (error.length() > 0) shutdownWithCommand(Cmd.Error(PROTOCOL_ERROR(error, fatal = false)))
     else service(method, path, normalHeaders, body).onComplete {
-      case Success(resp) => renderResponse(resp)
+      case Success(resp) => renderResponse(resp, method == "HEAD")
       case Failure(t) => shutdownWithCommand(Cmd.Error(t))
     }
   }
 
-  private def renderResponse(resp: Response): Unit = resp match {
+  private def renderResponse(resp: Response, isHeadRequest: Boolean): Unit = resp match {
     case HttpResponse(code, _, headers, body) =>
                                                       // probably unnecessary micro-opt
       val hs = new ArrayBuffer[(String, String)](headers match {case b: IndexedSeq[_] => b.size + 1; case _ => 16 })
       hs += ((Status, Integer.toString(code)))
       headers.foreach{ case (k, v) => hs += ((k.toLowerCase(Locale.ROOT), v)) }
 
-      val msgs = if (body.hasRemaining) HeadersFrame(None, false, hs)::DataFrame(true, body)::Nil
-                 else                   HeadersFrame(None, true, hs)::Nil
+      val msgs = if (body.hasRemaining && !isHeadRequest) HeadersFrame(None, false, hs)::DataFrame(true, body)::Nil
+                 else                                     HeadersFrame(None, true, hs)::Nil
 
       channelWrite(msgs, timeout).onComplete {
         case Success(_)       => shutdownWithCommand(Cmd.Disconnect)

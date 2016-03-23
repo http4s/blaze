@@ -12,9 +12,7 @@ import Http2Exception.PROTOCOL_ERROR
   *
   * __Note:__This class is not 'thread safe' and should be treated accordingly
   */
-abstract class DecodingFrameHandler extends FrameHandler {
-
-  protected val headerDecoder: HeaderDecoder
+private[http20] abstract class DecodingFrameHandler(headerDecoder: HeaderDecoder) extends FrameHandler {
 
   private sealed trait PartialFrame {
     def streamId: Int
@@ -60,7 +58,7 @@ abstract class DecodingFrameHandler extends FrameHandler {
     }
 
     if (end_headers) {
-      val r = headerDecoder.decode(buffer, streamId)
+      val r = headerDecoder.decode(buffer, streamId, true)
       if (r.success) {
         val hs = headerDecoder.result()
         onCompleteHeadersFrame(streamId, priority, end_stream, hs)
@@ -84,7 +82,7 @@ abstract class DecodingFrameHandler extends FrameHandler {
     }
 
     if (end_headers) {
-      val r = headerDecoder.decode(buffer, streamId)
+      val r = headerDecoder.decode(buffer, streamId, true)
       if (r.success) {
         val hs = headerDecoder.result()
         onCompletePushPromiseFrame(streamId, promisedId, hs)
@@ -97,10 +95,7 @@ abstract class DecodingFrameHandler extends FrameHandler {
     }
   }
 
-  final override def onContinuationFrame(streamId: Int,
-                                      end_headers: Boolean,
-                                           buffer: ByteBuffer): Http2Result = {
-
+  final override def onContinuationFrame(streamId: Int, end_headers: Boolean, buffer: ByteBuffer): Http2Result = {
     if (!inHeaderSequence()) {
       return Error(PROTOCOL_ERROR(s"Invalid CONTINUATION frame: not in partial header frame", streamId, fatal = true))
     }
@@ -113,7 +108,7 @@ abstract class DecodingFrameHandler extends FrameHandler {
     val newBuffer = BufferTools.concatBuffers(hInfo.buffer, buffer)
     
     if (end_headers) {
-      val r = headerDecoder.decode(newBuffer, streamId)
+      val r = headerDecoder.decode(newBuffer, streamId, true)
       if (r.success) {
         val hs = headerDecoder.result()
 

@@ -1,10 +1,9 @@
 package org.http4s.blaze.http.http20
 
 import java.nio.ByteBuffer
+import Http2Settings.Setting
 
-import org.http4s.blaze.http.http20.Http2Settings.Setting
-
-trait FrameHandler {
+private trait FrameHandler {
 
   def inHeaderSequence(): Boolean
 

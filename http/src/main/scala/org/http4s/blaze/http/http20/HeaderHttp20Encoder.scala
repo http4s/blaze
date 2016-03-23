@@ -4,7 +4,7 @@ import java.nio.ByteBuffer
 
 import org.http4s.blaze.http.Headers
 
-trait HeaderHttp20Encoder { self: Http20FrameEncoder =>
+private trait HeaderHttp20Encoder { self: Http20FrameEncoder =>
 
   // The encoder used to compress the headers
   protected val headerEncoder: HeaderEncoder

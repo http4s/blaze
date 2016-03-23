@@ -45,13 +45,13 @@ class Http20FrameCodecSpec extends Specification {
   }
 
 
-  class TestHttp20FrameDecoder(val handler: FrameHandler) extends Http20FrameDecoder {
+  private class TestHttp20FrameDecoder(val handler: FrameHandler) extends Http20FrameDecoder {
     override val http2Settings = new Http2Settings()
   }
 
-  def decoder(h: FrameHandler, inHeaders: Boolean = false) = new TestHttp20FrameDecoder(h)
+  private def decoder(h: FrameHandler, inHeaders: Boolean = false) = new TestHttp20FrameDecoder(h)
 
-  def encoder = new Http20FrameEncoder {}
+  private def encoder = new Http20FrameEncoder {}
 
   "DATA frame" should {
 
@@ -145,12 +145,12 @@ class Http20FrameCodecSpec extends Specification {
       })
 
     "make a round trip" in {
-      val buff1 = encoder.mkPriorityFrame(1, Priority(1, true, 1))
-      dec(1, Priority(1, true, 1)).decodeBuffer(buff1) must_== Continue
+      val buff1 = encoder.mkPriorityFrame(1, Priority(2, true, 1))
+      dec(1, Priority(2, true, 1)).decodeBuffer(buff1) must_== Continue
       buff1.remaining() must_== 0
 
-      val buff2 = encoder.mkPriorityFrame(1, Priority(1, false, 10))
-      dec(1, Priority(1, false, 10)).decodeBuffer(buff2) must_== Continue
+      val buff2 = encoder.mkPriorityFrame(1, Priority(2, false, 10))
+      dec(1, Priority(2, false, 10)).decodeBuffer(buff2) must_== Continue
       buff2.remaining() must_== 0
     }
 
@@ -214,7 +214,7 @@ class Http20FrameCodecSpec extends Specification {
     }
   }
 
-  def hencoder = new HeaderHttp20Encoder with Http20FrameEncoder {
+  private def hencoder = new HeaderHttp20Encoder with Http20FrameEncoder {
     override protected val headerEncoder: HeaderEncoder = new HeaderEncoder()
   }
 

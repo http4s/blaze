@@ -10,7 +10,7 @@ import scala.collection.mutable.ArrayBuffer
 
 /* The job of the Http20FrameCodec is to slice the ByteBuffers. It does
    not attempt to decode headers or perform any size limiting operations */
-trait Http20FrameDecoder {
+private trait Http20FrameDecoder {
   import bits._
 
   protected val handler: FrameHandler
@@ -34,7 +34,7 @@ trait Http20FrameDecoder {
     // this concludes the 9 byte header. `in` is now to the payload
 
     if (len > http2Settings.maxFrameSize) {
-      protoError(s"HTTP2 packet is to large to handle.", streamId)
+      Error(FRAME_SIZE_ERROR(s"HTTP2 packet is to large to handle.", streamId, fatal = true))
     } else if (handler.inHeaderSequence() && frameType != FrameTypes.CONTINUATION) {
     // We are in the middle of some header frames which is a no-go
       protoError(s"Received frame type $frameType while in in headers sequence")
@@ -108,7 +108,9 @@ trait Http20FrameDecoder {
     val priority =  if (Flags.PRIORITY(flags)) Some(getPriority(buffer))
                     else None
 
-    handler.onHeadersFrame(streamId, priority, Flags.END_HEADERS(flags), Flags.END_STREAM(flags), buffer.slice())
+    if (priority.isDefined && priority.get.dependentStreamId == streamId)
+      protoError(s"Header stream depends on itself", streamId)
+    else handler.onHeadersFrame(streamId, priority, Flags.END_HEADERS(flags), Flags.END_STREAM(flags), buffer.slice())
   }
 
 
@@ -121,14 +123,13 @@ trait Http20FrameDecoder {
 
     if (buffer.remaining() != 5) {    // Make sure the frame has the right amount of data
       val msg = "Invalid PRIORITY frame size, required 5, received" + buffer.remaining()
-      return protoError(msg, streamId)
+      return Error(FRAME_SIZE_ERROR(msg, streamId, fatal = false))
     }
 
     val priority = getPriority(buffer)
 
-    if (priority.dependentStreamId == 0) {
-      protoError("Priority frame with stream dependency 0x0")
-    }
+    if (priority.dependentStreamId == 0) protoError("Priority frame with stream dependency 0x0")
+    else if (priority.dependentStreamId == streamId) protoError("Priority frame depends on itself", streamId)
     else handler.onPriorityFrame(streamId, priority)
   }
 
@@ -143,7 +144,7 @@ trait Http20FrameDecoder {
   private def decodeRstStreamFrame(buffer: ByteBuffer, streamId: Int): Http2Result = {
     if (buffer.remaining() != 4) {
       val msg = "Invalid RST_STREAM frame size, required 4, received " + buffer.remaining()
-      return protoError(msg, streamId)
+      return Error(FRAME_SIZE_ERROR(msg, streamId, fatal = true))
     }
 
     if (streamId == 0) {
@@ -158,10 +159,9 @@ trait Http20FrameDecoder {
   //////////// SETTINGS ///////////////
   private def decodeSettingsFrame(buffer: ByteBuffer, streamId: Int, flags: Byte): Http2Result = {
     val len = buffer.remaining()
-    val settingsCount = len / 6 // 6 bytes per setting
-
     val isAck = Flags.ACK(flags)
 
+    val settingsCount = len / 6 // 6 bytes per setting
     if (len % 6 != 0) { // Invalid frame size
       val msg = s"SETTINGS frame payload must be multiple of 6 bytes, size: $len"
       return Error(FRAME_SIZE_ERROR(msg, streamId, fatal = true))

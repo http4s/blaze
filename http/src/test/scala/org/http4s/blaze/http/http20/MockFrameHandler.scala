@@ -5,7 +5,7 @@ import java.nio.ByteBuffer
 
 import org.http4s.blaze.http.http20.Http2Settings.Setting
 
-class MockFrameHandler(inHeaders: Boolean) extends FrameHandler {
+private[http20] class MockFrameHandler(inHeaders: Boolean) extends FrameHandler {
   override def inHeaderSequence(): Boolean = inHeaders
   override def onGoAwayFrame(lastStream: Int, errorCode: Long, debugData: ByteBuffer): Http2Result = ???
   override def onPingFrame(ack: Boolean, data: Array[Byte]): Http2Result = ???
@@ -23,9 +23,7 @@ class MockFrameHandler(inHeaders: Boolean) extends FrameHandler {
 }
 
 
-class MockDecodingFrameHandler extends DecodingFrameHandler {
-  override protected val headerDecoder: HeaderDecoder = new HeaderDecoder(20*1024, 4096)
-
+private[http20] class MockDecodingFrameHandler extends DecodingFrameHandler(new HeaderDecoder(20*1024, 4096)) {
   override def onCompletePushPromiseFrame(streamId: Int, promisedId: Int, headers: Headers): Http2Result = ???
   override def onCompleteHeadersFrame(streamId: Int, priority: Option[Priority], end_stream: Boolean, headers: Headers): Http2Result = ???
   override def onGoAwayFrame(lastStream: Int, errorCode: Long, debugData: ByteBuffer): Http2Result = ???

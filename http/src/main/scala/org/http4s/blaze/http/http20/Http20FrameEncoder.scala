@@ -5,7 +5,7 @@ import java.nio.ByteBuffer
 import org.http4s.blaze.http.http20.Http2Settings.Setting
 import org.http4s.blaze.util.BufferTools
 
-trait Http20FrameEncoder {
+private trait Http20FrameEncoder {
   import bits._
 
   def mkDataFrame(data: ByteBuffer, streamId: Int, isLast: Boolean, padding: Byte): Seq[ByteBuffer] = {

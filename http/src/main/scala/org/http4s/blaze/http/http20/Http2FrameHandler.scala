@@ -4,51 +4,45 @@ import java.nio.ByteBuffer
 import java.nio.charset.StandardCharsets._
 
 import org.http4s.blaze.http.http20.Http2Exception._
-import org.http4s.blaze.http.http20.Http2Settings.{DefaultSettings => Default, Setting}
-import org.http4s.blaze.pipeline.{ Command => Cmd }
+import org.http4s.blaze.http.http20.Http2Settings.{Setting, DefaultSettings => Default}
+import org.http4s.blaze.pipeline.{LeafBuilder, Command => Cmd}
 import org.http4s.blaze.http.Headers
-
 import org.log4s.getLogger
 
 import scala.annotation.tailrec
 
-
-private class Http2FrameHandler(http2Stage: Http2StageConcurrentOps,
-                                protected val headerDecoder: HeaderDecoder,
+private class Http2FrameHandler(nodeBuilder: Int => LeafBuilder[NodeMsg.Http2Msg],
+                                http2Stage: Http2StreamOps,
+                                headerDecoder: HeaderDecoder,
                                 headerEncoder: HeaderEncoder,
                                 protected val http2Settings: Http2Settings,
                                 idManager: StreamIdManager)
-  extends DecodingFrameHandler with Http20FrameDecoder with Http20FrameEncoder { self =>
+  extends DecodingFrameHandler(headerDecoder) with Http20FrameDecoder with Http20FrameEncoder { self =>
 
   private[this] val logger = getLogger
-
   override protected val handler: FrameHandler = this
 
-  val flowControl = new FlowControl(http2Stage, idManager, http2Settings, this, headerEncoder)
+  val flowControl = new FlowControl(nodeBuilder, http2Stage, idManager, http2Settings, this, headerEncoder)
+
+  /////////////////////////// Handle messages /////////////////////////////////////
 
   override def onCompletePushPromiseFrame(streamId: Int, promisedId: Int, headers: Headers): Http2Result =
     Error(PROTOCOL_ERROR("Server received a PUSH_PROMISE frame from a client", streamId, fatal = true))
 
   override def onCompleteHeadersFrame(streamId: Int,
                                       priority: Option[Priority],
-                                      end_stream: Boolean,
+                                      endStream: Boolean,
                                       headers: Headers): Http2Result =
   {
-    val msg = NodeMsg.HeadersFrame(priority, end_stream, headers)
+    val msg = NodeMsg.HeadersFrame(priority, endStream, headers)
+    flowControl.inboundMessage(streamId, msg)
+  }
 
-    flowControl.getNode(streamId) match {
-      case None =>
-        if (!idManager.validateClientId(streamId)) Error(PROTOCOL_ERROR(s"Invalid streamId", streamId, fatal = true))
-        else if (flowControl.nodeCount() >= http2Settings.maxInboundStreams) {
-          Error(FLOW_CONTROL_ERROR(s"MAX_CONCURRENT_STREAMS setting exceeded: ${flowControl.nodeCount()}", fatal = true))
-        }
-        else {
-          val node = flowControl.makeStream(streamId)
-          node.inboundMessage(msg, 0, end_stream)
-        }
+  override def onDataFrame(streamId: Int, endStream: Boolean, data: ByteBuffer, flowSize: Int): Http2Result = {
+    logger.debug(s"Received DataFrame: $streamId, $endStream, $data, $flowSize")
 
-      case Some(node) => node.inboundMessage(msg, 0, end_stream)
-    }
+    val msg = NodeMsg.DataFrame.withFlowBytes(endStream, data, flowSize)
+    flowControl.inboundMessage(streamId, msg)
   }
 
   override def onGoAwayFrame(lastStream: Int, errorCode: Long, debugData: ByteBuffer): Http2Result = {
@@ -78,7 +72,7 @@ private class Http2FrameHandler(http2Stage: Http2StageConcurrentOps,
 
   override def onSettingsFrame(ack: Boolean, settings: Seq[Setting]): Http2Result = {
     logger.trace(s"Received settings frames: $settings, ACK: $ack")
-    if (ack) Continue    // TODO: ensure client sends acknolegments?
+    if (ack) Continue    // TODO: ensure client sends acknowledgments?
     else {
       val r = processSettings(settings)
       if (r.success) {
@@ -90,13 +84,53 @@ private class Http2FrameHandler(http2Stage: Http2StageConcurrentOps,
     }
   }
 
+  // For handling unknown stream frames
+  override def onExtensionFrame(tpe: Int, streamId: Int, flags: Byte, data: ByteBuffer): Http2Result = {
+    // Extension frames are ignored per the spec.
+    Continue
+  }
+
+  override def onRstStreamFrame(streamId: Int, code: Int): Http2Result = {
+    val codeName = errorName(code)
+    val node = flowControl.removeNode(streamId, Cmd.EOF, true)
+    if (node.isEmpty) {
+      if (idManager.lastClientId() < streamId) {
+        logger.warn(s"Client attempted to reset idle stream: $streamId, code: $codeName")
+        Error(PROTOCOL_ERROR("Attempted to RST idle stream", fatal = true))
+      }
+      else {
+        logger.info(s"Client attempted to reset closed stream: $streamId, code: $codeName")
+        Continue
+      }
+    }
+    else {
+      logger.info(s"Stream $streamId reset with code $codeName")
+      Continue
+    }
+  }
+
+  override def onPriorityFrame(streamId: Int, priority: Priority): Http2Result = {
+    // TODO: should we implement some type of priority handling?
+    logger.debug(s"Received PriorityFrame: $streamId, $priority")
+    Continue
+  }
+
+  override def onWindowUpdateFrame(streamId: Int, sizeIncrement: Int): Http2Result = {
+    logger.debug(s"Received window update: stream $streamId, size $sizeIncrement")
+    flowControl.onWindowUpdateFrame(streamId, sizeIncrement)
+  }
+
+  /////////////////////////// Helper functions /////////////////////////////////////////
+
   @tailrec
   private def processSettings(settings: Seq[Setting]): MaybeError = {
     if (settings.isEmpty) Continue
     else {
       val r = settings.head match {
         case Setting(Http2Settings.HEADER_TABLE_SIZE, v) =>
-          headerEncoder.setMaxTableSize(v.toInt)
+          // Limit ourselves to 2 GB although 4 GB is legal
+          val vv = math.min(v, Int.MaxValue)
+          headerEncoder.setMaxTableSize(vv.toInt)
           Continue
 
         case Setting(Http2Settings.ENABLE_PUSH, v) =>
@@ -130,62 +164,5 @@ private class Http2FrameHandler(http2Stage: Http2StageConcurrentOps,
       if (r.success) processSettings(settings.tail)
       else r
     }
-  }
-
-  // For handling unknown stream frames
-  override def onExtensionFrame(tpe: Int, streamId: Int, flags: Byte, data: ByteBuffer): Http2Result = {
-    // Extension frames are ignored per the spec.
-    Continue
-  }
-
-
-  override def onRstStreamFrame(streamId: Int, code: Int): Http2Result = {
-    val codeName = errorName(code)
-    val node = flowControl.removeNode(streamId, Cmd.EOF, true)
-    if (node.isEmpty) {
-      if (idManager.lastClientId() < streamId) {
-        logger.warn(s"Client attempted to reset idle stream: $streamId, code: $codeName")
-        Error(PROTOCOL_ERROR("Attempted to RST idle stream", fatal = true))
-      }
-      else {
-        logger.info(s"Client attempted to reset closed stream: $streamId, code: $codeName")
-        Continue
-      }
-    }
-    else {
-      logger.info(s"Stream $streamId reset with code $codeName")
-      Continue
-    }
-  }
-
-  override def onDataFrame(streamId: Int, endStream: Boolean, data: ByteBuffer, flowSize: Int): Http2Result = {
-    logger.debug(s"Received DataFrame: $streamId, $endStream, $data, $flowSize")
-
-    if (flowSize > http2Settings.maxFrameSize) {
-      val msg = s"SETTING_MAX_FRAME_SIZE of ${http2Settings.maxFrameSize} exceeded. Received frame size: $flowSize"
-      Error(FRAME_SIZE_ERROR(msg, streamId, true))
-    }
-    else flowControl.getNode(streamId) match {
-      case Some(node) =>
-        val msg = NodeMsg.DataFrame(endStream, data)
-        node.inboundMessage(msg, flowSize, endStream)
-
-      case None =>
-        if (streamId <= idManager.lastClientId()) {
-          Error(STREAM_CLOSED(streamId, fatal = true))
-        }
-        else Error(PROTOCOL_ERROR(s"DATA frame on invalid stream: $streamId", streamId, fatal = true))
-    }
-  }
-
-  override def onPriorityFrame(streamId: Int, priority: Priority): Http2Result = {
-    // TODO: should we implement some type of priority handling?
-    logger.debug(s"Received PriorityFrame: $streamId, $priority")
-    Continue
-  }
-
-  override def onWindowUpdateFrame(streamId: Int, sizeIncrement: Int): Http2Result = {
-    logger.debug(s"Received window update: stream $streamId, size $sizeIncrement")
-    flowControl.onWindowUpdateFrame(streamId, sizeIncrement)
   }
 }
