@@ -12,25 +12,18 @@ import org.http4s.blaze.pipeline.stages.SSLStage
 import org.http4s.blaze.util.{GenericSSLContext, BufferTools, Execution}
 
 
+object HttpClient extends HttpClient {
+  override lazy val connectionManager = new ClientChannelFactory()
+
+  override protected val sslContext: SSLContext = GenericSSLContext.clientSSLContext()
+}
+
 
 trait HttpClient {
 
   protected def connectionManager: ClientChannelFactory
 
   protected def sslContext: SSLContext
-
-  // TODO: the robustness of this method to varying input is highly questionable
-  private def parseURL(url: String): (String, Int, String, String) = {
-    val uri = java.net.URI.create(if (url.startsWith("http")) url else "http://" + url)
-
-    val port = if (uri.getPort > 0) uri.getPort else (if (uri.getScheme == "http") 80 else 443)
-
-    (uri.getHost,
-      port,
-      uri.getScheme,
-      if (uri.getQuery != null) uri.getPath + "?" + uri.getQuery else uri.getPath
-    )
-  }
 
   protected def runReq(method: String,
                           url: String,
@@ -69,10 +62,4 @@ trait HttpClient {
       case r => Future.failed(new Exception(s"Received invalid response type: ${r.getClass}"))
     }(Execution.directec)
   }
-}
-
-object HttpClient extends HttpClient {
-  override lazy val connectionManager = new ClientChannelFactory()
-
-  override protected val sslContext: SSLContext = GenericSSLContext.clientSSLContext()
 }

@@ -50,4 +50,17 @@ package object http {
     def EntityTooLarge(): HttpResponse =
       HttpResponse(413, "Request Entity Too Large", body = s"Request Entity Too Large")
   }
+
+  // TODO: the robustness of this method to varying input is highly questionable
+  private[http] def parseURL(url: String): (String, Int, String, String) = {
+    val uri = java.net.URI.create(if (url.startsWith("http")) url else "http://" + url)
+
+    val port = if (uri.getPort > 0) uri.getPort else (if (uri.getScheme == "http") 80 else 443)
+
+    (uri.getHost,
+      port,
+      uri.getScheme,
+      if (uri.getQuery != null) uri.getPath + "?" + uri.getQuery else uri.getPath
+      )
+  }
 }
