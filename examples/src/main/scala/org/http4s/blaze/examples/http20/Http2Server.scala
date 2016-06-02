@@ -27,6 +27,6 @@ class Http2Server(port: Int) {
 object Http2Server {
   def main(args: Array[String]) {
     println("Hello world!")
-    new Http2Server(4430).run().join()
+    new Http2Server(8443).run().join()
   }
 }

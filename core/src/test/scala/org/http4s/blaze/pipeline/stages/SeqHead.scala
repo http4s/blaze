@@ -6,9 +6,13 @@ import org.http4s.blaze.pipeline.Command.EOF
 
 class SeqHead[O](private var data: Seq[O]) extends HeadStage[O] {
 
-  @volatile var results: Vector[O] = Vector.empty
+  private var acc: Vector[O] = Vector.empty
 
   private val lock = new AnyRef
+
+  def results: Seq[O] = lock.synchronized {
+    acc
+  }
 
   def name: String = "SeqHead test HeadStage"
 
@@ -22,8 +26,7 @@ class SeqHead[O](private var data: Seq[O]) extends HeadStage[O] {
   }
 
   def writeRequest(data: O): Future[Unit] = lock.synchronized {
-    results :+= data
+    acc :+= data
     Future.successful(())
   }
-
 }
