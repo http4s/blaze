@@ -9,7 +9,7 @@ import org.http4s.websocket.WebsocketBits.WebSocketFrame
 import org.http4s.websocket.WebsocketHandshake
 
 import scala.util.control.NonFatal
-import scala.util.{Failure, Success}
+import scala.util.{Failure, Success, Try}
 import scala.concurrent.Future
 import scala.collection.mutable.ArrayBuffer
 import org.http4s.blaze.http.http_parser.Http1ServerParser
@@ -18,8 +18,7 @@ import org.http4s.blaze.http.websocket.WebSocketDecoder
 import java.util.Date
 import java.nio.ByteBuffer
 
-import org.http4s.blaze.http.util.BodyEncoder
-import org.http4s.blaze.util.BufferTools
+import org.http4s.blaze.util.{BufferTools, Execution}
 
 class HttpServerStage(maxReqBody: Long, maxNonbody: Int)(handleRequest: HttpService)
   extends Http1ServerParser(maxNonbody, maxNonbody, 5*1024) with TailStage[ByteBuffer] {
@@ -34,6 +33,7 @@ class HttpServerStage(maxReqBody: Long, maxNonbody: Int)(handleRequest: HttpServ
   private var minor: Int = -1
   private var major: Int = -1
   private var headers = new ArrayBuffer[(String, String)]
+  private var remainder: ByteBuffer = BufferTools.emptyBuffer
   
   /////////////////////////////////////////////////////////////////////////////////////////
 
@@ -65,7 +65,13 @@ class HttpServerStage(maxReqBody: Long, maxNonbody: Int)(handleRequest: HttpServ
 
       // TODO: need to check if we need a Host header or otherwise validate the request
       // we have enough to start the request
-      gatherBody(buff, 0, new ArrayBuffer[ByteBuffer])
+      val hs = headers
+      headers = new ArrayBuffer[(String, String)](hs.size + 10)
+
+      remainder = buff
+
+      val req = Request(method, uri, hs, nextBodyBuffer)
+      runRequest(req)
     }
     catch { case t: Throwable => shutdownWithCommand(Cmd.Error(t)) }
   }
@@ -77,53 +83,56 @@ class HttpServerStage(maxReqBody: Long, maxNonbody: Int)(handleRequest: HttpServ
     minor = -1
     major = -1
     headers.clear()
+    remainder = BufferTools.emptyBuffer
   }
 
-  private def runRequest(buffer: ByteBuffer, reqHeaders: Headers): Unit = {
-    try handleRequest(method, uri, reqHeaders, buffer).flatMap {
-      case r: HttpResponse    => handleHttpResponse(r, reqHeaders, false)
-      case WSResponse(stage)        => handleWebSocket(reqHeaders, stage)
-    }.onComplete {       // See if we should restart the loop
-      case Success(Reload)          => resetStage(); requestLoop()
-      case Success(Close)           => shutdownWithCommand(Cmd.Disconnect)
-      case Success(Upgrade)         => // NOOP don't need to do anything
-      case Failure(t: BadRequest)   => badRequest(t)
-      case Failure(t)               => shutdownWithCommand(Cmd.Error(t))
+  private def runRequest(request: Request): Unit = {
+    try handleRequest(request) match {
+      case HttpResponse(handler) => handler(getEncoder).onComplete(completionHandler)
+      case WSResponse(stage) => handleWebSocket(request.headers, stage)
     }
     catch {
       case NonFatal(e) =>
         logger.error(e)("Error during `handleRequest` of HttpServerStage")
-        val body = ByteBuffer.wrap("Internal Service Error".getBytes(StandardCharsets.ISO_8859_1))
-        val resp = HttpResponse(200, "OK", Nil, body)
-
-        handleHttpResponse(resp, reqHeaders, false).onComplete { _ =>
-          shutdownWithCommand(Cmd.Error(e))
-        }
+        //        val body = ByteBuffer.wrap("Internal Service Error".getBytes(StandardCharsets.ISO_8859_1))
+        //        val resp = HttpResponse(500, "Internal Server Error", Nil, body)
+        //
+        //        handleHttpResponse(resp, reqHeaders, false).onComplete { _ =>
+        shutdownWithCommand(Cmd.Error(e))
+      //        }
     }
   }
 
-  /** Deal with route responses of standard HTTP form */
-  private def handleHttpResponse(resp: HttpResponse, reqHeaders: Headers, forceClose: Boolean): Future[RouteResult] = {
+  private def completionHandler(result: Try[Completed]): Unit = result match {
+    case Success(completed) => completed.result match {
+      case Close           => shutdownWithCommand(Cmd.Disconnect)
+      case Upgrade         => // NOOP: don't need to do anything
+      case Reload          =>
+        val buff = remainder
+        resetStage()
+        readLoop(buff)
+    }
+    case Failure(t: BadRequest)   => badRequest(t)
+    case Failure(t)               => shutdownWithCommand(Cmd.Error(t))
+  }
+
+  private def getEncoder(prelude: HttpResponsePrelude): BodyWriter = {
+    val forceClose = false // TODO: check for close headers, etc.
     val sb = new StringBuilder(512)
     sb.append("HTTP/").append(1).append('.').append(minor).append(' ')
-      .append(resp.code).append(' ')
-      .append(resp.status).append('\r').append('\n')
+      .append(prelude.code).append(' ')
+      .append(prelude.status).append('\r').append('\n')
 
-    val keepAlive = !forceClose && isKeepAlive(reqHeaders)
+    val keepAlive = !forceClose && isKeepAlive(prelude.headers)
 
     if (!keepAlive) sb.append("Connection: close\r\n")
     else if (minor == 0 && keepAlive) sb.append("Connection: Keep-Alive\r\n")
 
-    renderHeaders(sb, resp.headers)
-
-    for {
-      encoder <- BodyEncoder.autoEncoder(resp.headers, resp.body, 50*1024)
-      _ <- encoder.writeBody(this, sb, resp.body)
-    } yield { if (keepAlive) Reload else Close }
+    BodyWriter.selectWriter(prelude, sb, this)
   }
 
   /** Deal with route response of WebSocket form */
-  private def handleWebSocket(reqHeaders: Headers, wsBuilder: LeafBuilder[WebSocketFrame]): Future[RouteResult] = {
+  private def handleWebSocket(reqHeaders: Headers, wsBuilder: LeafBuilder[WebSocketFrame]): Future[Completed] = {
     val sb = new StringBuilder(512)
     WebsocketHandshake.serverHandshake(reqHeaders) match {
       case Left((i, msg)) =>
@@ -131,7 +140,8 @@ class HttpServerStage(maxReqBody: Long, maxNonbody: Int)(handleRequest: HttpServ
         sb.append("HTTP/1.1 ").append(i).append(' ').append(msg).append('\r').append('\n')
           .append('\r').append('\n')
 
-        channelWrite(ByteBuffer.wrap(sb.result().getBytes(StandardCharsets.ISO_8859_1))).map(_ => Close)
+        channelWrite(ByteBuffer.wrap(sb.result().getBytes(StandardCharsets.ISO_8859_1)))
+          .map(_ => new Completed(Close))
 
       case Right(hdrs) =>
         logger.info("Starting websocket request")
@@ -144,7 +154,7 @@ class HttpServerStage(maxReqBody: Long, maxNonbody: Int)(handleRequest: HttpServ
           logger.debug("Switching pipeline segments for upgrade")
           val segment = wsBuilder.prepend(new WebSocketDecoder(false))
           this.replaceInline(segment)
-          Upgrade
+          new Completed(Upgrade)
         }
     }
   }
@@ -157,44 +167,6 @@ class HttpServerStage(maxReqBody: Long, maxNonbody: Int)(handleRequest: HttpServ
 
     channelWrite(ByteBuffer.wrap(sb.result().getBytes(StandardCharsets.ISO_8859_1)))
       .onComplete(_ => shutdownWithCommand(Cmd.Disconnect))
-  }
-
-  private def renderHeaders(sb: StringBuilder, headers: Seq[(String, String)]) {
-    headers.foreach { case (k, v) =>
-      // We are not allowing chunked responses at the moment, strip our Chunked-Encoding headers
-      if (!k.equalsIgnoreCase("Transfer-Encoding") && !k.equalsIgnoreCase("Content-Length")) {
-        sb.append(k)
-        if (v.length > 0) sb.append(": ").append(v).append('\r').append('\n')
-      }
-    }
-  }
-
-  // TODO: this will generate a long chain of Futures
-  private def gatherBody(buffer: ByteBuffer, bodySize: Long, buffers: ArrayBuffer[ByteBuffer]): Unit = {
-    if (!contentComplete()) {
-      val buff = parseContent(buffer)
-      val totalBodySize = bodySize + buff.remaining()
-      if (maxReqBody > 0 && totalBodySize > maxReqBody) {
-        val hs = headers
-        headers = new ArrayBuffer[(String, String)](0)
-        handleHttpResponse(HttpResponse.EntityTooLarge(), hs, false)
-      }
-      else {
-        buffers += buff
-        channelRead().onComplete {
-          case Success(newbuff) => gatherBody(BufferTools.concatBuffers(buffer, newbuff), totalBodySize, buffers)
-          case Failure(Cmd.EOF) => stageShutdown(); sendOutboundCommand(Cmd.Disconnect)
-          case Failure(t)       => shutdownWithCommand(Cmd.Error(t))
-        }
-      }
-
-    }
-    else {
-      val total = BufferTools.joinBuffers(buffers)
-      val hs = headers
-      headers = new ArrayBuffer[(String, String)](hs.size + 10)
-      runRequest(total, hs)
-    }
   }
 
   private def shutdownWithCommand(cmd: Cmd.OutboundCommand): Unit = {
@@ -244,9 +216,21 @@ class HttpServerStage(maxReqBody: Long, maxNonbody: Int)(handleRequest: HttpServ
     this.minor = minorversion
     false
   }
+
+  // Gets the next body buffer from the line
+  private def nextBodyBuffer(): Future[ByteBuffer] = {
+    if (contentComplete()) Future.successful(BufferTools.emptyBuffer)
+    else channelRead().flatMap { nextBuffer =>
+      remainder = BufferTools.concatBuffers(remainder, nextBuffer)
+      val b = parseContent(remainder)
+
+      if (b.hasRemaining || contentComplete()) Future.successful(b)
+      else nextBodyBuffer() // Can't send an empty buffer unless we are finished.
+    }(Execution.trampoline)
+  }
 }
 
-private object HttpServerStage {
+private[http] object HttpServerStage {
   sealed trait RouteResult
   case object Reload  extends RouteResult
   case object Close   extends RouteResult
