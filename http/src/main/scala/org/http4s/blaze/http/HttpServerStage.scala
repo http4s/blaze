@@ -7,19 +7,18 @@ import org.http4s.blaze.pipeline.{Command => Cmd, _}
 import org.http4s.blaze.util.Execution._
 import org.http4s.websocket.WebsocketBits.WebSocketFrame
 import org.http4s.websocket.WebsocketHandshake
+
 import scala.util.control.NonFatal
 import scala.util.{Failure, Success}
 import scala.concurrent.Future
 import scala.collection.mutable.ArrayBuffer
 import org.http4s.blaze.http.http_parser.Http1ServerParser
-
 import org.http4s.blaze.http.http_parser.BaseExceptions.BadRequest
 import org.http4s.blaze.http.websocket.WebSocketDecoder
-
-
 import java.util.Date
 import java.nio.ByteBuffer
 
+import org.http4s.blaze.http.util.BodyEncoder
 import org.http4s.blaze.util.BufferTools
 
 class HttpServerStage(maxReqBody: Long, maxNonbody: Int)(handleRequest: HttpService)
@@ -115,11 +114,12 @@ class HttpServerStage(maxReqBody: Long, maxNonbody: Int)(handleRequest: HttpServ
     if (!keepAlive) sb.append("Connection: close\r\n")
     else if (minor == 0 && keepAlive) sb.append("Connection: Keep-Alive\r\n")
 
-    renderHeaders(sb, resp.headers, resp.body.remaining())
+    renderHeaders(sb, resp.headers)
 
-    val messages = Array(ByteBuffer.wrap(sb.result().getBytes(StandardCharsets.ISO_8859_1)), resp.body)
-
-    channelWrite(messages).map(_ => if (keepAlive) Reload else Close)(directec)
+    for {
+      encoder <- BodyEncoder.autoEncoder(resp.headers, resp.body, 50*1024)
+      _ <- encoder.writeBody(this, sb, resp.body)
+    } yield { if (keepAlive) Reload else Close }
   }
 
   /** Deal with route response of WebSocket form */
@@ -159,7 +159,7 @@ class HttpServerStage(maxReqBody: Long, maxNonbody: Int)(handleRequest: HttpServ
       .onComplete(_ => shutdownWithCommand(Cmd.Disconnect))
   }
 
-  private def renderHeaders(sb: StringBuilder, headers: Seq[(String, String)], length: Int) {
+  private def renderHeaders(sb: StringBuilder, headers: Seq[(String, String)]) {
     headers.foreach { case (k, v) =>
       // We are not allowing chunked responses at the moment, strip our Chunked-Encoding headers
       if (!k.equalsIgnoreCase("Transfer-Encoding") && !k.equalsIgnoreCase("Content-Length")) {
@@ -167,9 +167,6 @@ class HttpServerStage(maxReqBody: Long, maxNonbody: Int)(handleRequest: HttpServ
         if (v.length > 0) sb.append(": ").append(v).append('\r').append('\n')
       }
     }
-    // Add our length header last
-    sb.append(s"Content-Length: ").append(length).append('\r').append('\n')
-    sb.append('\r').append('\n')
   }
 
   // TODO: this will generate a long chain of Futures

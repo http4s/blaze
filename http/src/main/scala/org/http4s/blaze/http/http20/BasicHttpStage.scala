@@ -159,6 +159,15 @@ class BasicHttpStage(streamId: Int,
       hs += ((Status, Integer.toString(code)))
       headers.foreach{ case (k, v) => hs += ((k.toLowerCase(Locale.ROOT), v)) }
 
+      if (isHeadRequest) channelWrite(HeadersFrame(None, false, hs)::Nil).onComplete {
+        case Success(_)       => shutdownWithCommand(Cmd.Disconnect)
+        case Failure(Cmd.EOF) => stageShutdown()
+        case Failure(t)       => shutdownWithCommand(Cmd.Error(t))
+      }
+      else {
+        
+      }
+
       val msgs = if (body.hasRemaining && !isHeadRequest) HeadersFrame(None, false, hs)::DataFrame(true, body)::Nil
                  else                                     HeadersFrame(None, true, hs)::Nil
 
