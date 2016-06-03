@@ -1,5 +1,6 @@
 package org.http4s.blaze.examples
 
+import java.nio.ByteBuffer
 import java.util.concurrent.atomic.AtomicReference
 
 import org.http4s.blaze.channel.ServerChannel
@@ -22,6 +23,15 @@ object ExampleService {
     request.uri match {
       case "/bigstring" =>
         ResponseBuilder.Ok(bigstring, ("content-type", "application/binary")::Nil)(responder)
+
+      case "/chunkedstring" =>
+        val writer = responder(HttpResponsePrelude(200, "OK", Nil))
+
+        def go(i: Int): Future[Completed] = {
+          if (i > 0) writer.write(ByteBuffer.wrap(s"i: $i\n".getBytes)).flatMap(_ => go(i-1))
+          else writer.close()
+        }
+        go(1024*10)
 
       case "/status" =>
         ResponseBuilder.Ok(status.map(_.getStats().toString).getOrElse("Missing Status."))(responder)
@@ -58,5 +68,5 @@ object ExampleService {
     }
   })
 
-  private val bigstring = (0 to 1024*1024*2).mkString("\n", "\n", "").getBytes()
+  private val bigstring = (0 to 1024*20).mkString("\n", "\n", "").getBytes()
 }

@@ -104,7 +104,8 @@ class HttpServerStage(maxReqBody: Long, maxNonbody: Int)(handleRequest: HttpServ
   }
 
   private def completionHandler(result: Try[Completed]): Unit = result match {
-    case Success(completed) => completed.result match {
+    case Success(completed) =>
+      completed.result match {
       case Close           => shutdownWithCommand(Cmd.Disconnect)
       case Upgrade         => // NOOP: don't need to do anything
       case Reload          =>

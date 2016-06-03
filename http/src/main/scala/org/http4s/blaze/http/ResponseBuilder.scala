@@ -18,6 +18,7 @@ object ResponseBuilder {
     def apply(code: Int, status: String, headers: Headers, body: ByteBuffer): Responder = f => {
       val prelude = HttpResponsePrelude(code, status, headers)
       val writer = f(prelude)
+
       writer.write(body).flatMap(_ => writer.close())(Execution.directec)
     }
 
