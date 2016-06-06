@@ -13,10 +13,7 @@ import java.nio.charset.StandardCharsets
 import java.nio.ByteBuffer
 import java.nio.channels.NotYetConnectedException
 
-import org.http4s.blaze.pipeline.Command.EOF
-
-class HttpClientStage(timeout: Duration = Duration.Inf)
-              (implicit val ec: ExecutionContext = Execution.trampoline)
+class HttpClientStage(timeout: Duration)
     extends Http1ClientParser with TailStage[ByteBuffer] {
 
   def name: String = "ClientStage"
@@ -99,7 +96,7 @@ class HttpClientStage(timeout: Duration = Duration.Inf)
     channelWrite(hdr::body::Nil, timeout).onComplete {
       case Success(_) => parserLoop(p)
       case Failure(t) => p.failure(t)
-    }
+    }(Execution.directec)
 
     p.future
   }
@@ -108,7 +105,7 @@ class HttpClientStage(timeout: Duration = Duration.Inf)
     channelRead(timeout = timeout).onComplete {
       case Success(b) => parseBuffer(b, p)
       case Failure(t) => p.failure(t)
-    }
+    }(Execution.trampoline)
   }
 
   private def parseBuffer(b: ByteBuffer, p: Promise[ClientResponse]): Unit = {
@@ -122,7 +119,7 @@ class HttpClientStage(timeout: Duration = Duration.Inf)
         return
       }
 
-      val r =
+      p.trySuccess {
         if (contentComplete()) {
           ClientResponse(this.code, this.reason, hdrs.result(), () => Future.successful(BufferTools.emptyBuffer))
         } else {
@@ -137,17 +134,16 @@ class HttpClientStage(timeout: Duration = Duration.Inf)
               else next()
             }
             else {
-              channelRead().flatMap { buff =>
+              channelRead(timeout = timeout).flatMap { buff =>
                 buffer = buff
                 next()
-              }
+              }(Execution.trampoline)
             }
           }
 
           ClientResponse(this.code, this.reason, hdrs.result(), next)
         }
-
-      p.trySuccess(r)
+      }
     } catch {
       case NonFatal(t) => p.tryFailure(t)
     }

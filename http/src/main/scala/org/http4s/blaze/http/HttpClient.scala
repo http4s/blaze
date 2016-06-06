@@ -1,23 +1,69 @@
 package org.http4s.blaze.http
 
+import java.net.InetSocketAddress
 import java.nio.ByteBuffer
 import javax.net.ssl.SSLContext
-import scala.concurrent.{ExecutionContext, Future}
-import scala.concurrent.duration.Duration
-import java.net.InetSocketAddress
 
 import org.http4s.blaze.channel.nio2.ClientChannelFactory
-import org.http4s.blaze.pipeline.{Command, LeafBuilder}
 import org.http4s.blaze.pipeline.stages.SSLStage
-import org.http4s.blaze.util.{GenericSSLContext, BufferTools, Execution}
+import org.http4s.blaze.pipeline.{Command, LeafBuilder}
+import org.http4s.blaze.util.{Execution, GenericSSLContext}
 
+import scala.concurrent.{ExecutionContext, Future}
+import scala.concurrent.duration.Duration
 
 
 trait HttpClient {
 
-  protected def connectionManager: ClientChannelFactory
+  protected def getConnection(host: String, port: Int, scheme: String, timeout: Duration): Future[HttpClientStage]
 
-  protected def sslContext: SSLContext
+  protected def returnConnection(stage: HttpClientStage): Unit
+
+  /** Execute a request. This is the entry method for client usage */
+  protected def runReq[A](method: String,
+                          url: String,
+                          headers: Seq[(String, String)],
+                          body: ByteBuffer,
+                          timeout: Duration)
+                         (action: ClientResponse => Future[A])(implicit ec: ExecutionContext): Future[A] = {
+
+    val (host, port, scheme, uri) = HttpClient.parseURL(url)
+
+    getConnection(host, port, scheme, timeout).flatMap { stage =>
+
+      val f = stage.makeRequest(method, host, uri, headers, body).flatMap(action)
+      // Shutdown our connection
+      f.onComplete( _ => returnConnection(stage))(Execution.directec)
+      f
+    }
+  }
+}
+
+object HttpClient extends HttpClient with Actions {
+  private lazy val connectionManager = new ClientChannelFactory()
+
+  private val sslContext: SSLContext = GenericSSLContext.clientSSLContext()
+
+  override protected def returnConnection(stage: HttpClientStage): Unit = {
+    stage.sendOutboundCommand(Command.Disconnect)
+  }
+
+  override protected def getConnection(host: String, port: Int, scheme: String, timeout: Duration): Future[HttpClientStage] = {
+    connectionManager.connect(new InetSocketAddress(host, port)).map { head =>
+      val clientStage = new HttpClientStage(timeout)
+
+      if (scheme == "https") {
+        val eng = sslContext.createSSLEngine()
+        eng.setUseClientMode(true)
+        LeafBuilder(clientStage).prepend(new SSLStage(eng)).base(head)
+      }
+      else LeafBuilder(clientStage).base(head)
+
+      head.sendInboundCommand(Command.Connected)
+
+      clientStage
+    }(Execution.directec)
+  }
 
   // TODO: the robustness of this method to varying input is highly questionable
   private def parseURL(url: String): (String, Int, String, String) = {
@@ -29,47 +75,6 @@ trait HttpClient {
       port,
       uri.getScheme,
       if (uri.getQuery != null) uri.getPath + "?" + uri.getQuery else uri.getPath
-    )
+      )
   }
-
-  protected def runReq[A](method: String,
-                          url: String,
-                          headers: Seq[(String, String)],
-                          body: ByteBuffer,
-                          timeout: Duration)
-                         (action: ClientResponse => Future[A])(implicit ec: ExecutionContext): Future[A] = {
-
-    val (host, port, scheme, uri) = parseURL(url)
-
-    val head = connectionManager.connect(new InetSocketAddress(host, port))
-
-    head.flatMap { head =>
-      val t = new HttpClientStage()
-
-      if (scheme == "https") {
-        val eng = sslContext.createSSLEngine()
-        eng.setUseClientMode(true)
-        LeafBuilder(t).prepend(new SSLStage(eng)).base(head)
-      }
-      else LeafBuilder(t).base(head)
-
-      head.sendInboundCommand(Command.Connected)
-      val f = t.makeRequest(method, host, uri, headers, body).flatMap(action)
-      // Shutdown our connection
-      f.onComplete( _ => t.sendOutboundCommand(Command.Disconnect))
-      f
-    }
-  }
-
-  def GET[A](url: String, headers: Seq[(String, String)] = Nil, timeout: Duration = Duration.Inf)
-            (action: ClientResponse => Future[A])
-            (implicit ec: ExecutionContext = Execution.trampoline): Future[A] = {
-    runReq("GET", url, headers, BufferTools.emptyBuffer, timeout)(action)
-  }
-}
-
-object HttpClient extends HttpClient {
-  override lazy val connectionManager = new ClientChannelFactory()
-
-  override protected val sslContext: SSLContext = GenericSSLContext.clientSSLContext()
 }
