@@ -12,7 +12,9 @@ import scala.util.{Failure, Success, Try}
 import org.log4s.getLogger
 
 /** Output pipe for writing http responses */
-abstract class BodyWriter private[http] {
+sealed abstract class BodyWriter private[http] {
+
+  type Finished
 
   /** Write a message to the pipeline
     *
@@ -37,7 +39,11 @@ abstract class BodyWriter private[http] {
     *
     * @return a `Future[Unit]` which will resolve once the close process has completed.
     */
-  def close(): Future[Completed]
+  def close(): Future[Finished]
+}
+
+abstract class InternalWriter extends BodyWriter {
+  final override type Finished = Completed
 }
 
 private object BodyWriter {
@@ -52,7 +58,7 @@ private object BodyWriter {
   private case object Chunked extends EncoderType
   private case class Static(length: Long) extends EncoderType
 
-  def selectWriter(prelude: HttpResponsePrelude, sb: StringBuilder, stage: HttpServerStage): BodyWriter = {
+  def selectWriter(prelude: HttpResponsePrelude, sb: StringBuilder, stage: HttpServerStage): InternalWriter = {
     val hs = prelude.headers
 
     var forceClose = false
@@ -99,7 +105,7 @@ private object BodyWriter {
   * falls back to a [[ChunkedBodyWriter]]. If the buffer is not exceeded, the entire
   * body is written as a single chunk using standard encoding.
   */
-private class SelectingWriter(forceClose: Boolean, sb: StringBuilder, stage: HttpServerStage) extends BodyWriter {
+private class SelectingWriter(forceClose: Boolean, sb: StringBuilder, stage: HttpServerStage) extends InternalWriter {
   private var closed = false
   private val cache = new ListBuffer[ByteBuffer]
   private var cacheSize = 0
@@ -107,7 +113,7 @@ private class SelectingWriter(forceClose: Boolean, sb: StringBuilder, stage: Htt
   // reuse the cache as our lock but make an alias
   private val lock = cache
 
-  private var underlying: BodyWriter = null
+  private var underlying: InternalWriter = null
 
   override def write(buffer: ByteBuffer): Future[Unit] = lock.synchronized {
     if (underlying != null) underlying.write(buffer)

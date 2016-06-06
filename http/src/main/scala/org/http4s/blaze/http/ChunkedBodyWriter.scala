@@ -12,7 +12,7 @@ import scala.concurrent.Future
 private class ChunkedBodyWriter(forceClose: Boolean,
                                 private var prelude: ByteBuffer,
                                 stage: HttpServerStage,
-                                maxCacheSize: Int) extends BodyWriter {
+                                maxCacheSize: Int) extends InternalWriter {
 
   private val cache = new ListBuffer[ByteBuffer]
   private var cacheSize = 0

@@ -13,7 +13,7 @@ private object StaticBodyWriter {
   val logger = getLogger
 }
 
-private class StaticBodyWriter(forceClose: Boolean, len: Long, stage: HttpServerStage) extends BodyWriter() {
+private class StaticBodyWriter(forceClose: Boolean, len: Long, stage: HttpServerStage) extends InternalWriter() {
   private var closed = false
   private var written = 0L
   private val cache = new ArrayBuffer[ByteBuffer](3)

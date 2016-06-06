@@ -26,5 +26,9 @@ package object http {
 
   case class WSResponseBuilder(stage: LeafBuilder[WebSocketFrame]) extends ResponseBuilder
 
-  case class HttpResponseBuilder(handler: (HttpResponsePrelude => BodyWriter) => Future[Completed]) extends ResponseBuilder
+  trait Cat {
+    def handle[T <: BodyWriter](responder: (HttpResponsePrelude => T)): Future[T#Finished]
+  }
+
+  case class HttpResponseBuilder(handler: Cat) extends ResponseBuilder
 }

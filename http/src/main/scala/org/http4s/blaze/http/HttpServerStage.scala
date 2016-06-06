@@ -87,7 +87,7 @@ class HttpServerStage(maxReqBody: Long, maxNonbody: Int)(handleRequest: HttpServ
 
   private def runRequest(request: Request): Unit = {
     try handleRequest(request) match {
-      case HttpResponseBuilder(handler) => handler(getEncoder).onComplete(completionHandler)
+      case HttpResponseBuilder(handler) => handler.handle(getEncoder).onComplete(completionHandler)
       case WSResponseBuilder(stage) => handleWebSocket(request.headers, stage)
     }
     catch {
@@ -116,7 +116,7 @@ class HttpServerStage(maxReqBody: Long, maxNonbody: Int)(handleRequest: HttpServ
     case Failure(t)               => shutdownWithCommand(Cmd.Error(t))
   }
 
-  private def getEncoder(prelude: HttpResponsePrelude): BodyWriter = {
+  private def getEncoder(prelude: HttpResponsePrelude): InternalWriter = {
     val forceClose = false // TODO: check for close headers, etc.
     val sb = new StringBuilder(512)
     sb.append("HTTP/").append(1).append('.').append(minor).append(' ')
