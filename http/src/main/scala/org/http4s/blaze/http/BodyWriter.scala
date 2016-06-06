@@ -8,6 +8,8 @@ import org.http4s.blaze.util.{BufferTools, Execution}
 
 import scala.collection.mutable.ListBuffer
 import scala.concurrent.Future
+import scala.util.{Failure, Success, Try}
+import org.log4s.getLogger
 
 /** Output pipe for writing http responses */
 abstract class BodyWriter private[http] {
@@ -39,14 +41,39 @@ abstract class BodyWriter private[http] {
 }
 
 private object BodyWriter {
+  private val logger = getLogger
+
   val cachedSuccess = Future.successful(())
   def closedChannelException = Future.failed(new IOException("Channel closed"))
   val bufferLimit = 40*1024
 
+  private sealed trait EncoderType
+  private case object Undefined extends EncoderType
+  private case object Chunked extends EncoderType
+  private case class Static(length: Long) extends EncoderType
+
   def selectWriter(prelude: HttpResponsePrelude, sb: StringBuilder, stage: HttpServerStage): BodyWriter = {
-    val forceClose = false
-    if (false) ???  // TODO: need to look through the headers and see if we are sending a length header.
-    else new SelectingWriter(forceClose, sb, stage)
+    val hs = prelude.headers
+
+    var forceClose = false
+    var encoderType: EncoderType = Undefined
+
+    hs.foreach { case (k, v) =>
+      if (k.equalsIgnoreCase("connection") && v.equalsIgnoreCase("close")) { forceClose = true }
+      else if (k.equalsIgnoreCase("transfer-encoding") && v.equalsIgnoreCase("chunked")) { encoderType = Chunked }
+      else if (k.equalsIgnoreCase("content-length")) Try(v.toLong) match {
+        case Success(length) => encoderType = Static(length)
+        case Failure(t) => logger.error(t)("Malformed 'content-length' header value")
+      }
+    }
+
+    encoderType match {
+      case Undefined => new SelectingWriter(forceClose, sb, stage)
+      case Static(len) => new StaticBodyWriter(forceClose, len, stage)
+      case Chunked =>
+        val prelude = StandardCharsets.US_ASCII.encode(sb.append("\r\n").result())
+        new ChunkedBodyWriter(forceClose, prelude, stage, -1)
+    }
   }
 
   def renderHeaders(sb: StringBuilder, headers: Headers) {

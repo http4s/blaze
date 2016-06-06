@@ -18,11 +18,11 @@ object ExampleService {
     new HttpServerStage(1024*1024, maxRequestLength)(service(status, channel))
 
   def service(status: Option[IntervalConnectionMonitor], channel: Option[AtomicReference[ServerChannel]] = None)
-             (request: Request): Response = HttpResponse(responder => {
+             (request: Request): ResponseBuilder = HttpResponseBuilder(responder => {
 
     request.uri match {
       case "/bigstring" =>
-        ResponseBuilder.Ok(bigstring, ("content-type", "application/binary")::Nil)(responder)
+        Responses.Ok(bigstring, ("content-type", "application/binary")::Nil)(responder)
 
       case "/chunkedstring" =>
         val writer = responder(HttpResponsePrelude(200, "OK", Nil))
@@ -34,11 +34,11 @@ object ExampleService {
         go(1024*10)
 
       case "/status" =>
-        ResponseBuilder.Ok(status.map(_.getStats().toString).getOrElse("Missing Status."))(responder)
+        Responses.Ok(status.map(_.getStats().toString).getOrElse("Missing Status."))(responder)
 
       case "/kill" =>
         channel.flatMap(a => Option(a.get())).foreach(_.close())
-        ResponseBuilder.Ok("Killing connection.")(responder)
+        Responses.Ok("Killing connection.")(responder)
 
       case "/echo" =>
         val hs = request.headers.collect {
@@ -64,7 +64,7 @@ object ExampleService {
           .addString(sb)
 
         val body = sb.result()
-        ResponseBuilder.Ok(body)(responder)
+        Responses.Ok(body)(responder)
     }
   })
 

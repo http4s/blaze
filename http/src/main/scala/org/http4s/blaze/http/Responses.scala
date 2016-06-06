@@ -9,7 +9,7 @@ import scala.concurrent.Future
 import scala.xml.Node
 
 
-object ResponseBuilder {
+object Responses {
   private type Responder = (HttpResponsePrelude => BodyWriter) => Future[Completed]
 
     def apply(code: Int, status: String, headers: Headers, body: String): Responder =
@@ -36,5 +36,5 @@ object ResponseBuilder {
     def Ok(body: Node): Responder = Ok(body, Nil)
 
     def EntityTooLarge(): Responder =
-      ResponseBuilder(413, "Request Entity Too Large", Nil, s"Request Entity Too Large")
+      apply(413, "Request Entity Too Large", Nil, s"Request Entity Too Large")
 }

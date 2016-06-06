@@ -83,13 +83,12 @@ class HttpServerStage(maxReqBody: Long, maxNonbody: Int)(handleRequest: HttpServ
     minor = -1
     major = -1
     headers.clear()
-    remainder = BufferTools.emptyBuffer
   }
 
   private def runRequest(request: Request): Unit = {
     try handleRequest(request) match {
-      case HttpResponse(handler) => handler(getEncoder).onComplete(completionHandler)
-      case WSResponse(stage) => handleWebSocket(request.headers, stage)
+      case HttpResponseBuilder(handler) => handler(getEncoder).onComplete(completionHandler)
+      case WSResponseBuilder(stage) => handleWebSocket(request.headers, stage)
     }
     catch {
       case NonFatal(e) =>
@@ -219,7 +218,7 @@ class HttpServerStage(maxReqBody: Long, maxNonbody: Int)(handleRequest: HttpServ
   }
 
   // Gets the next body buffer from the line
-  private def nextBodyBuffer(): Future[ByteBuffer] = {
+  private def nextBodyBuffer(): Future[ByteBuffer] = synchronized {
     if (contentComplete()) Future.successful(BufferTools.emptyBuffer)
     else channelRead().flatMap { nextBuffer =>
       remainder = BufferTools.concatBuffers(remainder, nextBuffer)
