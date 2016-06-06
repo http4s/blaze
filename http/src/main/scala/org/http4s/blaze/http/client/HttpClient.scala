@@ -1,4 +1,4 @@
-package org.http4s.blaze.http
+package org.http4s.blaze.http.client
 
 import java.net.InetSocketAddress
 import java.nio.ByteBuffer
@@ -11,7 +11,6 @@ import org.http4s.blaze.util.{Execution, GenericSSLContext}
 
 import scala.concurrent.{ExecutionContext, Future}
 import scala.concurrent.duration.Duration
-
 
 trait HttpClient {
 

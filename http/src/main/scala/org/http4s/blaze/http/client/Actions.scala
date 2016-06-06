@@ -1,9 +1,11 @@
-package org.http4s.blaze.http
+package org.http4s.blaze.http.client
 
 import org.http4s.blaze.util.{BufferTools, Execution}
 
-import scala.concurrent.{ExecutionContext, Future}
+import scala.concurrent.ExecutionContext
+import scala.concurrent.Future
 import scala.concurrent.duration.Duration
+
 
 /** Helper functions for the client */
 trait Actions { self: HttpClient =>

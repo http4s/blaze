@@ -1,11 +1,10 @@
-package org.http4s.blaze.http
+package org.http4s.blaze.http.client
 
 import org.specs2.mutable._
 
 import scala.concurrent.Await
-import scala.concurrent.duration._
-
 import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.duration._
 
 
 class HttpClientSpec extends Specification {

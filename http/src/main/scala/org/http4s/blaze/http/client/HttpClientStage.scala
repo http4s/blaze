@@ -1,17 +1,18 @@
-package org.http4s.blaze.http
+package org.http4s.blaze.http.client
+
+import java.nio.ByteBuffer
+import java.nio.channels.NotYetConnectedException
+import java.nio.charset.StandardCharsets
 
 import org.http4s.blaze.http.http_parser.Http1ClientParser
 import org.http4s.blaze.pipeline.TailStage
 import org.http4s.blaze.util.{BufferTools, Execution}
 
 import scala.collection.mutable.ListBuffer
-import scala.util.{Failure, Success}
-import scala.util.control.NonFatal
-import scala.concurrent.{ExecutionContext, Future, Promise}
 import scala.concurrent.duration.Duration
-import java.nio.charset.StandardCharsets
-import java.nio.ByteBuffer
-import java.nio.channels.NotYetConnectedException
+import scala.concurrent.{Future, Promise}
+import scala.util.control.NonFatal
+import scala.util.{Failure, Success}
 
 class HttpClientStage(timeout: Duration)
     extends Http1ClientParser with TailStage[ByteBuffer] {
