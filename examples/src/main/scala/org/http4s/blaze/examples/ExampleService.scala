@@ -6,7 +6,7 @@ import java.util.concurrent.atomic.AtomicReference
 import org.http4s.blaze.channel.ServerChannel
 import org.http4s.blaze.http.{ResponseBuilder, _}
 import org.http4s.blaze.pipeline.stages.monitors.IntervalConnectionMonitor
-import org.http4s.blaze.util.Execution
+import org.http4s.blaze.util.{BufferTools, Execution}
 
 import scala.concurrent.Future
 
@@ -21,38 +21,38 @@ object ExampleService {
              (request: Request): ResponseBuilder = {
       request.uri match {
         case "/bigstring" =>
-          Responses.Ok(bigstring, ("content-type", "application/binary")::Nil)
+          RouteAction.Ok(bigstring, ("content-type", "application/binary")::Nil)
 
-//        case "/chunkedstring" =>
-//          val writer = responder(HttpResponsePrelude(200, "OK", Nil))
-//
-//          def go(i: Int): Future[writer.Finished] = {
-//            if (i > 0) writer.write(ByteBuffer.wrap(s"i: $i\n".getBytes)).flatMap(_ => go(i-1))
-//            else writer.close()
-//          }
-//          go(1024*10)
+        case "/chunkedstring" =>
+
+          val go = {
+            var i = 0
+            () => Future.successful {
+              if (i < 1000) {
+                i += 1
+                ByteBuffer.wrap(s"i: $i\n".getBytes)
+              }
+              else BufferTools.emptyBuffer
+            }
+          }
+
+          RouteAction.streaming(200, "OK", Nil)(go)
 
         case "/status" =>
-          Responses.Ok(status.map(_.getStats().toString).getOrElse("Missing Status."))
+          RouteAction.Ok(status.map(_.getStats().toString).getOrElse("Missing Status."))
 
         case "/kill" =>
           channel.flatMap(a => Option(a.get())).foreach(_.close())
-          Responses.Ok("Killing connection.")
+          RouteAction.Ok("Killing connection.")
 
-//        case "/echo" =>
-//          val hs = request.headers.collect {
-//            case h@(k, _) if k.equalsIgnoreCase("Content-type") => h
-//          }
-//
-//          val writer = responder(HttpResponsePrelude(200, "OK", hs))
-//          val body = request.body
-//
-//          def go(): Future[writer.Finished] = body().flatMap { chunk =>
-//            if (chunk.hasRemaining) writer.write(chunk).flatMap(_ => go())
-//            else writer.close()
-//          }
-//
-//          go()
+        case "/echo" =>
+          val hs = request.headers.collect {
+            case h@(k, _) if k.equalsIgnoreCase("Content-type") => h
+          }
+
+          RouteAction.streaming(200, "OK", hs) { () =>
+            request.body()
+          }
 
         case uri =>
           val sb = new StringBuilder
@@ -63,7 +63,7 @@ object ExampleService {
             .addString(sb)
 
           val body = sb.result()
-          Responses.Ok(body)
+          RouteAction.Ok(body)
       }
     }
 

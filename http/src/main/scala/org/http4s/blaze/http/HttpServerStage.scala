@@ -87,24 +87,30 @@ class HttpServerStage(maxReqBody: Long, maxNonbody: Int)(handleRequest: HttpServ
 
   private def runRequest(request: Request): Unit = {
     try handleRequest(request) match {
-      case HttpResponseBuilder(handler) => handler.handle(getEncoder).onComplete(completionHandler)
+      case handler: RouteAction =>
+        try handler.handle(getEncoder).onComplete(completionHandler)
+        catch {
+          case NonFatal(e) =>
+            logger.error(e)("Failure during response encoding. Response not committed.")
+            completionHandler(Failure(e))
+        }
+
       case WSResponseBuilder(stage) => handleWebSocket(request.headers, stage)
-    }
-    catch {
+    } catch {
       case NonFatal(e) =>
-        logger.error(e)("Error during `handleRequest` of HttpServerStage")
-        //        val body = ByteBuffer.wrap("Internal Service Error".getBytes(StandardCharsets.ISO_8859_1))
-        //        val resp = HttpResponse(500, "Internal Server Error", Nil, body)
-        //
-        //        handleHttpResponse(resp, reqHeaders, false).onComplete { _ =>
-        shutdownWithCommand(Cmd.Error(e))
-      //        }
+        logger.error(e)("Failed to select a response. Sending 500 response.")
+        val body = ByteBuffer.wrap("Internal Service Error".getBytes(StandardCharsets.ISO_8859_1))
+
+        val handler = RouteAction.byteBuffer(500, "Internal Server Error", Nil, body)
+        handler.handle(getEncoder).onComplete { _ =>
+          shutdownWithCommand(Cmd.Error(e))
+        }
     }
   }
 
-  private def completionHandler(result: Try[Completed]): Unit = result match {
+  private def completionHandler(result: Try[RouteResult]): Unit = result match {
     case Success(completed) =>
-      completed.result match {
+      completed match {
       case Close           => shutdownWithCommand(Cmd.Disconnect)
       case Upgrade         => // NOOP: don't need to do anything
       case Reload          =>
@@ -132,7 +138,7 @@ class HttpServerStage(maxReqBody: Long, maxNonbody: Int)(handleRequest: HttpServ
   }
 
   /** Deal with route response of WebSocket form */
-  private def handleWebSocket(reqHeaders: Headers, wsBuilder: LeafBuilder[WebSocketFrame]): Future[Completed] = {
+  private def handleWebSocket(reqHeaders: Headers, wsBuilder: LeafBuilder[WebSocketFrame]): Future[RouteResult] = {
     val sb = new StringBuilder(512)
     WebsocketHandshake.serverHandshake(reqHeaders) match {
       case Left((i, msg)) =>
@@ -141,7 +147,7 @@ class HttpServerStage(maxReqBody: Long, maxNonbody: Int)(handleRequest: HttpServ
           .append('\r').append('\n')
 
         channelWrite(ByteBuffer.wrap(sb.result().getBytes(StandardCharsets.ISO_8859_1)))
-          .map(_ => new Completed(Close))
+          .map(_ => Close)
 
       case Right(hdrs) =>
         logger.info("Starting websocket request")
@@ -154,7 +160,7 @@ class HttpServerStage(maxReqBody: Long, maxNonbody: Int)(handleRequest: HttpServ
           logger.debug("Switching pipeline segments for upgrade")
           val segment = wsBuilder.prepend(new WebSocketDecoder(false))
           this.replaceInline(segment)
-          new Completed(Upgrade)
+          Upgrade
         }
     }
   }

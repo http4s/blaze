@@ -4,6 +4,7 @@ import java.io.IOException
 import java.nio.ByteBuffer
 import java.nio.charset.StandardCharsets
 
+import org.http4s.blaze.http.HttpServerStage.RouteResult
 import org.http4s.blaze.util.{BufferTools, Execution}
 
 import scala.collection.mutable.ListBuffer
@@ -43,7 +44,7 @@ sealed abstract class BodyWriter private[http] {
 }
 
 abstract class InternalWriter extends BodyWriter {
-  final override type Finished = Completed
+  final override type Finished = RouteResult
 }
 
 private object BodyWriter {
@@ -92,11 +93,9 @@ private object BodyWriter {
     }
   }
 
-  def selectComplete(forceClose: Boolean, stage: HttpServerStage): Completed =
-    new Completed(
-      if (forceClose || !stage.contentComplete()) HttpServerStage.Close
-      else HttpServerStage.Reload
-    )
+  def selectComplete(forceClose: Boolean, stage: HttpServerStage): RouteResult =
+    if (forceClose || !stage.contentComplete()) HttpServerStage.Close
+    else HttpServerStage.Reload
 }
 
 /** Dynamically select a [[BodyWriter]]
@@ -139,7 +138,7 @@ private class SelectingWriter(forceClose: Boolean, sb: StringBuilder, stage: Htt
     }
   }
 
-  override def close(): Future[Completed] = lock.synchronized {
+  override def close(): Future[RouteResult] = lock.synchronized {
     if (underlying != null) underlying.close()
     else if (closed) BodyWriter.closedChannelException
     else {

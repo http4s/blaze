@@ -2,6 +2,8 @@ package org.http4s.blaze
 
 import java.nio.ByteBuffer
 
+import scala.language.existentials
+
 import org.http4s.blaze.pipeline.LeafBuilder
 import org.http4s.websocket.WebsocketBits.WebSocketFrame
 
@@ -16,8 +18,6 @@ package object http {
   // The basic type that represents a HTTP service
   type HttpService = Request => ResponseBuilder
 
-  class Completed private[http](val result: http.HttpServerStage.RouteResult) extends AnyVal
-
   case class Request(method: Method, uri: Uri, headers: Headers, body: () => Future[ByteBuffer])
 
   case class HttpResponsePrelude(code: Int, status: String, headers: Headers)
@@ -26,9 +26,9 @@ package object http {
 
   case class WSResponseBuilder(stage: LeafBuilder[WebSocketFrame]) extends ResponseBuilder
 
-  trait Cat {
+  trait RouteAction extends ResponseBuilder {
     def handle[T <: BodyWriter](responder: (HttpResponsePrelude => T)): Future[T#Finished]
   }
 
-  case class HttpResponseBuilder(handler: Cat) extends ResponseBuilder
+  object RouteAction extends ResponseFactories
 }

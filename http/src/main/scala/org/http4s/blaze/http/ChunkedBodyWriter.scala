@@ -3,6 +3,7 @@ package org.http4s.blaze.http
 import java.nio.ByteBuffer
 import java.nio.charset.StandardCharsets
 
+import org.http4s.blaze.http.HttpServerStage.RouteResult
 import org.http4s.blaze.util.Execution
 
 import scala.collection.mutable.ListBuffer
@@ -59,7 +60,7 @@ private class ChunkedBodyWriter(forceClose: Boolean,
     }
   }
 
-  override def close(): Future[Completed] = lock.synchronized {
+  override def close(): Future[RouteResult] = lock.synchronized {
     if (closed)  BodyWriter.closedChannelException
     else {
 
@@ -68,10 +69,8 @@ private class ChunkedBodyWriter(forceClose: Boolean,
 
       f.map( _ => lock.synchronized {
         closed = true
-        new Completed(
-          if (forceClose || !stage.contentComplete()) HttpServerStage.Close
-          else HttpServerStage.Reload
-        )
+        if (forceClose || !stage.contentComplete()) HttpServerStage.Close
+        else HttpServerStage.Reload
       })(Execution.directec)
     }
   }

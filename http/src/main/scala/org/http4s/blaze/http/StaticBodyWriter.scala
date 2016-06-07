@@ -2,18 +2,18 @@ package org.http4s.blaze.http
 
 import java.nio.ByteBuffer
 
+import org.http4s.blaze.http.HttpServerStage.RouteResult
 import org.http4s.blaze.util.Execution
 
 import scala.collection.mutable.ArrayBuffer
 import scala.concurrent.Future
-
 import org.log4s.getLogger
 
 private object StaticBodyWriter {
   val logger = getLogger
 }
 
-private class StaticBodyWriter(forceClose: Boolean, len: Long, stage: HttpServerStage) extends InternalWriter() {
+private class StaticBodyWriter(forceClose: Boolean, len: Long, stage: HttpServerStage) extends InternalWriter {
   private var closed = false
   private var written = 0L
   private val cache = new ArrayBuffer[ByteBuffer](3)
@@ -75,7 +75,7 @@ private class StaticBodyWriter(forceClose: Boolean, len: Long, stage: HttpServer
     }
   }
 
-  override def close(): Future[Completed] = lock.synchronized {
+  override def close(): Future[RouteResult] = lock.synchronized {
     if (closed) BodyWriter.closedChannelException
     else {
       StaticBodyWriter.logger.debug("Channel closed")
