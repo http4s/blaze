@@ -1,0 +1,243 @@
+package org.http4s.blaze.http.http20
+
+import java.nio.ByteBuffer
+import java.util.Locale
+
+import org.http4s.blaze.http._
+import org.http4s.blaze.http.http20.NodeMsg.Http2Msg
+import org.http4s.blaze.pipeline.{Command => Cmd}
+import org.http4s.blaze.pipeline.TailStage
+import org.http4s.blaze.util.{BufferTools, Execution}
+import Http2Exception.{INTERNAL_ERROR, PROTOCOL_ERROR}
+import NodeMsg.{DataFrame, HeadersFrame}
+import Http2StageTools._
+
+import scala.collection.mutable.ArrayBuffer
+import scala.concurrent.{ExecutionContext, Future}
+import scala.concurrent.duration.Duration
+import scala.util.{Failure, Success, Try}
+
+/** Basic implementation of a http2 stream [[TailStage]] */
+class Http2ServerStage(streamId: Int,
+                       maxBody: Long,
+                       timeout: Duration,
+                       ec: ExecutionContext,
+                       service: HttpService) extends TailStage[Http2Msg] {
+
+  private implicit def _ec = ec   // for all the onComplete calls
+
+  override def name = s"Http2StreamStage($streamId)"
+
+  override protected def stageStartup(): Unit = {
+    super.stageStartup()
+    startRequest()
+  }
+
+  private def shutdownWithCommand(cmd: Cmd.OutboundCommand): Unit = {
+    stageShutdown()
+    sendOutboundCommand(cmd)
+  }
+
+  private def startRequest(): Unit = {
+    channelRead(timeout = timeout).onComplete  {
+      case Success(HeadersFrame(_, endStream, hs)) =>
+        if (endStream) checkAndRunRequest(hs, Http2ServerStage.emptyBody)
+        else getBodyReader(hs)
+
+      case Success(frame) =>
+        val e = PROTOCOL_ERROR(s"Received invalid frame: $frame", streamId, fatal = true)
+        shutdownWithCommand(Cmd.Error(e))
+
+      case Failure(Cmd.EOF) => shutdownWithCommand(Cmd.Disconnect)
+
+      case Failure(t) =>
+        logger.error(t)("Unknown error in startRequest")
+        val e = INTERNAL_ERROR(s"Unknown error", streamId, fatal = true)
+        shutdownWithCommand(Cmd.Error(e))
+    }(Execution.directec)
+  }
+
+  private def getBodyReader(hs: Headers): Unit = {
+    val length = hs.collectFirst {
+      case (ContentLength, v) =>
+        try Right(java.lang.Long.valueOf(v))
+        catch { case t: NumberFormatException =>
+           Left(s"Invalid content-length: $v.")
+        }
+    }
+
+    length match {
+      case Some(Right(len)) => new BodyReader(len).next
+      case Some(Left(error)) => shutdownWithCommand(Cmd.Error(PROTOCOL_ERROR(error, streamId, fatal = false)))
+      case None => new BodyReader(-1).next
+    }
+  }
+
+  private def checkAndRunRequest(hs: Headers, body: () => Future[ByteBuffer]): Unit = {
+
+    val normalHeaders = new ArrayBuffer[(String, String)](hs.size)
+    var method: String = null
+    var scheme: String = null
+    var path: String = null
+    var error: String = ""
+    var pseudoDone = false
+
+    hs.foreach {
+      case (Method, v)    =>
+        if (pseudoDone) error += "Pseudo header in invalid position. "
+        else if (method == null) method = v
+        else error += "Multiple ':method' headers defined. "
+
+      case (Scheme, v)    =>
+        if (pseudoDone) error += "Pseudo header in invalid position. "
+        else if (scheme == null) scheme = v
+        else error += "Multiple ':scheme' headers defined. "
+
+      case (Path, v)      =>
+        if (pseudoDone) error += "Pseudo header in invalid position. "
+        else if (path == null)   path   = v
+        else error += "Multiple ':path' headers defined. "
+
+      case (Authority, _) => // NOOP; TODO: we should keep the authority header
+        if (pseudoDone) error += "Pseudo header in invalid position. "
+
+      case h@(k, _) if k.startsWith(":") => error += s"Invalid pseudo header: $h. "
+      case h@(k, _) if !validHeaderName(k) => error += s"Invalid header key: $k. "
+
+      case hs =>    // Non pseudo headers
+        pseudoDone = true
+        hs match {
+          case h@(Connection, _) => error += s"HTTP/2.0 forbids connection specific headers: $h. "
+
+          case h@(TE, v) =>
+            if (!v.equalsIgnoreCase("trailers")) error += s"HTTP/2.0 forbids TE header values other than 'trailers'. "
+          // ignore otherwise
+
+          case header => normalHeaders += header
+      }
+    }
+
+    if (method == null || scheme == null || path == null) {
+      error += s"Invalid request: missing pseudo headers. Method: $method, Scheme: $scheme, path: $path. "
+    }
+
+    if (error.length() > 0) shutdownWithCommand(Cmd.Error(PROTOCOL_ERROR(error, fatal = false)))
+    else service(HttpRequest(method, path, hs, body))
+      .onComplete(renderResponse(method, _))(ec)
+  }
+
+  private def renderResponse(method: String, response: Try[ResponseBuilder]): Unit = response match {
+    case Success(HttpResponse(builder)) =>
+      builder.handle(getWriter(method == "HEAD", _))
+        .onComplete(onComplete)(Execution.directec)
+
+    case Success(t) =>
+      val e = new Exception(s"Unhandled message type: $t")
+      logger.error(e)("Message type not understoon")
+      shutdownWithCommand(Cmd.Error(e))
+
+    case Failure(t) => shutdownWithCommand(Cmd.Error(t))
+  }
+
+  private def getWriter(isHeadRequest: Boolean, prelude: HttpResponsePrelude): BodyWriter = {
+
+    val hs = new ArrayBuffer[(String, String)](prelude.headers match {case b: IndexedSeq[_] => b.size + 1; case _ => 16 })
+    hs += ((Status, Integer.toString(prelude.code)))
+    prelude.headers.foreach{ case (k, v) => hs += ((k.toLowerCase(Locale.ROOT), v)) }
+
+    val headersFrame = HeadersFrame(None, false, hs)
+
+    if (isHeadRequest) new NoopWriter(headersFrame)
+    else new StandardWriter(headersFrame)
+  }
+
+  private class StandardWriter(private var headers: HeadersFrame) extends BodyWriter {
+    override type Finished = Unit
+
+    override def flush(): Future[Unit] = InternalWriter.cachedSuccess
+
+    override def write(buffer: ByteBuffer): Future[Unit] = {
+      val bodyFrame = DataFrame(false, buffer)
+      if (headers != null) {
+        val hs = headers
+        headers = null
+        channelWrite(hs::bodyFrame::Nil)
+      }
+      else channelWrite(bodyFrame)
+    }
+
+    override def close(): Future[NoopWriter#Finished] =
+      channelWrite(DataFrame(true, BufferTools.emptyBuffer))
+  }
+
+  private def onComplete(result: Try[_]): Unit = result match {
+    case Success(_)       => shutdownWithCommand(Cmd.Disconnect)
+    case Failure(Cmd.EOF) => stageShutdown()
+    case Failure(t)       => shutdownWithCommand(Cmd.Error(t))
+  }
+
+  ///////// BodyWriter's /////////////////////////////
+
+  private class NoopWriter(headers: HeadersFrame) extends BodyWriter {
+    override type Finished = Unit
+
+    override def flush(): Future[Unit] = InternalWriter.cachedSuccess
+
+    override def write(buffer: ByteBuffer): Future[Unit] = InternalWriter.cachedSuccess
+
+    override def close(): Future[NoopWriter#Finished] = channelWrite(headers::Nil)
+  }
+
+  private class BodyReader(length: Long) {
+    private var bytesRead: Long = 0
+    private var finished = false
+
+    private val lock = this
+
+    def next(): Future[ByteBuffer] = lock.synchronized {
+      if (finished) Http2ServerStage.emptyBody()
+      else {
+        channelRead().flatMap( frame => lock.synchronized (frame match {
+          case DataFrame(last, bytes, _) =>
+
+            bytesRead += bytes.remaining()
+
+            if (bytesRead > length) {
+              // overflow. This is a stream error
+              val msg = s"Invalid content-length, expected: $length, recieved (thus far): $bytesRead"
+              val e = PROTOCOL_ERROR(msg, streamId, false)
+              sendOutboundCommand(Cmd.Error(e))
+              Future.failed(e)
+            } else {
+              finished = last
+              Future.successful(bytes)
+            }
+
+          case HeadersFrame(_, last, ts) =>
+            logger.warn(s"Discarding headers: $ts")
+            if (last) {
+              finished = true
+              Http2ServerStage.emptyBody()
+            }
+            else next()
+
+          case other =>
+            finished = true
+            val msg = "Received invalid frame while accumulating body: " + other
+            logger.info(msg)
+            val e = PROTOCOL_ERROR(msg, fatal = true)
+            shutdownWithCommand(Cmd.Error(e))
+            Future.failed(e)
+        }))(Execution.trampoline)
+      }
+    }
+  }
+}
+
+object Http2ServerStage {
+  val emptyBody = {
+    val f = Future.successful(BufferTools.emptyBuffer)
+    () => f
+  }
+}
+
