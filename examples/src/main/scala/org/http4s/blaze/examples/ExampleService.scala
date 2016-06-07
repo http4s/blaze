@@ -18,7 +18,7 @@ object ExampleService {
     new HttpServerStage(1024*1024, maxRequestLength)(service(status, channel))
 
   def service(status: Option[IntervalConnectionMonitor], channel: Option[AtomicReference[ServerChannel]] = None)
-             (request: Request): ResponseBuilder = {
+             (request: Request): Future[ResponseBuilder] = Future.successful {
       request.uri match {
         case "/bigstring" =>
           RouteAction.Ok(bigstring, ("content-type", "application/binary")::Nil)

@@ -16,7 +16,7 @@ package object http {
   type Method = String
 
   // The basic type that represents a HTTP service
-  type HttpService = Request => ResponseBuilder
+  type HttpService = Request => Future[ResponseBuilder]
 
   case class Request(method: Method, uri: Uri, headers: Headers, body: () => Future[ByteBuffer])
 

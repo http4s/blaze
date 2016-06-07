@@ -86,8 +86,8 @@ class HttpServerStage(maxReqBody: Long, maxNonbody: Int)(handleRequest: HttpServ
   }
 
   private def runRequest(request: Request): Unit = {
-    try handleRequest(request) match {
-      case handler: RouteAction =>
+    try handleRequest(request).onComplete {
+      case Success(handler: RouteAction) =>
         try handler.handle(getEncoder).onComplete(completionHandler)
         catch {
           case NonFatal(e) =>
@@ -95,16 +95,19 @@ class HttpServerStage(maxReqBody: Long, maxNonbody: Int)(handleRequest: HttpServ
             completionHandler(Failure(e))
         }
 
-      case WSResponseBuilder(stage) => handleWebSocket(request.headers, stage)
-    } catch {
-      case NonFatal(e) =>
-        logger.error(e)("Failed to select a response. Sending 500 response.")
-        val body = ByteBuffer.wrap("Internal Service Error".getBytes(StandardCharsets.ISO_8859_1))
+      case Success(WSResponseBuilder(stage)) => handleWebSocket(request.headers, stage)
+      case Failure(e) => send500(e)
+    }
+    catch { case e: Throwable => send500(e) }
+  }
 
-        val handler = RouteAction.byteBuffer(500, "Internal Server Error", Nil, body)
-        handler.handle(getEncoder).onComplete { _ =>
-          shutdownWithCommand(Cmd.Error(e))
-        }
+  private def send500(error: Throwable): Unit = {
+    logger.error(error)("Failed to select a response. Sending 500 response.")
+    val body = ByteBuffer.wrap("Internal Service Error".getBytes(StandardCharsets.ISO_8859_1))
+
+    val handler = RouteAction.byteBuffer(500, "Internal Server Error", Nil, body)
+    handler.handle(getEncoder).onComplete { _ =>
+      shutdownWithCommand(Cmd.Error(error))
     }
   }
 
