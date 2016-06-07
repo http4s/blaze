@@ -23,11 +23,11 @@ private class StaticBodyWriter(forceClose: Boolean, len: Long, stage: HttpServer
   private val lock = cache
 
   override def write(buffer: ByteBuffer): Future[Unit] = lock.synchronized {
-    if (closed) BodyWriter.closedChannelException
+    if (closed) InternalWriter.closedChannelException
     else {
       StaticBodyWriter.logger.debug(s"Channel write: $buffer")
       val bufSize = buffer.remaining()
-      if (bufSize == 0) BodyWriter.cachedSuccess
+      if (bufSize == 0) InternalWriter.cachedSuccess
       else if (written + bufSize > len) {
         // need to truncate and log an error.
         val nextSize = len - written
@@ -42,9 +42,9 @@ private class StaticBodyWriter(forceClose: Boolean, len: Long, stage: HttpServer
           s"to send: ${written + bufSize}. Truncating."
         )
 
-        BodyWriter.cachedSuccess
+        InternalWriter.cachedSuccess
       }
-      else if (cache.isEmpty && bufSize > BodyWriter.bufferLimit) {
+      else if (cache.isEmpty && bufSize > InternalWriter.bufferLimit) {
         // just write the buffer if it alone fills the cache
         assert(cachedBytes == 0, "Invalid cached bytes state")
         written += bufSize
@@ -55,14 +55,14 @@ private class StaticBodyWriter(forceClose: Boolean, len: Long, stage: HttpServer
         written += bufSize
         cachedBytes += bufSize
 
-        if (cachedBytes > BodyWriter.bufferLimit) flush()
-        else BodyWriter.cachedSuccess
+        if (cachedBytes > InternalWriter.bufferLimit) flush()
+        else InternalWriter.cachedSuccess
       }
     }
   }
 
   override def flush(): Future[Unit] = lock.synchronized {
-    if (closed) BodyWriter.closedChannelException
+    if (closed) InternalWriter.closedChannelException
     else {
       StaticBodyWriter.logger.debug("Channel flushed")
       if (cache.nonEmpty) {
@@ -71,21 +71,21 @@ private class StaticBodyWriter(forceClose: Boolean, len: Long, stage: HttpServer
         cachedBytes = 0
         stage.channelWrite(buffs)
       }
-      else BodyWriter.cachedSuccess
+      else InternalWriter.cachedSuccess
     }
   }
 
   override def close(): Future[RouteResult] = lock.synchronized {
-    if (closed) BodyWriter.closedChannelException
+    if (closed) InternalWriter.closedChannelException
     else {
       StaticBodyWriter.logger.debug("Channel closed")
       if (cache.nonEmpty) flush().map( _ => lock.synchronized {
         closed = true
-        BodyWriter.selectComplete(forceClose, stage)
+        InternalWriter.selectComplete(forceClose, stage)
         })(Execution.directec)
       else {
         closed = true
-        Future.successful(BodyWriter.selectComplete(forceClose, stage))
+        Future.successful(InternalWriter.selectComplete(forceClose, stage))
       }
     }
   }

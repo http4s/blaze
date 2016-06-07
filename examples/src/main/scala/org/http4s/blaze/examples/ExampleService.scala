@@ -15,17 +15,17 @@ object ExampleService {
   private implicit val ec = Execution.trampoline
 
   def http1Stage(status: Option[IntervalConnectionMonitor], maxRequestLength: Int, channel: Option[AtomicReference[ServerChannel]] = None): HttpServerStage =
-    new HttpServerStage(1024*1024, maxRequestLength)(service(status, channel))
+    new HttpServerStage(1024*1024, maxRequestLength, Execution.trampoline)(service(status, channel))
 
   def service(status: Option[IntervalConnectionMonitor], channel: Option[AtomicReference[ServerChannel]] = None)
-             (request: Request): Future[ResponseBuilder] = Future.successful {
+             (request: HttpRequest): Future[ResponseBuilder] = Future.successful {
       request.uri match {
         case "/bigstring" =>
           RouteAction.Ok(bigstring, ("content-type", "application/binary")::Nil)
 
         case "/chunkedstring" =>
 
-          val go = {
+          val body = {
             var i = 0
             () => Future.successful {
               if (i < 1000) {
@@ -36,14 +36,14 @@ object ExampleService {
             }
           }
 
-          RouteAction.streaming(200, "OK", Nil)(go)
+          RouteAction.streaming(200, "OK", Nil)(body)
 
         case "/status" =>
           RouteAction.Ok(status.map(_.getStats().toString).getOrElse("Missing Status."))
 
         case "/kill" =>
           channel.flatMap(a => Option(a.get())).foreach(_.close())
-          RouteAction.Ok("Killing connection.")
+          RouteAction.Ok("Killing server.")
 
         case "/echo" =>
           val hs = request.headers.collect {

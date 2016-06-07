@@ -24,19 +24,19 @@ private class ChunkedBodyWriter(forceClose: Boolean,
 
 
   override def write(buffer: ByteBuffer): Future[Unit] = lock.synchronized {
-    if (closed) BodyWriter.closedChannelException
-    else if (!buffer.hasRemaining) BodyWriter.cachedSuccess
+    if (closed) InternalWriter.closedChannelException
+    else if (!buffer.hasRemaining) InternalWriter.cachedSuccess
     else {
       cache += buffer
       cacheSize += buffer.remaining()
 
       if (cacheSize > maxCacheSize) flush()
-      else BodyWriter.cachedSuccess
+      else InternalWriter.cachedSuccess
     }
   }
 
   override def flush(): Future[Unit] = lock.synchronized {
-    if (closed)  BodyWriter.closedChannelException
+    if (closed)  InternalWriter.closedChannelException
     else {
       val buffs = {
         val cacheBuffs = if (cache.nonEmpty) {
@@ -56,12 +56,12 @@ private class ChunkedBodyWriter(forceClose: Boolean,
       }
 
       if (buffs.nonEmpty) stage.channelWrite(buffs)
-      else BodyWriter.cachedSuccess
+      else InternalWriter.cachedSuccess
     }
   }
 
   override def close(): Future[RouteResult] = lock.synchronized {
-    if (closed)  BodyWriter.closedChannelException
+    if (closed)  InternalWriter.closedChannelException
     else {
 
       val f = if (cache.nonEmpty || prelude != null) flush().flatMap(_ => writeTermination())(Execution.directec)
@@ -76,8 +76,7 @@ private class ChunkedBodyWriter(forceClose: Boolean,
   }
 
   private def writeTermination(): Future[Unit] = {
-    val s = "0\r\n\r\n".getBytes(StandardCharsets.US_ASCII)
-    stage.channelWrite(ByteBuffer.wrap(s))
+    stage.channelWrite(ByteBuffer.wrap(ChunkedBodyWriter.terminationBytes))
   }
 
   private def lengthBuffer: ByteBuffer = {
@@ -90,5 +89,6 @@ private class ChunkedBodyWriter(forceClose: Boolean,
 
 private object ChunkedBodyWriter {
   private val CRLFBytes = "\r\n".getBytes(StandardCharsets.US_ASCII)
+  private val terminationBytes = "0\r\n\r\n".getBytes(StandardCharsets.US_ASCII)
   private def CRLFBuffer = ByteBuffer.wrap(CRLFBytes)
 }

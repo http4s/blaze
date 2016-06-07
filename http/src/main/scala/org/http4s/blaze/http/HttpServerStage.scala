@@ -10,7 +10,7 @@ import org.http4s.websocket.WebsocketHandshake
 
 import scala.util.control.NonFatal
 import scala.util.{Failure, Success, Try}
-import scala.concurrent.Future
+import scala.concurrent.{ExecutionContext, Future}
 import scala.collection.mutable.ArrayBuffer
 import org.http4s.blaze.http.http_parser.Http1ServerParser
 import org.http4s.blaze.http.http_parser.BaseExceptions.BadRequest
@@ -20,11 +20,11 @@ import java.nio.ByteBuffer
 
 import org.http4s.blaze.util.{BufferTools, Execution}
 
-class HttpServerStage(maxReqBody: Long, maxNonbody: Int)(handleRequest: HttpService)
+class HttpServerStage(maxReqBody: Long, maxNonbody: Int, ec: ExecutionContext)(handleRequest: HttpService)
   extends Http1ServerParser(maxNonbody, maxNonbody, 5*1024) with TailStage[ByteBuffer] {
   import HttpServerStage._
 
-  private implicit def ec = trampoline
+  private implicit def implicitiEc = trampoline
 
   val name = "HTTP/1.1_Stage"
 
@@ -70,7 +70,7 @@ class HttpServerStage(maxReqBody: Long, maxNonbody: Int)(handleRequest: HttpServ
 
       remainder = buff
 
-      val req = Request(method, uri, hs, nextBodyBuffer)
+      val req = HttpRequest(method, uri, hs, nextBodyBuffer)
       runRequest(req)
     }
     catch { case t: Throwable => shutdownWithCommand(Cmd.Error(t)) }
@@ -85,19 +85,18 @@ class HttpServerStage(maxReqBody: Long, maxNonbody: Int)(handleRequest: HttpServ
     headers.clear()
   }
 
-  private def runRequest(request: Request): Unit = {
+  private def runRequest(request: HttpRequest): Unit = {
     try handleRequest(request).onComplete {
-      case Success(handler: RouteAction) =>
+      case Success(HttpResponse(handler)) =>
         try handler.handle(getEncoder).onComplete(completionHandler)
-        catch {
-          case NonFatal(e) =>
-            logger.error(e)("Failure during response encoding. Response not committed.")
-            completionHandler(Failure(e))
+        catch { case e: Throwable =>
+          logger.error(e)("Failure during response encoding. Response not committed.")
+          completionHandler(Failure(e))
         }
 
       case Success(WSResponseBuilder(stage)) => handleWebSocket(request.headers, stage)
       case Failure(e) => send500(e)
-    }
+    }(ec)
     catch { case e: Throwable => send500(e) }
   }
 
@@ -105,8 +104,8 @@ class HttpServerStage(maxReqBody: Long, maxNonbody: Int)(handleRequest: HttpServ
     logger.error(error)("Failed to select a response. Sending 500 response.")
     val body = ByteBuffer.wrap("Internal Service Error".getBytes(StandardCharsets.ISO_8859_1))
 
-    val handler = RouteAction.byteBuffer(500, "Internal Server Error", Nil, body)
-    handler.handle(getEncoder).onComplete { _ =>
+    val errorResponse = RouteAction.byteBuffer(500, "Internal Server Error", Nil, body)
+    errorResponse.action.handle(getEncoder).onComplete { _ =>
       shutdownWithCommand(Cmd.Error(error))
     }
   }
@@ -137,7 +136,7 @@ class HttpServerStage(maxReqBody: Long, maxNonbody: Int)(handleRequest: HttpServ
     if (!keepAlive) sb.append("Connection: close\r\n")
     else if (minor == 0 && keepAlive) sb.append("Connection: Keep-Alive\r\n")
 
-    BodyWriter.selectWriter(prelude, sb, this)
+    InternalWriter.selectWriter(prelude, sb, this)
   }
 
   /** Deal with route response of WebSocket form */

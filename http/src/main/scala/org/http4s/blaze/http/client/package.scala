@@ -11,6 +11,14 @@ import scala.concurrent.Future
 
 package object client {
 
+  /** HTTP response received by the client
+    *
+    * @param code Response code
+    * @param status Response message. This have no meaning for the HTTP connection, its just for human enjoyment.
+    * @param headers Response headers
+    * @param body Function for obtaining the response body. Each invocation will return the __next__ body chunk
+    *             with termination signaled by an __empty__ `ByteBuffer` as defined by `ByteBuffer.hasRemaining()`.
+    */
   case class ClientResponse(code: Int, status: String, headers: Headers, body: () => Future[ByteBuffer]) {
     def stringBody(): Future[String] = {
       val acc = new ArrayBuffer[ByteBuffer](8)
@@ -22,9 +30,7 @@ package object client {
         }
         else {
           val b = BufferTools.joinBuffers(acc)
-          val encoding = headers.collectFirst {
-            case (k, v) if k.equalsIgnoreCase("content-type") => "UTF-8" // TODO: this needs to examine the header
-          }.getOrElse("UTF-8")
+          val encoding = getCharset(headers)
 
           try {
             val bodyString = Charset.forName(encoding).decode(b).toString()
@@ -36,5 +42,13 @@ package object client {
 
       go()
     }
+
+    private def getCharset(hs: Headers): String = {
+      headers.collectFirst {
+        case (k, v) if k.equalsIgnoreCase("content-type") => charsetRegex.findFirstIn(v)
+      }.flatten.getOrElse("UTF-8")
+    }
   }
+
+  private val charsetRegex = "(?<=charset=)[^;]*".r
 }

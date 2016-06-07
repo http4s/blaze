@@ -8,7 +8,7 @@ import scala.concurrent.duration.Duration
 
 
 /** Helper functions for the client */
-trait Actions { self: HttpClient =>
+trait ClientActions { self: HttpClient =>
 
   /** Perform a GET request
     *

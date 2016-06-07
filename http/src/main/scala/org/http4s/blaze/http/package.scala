@@ -2,8 +2,6 @@ package org.http4s.blaze
 
 import java.nio.ByteBuffer
 
-import scala.language.existentials
-
 import org.http4s.blaze.pipeline.LeafBuilder
 import org.http4s.websocket.WebsocketBits.WebSocketFrame
 
@@ -16,19 +14,38 @@ package object http {
   type Method = String
 
   // The basic type that represents a HTTP service
-  type HttpService = Request => Future[ResponseBuilder]
+  type HttpService = HttpRequest => Future[ResponseBuilder]
 
-  case class Request(method: Method, uri: Uri, headers: Headers, body: () => Future[ByteBuffer])
+  /** Standard HTTP request
+    *
+    * @param method HTTP request method
+    * @param uri request uri
+    * @param headers request headers
+    * @param body function which returns the next chunk of the request body. Termination is
+    *             signaled by an __empty__ `ByteBuffer` as determined by `ByteBuffer.hasRemaining()`.
+    */
+  case class HttpRequest(method: Method, uri: Uri, headers: Headers, body: () => Future[ByteBuffer])
 
+  /** The prelude of a standard HTTP response
+    *
+    * @param code Response status code
+    * @param status Response message. This has no meaning for the protocol, its purely for human enjoyment.
+    * @param headers Response headers.
+    */
   case class HttpResponsePrelude(code: Int, status: String, headers: Headers)
 
   sealed trait ResponseBuilder
 
-  case class WSResponseBuilder(stage: LeafBuilder[WebSocketFrame]) extends ResponseBuilder
+  /** Simple HTTP response type
+    *
+    * @param action post routing response builder.
+    */
+  case class HttpResponse(action: RouteAction) extends ResponseBuilder
 
-  trait RouteAction extends ResponseBuilder {
-    def handle[T <: BodyWriter](responder: (HttpResponsePrelude => T)): Future[T#Finished]
-  }
-
-  object RouteAction extends ResponseFactories
+  // TODO: yielding a raw stage is ugly. There should be some helpers.
+  /** Websocket response
+    *
+    * @param pipeline [[LeafBuilder]] which completes a websocket pipeline.
+    */
+  case class WSResponseBuilder(pipeline: LeafBuilder[WebSocketFrame]) extends ResponseBuilder
 }
