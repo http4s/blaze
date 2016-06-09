@@ -1,6 +1,7 @@
 package org.http4s.blaze.examples
 
 import java.nio.ByteBuffer
+import java.nio.charset.StandardCharsets
 import java.util.concurrent.atomic.AtomicReference
 
 import org.http4s.blaze.channel.ServerChannel
@@ -8,6 +9,8 @@ import org.http4s.blaze.http.{ResponseBuilder, _}
 import org.http4s.blaze.pipeline.stages.monitors.IntervalConnectionMonitor
 import org.http4s.blaze.util.{BufferTools, Execution}
 
+import scala.annotation.tailrec
+import scala.collection.mutable.ArrayBuffer
 import scala.concurrent.Future
 
 object ExampleService {
@@ -18,10 +21,24 @@ object ExampleService {
     new HttpServerStage(1024*1024, maxRequestLength, Execution.trampoline)(service(status, channel))
 
   def service(status: Option[IntervalConnectionMonitor], channel: Option[AtomicReference[ServerChannel]] = None)
-             (request: HttpRequest): Future[ResponseBuilder] = Future.successful {
+             (request: HttpRequest): Future[ResponseBuilder] = {
+    if (request.method == "POST") {
+      // Accumulate the body. I think this should be made easier to do
+      def go(acc: ArrayBuffer[ByteBuffer]): Future[ByteBuffer] = {
+        request.body() flatMap {
+          case buff if buff.hasRemaining() => go(acc += buff)
+          case _ => Future.successful(BufferTools.joinBuffers(acc))
+        }
+      }
+      go(new ArrayBuffer).map { body =>
+        val bodyString = StandardCharsets.UTF_8.decode(body)
+        RouteAction.Ok(s"You sent: $bodyString")
+      }
+    }
+    else Future.successful {
       request.uri match {
         case "/bigstring" =>
-          RouteAction.Ok(bigstring, ("content-type", "application/binary")::Nil)
+          RouteAction.Ok(bigstring, ("content-type", "application/binary") :: Nil)
 
         case "/chunkedstring" =>
 
@@ -66,6 +83,7 @@ object ExampleService {
           RouteAction.Ok(body)
       }
     }
+  }
 
   private val bigstring = (0 to 1024*20).mkString("\n", "\n", "").getBytes()
 }

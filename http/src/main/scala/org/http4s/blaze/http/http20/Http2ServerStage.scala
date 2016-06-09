@@ -67,9 +67,9 @@ class Http2ServerStage(streamId: Int,
     }
 
     length match {
-      case Some(Right(len)) => new BodyReader(len).next
+      case Some(Right(len)) => checkAndRunRequest(hs, new BodyReader(len).next)
       case Some(Left(error)) => shutdownWithCommand(Cmd.Error(PROTOCOL_ERROR(error, streamId, fatal = false)))
-      case None => new BodyReader(-1).next
+      case None => checkAndRunRequest(hs, new BodyReader(-1).next)
     }
   }
 
@@ -140,12 +140,11 @@ class Http2ServerStage(streamId: Int,
   }
 
   private def getWriter(isHeadRequest: Boolean, prelude: HttpResponsePrelude): BodyWriter = {
-
     val hs = new ArrayBuffer[(String, String)](prelude.headers match {case b: IndexedSeq[_] => b.size + 1; case _ => 16 })
     hs += ((Status, Integer.toString(prelude.code)))
     prelude.headers.foreach{ case (k, v) => hs += ((k.toLowerCase(Locale.ROOT), v)) }
 
-    val headersFrame = HeadersFrame(None, false, hs)
+    val headersFrame = HeadersFrame(None, isHeadRequest, hs)
 
     if (isHeadRequest) new NoopWriter(headersFrame)
     else new StandardWriter(headersFrame)
@@ -154,20 +153,41 @@ class Http2ServerStage(streamId: Int,
   private class StandardWriter(private var headers: HeadersFrame) extends BodyWriter {
     override type Finished = Unit
 
-    override def flush(): Future[Unit] = InternalWriter.cachedSuccess
+    private var closed = false
+    private val lock = this
 
-    override def write(buffer: ByteBuffer): Future[Unit] = {
-      val bodyFrame = DataFrame(false, buffer)
-      if (headers != null) {
-        val hs = headers
-        headers = null
-        channelWrite(hs::bodyFrame::Nil)
-      }
-      else channelWrite(bodyFrame)
+    override def flush(): Future[Unit] = lock.synchronized {
+      if (closed) InternalWriter.closedChannelException
+      else InternalWriter.cachedSuccess
     }
 
-    override def close(): Future[NoopWriter#Finished] =
-      channelWrite(DataFrame(true, BufferTools.emptyBuffer))
+    override def write(buffer: ByteBuffer): Future[Unit] = lock.synchronized {
+      if (closed) InternalWriter.closedChannelException
+      else {
+        if (buffer.hasRemaining) {
+          val bodyFrame = DataFrame(false, buffer)
+          if (headers != null) {
+            val hs = headers
+            headers = null
+            channelWrite(hs :: bodyFrame :: Nil)
+          }
+          else channelWrite(bodyFrame)
+        }
+        else InternalWriter.cachedSuccess
+      }
+    }
+
+    override def close(): Future[NoopWriter#Finished] = lock.synchronized {
+      if (closed) InternalWriter.closedChannelException
+      else {
+        closed = true
+        if (headers != null) {
+          val hs = if (headers.endStream) headers else headers.copy(endStream = true)
+          channelWrite(hs)
+        }
+        else channelWrite(DataFrame(true, BufferTools.emptyBuffer))
+      }
+    }
   }
 
   private def onComplete(result: Try[_]): Unit = result match {
@@ -181,15 +201,28 @@ class Http2ServerStage(streamId: Int,
   private class NoopWriter(headers: HeadersFrame) extends BodyWriter {
     override type Finished = Unit
 
-    override def flush(): Future[Unit] = InternalWriter.cachedSuccess
+    private var closed = false
+    private val lock = this
 
-    override def write(buffer: ByteBuffer): Future[Unit] = InternalWriter.cachedSuccess
+    override def flush(): Future[Unit] = lock.synchronized {
+      if (!closed) InternalWriter.cachedSuccess
+      else InternalWriter.closedChannelException
+    }
 
-    override def close(): Future[NoopWriter#Finished] = channelWrite(headers::Nil)
+    override def write(buffer: ByteBuffer): Future[Unit] = flush()
+
+    override def close(): Future[NoopWriter#Finished] = lock.synchronized {
+      if (closed) InternalWriter.closedChannelException
+      else {
+        closed = true
+        val hs = if (headers.endStream) headers else headers.copy(endStream = true)
+        channelWrite(hs :: Nil)
+      }
+    }
   }
 
   private class BodyReader(length: Long) {
-    private var bytesRead: Long = 0
+    private var bytesRead = 0L
     private var finished = false
 
     private val lock = this
@@ -198,7 +231,7 @@ class Http2ServerStage(streamId: Int,
       if (finished) Http2ServerStage.emptyBody()
       else {
         channelRead().flatMap( frame => lock.synchronized (frame match {
-          case DataFrame(last, bytes, _) =>
+          case DataFrame(endStream, bytes, _) =>
 
             bytesRead += bytes.remaining()
 
@@ -209,17 +242,23 @@ class Http2ServerStage(streamId: Int,
               sendOutboundCommand(Cmd.Error(e))
               Future.failed(e)
             } else {
-              finished = last
+              finished = endStream
               Future.successful(bytes)
             }
 
-          case HeadersFrame(_, last, ts) =>
+          case HeadersFrame(_, endStream, ts) =>
             logger.warn(s"Discarding headers: $ts")
-            if (last) {
+            if (endStream) {
               finished = true
               Http2ServerStage.emptyBody()
             }
-            else next()
+            else {
+              // trailing headers must be the end of the stream
+              val msg = "Received trailing headers which didn't end the stream."
+              val e = PROTOCOL_ERROR(msg, streamId, false)
+              sendOutboundCommand(Cmd.Error(e))
+              Future.failed(e)
+            }
 
           case other =>
             finished = true
