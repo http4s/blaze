@@ -82,6 +82,7 @@ class HttpServerStageSpec extends Specification {
       val (code, hs, body) = ResponseParser(resp)
       code must_== 200
       body must_== "ping response"
+      hs.toSet must_== Set("connection" -> "close", "Content-Length" -> "13")
     }
 
     "run two requests" in {
@@ -95,6 +96,7 @@ class HttpServerStageSpec extends Specification {
 
         code must_== 200
         body must_== "ping response"
+        hs.toSet must_== Set("Content-Length" -> "13")
       }
 
       { // second response
@@ -102,7 +104,20 @@ class HttpServerStageSpec extends Specification {
 
         code must_== 200
         body must_== "pong response"
+        hs.toSet must_== Set("connection" -> "close", "Content-Length" -> "13")
       }
+    }
+
+    "run a request with a body" in {
+      val b = StandardCharsets.UTF_8.encode("data")
+      val req = HttpRequest("POST", "/foo", Seq("content-length" -> "4"), MessageBody(b))
+
+      val resp = runPipeline(req)
+
+      val (code, hs, body) = ResponseParser(resp)
+      code must_== 200
+      body must_== "Body: data"
+      hs.toSet must_== Set("connection" -> "close", "Content-Length" -> "10")
     }
   }
 

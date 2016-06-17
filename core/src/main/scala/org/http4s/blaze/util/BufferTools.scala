@@ -8,8 +8,10 @@ import scala.concurrent.Future
 
 object BufferTools {
 
+  /** Cached empty `ByteBuffer` */
   val emptyBuffer: ByteBuffer = allocate(0)
 
+  /** Cached `Future` containing and empty `ByteBuffer` */
   val emptyFutureBuffer: Future[ByteBuffer] = Future.successful(emptyBuffer)
 
   /** Allocate a fresh `ByteBuffer`

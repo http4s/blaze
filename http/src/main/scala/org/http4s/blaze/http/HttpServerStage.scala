@@ -68,7 +68,6 @@ class HttpServerStage(maxReqBody: Long, maxNonBody: Int, ec: ExecutionContext)(h
       // we have enough to start the request
       val hs = headers
       headers = new ArrayBuffer[(String, String)](hs.size + 10)
-
       remainder = buff
 
       val req = HttpRequest(method, uri, hs, getMessageBody())

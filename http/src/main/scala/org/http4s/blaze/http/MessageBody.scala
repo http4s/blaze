@@ -29,7 +29,10 @@ trait MessageBody {
         case buff if buff.hasRemaining() =>
           val accumulated = bytes + buff.remaining()
           if (accumulated <= max) go(accumulated, acc += buff)
-          else MessageBody.accumulationOverflow(max, accumulated)
+          else {
+            val msg = s"Message body overflowed. Maximum permitted: $max, accumulated (thus far): $accumulated"
+            Future.failed(new IllegalStateException(msg))
+          }
 
         case _ => Future.successful(BufferTools.joinBuffers(acc))
       }(Execution.trampoline)
@@ -43,8 +46,15 @@ private object MessageBody {
     override def apply(): Future[ByteBuffer] = BufferTools.emptyFutureBuffer
   }
 
-  def accumulationOverflow(max: Long, accumulated: Long): Future[ByteBuffer] = {
-    val msg = s"Message body overflowed. Maximum permitted: $max, accumulated (thus far): $accumulated"
-    Future.failed(new IllegalStateException(msg))
+  def apply(buffer: ByteBuffer): MessageBody = new MessageBody {
+    private var buff = buffer
+    override def apply(): Future[ByteBuffer] = this.synchronized {
+      if (buff.hasRemaining) {
+        val b = buff
+        buff = BufferTools.emptyBuffer
+        Future.successful(b)
+      }
+      else BufferTools.emptyFutureBuffer
+    }
   }
 }
