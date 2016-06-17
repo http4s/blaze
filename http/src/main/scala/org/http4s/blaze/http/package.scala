@@ -1,7 +1,5 @@
 package org.http4s.blaze
 
-import java.nio.ByteBuffer
-
 import org.http4s.blaze.pipeline.LeafBuilder
 import org.http4s.websocket.WebsocketBits.WebSocketFrame
 
@@ -24,7 +22,7 @@ package object http {
     * @param body function which returns the next chunk of the request body. Termination is
     *             signaled by an __empty__ `ByteBuffer` as determined by `ByteBuffer.hasRemaining()`.
     */
-  case class HttpRequest(method: Method, uri: Uri, headers: Headers, body: () => Future[ByteBuffer])
+  case class HttpRequest(method: Method, uri: Uri, headers: Headers, body: MessageBody)
 
   /** The prelude of a standard HTTP response
     *

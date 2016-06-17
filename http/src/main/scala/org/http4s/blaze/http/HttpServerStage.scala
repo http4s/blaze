@@ -8,7 +8,6 @@ import org.http4s.blaze.util.Execution._
 import org.http4s.websocket.WebsocketBits.WebSocketFrame
 import org.http4s.websocket.WebsocketHandshake
 
-import scala.util.control.NonFatal
 import scala.util.{Failure, Success, Try}
 import scala.concurrent.{ExecutionContext, Future}
 import scala.collection.mutable.ArrayBuffer
@@ -20,11 +19,13 @@ import java.nio.ByteBuffer
 
 import org.http4s.blaze.util.{BufferTools, Execution}
 
-class HttpServerStage(maxReqBody: Long, maxNonbody: Int, ec: ExecutionContext)(handleRequest: HttpService)
-  extends Http1ServerParser(maxNonbody, maxNonbody, 5*1024) with TailStage[ByteBuffer] {
+import scala.annotation.tailrec
+
+class HttpServerStage(maxReqBody: Long, maxNonBody: Int, ec: ExecutionContext)(handleRequest: HttpService)
+  extends Http1ServerParser(maxNonBody, maxNonBody, 5*1024) with TailStage[ByteBuffer] { httpServerStage =>
   import HttpServerStage._
 
-  private implicit def implicitiEc = trampoline
+  private implicit def implicitEC = trampoline
 
   val name = "HTTP/1.1_Stage"
 
@@ -70,7 +71,7 @@ class HttpServerStage(maxReqBody: Long, maxNonbody: Int, ec: ExecutionContext)(h
 
       remainder = buff
 
-      val req = HttpRequest(method, uri, hs, nextBodyBuffer)
+      val req = HttpRequest(method, uri, hs, getMessageBody())
       runRequest(req)
     }
     catch { case t: Throwable => shutdownWithCommand(Cmd.Error(t)) }
@@ -88,7 +89,12 @@ class HttpServerStage(maxReqBody: Long, maxNonbody: Int, ec: ExecutionContext)(h
   private def runRequest(request: HttpRequest): Unit = {
     try handleRequest(request).onComplete {
       case Success(HttpResponse(handler)) =>
-        try handler.handle(getEncoder).onComplete(completionHandler)
+
+        val forceClose = request.headers.exists { case (k, v) =>
+          k.equalsIgnoreCase("connection") && v == "close"
+        }
+
+        try handler.handle(getEncoder(forceClose, _)).onComplete(completionHandler)
         catch { case e: Throwable =>
           logger.error(e)("Failure during response encoding. Response not committed.")
           completionHandler(Failure(e))
@@ -105,7 +111,7 @@ class HttpServerStage(maxReqBody: Long, maxNonbody: Int, ec: ExecutionContext)(h
     val body = ByteBuffer.wrap("Internal Service Error".getBytes(StandardCharsets.ISO_8859_1))
 
     val errorResponse = RouteAction.byteBuffer(500, "Internal Server Error", Nil, body)
-    errorResponse.action.handle(getEncoder).onComplete { _ =>
+    errorResponse.action.handle(getEncoder(true, _)).onComplete { _ =>
       shutdownWithCommand(Cmd.Error(error))
     }
   }
@@ -124,8 +130,7 @@ class HttpServerStage(maxReqBody: Long, maxNonbody: Int, ec: ExecutionContext)(h
     case Failure(t)               => shutdownWithCommand(Cmd.Error(t))
   }
 
-  private def getEncoder(prelude: HttpResponsePrelude): InternalWriter = {
-    val forceClose = false // TODO: check for close headers, etc.
+  private def getEncoder(forceClose: Boolean, prelude: HttpResponsePrelude): InternalWriter = {
     val sb = new StringBuilder(512)
     sb.append("HTTP/").append(1).append('.').append(minor).append(' ')
       .append(prelude.code).append(' ')
@@ -133,10 +138,10 @@ class HttpServerStage(maxReqBody: Long, maxNonbody: Int, ec: ExecutionContext)(h
 
     val keepAlive = !forceClose && isKeepAlive(prelude.headers)
 
-    if (!keepAlive) sb.append("Connection: close\r\n")
+    if (!keepAlive) sb.append("connection: close\r\n")
     else if (minor == 0 && keepAlive) sb.append("Connection: Keep-Alive\r\n")
 
-    InternalWriter.selectWriter(prelude, sb, this)
+    InternalWriter.selectWriter(!keepAlive, prelude, sb, this)
   }
 
   /** Deal with route response of WebSocket form */
@@ -226,15 +231,27 @@ class HttpServerStage(maxReqBody: Long, maxNonbody: Int, ec: ExecutionContext)(h
   }
 
   // Gets the next body buffer from the line
-  private def nextBodyBuffer(): Future[ByteBuffer] = synchronized {
-    if (contentComplete()) Future.successful(BufferTools.emptyBuffer)
-    else channelRead().flatMap { nextBuffer =>
-      remainder = BufferTools.concatBuffers(remainder, nextBuffer)
-      val b = parseContent(remainder)
+  private def getMessageBody() = new MessageBody {
 
-      if (b.hasRemaining || contentComplete()) Future.successful(b)
-      else nextBodyBuffer() // Can't send an empty buffer unless we are finished.
-    }(Execution.trampoline)
+    override def apply(): Future[ByteBuffer] = httpServerStage.synchronized {
+      @tailrec
+      def go(): Future[ByteBuffer] = {
+        if (contentComplete()) Future.successful(BufferTools.emptyBuffer)
+        else if (remainder.hasRemaining()) parseContent(remainder) match {
+          case null => readChunk()
+          case buff if !buff.hasRemaining => go()
+          case buff => Future.successful(buff)
+        }
+        else readChunk()
+      }
+
+      go()
+    }
+
+    private def readChunk(): Future[ByteBuffer] = channelRead().flatMap(nextBuffer => httpServerStage.synchronized {
+        remainder = BufferTools.concatBuffers(remainder, nextBuffer)
+      apply()
+    })(Execution.trampoline)
   }
 }
 

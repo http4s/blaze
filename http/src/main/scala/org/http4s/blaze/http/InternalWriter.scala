@@ -26,10 +26,10 @@ private object InternalWriter {
   private case object Chunked extends EncoderType
   private case class Static(length: Long) extends EncoderType
 
-  def selectWriter(prelude: HttpResponsePrelude, sb: StringBuilder, stage: HttpServerStage): InternalWriter = {
+  def selectWriter(mustClose: Boolean, prelude: HttpResponsePrelude, sb: StringBuilder, stage: HttpServerStage): InternalWriter = {
+    var forceClose = mustClose
     val hs = prelude.headers
 
-    var forceClose = false
     var encoderType: EncoderType = Undefined
 
     hs.foreach { case (k, v) =>

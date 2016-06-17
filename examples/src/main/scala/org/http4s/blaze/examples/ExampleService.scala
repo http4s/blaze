@@ -24,13 +24,7 @@ object ExampleService {
              (request: HttpRequest): Future[ResponseBuilder] = {
     if (request.method == "POST") {
       // Accumulate the body. I think this should be made easier to do
-      def go(acc: ArrayBuffer[ByteBuffer]): Future[ByteBuffer] = {
-        request.body() flatMap {
-          case buff if buff.hasRemaining() => go(acc += buff)
-          case _ => Future.successful(BufferTools.joinBuffers(acc))
-        }
-      }
-      go(new ArrayBuffer).map { body =>
+      request.body.accumulate().map { body =>
         val bodyString = StandardCharsets.UTF_8.decode(body)
         RouteAction.Ok(s"You sent: $bodyString")
       }

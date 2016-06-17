@@ -1,13 +1,16 @@
 package org.http4s.blaze.util
 
 import java.nio.ByteBuffer
-import java.nio.charset.{StandardCharsets, Charset}
+import java.nio.charset.{Charset, StandardCharsets}
 
 import scala.annotation.tailrec
+import scala.concurrent.Future
 
 object BufferTools {
 
   val emptyBuffer: ByteBuffer = allocate(0)
+
+  val emptyFutureBuffer: Future[ByteBuffer] = Future.successful(emptyBuffer)
 
   /** Allocate a fresh `ByteBuffer`
     *

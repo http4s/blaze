@@ -41,7 +41,7 @@ class Http2ServerStage(streamId: Int,
   private def startRequest(): Unit = {
     channelRead(timeout = timeout).onComplete  {
       case Success(HeadersFrame(_, endStream, hs)) =>
-        if (endStream) checkAndRunRequest(hs, Http2ServerStage.emptyBody)
+        if (endStream) checkAndRunRequest(hs, MessageBody.emptyMessageBody)
         else getBodyReader(hs)
 
       case Success(frame) =>
@@ -67,13 +67,13 @@ class Http2ServerStage(streamId: Int,
     }
 
     length match {
-      case Some(Right(len)) => checkAndRunRequest(hs, new BodyReader(len).next)
+      case Some(Right(len)) => checkAndRunRequest(hs, new BodyReader(len))
       case Some(Left(error)) => shutdownWithCommand(Cmd.Error(PROTOCOL_ERROR(error, streamId, fatal = false)))
-      case None => checkAndRunRequest(hs, new BodyReader(-1).next)
+      case None => checkAndRunRequest(hs, new BodyReader(-1))
     }
   }
 
-  private def checkAndRunRequest(hs: Headers, body: () => Future[ByteBuffer]): Unit = {
+  private def checkAndRunRequest(hs: Headers, body: MessageBody): Unit = {
 
     val normalHeaders = new ArrayBuffer[(String, String)](hs.size)
     var method: String = null
@@ -221,14 +221,14 @@ class Http2ServerStage(streamId: Int,
     }
   }
 
-  private class BodyReader(length: Long) {
+  private class BodyReader(length: Long) extends MessageBody {
     private var bytesRead = 0L
     private var finished = false
 
     private val lock = this
 
-    def next(): Future[ByteBuffer] = lock.synchronized {
-      if (finished) Http2ServerStage.emptyBody()
+    def apply(): Future[ByteBuffer] = lock.synchronized {
+      if (finished) MessageBody.emptyMessageBody()
       else {
         channelRead().flatMap( frame => lock.synchronized (frame match {
           case DataFrame(endStream, bytes, _) =>
@@ -250,7 +250,7 @@ class Http2ServerStage(streamId: Int,
             logger.warn(s"Discarding headers: $ts")
             if (endStream) {
               finished = true
-              Http2ServerStage.emptyBody()
+              MessageBody.emptyMessageBody()
             }
             else {
               // trailing headers must be the end of the stream
@@ -273,10 +273,4 @@ class Http2ServerStage(streamId: Int,
   }
 }
 
-object Http2ServerStage {
-  val emptyBody = {
-    val f = Future.successful(BufferTools.emptyBuffer)
-    () => f
-  }
-}
 
