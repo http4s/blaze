@@ -7,14 +7,10 @@ import scala.concurrent.ExecutionContext
 
 /** Lightweight actor system HEAVILY inspired by the scalaz actors
   * scalaz actors would have been a good fit except a heavyweight dependency
-  * is very undesirable. In addition, the actors defined below support the
-  * ask pattern, returning a Future[Any] that will be fulfilled by the result
-  * of the function used to build the actor.
+  * is very undesirable.
   *
   * As an actor begins with a synchronizing operation, any mutable state that
-  * it closes over should be updated when it begins processing its mailbox. If it
-  * interacts with shared mutable state that will be modified by other threads at
-  * the same time, the same memory safety rules apply.
+  * it closes over should be visible when it begins processing its mailbox.
   */
 
 object Actors {
@@ -48,7 +44,7 @@ object Actors {
       @tailrec
       private def go(next: Node, limit: Int): Unit = {
         val m = next.m
-        try f(next.m)
+        try f(m)
         catch { case t: Throwable =>
           try onError(t, m)   // who knows what people will be feeding in here...
           catch { case t: Throwable => logger.error(t)(s"Error during execution of `onError` in Actor. Msg: $m") }
