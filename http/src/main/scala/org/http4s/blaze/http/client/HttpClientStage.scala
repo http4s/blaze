@@ -1,22 +1,20 @@
-package org.http4s.blaze.http
+package org.http4s.blaze.http.client
+
+import java.nio.ByteBuffer
+import java.nio.channels.NotYetConnectedException
+import java.nio.charset.StandardCharsets
 
 import org.http4s.blaze.http.http_parser.Http1ClientParser
 import org.http4s.blaze.pipeline.TailStage
 import org.http4s.blaze.util.{BufferTools, Execution}
 
 import scala.collection.mutable.ListBuffer
-import scala.util.{Failure, Success}
-import scala.annotation.tailrec
-import scala.util.control.NonFatal
-import scala.concurrent.{ExecutionContext, Future, Promise}
 import scala.concurrent.duration.Duration
+import scala.concurrent.{Future, Promise}
+import scala.util.control.NonFatal
+import scala.util.{Failure, Success}
 
-import java.nio.charset.StandardCharsets
-import java.nio.ByteBuffer
-import java.nio.channels.NotYetConnectedException
-
-class HttpClientStage(timeout: Duration = Duration.Inf)
-              (implicit val ec: ExecutionContext = Execution.trampoline)
+class HttpClientStage(timeout: Duration)
     extends Http1ClientParser with TailStage[ByteBuffer] {
 
   def name: String = "ClientStage"
@@ -72,7 +70,7 @@ class HttpClientStage(timeout: Duration = Duration.Inf)
                   uri: String,
                   headers: Seq[(String, String)],
                   body: ByteBuffer,
-                  timeout: Duration = Duration.Inf): Future[Response] = {
+                  timeout: Duration = Duration.Inf): Future[ClientResponse] = {
 
     if (!connected) return Future.failed(new NotYetConnectedException)
 
@@ -95,23 +93,23 @@ class HttpClientStage(timeout: Duration = Duration.Inf)
 
     val hdr = ByteBuffer.wrap(sb.result().getBytes(StandardCharsets.ISO_8859_1))
 
-    val p = Promise[Response]
+    val p = Promise[ClientResponse]
     channelWrite(hdr::body::Nil, timeout).onComplete {
       case Success(_) => parserLoop(p)
       case Failure(t) => p.failure(t)
-    }
+    }(Execution.directec)
 
     p.future
   }
 
-  private def parserLoop(p: Promise[Response]): Unit = {
+  private def parserLoop(p: Promise[ClientResponse]): Unit = {
     channelRead(timeout = timeout).onComplete {
       case Success(b) => parseBuffer(b, p)
       case Failure(t) => p.failure(t)
-    }
+    }(Execution.trampoline)
   }
 
-  private def parseBuffer(b: ByteBuffer, p: Promise[Response]): Unit = {
+  private def parseBuffer(b: ByteBuffer, p: Promise[ClientResponse]): Unit = {
     try {
       if (!this.responseLineComplete() && !parseResponseLine(b)) {
         parserLoop(p)
@@ -122,35 +120,33 @@ class HttpClientStage(timeout: Duration = Duration.Inf)
         return
       }
 
-      @tailrec
-      def parseBuffer(b: ByteBuffer): Unit = {
+      p.trySuccess {
         if (contentComplete()) {
-          val b = BufferTools.joinBuffers(bodyBuffers.result())
-          val r = HttpResponse(this.code, this.reason, hdrs.result(), b)
-          reset()
+          ClientResponse(this.code, this.reason, hdrs.result(), () => Future.successful(BufferTools.emptyBuffer))
+        } else {
 
-          p.success(r)
-        }
-        else {
-          val body = parseContent(b) // returns null if b doesn't have enought data
-
-          if (body != null) {
-            if (body.remaining() > 0) {
-              bodyBuffers += body.slice()
+          @volatile var buffer = b
+          // Reads the body buffers until completion.
+          def next(): Future[ByteBuffer] = {
+            if (contentComplete()) Future.successful(BufferTools.emptyBuffer)
+            else if (buffer.hasRemaining()) {
+              val n1 = parseContent(buffer)
+              if (n1 != null) Future.successful(n1)
+              else next()
             }
-
-            parseBuffer(b) // Note: b may have more data or we may be
-                           // at the end of content, we'll see on next
-                           // iteration
-          } else {
-            parserLoop(p)  // Need to get more data off the line
+            else {
+              channelRead(timeout = timeout).flatMap { buff =>
+                buffer = buff
+                next()
+              }(Execution.trampoline)
+            }
           }
+
+          ClientResponse(this.code, this.reason, hdrs.result(), next)
         }
       }
-
-      parseBuffer(b)
     } catch {
-      case NonFatal(t) => p.failure(t)
+      case NonFatal(t) => p.tryFailure(t)
     }
   }
 

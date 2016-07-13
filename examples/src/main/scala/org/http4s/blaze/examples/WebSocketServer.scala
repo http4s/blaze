@@ -1,18 +1,17 @@
 package org.http4s.blaze.examples
 
 import org.http4s.blaze.http._
-import org.http4s.blaze.pipeline.{LeafBuilder, Command}
+import org.http4s.blaze.pipeline.{Command, LeafBuilder}
 import org.http4s.blaze.http.websocket.WSStage
 import org.http4s.blaze.channel._
 import org.http4s.websocket.WebsocketBits._
 import org.http4s.websocket.WebsocketHandshake
 import org.http4s.blaze.channel.nio2.NIO2SocketServerGroup
-
 import java.nio.channels.AsynchronousChannelGroup
 import java.net.InetSocketAddress
-import java.nio.ByteBuffer
 import java.util.concurrent.Executors
 
+import org.http4s.blaze.util.Execution
 import org.log4s.getLogger
 
 import scala.concurrent.Future
@@ -33,7 +32,7 @@ object WebSocketServer {
 
 /** this stage can be seen as the "route" of the example. It handles requests and returns responses */
 class ExampleWebSocketHttpServerStage
-  extends HttpServerStage(1024*1024, 10*1024)(ExampleWebSocketHttpServerStage.handleRequest)
+  extends HttpServerStage(1024*1024, 10*1024, Execution.trampoline)(ExampleWebSocketHttpServerStage.handleRequest)
 
 /** This represents the actual web socket interactions */
 class SocketStage extends WSStage {
@@ -60,13 +59,15 @@ class SocketStage extends WSStage {
 object ExampleWebSocketHttpServerStage {
   private val logger = getLogger
 
-  def handleRequest(method: Method, uri: Uri, headers: Seq[(String, String)], body: ByteBuffer): Future[Response] = {
-    if (WebsocketHandshake.isWebSocketRequest(headers)) {
-      logger.info(s"Received a websocket request at $uri")
+  def handleRequest(request: HttpRequest): Future[ResponseBuilder] =
+  Future.successful {
+    if (WebsocketHandshake.isWebSocketRequest(request.headers)) {
+      logger.info(s"Received a websocket request at ${request.uri}")
 
       // Note the use of WSStage.segment. This makes a pipeline segment that includes a serializer so we
       // can safely write as many messages as we want without worrying about clashing with pending writes
-      Future.successful(WSResponse(WSStage.bufferingSegment(new SocketStage)))
-    } else Future.successful(HttpResponse.Ok("Use a websocket!\n" + uri))
+      WSResponseBuilder(WSStage.bufferingSegment(new SocketStage))
+    }
+    else RouteAction.Ok("Use a websocket!\n" + request.uri)
   }
 }
