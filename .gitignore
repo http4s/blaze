@@ -18,3 +18,4 @@ atlassian-ide-plugin.xml
 *.class
 
 *.swp
+.DS_Store
