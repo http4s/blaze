@@ -202,7 +202,7 @@ class NIO1SocketServerGroup(pool: SelectorLoopPool) extends ServerChannelGroup {
         if (bytes >= 0) {
           scratch.flip()
 
-          val b = BufferTools.allocate(scratch.remaining())
+          val b = BufferTools.allocateHeap(scratch.remaining())
           b.put(scratch)
           b.flip()
           Success(b)
@@ -218,7 +218,25 @@ class NIO1SocketServerGroup(pool: SelectorLoopPool) extends ServerChannelGroup {
 
     override protected def performWrite(scratch: ByteBuffer, buffers: Array[ByteBuffer]): WriteResult = {
       try {
-        ch.write(buffers)
+        if (BufferTools.areDirectOrEmpty(buffers)) {
+          ch.write(buffers)
+        } else {
+          // To sidestep the java NIO "memory leak" (see http://www.evanjones.ca/java-bytebuffer-leak.html)
+          // We copy the data to the scratch buffer (which should be a direct ByteBuffer)
+          // before the write. We then check to see how much data was written and fast-forward
+          // the input buffers accordingly.
+          // This is very similar to the pattern used by the Oracle JDK implementation in its
+          // IOUtil class: if the provided buffers are not direct buffers, they are copied to
+          // temporary direct ByteBuffers and written.
+          scratch.clear()
+          BufferTools.copyBuffers(buffers, scratch)
+          scratch.flip()
+          val size = scratch.remaining()
+          ch.write(scratch)
+          val written = size - scratch.remaining()
+          assert(BufferTools.fastForwardBuffers(buffers, written))
+        }
+
         if (util.BufferTools.checkEmpty(buffers)) Complete
         else Incomplete
       }

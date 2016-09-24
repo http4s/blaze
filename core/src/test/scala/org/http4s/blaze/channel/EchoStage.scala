@@ -20,7 +20,7 @@ class EchoStage extends TailStage[ByteBuffer] {
   final override def stageStartup(): Unit = {
     channelRead().onComplete{
       case Success(buff) =>
-        val b = BufferTools.allocate(buff.remaining() + msg.length)
+        val b = BufferTools.allocateHeap(buff.remaining() + msg.length)
         b.put(msg).put(buff).flip()
 
         // Write it, wait for conformation, and start again

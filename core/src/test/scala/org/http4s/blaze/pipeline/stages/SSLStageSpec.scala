@@ -235,7 +235,7 @@ class SSLStageSpec extends Specification {
           handShake()
 
         case NEED_WRAP =>
-          val o = BufferTools.allocate(maxNetSize)
+          val o = BufferTools.allocateHeap(maxNetSize)
           val r = engine.wrap(BufferTools.emptyBuffer, o)
           if (debug) println(r)
           o.flip()
@@ -260,7 +260,7 @@ class SSLStageSpec extends Specification {
       if (debug) println("ReadReq: " + engine.getHandshakeStatus)
       def go(buffer: ByteBuffer): Future[ByteBuffer] = {
         try {
-          val o = BufferTools.allocate(maxNetSize)
+          val o = BufferTools.allocateHeap(maxNetSize)
           val r = engine.wrap(buffer, o)
           o.flip()
 
@@ -309,7 +309,7 @@ class SSLStageSpec extends Specification {
 
       def go(data: ByteBuffer): Future[Unit] = {
         try {
-          val o = BufferTools.allocate(maxNetSize)
+          val o = BufferTools.allocateHeap(maxNetSize)
           val r = engine.unwrap(data, o)
           if (debug) println("Write Go: " + r)
           o.flip()
