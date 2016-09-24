@@ -1,16 +1,16 @@
 package org.http4s.blaze.channel.nio1
 
 
-import org.http4s.blaze.pipeline.{ Command => Cmd }
+import org.http4s.blaze.pipeline.{Command => Cmd}
 import org.http4s.blaze.util.BufferTools
 import org.http4s.blaze.pipeline._
 import org.http4s.blaze.channel.BufferPipelineBuilder
 
 import scala.annotation.tailrec
 import scala.util.control.NonFatal
-
 import java.nio.channels._
 import java.io.IOException
+import java.nio.ByteBuffer
 import java.util.concurrent.atomic.AtomicReference
 import java.util.concurrent.RejectedExecutionException
 
@@ -104,7 +104,8 @@ final class SelectorLoop(id: String, selector: Selector, bufferSize: Int) extend
 
   // Main thread method. The loop will break if the Selector loop is closed
   override def run() {
-    val scratch = BufferTools.allocate(bufferSize) // could be allocateDirect ?
+    // The scratch buffer is a direct buffer as this will often be used for I/O
+    val scratch = ByteBuffer.allocateDirect(bufferSize)
 
     try while(!_isClosed) {
       // Run any pending tasks. These may set interest ops, just compute something, etc.

@@ -3,7 +3,7 @@ package org.http4s.blaze.util
 import java.nio.ByteBuffer
 import org.log4s.getLogger
 
-
+// TODO: this is dangerous and should be removed
 abstract class ScratchBuffer {
   private[this] val logger = getLogger
   private val localBuffer = new ThreadLocal[ByteBuffer]
@@ -13,7 +13,7 @@ abstract class ScratchBuffer {
 
     if (b == null || b.capacity() < size) {
       logger.trace(s"Allocating thread local ByteBuffer($size)")
-      val b = BufferTools.allocate(size)
+      val b = ByteBuffer.allocate(size)
       localBuffer.set(b)
       b
     } else {

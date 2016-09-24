@@ -19,7 +19,7 @@ class ByteToObjectStageSpec extends Specification {
     def name: String = "TestCodec"
 
     def messageToBuffer(in: Msg): Seq[ByteBuffer] = {
-      val b = BufferTools.allocate(3)
+      val b = ByteBuffer.allocate(3)
       b.put(in.tag)
       in match {
         case One(byte) => b.put(byte)
@@ -50,13 +50,13 @@ class ByteToObjectStageSpec extends Specification {
   }
 
   def oneBuffer = {
-    val b = BufferTools.allocate(2)
+    val b = ByteBuffer.allocate(2)
     b.put(0.toByte).put(1.toByte).flip()
     b
   }
 
   def twoBuffer = {
-    val b = BufferTools.allocate(3)
+    val b = ByteBuffer.allocate(3)
     b.put(1.toByte).putShort(2.toShort).flip()
     b
   }
@@ -112,7 +112,7 @@ class ByteToObjectStageSpec extends Specification {
     }
 
     "Decode one large buffer" in {
-      val b = BufferTools.allocate(oneBuffer.remaining() + twoBuffer.remaining())
+      val b = ByteBuffer.allocate(oneBuffer.remaining() + twoBuffer.remaining())
       b.put(oneBuffer).put(twoBuffer)
       b.flip()
 
@@ -122,11 +122,11 @@ class ByteToObjectStageSpec extends Specification {
     }
 
     "Decode a series of one byte buffers" in {
-      val b = BufferTools.allocate(oneBuffer.remaining() + twoBuffer.remaining())
+      val b = ByteBuffer.allocate(oneBuffer.remaining() + twoBuffer.remaining())
       b.put(oneBuffer).put(twoBuffer)
 
       val buffs = b.array().map{ byte =>
-        val b = BufferTools.allocate(1)
+        val b = ByteBuffer.allocate(1)
         b.put(byte).flip()
         b
       }
