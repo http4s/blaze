@@ -163,7 +163,7 @@ object BufferTools {
         // Need to store the state and ensure we don't overflow the output buffer
         val position = buffer.position()
         val limit = buffer.limit()
-        buffer.limit(math.min(limit, out.remaining()))
+        buffer.limit(math.min(limit, position + out.remaining()))
         out.put(buffer)
 
         // Reset the buffers position and limit

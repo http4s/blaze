@@ -231,6 +231,7 @@ class NIO1SocketServerGroup(pool: SelectorLoopPool) extends ServerChannelGroup {
           scratch.clear()
           BufferTools.copyBuffers(buffers, scratch)
           scratch.flip()
+
           val size = scratch.remaining()
           ch.write(scratch)
           val written = size - scratch.remaining()
