@@ -104,7 +104,8 @@ final class SelectorLoop(id: String, selector: Selector, bufferSize: Int) extend
 
   // Main thread method. The loop will break if the Selector loop is closed
   override def run() {
-    val scratch = BufferTools.allocate(bufferSize) // could be allocateDirect ?
+    // The scratch buffer is a direct buffer as this will often be used for I/O
+    val scratch = BufferTools.allocateDirect(bufferSize)
 
     try while(!_isClosed) {
       // Run any pending tasks. These may set interest ops, just compute something, etc.

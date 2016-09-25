@@ -3,12 +3,10 @@ package org.http4s.blaze.util
 import org.specs2.mutable._
 import java.nio.ByteBuffer
 
-import BufferTools._
-
 class BufferToolsSpec extends Specification {
 
   def b(i: Int = 1) = {
-    val b = BufferTools.allocate(4)
+    val b = BufferTools.allocateHeap(4)
     b.putInt(i).flip()
     b
   }
@@ -36,7 +34,7 @@ class BufferToolsSpec extends Specification {
     }
 
     "append the result of one to the end of another if there is room" in {
-      val b1 = BufferTools.allocate(9)
+      val b1 = BufferTools.allocateHeap(9)
       b1.position(1) // offset by 1 to simulated already having read a byte
       b1.putInt(1).flip().position(1)
       val b2 = b(2)
@@ -49,7 +47,7 @@ class BufferToolsSpec extends Specification {
     }
 
     "compact a buffer to fit the second" in {
-      val b1 = BufferTools.allocate(8)
+      val b1 = BufferTools.allocateHeap(8)
       b1.putInt(0).putInt(1).flip()
       b1.getInt() // Discard the first element
       val b2 = b(2)
@@ -64,55 +62,203 @@ class BufferToolsSpec extends Specification {
   "BufferTools.checkEmpty" should {
 
     "check if buffers are empty" in {
-      checkEmpty(Array(allocate(0), allocate(3))) must_== false
-      checkEmpty(Seq(allocate(0), allocate(3))) must_== false
+      BufferTools.checkEmpty(Array(BufferTools.allocateHeap(0), BufferTools.allocateHeap(3))) must_== false
+      BufferTools.checkEmpty(Seq(BufferTools.allocateHeap(0), BufferTools.allocateHeap(3))) must_== false
 
-      checkEmpty(Array(allocate(0), allocate(0))) must_== true
-      checkEmpty(Seq(allocate(0), allocate(0))) must_== true
+      BufferTools.checkEmpty(Array(BufferTools.allocateHeap(0), BufferTools.allocateHeap(0))) must_== true
+      BufferTools.checkEmpty(Seq(BufferTools.allocateHeap(0), BufferTools.allocateHeap(0))) must_== true
 
-      checkEmpty(Array(allocate(3))) must_== false
-      checkEmpty(Seq(allocate(3))) must_== false
+      BufferTools.checkEmpty(Array(BufferTools.allocateHeap(3))) must_== false
+      BufferTools.checkEmpty(Seq(BufferTools.allocateHeap(3))) must_== false
 
-      checkEmpty(Array(allocate(0))) must_== true
-      checkEmpty(Seq(allocate(0))) must_== true
+      BufferTools.checkEmpty(Array(BufferTools.allocateHeap(0))) must_== true
+      BufferTools.checkEmpty(Seq(BufferTools.allocateHeap(0))) must_== true
 
-      checkEmpty(Array[ByteBuffer]()) must_== true
-      checkEmpty(Seq()) must_== true
+      BufferTools.checkEmpty(Array[ByteBuffer]()) must_== true
+      BufferTools.checkEmpty(Seq()) must_== true
     }
   }
 
   "BufferTools.dropEmpty" should {
 
-    val buff0 = allocate(0)
-    val buff1 = allocate(1)
+    val buff0 = BufferTools.allocateHeap(0)
+    val buff1 = BufferTools.allocateHeap(1)
 
     "Find index of first Non-empty buffer" in {
       val arr1 = Array(buff0)
-      dropEmpty(arr1) must_== 0
+      BufferTools.dropEmpty(arr1) must_== 0
 
       val arr2 = Array(buff0, buff1)
-      dropEmpty(arr2) must_== 1
+      BufferTools.dropEmpty(arr2) must_== 1
 
       val arr3 = Array(buff1, buff0)
-      dropEmpty(arr3) must_== 0
+      BufferTools.dropEmpty(arr3) must_== 0
     }
 
     "drop empty buffers until the first non-empty buffer except the last" in {
       val arr = Array(buff0, buff0)
-      dropEmpty(arr) must_== 1
-      (arr(0) eq emptyBuffer) must_== true
+      BufferTools.dropEmpty(arr) must_== 1
+      (arr(0) eq BufferTools.emptyBuffer) must_== true
       (arr(1) eq buff0) must_== true
 
       val arr2 = Array(buff1, buff1)
-      dropEmpty(arr2) must_== 0
+      BufferTools.dropEmpty(arr2) must_== 0
       (arr2(0) eq buff1) must_== true
       (arr2(1) eq buff1) must_== true
 
       val arr3 = Array(buff0, buff1)
-      dropEmpty(arr3) must_== 1
-      (arr3(0) eq emptyBuffer) must_== true
+      BufferTools.dropEmpty(arr3) must_== 1
+      (arr3(0) eq BufferTools.emptyBuffer) must_== true
       (arr3(1) eq buff1) must_== true
     }
   }
 
+  "BufferTools.copyBuffers" should {
+
+    "copy a single buffer into a larger buffer" in {
+      val buffs = getBuffers(1)
+      val target = BufferTools.allocateHeap(10)
+
+      BufferTools.copyBuffers(buffs, target) must_== 4
+      target.position() must_== 4
+      buffs(0).position() must_== 0
+    }
+
+    "copy a single buffer into a smaller buffer" in {
+      val buffs = getBuffers(1)
+      val target = BufferTools.allocateHeap(2)
+
+      BufferTools.copyBuffers(buffs, target) must_== 2
+      target.position() must_== 2
+      buffs(0).position() must_== 0
+    }
+
+    "copy multiple buffers int a larger buffer" in {
+      val buffs = getBuffers(2)
+      val target = BufferTools.allocateHeap(10)
+
+      BufferTools.copyBuffers(buffs, target) must_== 8
+      target.position() must_== 8
+
+      forall(buffs) { buff =>
+        buff.position() must_== 0
+      }
+    }
+
+    "copy multiple buffers int a smaller buffer" in {
+      val buffs = getBuffers(2)
+
+      {
+        val target = BufferTools.allocateHeap(2)
+
+        BufferTools.copyBuffers(buffs, target) must_== 2
+        target.position() must_== 2
+
+        forall(buffs) { buff =>
+          buff.position() must_== 0
+        }
+      }
+
+      {
+        val target = BufferTools.allocateHeap(6)
+
+        BufferTools.copyBuffers(buffs, target) must_== 6
+        target.position() must_== 6
+
+        forall(buffs) { buff =>
+          buff.position() must_== 0
+        }
+      }
+    }
+
+    "handle null buffers in the array" in {
+      val buffs = getBuffers(2)
+      buffs(0) = null
+
+      val target = BufferTools.allocateHeap(10)
+
+      BufferTools.copyBuffers(buffs, target) must_== 4
+      target.position() must_== 4
+
+      buffs(1).position() must_== 0
+    }
+  }
+
+  "BufferTools.fastForwardBuffers" should {
+    "fast forward an entire array" in {
+      val buffers = getBuffers(4)
+
+      BufferTools.fastForwardBuffers(buffers, 4*4) must_== true
+      forall(buffers) { buffer =>
+        buffer.remaining must_== 0
+      }
+    }
+
+    "fast forward only part of an array" in {
+      val buffers = getBuffers(2)
+
+      BufferTools.fastForwardBuffers(buffers, 5) must_== true
+
+      buffers(0).remaining must_== 0
+      buffers(1).remaining must_== 3
+    }
+
+    "fast forward past an array" in {
+      val buffers = getBuffers(2)
+      BufferTools.fastForwardBuffers(buffers, 10) must_== false
+
+      forall(buffers){ buffer =>
+        buffer.remaining must_== 0
+      }
+    }
+
+    "fast forward an array with null elements" in {
+      val buffers = getBuffers(2)
+      buffers(0) = null
+
+      BufferTools.fastForwardBuffers(buffers, 2) must_== true
+
+      buffers(1).remaining must_== 2
+    }
+  }
+
+  "BufferTools.areDirectOrEmpty" should {
+    "Be true for a collection of direct buffers" in {
+      BufferTools.areDirectOrEmpty(getDirect(4)) must_== true
+    }
+
+    "Be true for a collection of nulls" in {
+      BufferTools.areDirectOrEmpty(Array[ByteBuffer](null, null)) must_== true
+    }
+
+    "Be true for a collection of direct buffers with a null element" in {
+      val buffs = getDirect(4)
+      buffs(3) = null
+      BufferTools.areDirectOrEmpty(buffs) must_== true
+    }
+
+    "Be false for a collection with a non-empty heap buffer in it" in {
+      val buffs = getDirect(4)
+      buffs(3) = BufferTools.allocateHeap(4)
+      BufferTools.areDirectOrEmpty(buffs) must_== false
+    }
+
+    "Be true for a collection with an empty heap buffer in it" in {
+      val buffs = getDirect(4)
+      buffs(3) = BufferTools.allocateHeap(0)
+      BufferTools.areDirectOrEmpty(buffs) must_== true
+    }
+  }
+
+  private def getBuffers(count: Int): Array[ByteBuffer] = getBuffersBase(count, false)
+
+  private def getDirect(count: Int): Array[ByteBuffer] = getBuffersBase(count, true)
+
+  private def getBuffersBase(count: Int, direct: Boolean): Array[ByteBuffer] = {
+    (0 until count).map { i =>
+      val buffer = if (direct) BufferTools.allocateDirect(4) else BufferTools.allocateHeap(4)
+      buffer.putInt(4).flip()
+      buffer
+    }.toArray
+  }
 }
