@@ -5,24 +5,24 @@ package nio1
 import java.io.IOException
 import java.nio.ByteBuffer
 import java.nio.channels._
-import java.net.{InetSocketAddress, SocketAddress}
+import java.net.InetSocketAddress
 import java.util.Date
-import java.util.concurrent.ConcurrentLinkedQueue
 import java.util.concurrent.atomic.AtomicReference
 
 import org.http4s.blaze.channel.ChannelHead._
-import org.http4s.blaze.channel.nio1.NIO1HeadStage.{WriteError, Incomplete, Complete, WriteResult}
+import org.http4s.blaze.channel.nio1.NIO1HeadStage.{Complete, Incomplete, WriteError, WriteResult}
 import org.http4s.blaze.pipeline.Command.EOF
 import org.http4s.blaze.util.BufferTools
 import org.log4s._
 
+import scala.annotation.tailrec
 import scala.util.{Failure, Success, Try}
 import scala.util.control.NonFatal
 
 object NIO1SocketServerGroup {
 
   /** Default size of buffer to use in a [[SelectorLoop]] */
-  val defaultBufferSize: Int = 32*1024
+  val defaultBufferSize: Int = 64*1024
 
   def apply(pool: SelectorLoopPool): NIO1SocketServerGroup =
     new NIO1SocketServerGroup(pool)
@@ -125,7 +125,7 @@ class NIO1SocketServerGroup(pool: SelectorLoopPool) extends ServerChannelGroup {
 
               // check to see if we want to keep this connection
               if (acceptConnection(address)) {
-                clientChannel.setOption[java.lang.Boolean](java.net.StandardSocketOptions.TCP_NODELAY, false)
+                clientChannel.setOption[java.lang.Boolean](java.net.StandardSocketOptions.TCP_NODELAY, true)
                 loop.initChannel(service, clientChannel, key => new SocketChannelHead(clientChannel, loop, key))
               }
               else clientChannel.close()
@@ -202,7 +202,7 @@ class NIO1SocketServerGroup(pool: SelectorLoopPool) extends ServerChannelGroup {
         if (bytes >= 0) {
           scratch.flip()
 
-          val b = BufferTools.allocate(scratch.remaining())
+          val b = ByteBuffer.allocate(scratch.remaining())
           b.put(scratch)
           b.flip()
           Success(b)
@@ -218,9 +218,43 @@ class NIO1SocketServerGroup(pool: SelectorLoopPool) extends ServerChannelGroup {
 
     override protected def performWrite(scratch: ByteBuffer, buffers: Array[ByteBuffer]): WriteResult = {
       try {
-        ch.write(buffers)
-        if (util.BufferTools.checkEmpty(buffers)) Complete
-        else Incomplete
+        if (BufferTools.areDirectOrEmpty(buffers)) {
+          ch.write(buffers)
+          if (util.BufferTools.checkEmpty(buffers)) Complete
+          else Incomplete
+        } else {
+          // To sidestep the java NIO "memory leak" (see http://www.evanjones.ca/java-bytebuffer-leak.html)
+          // We copy the data to the scratch buffer (which should be a direct ByteBuffer)
+          // before the write. We then check to see how much data was written and fast-forward
+          // the input buffers accordingly.
+          // This is very similar to the pattern used by the Oracle JDK implementation in its
+          // IOUtil class: if the provided buffers are not direct buffers, they are copied to
+          // temporary direct ByteBuffers and written.
+          @tailrec
+          def writeLoop(): WriteResult = {
+            scratch.clear()
+            BufferTools.copyBuffers(buffers, scratch)
+            scratch.flip()
+
+            val written = ch.write(scratch)
+            if (written > 0) {
+              assert(BufferTools.fastForwardBuffers(buffers, written))
+            }
+
+            if (scratch.remaining() > 0) {
+              // Couldn't write all the data
+              Incomplete
+            } else if (util.BufferTools.checkEmpty(buffers)) {
+              // All data was written
+              Complete
+            } else {
+              // May still be able to write more to the socket buffer
+              writeLoop()
+            }
+          }
+
+          writeLoop()
+        }
       }
       catch {
         case e: ClosedChannelException => WriteError(EOF)

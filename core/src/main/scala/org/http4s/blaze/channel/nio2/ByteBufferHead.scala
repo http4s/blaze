@@ -18,7 +18,7 @@ private[nio2] final class ByteBufferHead(channel: AsynchronousSocketChannel, buf
 
   def name: String = "ByteBufferHeadStage"
 
-  private val buffer = BufferTools.allocate(bufferSize)
+  private val buffer = ByteBuffer.allocateDirect(bufferSize)
 
   override def writeRequest(data: ByteBuffer): Future[Unit] = {
 
@@ -95,7 +95,7 @@ private[nio2] final class ByteBufferHead(channel: AsynchronousSocketChannel, buf
       def completed(i: Integer, attachment: Null) {
         if (i.intValue() >= 0) {
           buffer.flip()
-          val b = BufferTools.allocate(buffer.remaining())
+          val b = ByteBuffer.allocate(buffer.remaining())
           b.put(buffer).flip()
           p.trySuccess(b)
         } else {   // must be end of stream

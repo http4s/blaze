@@ -7,15 +7,16 @@ import scala.annotation.tailrec
 
 object BufferTools {
 
+  /** Cached empty `ByteBuffer` */
   val emptyBuffer: ByteBuffer = allocate(0)
 
-  /** Allocate a fresh `ByteBuffer`
+  /** Allocate a new `ByteBuffer` on the heap
     *
     * @param size size of desired `ByteBuffer`
     */
   def allocate(size: Int): ByteBuffer = ByteBuffer.allocate(size)
 
-  /** Make a copy of the ByteBuffer, zeroing the input buffer */
+  /** Make a copy of the ByteBuffer, depleting the input buffer */
   def copyBuffer(b: ByteBuffer): ByteBuffer = {
     val bb = allocate(b.remaining())
     bb.put(b).flip()
@@ -121,5 +122,83 @@ object BufferTools {
   def mkString(buffers: Seq[ByteBuffer],charset: Charset = StandardCharsets.UTF_8): String = {
     val b = joinBuffers(buffers)
     charset.decode(b).toString()
+  }
+
+  /** Copies as much data from the input buffers as possible without modifying positions
+    * of the input buffers
+    *
+    * @param buffers collection of buffers to copy. This may be an empty array and the array
+    *             may contain `null` elements. The positions, marks, and marks of the input
+    *             buffers will not be modified.
+    * @param out `ByteBuffer` that the data will be copied into. This must not be `null`
+    * @return Number of bytes copied.
+    */
+  private[blaze] def copyBuffers(buffers: Array[ByteBuffer], out: ByteBuffer): Int = {
+    val start = out.position()
+
+    @tailrec
+    def go(i: Int): Unit = {
+      if (!out.hasRemaining || i >= buffers.length) ()
+      else if (buffers(i) == null || !buffers(i).hasRemaining) go(i + 1)
+      else {
+        val buffer = buffers(i)
+        // Need to store the state and ensure we don't overflow the output buffer
+        val position = buffer.position()
+        val limit = buffer.limit()
+        buffer.limit(math.min(limit, position + out.remaining()))
+        out.put(buffer)
+
+        // Reset the buffers position and limit
+        buffer.limit(limit)
+        buffer.position(position)
+        go(i + 1)
+      }
+    }
+
+    go(0)
+
+    out.position() - start
+  }
+
+  /** Forward the positions of the collection of `ByteBuffer`s
+    *
+    * @param buffers `ByteBuffers` to modify. The positions will be incremented from the
+    *               first in the collection to the last.
+    * @param size Number of bytes to fast-forward the arrays
+    * @return whether there was enough bytes in the collection of buffers or if the size
+    *         overran the available data.
+    */
+  private[blaze] def fastForwardBuffers(buffers: Array[ByteBuffer], size: Int): Boolean = {
+    require(size >= 0)
+    @tailrec
+    def go(i: Int, remaining: Int): Int = {
+      if (remaining == 0 || i >= buffers.length) remaining
+      else {
+        val buffer = buffers(i)
+        if (buffer == null || !buffer.hasRemaining) go (i + 1, remaining)
+        else {
+          val toForward = math.min(remaining, buffer.remaining())
+          buffer.position(buffer.position() + toForward)
+          go(i + 1, remaining - toForward)
+        }
+      }
+    }
+
+    go(0, size) == 0
+  }
+
+  /** Check if all the `ByteBuffer`s in the array are either direct, empty, or null */
+  private[blaze] def areDirectOrEmpty(buffers: Array[ByteBuffer]): Boolean = {
+    @tailrec
+    def go(i: Int): Boolean = {
+      if (i >= buffers.length) true
+      else {
+        val buffer = buffers(i)
+        if (buffer == null || buffer.isDirect || !buffer.hasRemaining) go(i + 1)
+        else false
+      }
+    }
+
+    go(0)
   }
 }
