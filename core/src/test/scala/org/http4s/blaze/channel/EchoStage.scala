@@ -3,7 +3,6 @@ package channel
 
 import org.http4s.blaze.pipeline.TailStage
 import java.nio.ByteBuffer
-import org.http4s.blaze.util.BufferTools
 
 import scala.util.{Failure, Success}
 import org.http4s.blaze.pipeline.Command.EOF
@@ -20,7 +19,7 @@ class EchoStage extends TailStage[ByteBuffer] {
   final override def stageStartup(): Unit = {
     channelRead().onComplete{
       case Success(buff) =>
-        val b = BufferTools.allocate(buff.remaining() + msg.length)
+        val b = ByteBuffer.allocate(buff.remaining() + msg.length)
         b.put(msg).put(buff).flip()
 
         // Write it, wait for conformation, and start again
