@@ -8,11 +8,11 @@ lazy val blaze = project
 
 lazy val core = Project("blaze-core",
   file("core"),
-  settings = mimaSettings ++ dependencies)
+  settings = publishing ++ mimaSettings ++ dependencies)
 
 lazy val http = Project("blaze-http",
   file("http"),
-  settings = mimaSettings ++ dependencies ++ Seq(
+  settings = publishing ++ mimaSettings ++ dependencies ++ Seq(
     libraryDependencies ++= Seq(http4sWebsocket,
       twitterHPACK,
       alpn_api),
