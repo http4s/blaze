@@ -8,11 +8,11 @@ lazy val blaze = project
 
 lazy val core = Project("blaze-core",
   file("core"),
-  settings = publish ++ mimaSettings ++ dependencies)
+  settings = publishing ++ mimaSettings ++ dependencies)
 
 lazy val http = Project("blaze-http",
   file("http"),
-  settings = publish ++ mimaSettings ++ dependencies ++ Seq(
+  settings = publishing ++ mimaSettings ++ dependencies ++ Seq(
     libraryDependencies ++= Seq(http4sWebsocket,
       twitterHPACK,
       alpn_api),
@@ -58,7 +58,7 @@ jvmTarget in ThisBuild := {
 /* global build settings */
 organization in ThisBuild := "org.http4s"
 
-version in ThisBuild := "0.12.3"
+version in ThisBuild := "0.12.4-SNAPSHOT"
 
 scalaVersion in ThisBuild := "2.11.8"
 
