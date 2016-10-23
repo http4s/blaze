@@ -16,10 +16,12 @@ lazy val http = Project("blaze-http",
     libraryDependencies ++= Seq(http4sWebsocket,
       twitterHPACK,
       alpn_api),
-    libraryDependencies ++= (scalaBinaryVersion.value match {
-      case "2.10" => Seq.empty
-      case "2.11" => Seq(scalaXml)
-    })
+    libraryDependencies ++= {
+      VersionNumber(scalaBinaryVersion.value).numbers match {
+        case Seq(2, 10) => Seq.empty
+        case _ => Seq(scalaXml)
+      }
+    }
   )
 ).dependsOn(core % "test->test;compile->compile")
 
@@ -45,18 +47,22 @@ lazy val examples = Project("blaze-examples",
 /* Don't publish setting */
 val dontPublish = packagedArtifacts := Map.empty
 
-val JvmTarget = "1.7"
-
-val primaryScalaVerison = "2.11.7"
+val jvmTarget = TaskKey[String]("jvm-target-version", "Defines the target JVM version for object files.")
+jvmTarget in ThisBuild := {
+  VersionNumber(scalaVersion.value).numbers match {
+    case Seq(2, 10, _*) => "1.7"
+    case _ => "1.8"
+  }
+}
 
 /* global build settings */
 organization in ThisBuild := "org.http4s"
 
 version in ThisBuild := "0.12.2-SNAPSHOT"
 
-scalaVersion in ThisBuild := primaryScalaVerison
+scalaVersion in ThisBuild := "2.11.8"
 
-crossScalaVersions in ThisBuild := Seq("2.10.5", primaryScalaVerison)
+crossScalaVersions in ThisBuild := Seq("2.10.6", scalaVersion.value, "2.12.0-RC2")
 
 description in ThisBuild := "NIO Framework for Scala"
 
@@ -79,7 +85,7 @@ scalacOptions in ThisBuild ++= Seq(
   "-deprecation",
   "-unchecked",
   "-language:implicitConversions",
-  s"-target:jvm-${JvmTarget}"
+  s"-target:jvm-${jvmTarget.value}"
 )
 
 fork in run := true
@@ -98,10 +104,10 @@ lazy val dependencies = Seq(
   libraryDependencies += log4s
 )
 
-lazy val specs2              = "org.specs2"                 %% "specs2-core"         % "3.3"
-lazy val http4sWebsocket     = "org.http4s"                 %% "http4s-websocket"    % "0.1.3"
+lazy val specs2              = "org.specs2"                 %% "specs2-core"         % "3.8.5.1"
+lazy val http4sWebsocket     = "org.http4s"                 %% "http4s-websocket"    % "0.1.4-SNAPSHOT"
 lazy val logbackClassic      = "ch.qos.logback"             %  "logback-classic"     % "1.1.3"
-lazy val log4s               = "org.log4s"                  %% "log4s"               % "1.2.0"
+lazy val log4s               = "org.log4s"                  %% "log4s"               % "1.3.2"
 lazy val scalaXml =            "org.scala-lang.modules"     %% "scala-xml"           % "1.0.5"
 lazy val twitterHPACK        = "com.twitter"                %  "hpack"               % "v1.0.1"
 
