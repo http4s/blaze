@@ -1,8 +1,8 @@
-package org.http4s.blaze.http.http_parser;
+package org.http4s.blaze.http.parser;
 
 import java.nio.ByteBuffer;
 
-import org.http4s.blaze.http.http_parser.BaseExceptions.*;
+import org.http4s.blaze.http.parser.BaseExceptions.*;
 
 
 public abstract class Http1ServerParser extends BodyAndHeaderParser {

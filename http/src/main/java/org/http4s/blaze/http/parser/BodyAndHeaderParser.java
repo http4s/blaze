@@ -1,9 +1,9 @@
-package org.http4s.blaze.http.http_parser;
+package org.http4s.blaze.http.parser;
 
 import java.nio.ByteBuffer;
 
-import org.http4s.blaze.http.http_parser.BaseExceptions.BadRequest;
-import org.http4s.blaze.http.http_parser.BaseExceptions.InvalidState;
+import org.http4s.blaze.http.parser.BaseExceptions.BadRequest;
+import org.http4s.blaze.http.parser.BaseExceptions.InvalidState;
 import org.http4s.blaze.util.BufferTools;
 
 /**        This HTTP/1.0 HTTP/1.1 parser is strongly inspired by the awesome Jetty parser

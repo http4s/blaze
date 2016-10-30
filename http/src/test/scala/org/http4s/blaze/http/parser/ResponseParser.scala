@@ -1,13 +1,12 @@
 package org.http4s.blaze
 package http
-package http_parser
+package parser
 
 import scala.collection.mutable.ListBuffer
 import java.nio.ByteBuffer
 import java.nio.charset.StandardCharsets
 
 import org.http4s.blaze.util.BufferTools
-import scodec.bits.ByteVector
 
 class ResponseParser extends Http1ClientParser {
 
@@ -36,7 +35,12 @@ class ResponseParser extends Http1ClientParser {
     }
 
     val bp = {
-      val bytes = body.foldLeft(ByteVector.empty)((c1, c2) => c1 ++ ByteVector(c2)).toArray
+      def toArray(buf: ByteBuffer): Array[Byte] = {
+        val b = new Array[Byte](buf.remaining())
+        buf.get(b)
+        b
+      }
+      val bytes = body.foldLeft(Array[Byte]()) ((c1, c2) => c1 ++ toArray(c2))
       new String(bytes, StandardCharsets.ISO_8859_1)
     }
 

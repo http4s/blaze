@@ -1,4 +1,4 @@
-package org.http4s.blaze.http.http_parser
+package org.http4s.blaze.http.parser
 
 import java.nio.ByteBuffer
 

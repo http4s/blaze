@@ -1,9 +1,9 @@
-package org.http4s.blaze.http.http_parser
+package org.http4s.blaze.http.parser
 
 
 import org.specs2.mutable._
 
-import org.http4s.blaze.http.http_parser.BaseExceptions.BadRequest
+import org.http4s.blaze.http.parser.BaseExceptions.BadRequest
 
 class HttpTokensSpec extends Specification {
 
