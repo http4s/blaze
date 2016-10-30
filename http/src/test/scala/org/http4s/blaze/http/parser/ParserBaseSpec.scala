@@ -1,8 +1,8 @@
-package org.http4s.blaze.http.http_parser
+package org.http4s.blaze.http.parser
 
 import java.nio.ByteBuffer
 
-import org.http4s.blaze.http.http_parser.BaseExceptions.BadCharacter
+import org.http4s.blaze.http.parser.BaseExceptions.BadCharacter
 import org.specs2.mutable.Specification
 
 

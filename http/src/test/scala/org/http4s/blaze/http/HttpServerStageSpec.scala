@@ -3,7 +3,7 @@ package org.http4s.blaze.http
 import java.nio.ByteBuffer
 import java.nio.charset.StandardCharsets
 
-import org.http4s.blaze.http.http_parser.ResponseParser
+import org.http4s.blaze.http.parser.ResponseParser
 import org.http4s.blaze.pipeline.stages.GatheringSeqHead
 import org.http4s.blaze.pipeline.LeafBuilder
 import org.http4s.blaze.util.{BufferTools, Execution}

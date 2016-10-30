@@ -4,7 +4,7 @@ import java.nio.ByteBuffer
 import java.nio.channels.NotYetConnectedException
 import java.nio.charset.StandardCharsets
 
-import org.http4s.blaze.http.http_parser.Http1ClientParser
+import org.http4s.blaze.http.parser.Http1ClientParser
 import org.http4s.blaze.pipeline.TailStage
 import org.http4s.blaze.util.{BufferTools, Execution}
 

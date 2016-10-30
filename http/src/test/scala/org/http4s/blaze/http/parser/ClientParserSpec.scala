@@ -1,11 +1,11 @@
-package org.http4s.blaze.http.http_parser
+package org.http4s.blaze.http.parser
 
 import org.specs2.mutable._
 
 import java.nio.charset.StandardCharsets.ISO_8859_1
 import scala.collection.mutable.ListBuffer
 import java.nio.ByteBuffer
-import org.http4s.blaze.http.http_parser.BaseExceptions.{InvalidState, BadResponse}
+import org.http4s.blaze.http.parser.BaseExceptions.{InvalidState, BadResponse}
 
 class ClientParserSpec extends Specification {
 

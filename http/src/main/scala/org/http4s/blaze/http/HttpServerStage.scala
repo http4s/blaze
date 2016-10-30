@@ -11,8 +11,8 @@ import org.http4s.websocket.WebsocketHandshake
 import scala.util.{Failure, Success, Try}
 import scala.concurrent.{ExecutionContext, Future}
 import scala.collection.mutable.ArrayBuffer
-import org.http4s.blaze.http.http_parser.Http1ServerParser
-import org.http4s.blaze.http.http_parser.BaseExceptions.BadRequest
+import org.http4s.blaze.http.parser.Http1ServerParser
+import org.http4s.blaze.http.parser.BaseExceptions.BadRequest
 import org.http4s.blaze.http.websocket.WebSocketDecoder
 import java.util.Date
 import java.nio.ByteBuffer
