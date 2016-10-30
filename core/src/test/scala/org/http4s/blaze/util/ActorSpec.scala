@@ -5,14 +5,12 @@ import java.util.concurrent.atomic.{ AtomicReference, AtomicInteger }
 import org.http4s.blaze.util.Actors.Actor
 
 import scala.concurrent.ExecutionContext
+import scala.concurrent.ExecutionContext.global
 import scala.concurrent.duration._
 
 import org.specs2.mutable.Specification
 
-
 class ActorSpec extends Specification {
-
-  import scala.concurrent.ExecutionContext.Implicits.global
 
   val spinTime = 5.seconds
 
@@ -42,7 +40,7 @@ class ActorSpec extends Specification {
       val flag = new AtomicReference[Throwable]()
       val acc = new AtomicInteger(0)
 
-      val a = actor(t => flag.set(t))
+      val a = actor(t => flag.set(t))(global)
 
       for(i <- 0 until senders) {
         global.execute(new Runnable {
@@ -67,7 +65,7 @@ class ActorSpec extends Specification {
     "Handle messages in order" in {
       val i = new AtomicInteger(0)
       val ii = new AtomicInteger(0)
-      val a = actor()
+      val a = actor()(global)
       for (_ <- 0 until 100) a ! Continuation{ _ => Thread.sleep(1); i.incrementAndGet() }
       val f = a ! Continuation(_ => ii.set(i.get()))
 
@@ -101,7 +99,7 @@ class ActorSpec extends Specification {
     "Not give exceptions in normal behavior" in {
       val flag = new AtomicInteger(0)
 
-      actor(_ => flag.set(-1)) ! Continuation(_ => flag.set(1)) must_== (())
+      actor(_ => flag.set(-1))(global) ! Continuation(_ => flag.set(1)) must_== (())
       spin(flag.get() == 1)
 
       flag.get must_== 1
@@ -109,7 +107,7 @@ class ActorSpec extends Specification {
 
     "Deal with exceptions properly" in {
       val flag = new AtomicInteger(0)
-      actor(_ => flag.set(1)) ! OptMsg(Some(-1))
+      actor(_ => flag.set(1))(global) ! OptMsg(Some(-1))
 
       spin(flag.get == 1)
       flag.get must_== 1
@@ -117,7 +115,7 @@ class ActorSpec extends Specification {
 
     "Deal with exceptions in the exception handling code" in {
       val i = new AtomicInteger(0)
-      val a = actor(_ => sys.error("error")) // this will fail the onError
+      val a = actor(_ => sys.error("error"))(global) // this will fail the onError
       a ! OptMsg(Some(-1))  // fail the evaluation
       val f = a ! Continuation(_ => i.set(1))  // If all is ok, the actor will continue
       spin(i.get == 1)
