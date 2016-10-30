@@ -48,12 +48,7 @@ lazy val examples = Project("blaze-examples",
 val dontPublish = packagedArtifacts := Map.empty
 
 val jvmTarget = TaskKey[String]("jvm-target-version", "Defines the target JVM version for object files.")
-jvmTarget in ThisBuild := {
-  VersionNumber(scalaVersion.value).numbers match {
-    case Seq(2, 10, _*) => "1.7"
-    case _ => "1.8"
-  }
-}
+jvmTarget in ThisBuild := "1.8"
 
 /* global build settings */
 organization in ThisBuild := "org.http4s"
@@ -78,6 +73,11 @@ scmInfo in ThisBuild := Some(
     "scm:git:https://github.com/http4s/blaze.git",
     Some("scm:git:git@github.com:http4s/blaze.git")
   )
+)
+
+javacOptions in ThisBuild ++= Seq(
+  "-source", jvmTarget.value,
+  "-target", jvmTarget.value
 )
 
 scalacOptions in ThisBuild ++= Seq(
