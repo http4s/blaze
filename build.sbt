@@ -80,6 +80,11 @@ scmInfo in ThisBuild := Some(
   )
 )
 
+javacOptions in ThisBuild ++= Seq(
+  "-source", jvmTarget.value,
+  "-target", jvmTarget.value
+)
+
 scalacOptions in ThisBuild ++= Seq(
   "-feature",
   "-deprecation",
