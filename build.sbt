@@ -62,7 +62,7 @@ version in ThisBuild := "0.13.0-SNAPSHOT"
 
 scalaVersion in ThisBuild := "2.11.8"
 
-crossScalaVersions in ThisBuild := Seq("2.10.6", scalaVersion.value, "2.12.0-RC2")
+crossScalaVersions in ThisBuild := Seq("2.10.6", scalaVersion.value, "2.12.0")
 
 description in ThisBuild := "NIO Framework for Scala"
 
@@ -78,6 +78,11 @@ scmInfo in ThisBuild := Some(
     "scm:git:https://github.com/http4s/blaze.git",
     Some("scm:git:git@github.com:http4s/blaze.git")
   )
+)
+
+javacOptions in ThisBuild ++= Seq(
+  "-source", jvmTarget.value,
+  "-target", jvmTarget.value
 )
 
 scalacOptions in ThisBuild ++= Seq(
@@ -104,10 +109,10 @@ lazy val dependencies = Seq(
   libraryDependencies += log4s
 )
 
-lazy val specs2              = "org.specs2"                 %% "specs2-core"         % "3.8.5.1"
-lazy val http4sWebsocket     = "org.http4s"                 %% "http4s-websocket"    % "0.1.4"
+lazy val specs2              = "org.specs2"                 %% "specs2-core"         % "3.8.6"
+lazy val http4sWebsocket     = "org.http4s"                 %% "http4s-websocket"    % "0.1.6"
 lazy val logbackClassic      = "ch.qos.logback"             %  "logback-classic"     % "1.1.3"
-lazy val log4s               = "org.log4s"                  %% "log4s"               % "1.3.2"
+lazy val log4s               = "org.log4s"                  %% "log4s"               % "1.3.3"
 lazy val scalaXml =            "org.scala-lang.modules"     %% "scala-xml"           % "1.0.5"
 lazy val twitterHPACK        = "com.twitter"                %  "hpack"               % "v1.0.1"
 
