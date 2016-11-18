@@ -21,8 +21,11 @@ final class SelectorLoop(id: String, selector: Selector, bufferSize: Int) extend
 
   private[this] val logger = getLogger
 
+  // The scratch buffer is a direct buffer as this will often be used for I/O
+  private[this] val scratch = ByteBuffer.allocateDirect(bufferSize)
+
   // a node in the task queue with a reference to the next task
-  private class Node(val runnable: Runnable) extends AtomicReference[Node]
+  private class Node(val runnable: SelectorTask) extends AtomicReference[Node]
 
   // a reference to the latest added Node
   private val queueHead = new AtomicReference[Node](null)
@@ -39,12 +42,20 @@ final class SelectorLoop(id: String, selector: Selector, bufferSize: Int) extend
   }
 
   @inline
-  final def executeTask(r: Runnable) {
+  final def executeTask(r: Runnable): Unit = {
     if (Thread.currentThread() == thisLoop) r.run()
     else enqueTask(r)
   }
 
-  def enqueTask(r: Runnable): Unit = {
+  @inline
+  final def executeTask(r: SelectorTask): Unit = {
+    if (Thread.currentThread() == thisLoop) r.run(scratch)
+    else enqueTask(r)
+  }
+
+  def enqueTask(r: Runnable): Unit = enqueTask(SelectorTask(r))
+
+  def enqueTask(r: SelectorTask): Unit = {
     if (_isClosed) throw new RejectedExecutionException("This SelectorLoop is closed.")
 
     val node = new Node(r)
@@ -84,7 +95,7 @@ final class SelectorLoop(id: String, selector: Selector, bufferSize: Int) extend
 
     @tailrec
     def go(n: Node): Unit = {
-      try n.runnable.run()
+      try n.runnable.run(scratch)
       catch { case t: Exception => logger.error(t)("Caught exception in queued task") }
       val next = n.get()
       if (next eq null) {
@@ -104,8 +115,6 @@ final class SelectorLoop(id: String, selector: Selector, bufferSize: Int) extend
 
   // Main thread method. The loop will break if the Selector loop is closed
   override def run() {
-    // The scratch buffer is a direct buffer as this will often be used for I/O
-    val scratch = ByteBuffer.allocateDirect(bufferSize)
 
     try while(!_isClosed) {
       // Run any pending tasks. These may set interest ops, just compute something, etc.
