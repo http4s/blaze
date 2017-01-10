@@ -236,7 +236,7 @@ sealed trait Head[O] extends Stage {
     */
   def readRequest(size: Int): Future[O]
 
-  /** Data that the next inbound `Stage` wants to sent outbound.
+  /** Data that the next inbound `Stage` wants to send outbound.
     *
     * @return a `Future` that resolves when the data has been handled.
     */
