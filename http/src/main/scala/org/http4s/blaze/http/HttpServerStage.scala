@@ -165,7 +165,7 @@ class HttpServerStage(maxReqBody: Long, maxNonBody: Int, ec: ExecutionContext)(h
         channelWrite(ByteBuffer.wrap(sb.result().getBytes(StandardCharsets.ISO_8859_1))).map{ _ =>
           logger.debug("Switching pipeline segments for upgrade")
           val segment = wsBuilder.prepend(new WebSocketDecoder(false))
-          this.replaceInline(segment)
+          this.replaceTail(segment, true)
           Upgrade
         }
     }

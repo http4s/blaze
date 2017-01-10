@@ -79,6 +79,7 @@ sealed trait Tail[I] extends Stage {
     }  catch { case t: Throwable => return Future.failed(t) }
   }
 
+  /** Write a single outbound message to the pipeline */
   def channelWrite(data: I): Future[Unit] = {
     if (_prevStage != null) {
       try _prevStage.writeRequest(data)
@@ -86,11 +87,13 @@ sealed trait Tail[I] extends Stage {
     } else _stageDisconnected()
   }
 
+  /** Write a single outbound message to the pipeline with a timeout */
   final def channelWrite(data: I, timeout: Duration): Future[Unit] = {
     val f = channelWrite(data)
     checkTimeout(timeout, f)
   }
 
+  /** Write a collection of outbound messages to the pipeline */
   def channelWrite(data: Seq[I]): Future[Unit] = {
     if (_prevStage != null) {
       try _prevStage.writeRequest(data)
@@ -98,11 +101,13 @@ sealed trait Tail[I] extends Stage {
     } else _stageDisconnected()
   }
 
+  /** Write a collection of outbound messages to the pipeline with a timeout */
   final def channelWrite(data: Seq[I], timeout: Duration): Future[Unit] = {
     val f = channelWrite(data)
     checkTimeout(timeout, f)
   }
 
+  /** Insert the `MidStage` before this `Stage` */
   final def spliceBefore(stage: MidStage[I, I]): Unit = {
     if (_prevStage != null) {
       stage._prevStage = _prevStage
@@ -116,6 +121,7 @@ sealed trait Tail[I] extends Stage {
     }
   }
 
+  /** Send a command to the next outbound `Stage` of the pipeline */
   final def sendOutboundCommand(cmd: OutboundCommand): Unit = {
     logger.debug(s"Stage ${getClass.getSimpleName} sending outbound command: $cmd")
     if (_prevStage != null) {
@@ -128,6 +134,7 @@ sealed trait Tail[I] extends Stage {
     }
   }
 
+  /** Find the next outbound `Stage` with the given name, if it exists. */
   final def findOutboundStage(name: String): Option[Stage] = {
     if (this.name == name) Some(this)
     else if (_prevStage == null) None
@@ -138,6 +145,7 @@ sealed trait Tail[I] extends Stage {
     }
   }
 
+  /** Find the next outbound `Stage` of type `C`, if it exists. */
   final def findOutboundStage[C <: Stage](clazz: Class[C]): Option[C] = {
     if (clazz.isAssignableFrom(this.getClass)) Some(this.asInstanceOf[C])
     else if (_prevStage == null) None
@@ -149,7 +157,11 @@ sealed trait Tail[I] extends Stage {
     }
   }
 
-  final def replaceInline(leafBuilder: LeafBuilder[I], startup: Boolean = true): this.type = {
+  /** Replace all downstream `Stage`s, including this `Stage`.
+    *
+    * If this was a `MidStage`, its inbound element is notified via a `Disconnected` Command.
+    */
+  final def replaceTail(leafBuilder: LeafBuilder[I], startup: Boolean): this.type = {
     stageShutdown()
 
     if (this._prevStage == null) return this
@@ -217,14 +229,23 @@ sealed trait Tail[I] extends Stage {
 sealed trait Head[O] extends Stage {
   private[pipeline] var _nextStage: Tail[O] = null
 
+  /** Called by the next inbound `Stage` to signal interest in reading data.
+    *
+    * @param size Hint as to the size of the message intended to be read. May not be meaningful or honored.
+    * @return     `Future` that will resolve with the requested inbound data, or an error.
+    */
   def readRequest(size: Int): Future[O]
 
+  /** Data that the next inbound `Stage` wants to send outbound.
+    *
+    * @return a `Future` that resolves when the data has been handled.
+    */
   def writeRequest(data: O): Future[Unit]
 
-  /** A simple default that serializes the write requests into the
-    * single element form. It almost certainly should be overwritten
-    * @param data sequence of elements which are to be written
-    * @return Future which will resolve when pipeline is ready for more data or fails
+  /** Collection of data that the next inbound `Stage` wants to sent outbound.
+    *
+    * It is generally assumed that the order of elements has meaning.
+    * @return a `Future` that resolves when the data has been handled.
     */
   def writeRequest(data: Seq[O]): Future[Unit] = {
     data.foldLeft[Future[Unit]](Future.successful(())){ (f, d) =>
@@ -232,6 +253,11 @@ sealed trait Head[O] extends Stage {
     }
   }
 
+  /** Replace all remaining inbound `Stage`s of the pipeline, not including this `Stage`. */
+  final def replaceNext(stage: LeafBuilder[O], startup: Boolean): Tail[O] =
+  _nextStage.replaceTail(stage, startup)
+
+  /** Send a command to the next inbound `Stage` of the pipeline */
   final def sendInboundCommand(cmd: InboundCommand): Unit = {
     logger.debug(s"Stage ${getClass.getSimpleName} sending inbound command: $cmd")
     if (_nextStage != null) {
@@ -260,6 +286,7 @@ sealed trait Head[O] extends Stage {
     case cmd        => logger.warn(s"$name received unhandled outbound command: $cmd")
   }
 
+  /** Insert the `MidStage` after `this` */
   final def spliceAfter(stage: MidStage[O, O]): Unit = {
     if (_nextStage != null) {
       stage._nextStage = _nextStage
@@ -273,6 +300,7 @@ sealed trait Head[O] extends Stage {
     }
   }
 
+  /** Find the next outbound `Stage` with the given name, if it exists. */
   final def findInboundStage(name: String): Option[Stage] = {
     if (this.name == name) Some(this)
     else if (_nextStage == null) None
@@ -282,6 +310,7 @@ sealed trait Head[O] extends Stage {
     }
   }
 
+  /** Find the next inbound `Stage` of type `C`, if it exists. */
   final def findInboundStage[C <: Stage](clazz: Class[C]): Option[C] = {
     if (clazz.isAssignableFrom(this.getClass)) Some(this.asInstanceOf[C])
     else if (_nextStage == null) None
@@ -307,6 +336,7 @@ trait MidStage[I, O] extends Tail[I] with Head[O] {
     sendOutboundCommand(cmd)
   }
 
+  /** Replace this `MidStage` with the provided `MidStage` of the same type */
   final def replaceInline(stage: MidStage[I, O]): this.type = {
     stageShutdown()
 
@@ -320,8 +350,7 @@ trait MidStage[I, O] extends Tail[I] with Head[O] {
     this
   }
 
-  final def replaceNext(stage: LeafBuilder[O]): Tail[O] = _nextStage.replaceInline(stage)
-
+  /** Remove this `MidStage` from the pipeline */
   final def removeStage(implicit ev: MidStage[I,O] =:= MidStage[I, I]): Unit = {
     stageShutdown()
 
