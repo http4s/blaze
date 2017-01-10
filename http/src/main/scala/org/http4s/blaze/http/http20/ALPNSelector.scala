@@ -42,7 +42,7 @@ class ALPNSelector(engine: SSLEngine,
   private def selectPipeline(): Unit = {
     try {
       val b = builder(selected.getOrElse(selector(Nil)))
-      this.replaceInline(b, true)
+      this.replaceTail(b, true)
     } catch {
       case t: Throwable =>
         logger.error(t)("Failure building pipeline")
