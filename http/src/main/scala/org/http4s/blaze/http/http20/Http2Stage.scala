@@ -173,7 +173,7 @@ class Http2Stage private(nodeBuilder: Int => LeafBuilder[NodeMsg.Http2Msg],
           channelRead().onComplete {
             case Success(b2) => decodeLoop(BufferTools.concatBuffers(buff, b2))
             case Failure(t) => onFailure(t, "ReadLoop")
-          }(ec)
+          }(Execution.trampoline)
 
         case Error(ex@Http2Exception(_, _, Some(id), false)) =>
           streamError(id, ex)

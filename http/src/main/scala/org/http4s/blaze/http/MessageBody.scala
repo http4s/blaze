@@ -23,7 +23,7 @@ trait MessageBody {
     *
     * @param max maximum bytes to accumulate before resulting in a failed future.
     */
-  def accumulate(max: Int = Int.MaxValue): Future[ByteBuffer] = {
+  final def accumulate(max: Int = Int.MaxValue): Future[ByteBuffer] = {
     def go(bytes: Long, acc: ArrayBuffer[ByteBuffer]): Future[ByteBuffer] = {
       apply().flatMap {
         case buff if buff.hasRemaining() =>

@@ -12,19 +12,19 @@ import scala.concurrent.ExecutionContext
 import scala.concurrent.duration.Duration
 
 object Http2Selector {
-  def apply(engine: SSLEngine, 
-           service: HttpService, 
-           maxBody: Long, 
-  maxNonbodyLength: Int, 
-                ec: ExecutionContext): ALPNSelector = {
 
-    val HTTP_1_1 = "http/1.1"
-    val H2       = "h2"
-    val H2_14    = "h2-14"
-    
+  private val HTTP_1_1 = "http/1.1"
+  private val H2       = "h2"
+  private val H2_14    = "h2-14"
+
+  def apply(engine: SSLEngine, 
+           service: HttpService,
+            config: HttpServerConfig): ALPNSelector = {
+
+    // TODO: http2 needs to start using the config object
     def builder(s: String): LeafBuilder[ByteBuffer] = s match {
-    case H2 | H2_14 => LeafBuilder(http2Stage(service, maxBody, maxNonbodyLength, ec))
-    case _          => LeafBuilder(new HttpServerStage(maxBody, maxNonbodyLength, ec)(service))
+    case H2 | H2_14 => LeafBuilder(http2Stage(service, config))
+    case _          => LeafBuilder(http1xStage(service, config))
     }
 
     def selector(protocols: Seq[String]): String =
@@ -37,17 +37,20 @@ object Http2Selector {
     new ALPNSelector(engine, selector, builder)
   }
 
-  private def http2Stage(service: HttpService, maxBody: Long, maxHeadersLength: Int, ec: ExecutionContext): TailStage[ByteBuffer] = {
+  private def http1xStage(service: HttpService, config: HttpServerConfig): TailStage[ByteBuffer] =
+    new HttpServerStage(service, config)
+
+  private def http2Stage(service: HttpService, config: HttpServerConfig): TailStage[ByteBuffer] = {
 
     def newNode(streamId: Int): LeafBuilder[Http2Msg] = {
-      LeafBuilder(new Http2ServerStage(streamId, maxBody, Duration.Inf, trampoline, service))
+      LeafBuilder(new Http2ServerStage(streamId, service, config))
     }
 
     Http2Stage(
       nodeBuilder = newNode,
       timeout = Duration.Inf,
-      ec = ec,
-      maxHeadersLength = maxHeadersLength
+      ec = config.serviceExecutor,
+      maxHeadersLength = config.maxNonBodyBytes
     )
   }
 }

@@ -11,20 +11,21 @@ import org.http4s.blaze.util.{BufferTools, Execution}
 import Http2Exception.{INTERNAL_ERROR, PROTOCOL_ERROR}
 import NodeMsg.{DataFrame, HeadersFrame}
 import Http2StageTools._
+import org.http4s.blaze.http.util.ServiceTimeoutFilter
 
 import scala.collection.mutable.ArrayBuffer
-import scala.concurrent.{ExecutionContext, Future}
-import scala.concurrent.duration.Duration
+import scala.concurrent.Future
 import scala.util.{Failure, Success, Try}
 
 /** Basic implementation of a http2 stream [[TailStage]] */
+// TODO: need to use the HttpServerConfig object
 class Http2ServerStage(streamId: Int,
-                       maxBody: Long,
-                       timeout: Duration,
-                       ec: ExecutionContext,
-                       service: HttpService) extends TailStage[Http2Msg] {
+                       service: HttpService,
+                       config: HttpServerConfig) extends TailStage[Http2Msg] {
 
-  private implicit def _ec = ec   // for all the onComplete calls
+  private implicit def _ec = Execution.trampoline   // for all the onComplete calls
+
+  private val timeoutService = ServiceTimeoutFilter(config.serviceTimeout)(service)
 
   override def name = s"Http2StreamStage($streamId)"
 
@@ -39,7 +40,7 @@ class Http2ServerStage(streamId: Int,
   }
 
   private def startRequest(): Unit = {
-    channelRead(timeout = timeout).onComplete  {
+    channelRead(timeout = config.requestPreludeTimeout).onComplete  {
       case Success(HeadersFrame(_, endStream, hs)) =>
         if (endStream) checkAndRunRequest(hs, MessageBody.emptyMessageBody)
         else getBodyReader(hs)
@@ -48,6 +49,7 @@ class Http2ServerStage(streamId: Int,
         val e = PROTOCOL_ERROR(s"Received invalid frame: $frame", streamId, fatal = true)
         shutdownWithCommand(Cmd.Error(e))
 
+        // TODO: what about a 408 response for a timeout?
       case Failure(Cmd.EOF) => shutdownWithCommand(Cmd.Disconnect)
 
       case Failure(t) =>
@@ -58,7 +60,7 @@ class Http2ServerStage(streamId: Int,
   }
 
   private def getBodyReader(hs: Headers): Unit = {
-    val length = hs.collectFirst {
+    val length: Option[Either[String, Long]] = hs.collectFirst {
       case (ContentLength, v) =>
         try Right(java.lang.Long.valueOf(v))
         catch { case t: NumberFormatException =>
@@ -122,8 +124,8 @@ class Http2ServerStage(streamId: Int,
     }
 
     if (error.length() > 0) shutdownWithCommand(Cmd.Error(PROTOCOL_ERROR(error, fatal = false)))
-    else service(HttpRequest(method, path, hs, body))
-      .onComplete(renderResponse(method, _))(ec)
+    else timeoutService(HttpRequest(method, path, 2, 0, hs, body))
+      .onComplete(renderResponse(method, _))(config.serviceExecutor)
   }
 
   private def renderResponse(method: String, response: Try[ResponseBuilder]): Unit = response match {

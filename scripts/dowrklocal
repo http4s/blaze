@@ -1,0 +1,2 @@
+#!/usr/bin/env sh
+wrk -t 4 -c 100 -d 60s -s pipeline.lua http://localhost:8080 -- 10

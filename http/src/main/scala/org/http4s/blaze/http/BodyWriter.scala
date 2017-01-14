@@ -1,14 +1,7 @@
 package org.http4s.blaze.http
 
-import java.io.IOException
 import java.nio.ByteBuffer
-import java.nio.charset.StandardCharsets
-
-import org.http4s.blaze.http.HttpServerStage.RouteResult
-
 import scala.concurrent.Future
-import scala.util.{Failure, Success, Try}
-import org.log4s.getLogger
 
 /** Output pipe for writing http responses */
 abstract class BodyWriter private[http] {

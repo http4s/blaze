@@ -9,16 +9,16 @@ import org.http4s.blaze.http.{ResponseBuilder, _}
 import org.http4s.blaze.pipeline.stages.monitors.IntervalConnectionMonitor
 import org.http4s.blaze.util.{BufferTools, Execution}
 
-import scala.annotation.tailrec
-import scala.collection.mutable.ArrayBuffer
 import scala.concurrent.Future
 
 object ExampleService {
 
   private implicit val ec = Execution.trampoline
 
-  def http1Stage(status: Option[IntervalConnectionMonitor], maxRequestLength: Int, channel: Option[AtomicReference[ServerChannel]] = None): HttpServerStage =
-    new HttpServerStage(1024*1024, maxRequestLength, Execution.trampoline)(service(status, channel))
+  def http1Stage(status: Option[IntervalConnectionMonitor],
+                 config: HttpServerConfig,
+                 channel: Option[AtomicReference[ServerChannel]] = None): HttpServerStage =
+
 
   def service(status: Option[IntervalConnectionMonitor], channel: Option[AtomicReference[ServerChannel]] = None)
              (request: HttpRequest): Future[ResponseBuilder] = {
@@ -31,8 +31,8 @@ object ExampleService {
     }
     else Future.successful {
       request.uri match {
-        case "/bigstring" =>
-          RouteAction.Ok(bigstring, ("content-type", "application/binary") :: Nil)
+        case "/ping" => RouteAction.Ok("pong")
+        case "/bigstring" => RouteAction.Ok(bigstring)
 
         case "/chunkedstring" =>
 
@@ -47,7 +47,7 @@ object ExampleService {
             }
           }
 
-          RouteAction.streaming(200, "OK", Nil)(body)
+          RouteAction.Streaming(200, "OK", Nil)(body)
 
         case "/status" =>
           RouteAction.Ok(status.map(_.getStats().toString).getOrElse("Missing Status."))
@@ -61,7 +61,7 @@ object ExampleService {
             case h@(k, _) if k.equalsIgnoreCase("Content-type") => h
           }
 
-          RouteAction.streaming(200, "OK", hs) { () =>
+          RouteAction.Streaming(200, "OK", hs) { () =>
             request.body()
           }
 

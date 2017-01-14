@@ -32,7 +32,7 @@ object WebSocketServer {
 
 /** this stage can be seen as the "route" of the example. It handles requests and returns responses */
 class ExampleWebSocketHttpServerStage
-  extends HttpServerStage(1024*1024, 10*1024, Execution.trampoline)(ExampleWebSocketHttpServerStage.handleRequest)
+  extends HttpServerStage(ExampleWebSocketHttpServerStage.handleRequest, HttpServerConfig())
 
 /** This represents the actual web socket interactions */
 class SocketStage extends WSStage {

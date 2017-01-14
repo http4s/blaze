@@ -1,16 +1,38 @@
 package org.http4s.blaze.util
 
-import scala.concurrent.ExecutionContext
+import scala.concurrent.{ExecutionContext, Future, Promise}
 import java.util
 
 import org.log4s.getLogger
 
 import scala.annotation.tailrec
+import scala.concurrent.duration.Duration
+import scala.util.Try
 
 /** Special `ExecutionContext` instances.
   */
 object Execution {
   private[this] val logger = getLogger
+
+  // Race a future vs a default value. The timer used is the default blaze scheduler
+  private[blaze] def withTimeout[T](d: Duration, fallback: Try[T])(f: Future[T]): Future[T] = {
+    if (!d.isFinite) f
+    else if (f.isCompleted) f
+    else {
+      val p = Promise[T]
+      val r = new Runnable {
+        def run(): Unit = {
+          if (p.tryComplete(fallback)) {
+            logger.debug(s"Future $f timed out after $d, yielding reesult $fallback")
+          }
+        }
+      }
+      // Race the future vs a timeout
+      Execution.scheduler.schedule(r, d)
+      f.onComplete(p.tryComplete(_))(Execution.directec)
+      p.future
+    }
+  }
 
   /** A trampolining `ExecutionContext`
     *

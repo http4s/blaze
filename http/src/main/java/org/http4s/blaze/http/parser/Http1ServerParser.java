@@ -48,6 +48,10 @@ public abstract class Http1ServerParser extends BodyAndHeaderParser {
         return _lineState == LineState.END;
     }
 
+    public final boolean isReset() {
+        return _lineState == LineState.START;
+    }
+
     /* ------------------------------------------------------------------ */
 
     @Override

@@ -22,7 +22,7 @@ package object http {
     * @param body function which returns the next chunk of the request body. Termination is
     *             signaled by an __empty__ `ByteBuffer` as determined by `ByteBuffer.hasRemaining()`.
     */
-  case class HttpRequest(method: Method, uri: Uri, headers: Headers, body: MessageBody)
+  case class HttpRequest(method: Method, uri: Uri, majorVersion: Int, minorVersion: Int, headers: Headers, body: MessageBody)
 
   /** The prelude of a standard HTTP response
     *
