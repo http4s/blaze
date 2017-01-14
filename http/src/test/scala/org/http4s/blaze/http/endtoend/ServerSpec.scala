@@ -4,7 +4,7 @@ import java.nio.charset.StandardCharsets
 
 import org.asynchttpclient.RequestBuilder
 import org.http4s.blaze.http.{HttpService, RouteAction}
-import org.http4s.blaze.servertestsuite.TestScaffold
+import org.http4s.blaze.servertestsuite.HttpClient
 import org.http4s.blaze.util.BufferTools
 import org.specs2.mutable.Specification
 
@@ -53,7 +53,7 @@ class ServerSpec extends Specification {
   }
 
   val server = LocalServer(0)(service)
-  val client = new TestScaffold("localhost", server.getAddress.getPort, 10.seconds)
+  val client = new HttpClient("localhost", server.getAddress.getPort, 10.seconds)
 
   def makeUrl(url: String): String = s"http://localhost:${server.getAddress.getPort}$url"
 

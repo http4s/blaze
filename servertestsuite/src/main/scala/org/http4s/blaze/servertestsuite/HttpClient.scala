@@ -9,7 +9,7 @@ import scala.concurrent.duration.Duration
 /** Basic scaffold for running http requests against a server
   * @param timeout timeout for request. Must be finite and greater than 0
   */
-class TestScaffold(host: String, port: Int, timeout: Duration) {
+class HttpClient(host: String, port: Int, timeout: Duration) {
   require(timeout.isFinite && timeout.length > 0)
 
   private val client = Dsl.asyncHttpClient(

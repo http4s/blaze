@@ -37,7 +37,7 @@ class HttpServer(factory: ServerChannelGroup, port: Int, ports: Int*)
 object NIO1HttpServer {
   def main(args: Array[String]): Unit = {
     val f = NIO1SocketServerGroup.fixedGroup(workerThreads = Consts.poolSize)
-    new HttpServer(f, 8080, 8081)
+    new HttpServer(f, 8080, 8081)()
       .run()
       .foreach(_.join())
 
@@ -48,7 +48,7 @@ object NIO1HttpServer {
 object NIO2HttpServer {
   def main(args: Array[String]): Unit = {
     val f = NIO2SocketServerGroup()
-    new HttpServer(f, 8080, 8081)
+    new HttpServer(f, 8080, 8081)()
       .run()
       .foreach(_.join())
 

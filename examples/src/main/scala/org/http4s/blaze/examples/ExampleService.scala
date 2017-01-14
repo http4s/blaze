@@ -18,6 +18,7 @@ object ExampleService {
   def http1Stage(status: Option[IntervalConnectionMonitor],
                  config: HttpServerConfig,
                  channel: Option[AtomicReference[ServerChannel]] = None): HttpServerStage =
+    new HttpServerStage(service(status, channel), config)
 
 
   def service(status: Option[IntervalConnectionMonitor], channel: Option[AtomicReference[ServerChannel]] = None)
@@ -35,10 +36,10 @@ object ExampleService {
         case "/bigstring" => RouteAction.Ok(bigstring)
 
         case "/chunkedstring" =>
-
-          val body = {
-            var i = 0
-            () => Future.successful {
+          @volatile
+          var i = 0
+          RouteAction.Streaming(200, "OK", Nil) {
+            Future.successful {
               if (i < 1000) {
                 i += 1
                 ByteBuffer.wrap(s"i: $i\n".getBytes)
@@ -46,8 +47,6 @@ object ExampleService {
               else BufferTools.emptyBuffer
             }
           }
-
-          RouteAction.Streaming(200, "OK", Nil)(body)
 
         case "/status" =>
           RouteAction.Ok(status.map(_.getStats().toString).getOrElse("Missing Status."))
@@ -61,7 +60,7 @@ object ExampleService {
             case h@(k, _) if k.equalsIgnoreCase("Content-type") => h
           }
 
-          RouteAction.Streaming(200, "OK", hs) { () =>
+          RouteAction.Streaming(200, "OK", hs) {
             request.body()
           }
 
