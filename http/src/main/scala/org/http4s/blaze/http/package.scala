@@ -28,12 +28,4 @@ package object http {
     * @param headers Response headers.
     */
   case class HttpResponsePrelude(code: Int, status: String, headers: Headers)
-
-//  sealed trait ResponseBuilder
-//
-//  /** Simple HTTP response type
-//    *
-//    * @param action post routing response builder.
-//    */
-//  case class HttpResponse(action: RouteAction) extends ResponseBuilder
 }

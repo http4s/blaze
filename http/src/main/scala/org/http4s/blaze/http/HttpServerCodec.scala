@@ -1,5 +1,6 @@
 package org.http4s.blaze.http
 
+import java.io.IOException
 import java.nio.{ByteBuffer, CharBuffer}
 import java.nio.charset.StandardCharsets
 
@@ -37,7 +38,7 @@ private final class HttpServerCodec(maxNonBodyBytes: Int, pipeline: TailStage[By
   }
 
   // TODO: how may of these locks are necessary? The only time things may be happening concurrently
-  // TODO: is when users are mishandling the body encoder.
+  //       is when users are mishandling the body encoder.
   def getRequest(): Future[HttpRequest] = lock.synchronized {
     if (parser.isReset()) {
       try {
@@ -174,7 +175,7 @@ private final class HttpServerCodec(maxNonBodyBytes: Int, pipeline: TailStage[By
   private abstract class InternalWriter extends BodyWriter {
     final override type Finished = RouteResult
 
-    private var closed = false
+    private[this] var closed = false
 
     protected def doWrite(buffer: ByteBuffer): Future[Unit]
 
@@ -214,7 +215,7 @@ private final class HttpServerCodec(maxNonBodyBytes: Int, pipeline: TailStage[By
     }
 
     override def doFlush(): Future[Unit] =
-      if (sb == null) Future.successful(())
+      if (sb == null) InternalWriter.cachedSuccess
       else doWrite(BufferTools.emptyBuffer)
 
     override def doClose(): Future[RouteResult] = {

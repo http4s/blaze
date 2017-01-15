@@ -15,7 +15,7 @@ import org.log4s.getLogger
 abstract class ServerChannel extends Closeable { self =>
   protected val logger = getLogger
 
-  private var shutdownHooks = new AtomicReference[Vector[()=> Unit]](Vector.empty)
+  private val shutdownHooks = new AtomicReference[Vector[()=> Unit]](Vector.empty)
 
   /** Close out any resources associated with the [[ServerChannel]] */
   protected def closeChannel(): Unit

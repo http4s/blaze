@@ -34,7 +34,7 @@ class Http1ServerExample(factory: ServerChannelGroup, port: Int)
   }
 }
 
-/** Opens a demo server on two ports, 8080 and 8081 */
+/** Opens a demo server on ports 8080 */
 object NIO1HttpServer {
   def main(args: Array[String]): Unit = {
     val f = NIO1SocketServerGroup.fixedGroup(workerThreads = Consts.poolSize)
