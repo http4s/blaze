@@ -11,7 +11,7 @@ import org.http4s.blaze.pipeline.Command.EOF
 import scala.util.{Failure, Success}
 import scala.util.control.NoStackTrace
 
-class HttpServerStage(service: HttpService, config: HttpServerConfig) extends TailStage[ByteBuffer] {
+class HttpServerStage(service: HttpService, config: HttpServerStageConfig) extends TailStage[ByteBuffer] {
   import HttpServerStage._
 
   private implicit def implicitEC = Execution.trampoline

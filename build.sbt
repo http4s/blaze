@@ -122,9 +122,7 @@ lazy val twitterHPACK        = "com.twitter"                %  "hpack"          
 
 // Testing only dependencies
 lazy val specs2              = "org.specs2"                 %% "specs2-core"         % "3.8.6"
-lazy val specs2ScalaCheck    = "org.specs2"                 %% "specs2-scalacheck"   % specs2.revision
 lazy val asyncHttpClient     = "org.asynchttpclient"        %  "async-http-client"   % "2.0.24"
-lazy val scalacheck          = "org.scalacheck"             %% "scalacheck"          % "1.13.4"
 
 
 // Needed for Http2 support until implemented in the JDK

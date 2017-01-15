@@ -21,7 +21,7 @@ import scala.util.{Failure, Success, Try}
 // TODO: need to use the HttpServerConfig object
 class Http2ServerStage(streamId: Int,
                        service: HttpService,
-                       config: HttpServerConfig) extends TailStage[Http2Msg] {
+                       config: HttpServerStageConfig) extends TailStage[Http2Msg] {
 
   private implicit def _ec = Execution.trampoline   // for all the onComplete calls
 

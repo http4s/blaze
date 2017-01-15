@@ -3,20 +3,19 @@ package org.http4s.blaze.channel
 
 import java.io.Closeable
 import java.net.InetSocketAddress
-import java.nio.channels.ClosedChannelException
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.atomic.AtomicReference
 
 import scala.annotation.tailrec
-import scala.compat.Platform.EOL
 import scala.util.control.NonFatal
 
 import org.log4s.getLogger
 
+/** Representation of a bound server */
 abstract class ServerChannel extends Closeable { self =>
   protected val logger = getLogger
 
-  private val shutdownHooks = new AtomicReference[Vector[()=> Unit]](Vector.empty)
+  private var shutdownHooks = new AtomicReference[Vector[()=> Unit]](Vector.empty)
 
   /** Close out any resources associated with the [[ServerChannel]] */
   protected def closeChannel(): Unit
@@ -52,7 +51,6 @@ abstract class ServerChannel extends Closeable { self =>
 
     go()
   }
-
 
   private def runShutdownHooks(): Unit = {
     val hooks = shutdownHooks.getAndSet(null)

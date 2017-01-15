@@ -16,12 +16,6 @@ object ExampleService {
 
   private implicit val ec = Execution.trampoline
 
-  def http1Stage(status: Option[IntervalConnectionMonitor],
-                 config: HttpServerConfig,
-                 channel: Option[AtomicReference[ServerChannel]] = None): HttpServerStage =
-    new HttpServerStage(service(status, channel), config)
-
-
   def service(status: Option[IntervalConnectionMonitor], channel: Option[AtomicReference[ServerChannel]] = None)
              (request: HttpRequest): Future[RouteAction] = {
     if (request.method == "POST") {
