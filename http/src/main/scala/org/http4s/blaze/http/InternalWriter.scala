@@ -1,13 +1,9 @@
 package org.http4s.blaze.http
 
 import java.io.IOException
-import org.http4s.blaze.http.HttpCodec.RouteResult
+import org.http4s.blaze.http.HttpServerCodec.RouteResult
 import org.log4s._
 import scala.concurrent.Future
-
-private abstract class InternalWriter extends BodyWriter {
-  final override type Finished = RouteResult
-}
 
 
 private object InternalWriter {
@@ -18,6 +14,6 @@ private object InternalWriter {
   val bufferLimit = 32*1024
 
   def selectComplete(forceClose: Boolean): RouteResult =
-    if (forceClose) HttpCodec.Close
-    else HttpCodec.Reload
+    if (forceClose) HttpServerCodec.Close
+    else HttpServerCodec.Reload
 }

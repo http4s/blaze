@@ -18,7 +18,7 @@ class HttpServerStage(service: HttpService, config: HttpServerConfig) extends Ta
   val name = "HTTP/1.1_Stage"
 
   // The codec is responsible for reading data from `this` TailStage.
-  private[this] val codec = new  HttpCodec(config.maxNonBodyBytes, this)
+  private[this] val codec = new  HttpServerCodec(config.maxNonBodyBytes, this)
 
   /////////////////////////////////////////////////////////////////////////////////////////
 
@@ -55,8 +55,8 @@ class HttpServerStage(service: HttpService, config: HttpServerConfig) extends Ta
       .onComplete {
         case Success((HttpResponse(resp), requireClose)) =>
           codec.renderResponse(resp, requireClose).onComplete {
-            case Success(HttpCodec.Reload) => dispatchLoop()  // continue the loop
-            case Success(HttpCodec.Close) => sendOutboundCommand(Cmd.Disconnect) // not able to server another on this session
+            case Success(HttpServerCodec.Reload) => dispatchLoop()  // continue the loop
+            case Success(HttpServerCodec.Close) => sendOutboundCommand(Cmd.Disconnect) // not able to server another on this session
 
             case Failure(EOF) => /* NOOP socket should now be closed */
             case Failure(ex) =>

@@ -21,8 +21,8 @@ import scala.util.{Failure, Success, Try}
   * forward errors that occur during read and write operations by way
   * of the return values.
   */
-private final class HttpCodec(maxNonBodyBytes: Int, pipeline: TailStage[ByteBuffer]) {
-  import HttpCodec._
+private final class HttpServerCodec(maxNonBodyBytes: Int, pipeline: TailStage[ByteBuffer]) {
+  import HttpServerCodec._
 
   private[this] val parser = new BlazeServerParser[(String, String)](maxNonBodyBytes)
   private[this] var buffered: ByteBuffer = BufferTools.emptyBuffer
@@ -71,29 +71,24 @@ private final class HttpCodec(maxNonBodyBytes: Int, pipeline: TailStage[ByteBuff
 
     // Renders the headers except those that will modify connection state and data encoding
     val sh@SpecialHeaders(_, _, connection) = HeaderTools.renderHeaders(sb, prelude.headers)
+    val closing = forceClose || !HeaderTools.isKeepAlive(connection, minorVersion)
 
-    val keepAlive = connection match {
-      case _ if forceClose => false
-      case Some(value) => HeaderTools.isKeepAlive(value, minorVersion)
-      case None => minorVersion != 0
-    }
-
-    if (!keepAlive) sb.append("connection: close\r\n")
+    if (closing) sb.append("connection: close\r\n")
     else if (minorVersion == 0) sb.append("connection: keep-alive\r\n")
 
     sh match {
       case SpecialHeaders(Some(te), _, _) if te.equalsIgnoreCase("chunked") =>
-        new ChunkedBodyWriter(forceClose, sb, -1)
+        if (minorVersion > 0) new ChunkedBodyWriter(closing, sb, -1)
+        else new ClosingWriter(sb)
 
       case SpecialHeaders(_, Some(len), _) =>
-        try {
-          new StaticBodyWriter(forceClose, sb, len.toLong)
-        } catch { case ex: NumberFormatException =>
+        try new FixedLengthBodyWriter(closing, sb, len.toLong)
+        catch { case ex: NumberFormatException =>
           logger.warn(ex)(s"Content length header has invalid length: '$len'. Reverting to undefined content length")
-          new SelectingWriter(forceClose, sb)
+          new SelectingWriter(closing, minorVersion, sb)
         }
 
-      case _ => new SelectingWriter(forceClose, sb)
+      case _ => new SelectingWriter(closing, minorVersion, sb)
     }
   }
 
@@ -176,85 +171,126 @@ private final class HttpCodec(maxNonBodyBytes: Int, pipeline: TailStage[ByteBuff
 
   // Body writers ///////////////////
 
-  private class StaticBodyWriter(forceClose: Boolean, sb: StringBuilder, len: Long) extends InternalWriter {
+  private abstract class InternalWriter extends BodyWriter {
+    final override type Finished = RouteResult
+
+    private var closed = false
+
+    protected def doWrite(buffer: ByteBuffer): Future[Unit]
+
+    protected def doFlush(): Future[Unit]
+
+    protected def doClose(): Future[RouteResult]
+
+    final override def write(buffer: ByteBuffer): Future[Unit] = lock.synchronized {
+      if (closed) InternalWriter.closedChannelException
+      else doWrite(buffer)
+    }
+
+    final override def flush(): Future[Unit] = lock.synchronized {
+      if (closed) InternalWriter.closedChannelException
+      else doFlush()
+    }
+
+    final override def close(): Future[RouteResult] = lock.synchronized {
+      if (closed) InternalWriter.closedChannelException
+      else {
+        closed = true
+        doClose()
+      }
+    }
+  }
+
+  private class ClosingWriter(var sb: StringBuilder) extends InternalWriter {
+
+    override def doWrite(buffer: ByteBuffer): Future[Unit] = {
+      if (sb == null) pipeline.channelWrite(buffer)
+      else {
+        sb.append("\r\n")
+        val prelude = StandardCharsets.ISO_8859_1.encode(sb.result())
+        sb = null
+        pipeline.channelWrite(prelude::buffer::Nil)
+      }
+    }
+
+    override def doFlush(): Future[Unit] =
+      if (sb == null) Future.successful(())
+      else doWrite(BufferTools.emptyBuffer)
+
+    override def doClose(): Future[RouteResult] = {
+      if (sb == null) Future.successful(Close)
+      else doFlush().map(_ => Close)(Execution.directec)
+    }
+  }
+
+  private class FixedLengthBodyWriter(forceClose: Boolean, sb: StringBuilder, len: Long) extends InternalWriter {
     private var cache = new ArrayBuffer[ByteBuffer](3)
     private var cachedBytes: Int = _
     private var closed = false
     private var written: Long = 0L
 
-    { // constructor business
-      sb.append("content-length: ").append(len).append("\r\n\r\n")
-      val prelude = StandardCharsets.ISO_8859_1.encode(CharBuffer.wrap(sb))
-      cache += prelude
-      cachedBytes = prelude.remaining()
-    }
+    // constructor business
+    sb.append("content-length: ").append(len).append("\r\n\r\n")
+    val prelude = StandardCharsets.ISO_8859_1.encode(CharBuffer.wrap(sb))
+    cache += prelude
+    cachedBytes = prelude.remaining()
 
-    override def write(buffer: ByteBuffer): Future[Unit] = lock.synchronized {
-      if (closed) InternalWriter.closedChannelException
-      else {
-        logger.debug(s"StaticBodyWriter: write: $buffer")
-        val bufSize = buffer.remaining()
+    override def doWrite(buffer: ByteBuffer): Future[Unit] = {
+      logger.debug(s"StaticBodyWriter: write: $buffer")
+      val bufSize = buffer.remaining()
 
-        if (bufSize == 0) InternalWriter.cachedSuccess
-        else if (written + bufSize > len) {
-          // need to truncate and log an error.
-          val nextSize = len - written
-          written = len
-          buffer.limit(buffer.position() + nextSize.toInt)
-          if (buffer.hasRemaining) {
-            cache += buffer
-            cachedBytes += buffer.remaining()
-          }
-          logger.error(
-            s"StaticBodyWriter: Body overflow detected. Expected bytes: $len, attempted " +
-              s"to send: ${written + bufSize}. Truncating."
-          )
-
-          InternalWriter.cachedSuccess
-        }
-        else if (cache.isEmpty && bufSize > InternalWriter.bufferLimit) {
-          // just write the buffer if it alone fills the cache
-          assert(cachedBytes == 0, "Invalid cached bytes state")
-          written += bufSize
-          pipeline.channelWrite(buffer)
-        }
-        else {
+      if (bufSize == 0) InternalWriter.cachedSuccess
+      else if (written + bufSize > len) {
+        // need to truncate and log an error.
+        val nextSize = len - written
+        written = len
+        buffer.limit(buffer.position() + nextSize.toInt)
+        if (buffer.hasRemaining) {
           cache += buffer
-          written += bufSize
-          cachedBytes += bufSize
-
-          if (cachedBytes > InternalWriter.bufferLimit) flush()
-          else InternalWriter.cachedSuccess
+          cachedBytes += buffer.remaining()
         }
+        logger.error(
+          s"StaticBodyWriter: Body overflow detected. Expected bytes: $len, attempted " +
+            s"to send: ${written + bufSize}. Truncating."
+        )
+
+        InternalWriter.cachedSuccess
       }
-    }
-
-    override def flush(): Future[Unit] = lock.synchronized {
-      if (closed) InternalWriter.closedChannelException
+      else if (cache.isEmpty && bufSize > InternalWriter.bufferLimit) {
+        // just write the buffer if it alone fills the cache
+        assert(cachedBytes == 0, "Invalid cached bytes state")
+        written += bufSize
+        pipeline.channelWrite(buffer)
+      }
       else {
-        logger.debug("StaticBodyWriter: Channel flushed")
-        if (cache.nonEmpty) {
-          val buffs = cache
-          cache = new ArrayBuffer[ByteBuffer](math.min(16, buffs.length + 2))
-          cachedBytes = 0
-          pipeline.channelWrite(buffs)
-        }
+        cache += buffer
+        written += bufSize
+        cachedBytes += bufSize
+
+        if (cachedBytes > InternalWriter.bufferLimit) flush()
         else InternalWriter.cachedSuccess
       }
     }
 
-    override def close(): Future[RouteResult] = lock.synchronized {
-      if (closed) InternalWriter.closedChannelException
+    override def doFlush(): Future[Unit] = {
+      logger.debug("StaticBodyWriter: Channel flushed")
+      if (cache.nonEmpty) {
+        val buffs = cache
+        cache = new ArrayBuffer[ByteBuffer](math.min(16, buffs.length + 2))
+        cachedBytes = 0
+        pipeline.channelWrite(buffs)
+      }
+      else InternalWriter.cachedSuccess
+    }
+
+    override def doClose(): Future[RouteResult] = {
+      logger.debug("closed")
+      if (cache.nonEmpty) doFlush().map( _ => lock.synchronized {
+        selectComplete(forceClose)
+      })(Execution.directec)
       else {
-        logger.debug("closed")
-        if (cache.nonEmpty) flush().map( _ => lock.synchronized {
-          closed = true
-          selectComplete(forceClose)
-        })(Execution.directec)
-        else {
-          closed = true
-          Future.successful(selectComplete(forceClose))
-        }
+        closed = true
+        Future.successful(selectComplete(forceClose))
       }
     }
   }
@@ -265,16 +301,14 @@ private final class HttpCodec(maxNonBodyBytes: Int, pipeline: TailStage[ByteBuff
       private var prelude: StringBuilder,
       maxCacheSize: Int
   ) extends InternalWriter {
-    prelude.append("transfer-encoding: chunked\r\n")
+    prelude.append("transfer-encoding: chunked\r\n\r\n")
 
     private val cache = new ListBuffer[ByteBuffer]
 
     private var cacheSize = 0
-    private var closed = false
 
-    override def write(buffer: ByteBuffer): Future[Unit] = lock.synchronized {
-      if (closed) InternalWriter.closedChannelException
-      else if (!buffer.hasRemaining) InternalWriter.cachedSuccess
+    override def doWrite(buffer: ByteBuffer): Future[Unit] = {
+      if (!buffer.hasRemaining) InternalWriter.cachedSuccess
       else {
         cache += buffer
         cacheSize += buffer.remaining()
@@ -284,46 +318,39 @@ private final class HttpCodec(maxNonBodyBytes: Int, pipeline: TailStage[ByteBuff
       }
     }
 
-    override def flush(): Future[Unit] = flushCache(false)
+    override def doFlush(): Future[Unit] = flushCache(false)
 
-    private def flushCache(last: Boolean): Future[Unit] = lock.synchronized {
-      if (closed)  InternalWriter.closedChannelException
-      else {
-        if (last) {
-          closed = true
-          cache += ByteBuffer.wrap(terminationBytes)
-        }
-
-        var buffers = cache.result()
-        cache.clear()
-
-        if (cacheSize > 0) {
-          buffers = lengthBuffer()::buffers
-          cacheSize = 0
-        }
-
-        if (prelude != null) {
-          val buffer = ByteBuffer.wrap(prelude.result().getBytes(StandardCharsets.ISO_8859_1))
-          prelude = null
-          buffers = buffer::buffers
-        }
-
-        if (buffers.isEmpty) InternalWriter.cachedSuccess
-        else pipeline.channelWrite(buffers)
+    private def flushCache(last: Boolean): Future[Unit] = {
+      if (last) {
+        cache += ByteBuffer.wrap(terminationBytes)
       }
+
+      var buffers = cache.result()
+      cache.clear()
+
+      if (cacheSize > 0) {
+        buffers = lengthBuffer()::buffers
+        cacheSize = 0
+      }
+
+      if (prelude != null) {
+        val buffer = ByteBuffer.wrap(prelude.result().getBytes(StandardCharsets.ISO_8859_1))
+        prelude = null
+        buffers = buffer::buffers
+      }
+
+      if (buffers.isEmpty) InternalWriter.cachedSuccess
+      else pipeline.channelWrite(buffers)
     }
 
-    override def close(): Future[RouteResult] = lock.synchronized {
-      if (closed)  InternalWriter.closedChannelException
-      else {
-        flushCache(true).map( _ => lock.synchronized {
-          if (forceClose || !parser.contentComplete()) Close
-          else {
-            parser.reset()
-            Reload
-          }
-        })(Execution.directec)
-      }
+    override def doClose(): Future[RouteResult] = {
+      flushCache(true).map( _ => lock.synchronized {
+        if (forceClose || !parser.contentComplete()) Close
+        else {
+          parser.reset()
+          Reload
+        }
+      })(Execution.directec)
     }
 
     private def lengthBuffer(): ByteBuffer = {
@@ -340,16 +367,14 @@ private final class HttpCodec(maxNonBodyBytes: Int, pipeline: TailStage[ByteBuff
     * falls back to a [[ChunkedBodyWriter]]. If the buffer is not exceeded, the entire
     * body is written as a single chunk using standard encoding.
     */
-  private class SelectingWriter(forceClose: Boolean, sb: StringBuilder) extends InternalWriter {
-    private var closed = false
+  private class SelectingWriter(forceClose: Boolean, minor: Int, sb: StringBuilder) extends InternalWriter {
     private val cache = new ListBuffer[ByteBuffer]
     private var cacheSize = 0
 
     private var underlying: InternalWriter = null
 
-    override def write(buffer: ByteBuffer): Future[Unit] = lock.synchronized {
+    override def doWrite(buffer: ByteBuffer): Future[Unit] = {
       if (underlying != null) underlying.write(buffer)
-      else if (closed) InternalWriter.closedChannelException
       else {
         cache += buffer
         cacheSize += buffer.remaining()
@@ -362,21 +387,18 @@ private final class HttpCodec(maxNonBodyBytes: Int, pipeline: TailStage[ByteBuff
       }
     }
 
-    override def flush(): Future[Unit] = lock.synchronized {
+    override def doFlush(): Future[Unit] = {
       if (underlying != null) underlying.flush()
-      else if (closed) InternalWriter.closedChannelException
       else {
         // Gotta go with chunked encoding...
         startChunked().flatMap(_ => flush())(Execution.directec)
       }
     }
 
-    override def close(): Future[HttpCodec.RouteResult] = lock.synchronized {
+    override def doClose(): Future[HttpServerCodec.RouteResult] = {
       if (underlying != null) underlying.close()
-      else if (closed) InternalWriter.closedChannelException
       else {
         // write everything we have as a fixed length body
-        closed = true
         val buffs = cache.result()
         cache.clear()
         sb.append("content-length: ").append(cacheSize).append("\r\n\r\n")
@@ -390,7 +412,10 @@ private final class HttpCodec(maxNonBodyBytes: Int, pipeline: TailStage[ByteBuff
 
     // start a chunked encoding writer and write the contents of the cache
     private[this] def startChunked(): Future[Unit] = {
-      underlying = new ChunkedBodyWriter(false, sb, InternalWriter.bufferLimit)
+      underlying = {
+        if (minor > 0) new ChunkedBodyWriter(false, sb, InternalWriter.bufferLimit)
+        else new ClosingWriter(sb)
+      }
 
       val buff = BufferTools.joinBuffers(cache)
       cache.clear()
@@ -412,7 +437,7 @@ private final class HttpCodec(maxNonBodyBytes: Int, pipeline: TailStage[ByteBuff
   }
 }
 
-private object HttpCodec {
+private object HttpServerCodec {
   private val logger = getLogger
 
   private val CRLFBytes = "\r\n".getBytes(StandardCharsets.US_ASCII)

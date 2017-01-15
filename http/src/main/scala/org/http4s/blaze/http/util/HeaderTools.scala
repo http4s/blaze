@@ -7,11 +7,15 @@ private[blaze] object HeaderTools {
       contentLength: Option[String],
       connection: Option[String])
 
-  def isKeepAlive(headerValue: String, minorVersion: Int): Boolean = {
-    if (headerValue.equalsIgnoreCase("keep-alive")) true
-    else if (headerValue.equalsIgnoreCase("close")) false
-    else if (headerValue.equalsIgnoreCase("upgrade")) true
-    else false
+  def isKeepAlive(connectionHeader: Option[String], minorVersion: Int): Boolean = {
+    connectionHeader match {
+      case Some(headerValue) =>
+        if (headerValue.equalsIgnoreCase("keep-alive")) true
+        else if (headerValue.equalsIgnoreCase("close")) false
+        else if (headerValue.equalsIgnoreCase("upgrade")) true
+        else false
+      case None => minorVersion != 0
+    }
   }
 
   /**
