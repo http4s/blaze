@@ -70,7 +70,7 @@ object RouteAction {
     * read-only views of it when writing to the socket, so the resulting responses
     * can be reused multiple times.
     */
-  def Buffer(code: Int, status: String, headers: Headers, body: ByteBuffer): HttpResponse = HttpResponse(
+  def Buffer(code: Int, status: String, body: ByteBuffer, headers: Headers): HttpResponse = HttpResponse(
     new RouteAction {
       override def handle[T <: BodyWriter](responder: (HttpResponsePrelude) => T): Future[T#Finished] = {
         val finalHeaders = (HeaderNames.ContentLength, body.remaining().toString) +: headers
@@ -84,11 +84,11 @@ object RouteAction {
 
   /** generate a HTTP response from a String */
   def String(code: Int, status: String, headers: Headers, body: String): HttpResponse =
-    Buffer(code, status, Utf8StringHeader +: headers, StandardCharsets.UTF_8.encode(body))
+    Buffer(code, status, StandardCharsets.UTF_8.encode(body), Utf8StringHeader +: headers)
 
   /** Generate a 200 OK HTTP response from an `Array[Byte]` */
   def Ok(body: Array[Byte], headers: Headers = Nil): HttpResponse =
-    Buffer(200, "OK", headers, ByteBuffer.wrap(body))
+    Buffer(200, "OK", ByteBuffer.wrap(body), headers)
 
   /** Generate a 200 OK HTTP response from an `Array[Byte]` */
   def Ok(body: Array[Byte]): HttpResponse = Ok(body, Nil)
@@ -101,8 +101,12 @@ object RouteAction {
   def Ok(body: String): HttpResponse = Ok(body, Nil)
 
   /** Generate a 200 OK HTTP response from a `ByteBuffer` */
+  def Ok(body: ByteBuffer, headers: Headers): HttpResponse =
+    Buffer(200, "OK", body, headers)
+
+  /** Generate a 200 OK HTTP response from a `ByteBuffer` */
   def Ok(body: ByteBuffer): HttpResponse =
-  Buffer(200, "OK", Nil, body)
+    Ok(body, Nil)
 
   def EntityTooLarge(): HttpResponse =
     String(413, "Request Entity Too Large", Nil, s"Request Entity Too Large")

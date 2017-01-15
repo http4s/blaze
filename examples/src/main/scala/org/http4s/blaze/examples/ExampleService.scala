@@ -5,6 +5,7 @@ import java.nio.charset.StandardCharsets
 import java.util.concurrent.atomic.AtomicReference
 
 import org.http4s.blaze.channel.ServerChannel
+import org.http4s.blaze.http.util.HeaderNames
 import org.http4s.blaze.http.{ResponseBuilder, _}
 import org.http4s.blaze.pipeline.stages.monitors.IntervalConnectionMonitor
 import org.http4s.blaze.util.{BufferTools, Execution}
@@ -32,6 +33,7 @@ object ExampleService {
     }
     else Future.successful {
       request.uri match {
+        case "/plaintext" => RouteAction.Ok(helloWorld, (HeaderNames.ContentType -> "text/plain")::Nil)
         case "/ping" => RouteAction.Ok("pong")
         case "/bigstring" => RouteAction.Ok(bigstring)
 
@@ -78,5 +80,6 @@ object ExampleService {
     }
   }
 
-  private val bigstring = (0 to 1024*20).mkString("\n", "\n", "").getBytes()
+  private val bigstring = StandardCharsets.UTF_8.encode((0 to 1024*20).mkString("\n", "\n", ""))
+  private val helloWorld = StandardCharsets.UTF_8.encode("Hello, world!")
 }
