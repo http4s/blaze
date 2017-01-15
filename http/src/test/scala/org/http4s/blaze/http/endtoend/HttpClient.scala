@@ -1,4 +1,4 @@
-package org.http4s.blaze.servertestsuite
+package org.http4s.blaze.http.endtoend
 
 import java.util.concurrent.TimeUnit
 
@@ -19,18 +19,6 @@ class HttpClient(host: String, port: Int, timeout: Duration) {
       .setPooledConnectionIdleTimeout(100)
       .setConnectionTtl(500)
   )
-
-  // Expects the route to echo it back
-  def withArbitraryRequest() = {
-    import org.scalacheck._
-    import Prop.forAll
-
-    forAll(GeneralInstances.genRequest(host, port)) { request =>
-      val response = runRequest(request)
-      request.getHeaders == response.getHeaders() &&
-      response.getResponseBodyAsBytes == request.getByteData
-    }
-  }
 
   // Not afraid to block: this is for testing.
   def runGet(uri: String): Response = {

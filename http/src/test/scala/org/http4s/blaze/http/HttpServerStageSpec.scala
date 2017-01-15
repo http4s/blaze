@@ -57,7 +57,7 @@ class HttpServerStageSpec extends Specification {
     BufferTools.joinBuffers(Await.result(head.go(), 10.seconds))
   }
 
-  private def service(request: HttpRequest): Future[ResponseBuilder] = {
+  private def service(request: HttpRequest): Future[RouteAction] = {
     request.uri match {
       case _ if request.method == "POST" =>
         request.body.accumulate().map { body =>

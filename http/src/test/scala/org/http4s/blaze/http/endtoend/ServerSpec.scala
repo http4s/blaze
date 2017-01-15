@@ -4,7 +4,6 @@ import java.nio.charset.StandardCharsets
 
 import org.asynchttpclient.RequestBuilder
 import org.http4s.blaze.http.{HttpService, RouteAction}
-import org.http4s.blaze.servertestsuite.HttpClient
 import org.http4s.blaze.util.BufferTools
 import org.specs2.mutable.Specification
 

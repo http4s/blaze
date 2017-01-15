@@ -13,9 +13,12 @@ lazy val core = Project("blaze-core",
 lazy val http = Project("blaze-http",
   file("http"),
   settings = publishing ++ mimaSettings ++ dependencies ++ Seq(
-    libraryDependencies ++= Seq(http4sWebsocket,
+    libraryDependencies ++= Seq(
+      http4sWebsocket,
       twitterHPACK,
-      alpn_api),
+      alpn_api,
+      asyncHttpClient % "test"
+    ),
     libraryDependencies ++= {
       VersionNumber(scalaBinaryVersion.value).numbers match {
         case Seq(2, 10) => Seq.empty
@@ -24,8 +27,7 @@ lazy val http = Project("blaze-http",
     }
   )
 ).dependsOn(
-  core % "test->test;compile->compile",
-  serverTestSuite % "test"
+  core % "test->test;compile->compile"
 )
 
 lazy val examples = Project("blaze-examples",
@@ -46,14 +48,6 @@ lazy val examples = Project("blaze-examples",
       }
     )
 ).dependsOn(http)
-
-lazy val serverTestSuite = Project("blaze-servertestsuite",
-  file("servertestsuite"),
-  settings = buildSettings ++ Seq(
-    libraryDependencies += asyncHttpClient,
-    libraryDependencies += scalacheck
-  )
-)
 
 /* Don't publish setting */
 val dontPublish = packagedArtifacts := Map.empty
@@ -116,13 +110,10 @@ lazy val mimaSettings = Seq(
 /* dependencies */
 lazy val dependencies = Seq(
   libraryDependencies += specs2 % "test",
-  libraryDependencies += specs2ScalaCheck % "test",
   libraryDependencies += logbackClassic % "test",
   libraryDependencies += log4s
 )
 
-lazy val specs2              = "org.specs2"                 %% "specs2-core"         % "3.8.6"
-lazy val specs2ScalaCheck    = "org.specs2"                 %% "specs2-scalacheck"   % specs2.revision
 lazy val http4sWebsocket     = "org.http4s"                 %% "http4s-websocket"    % "0.1.6"
 lazy val logbackClassic      = "ch.qos.logback"             %  "logback-classic"     % "1.1.3"
 lazy val log4s               = "org.log4s"                  %% "log4s"               % "1.3.3"
@@ -130,6 +121,8 @@ lazy val scalaXml =            "org.scala-lang.modules"     %% "scala-xml"      
 lazy val twitterHPACK        = "com.twitter"                %  "hpack"               % "v1.0.1"
 
 // Testing only dependencies
+lazy val specs2              = "org.specs2"                 %% "specs2-core"         % "3.8.6"
+lazy val specs2ScalaCheck    = "org.specs2"                 %% "specs2-scalacheck"   % specs2.revision
 lazy val asyncHttpClient     = "org.asynchttpclient"        %  "async-http-client"   % "2.0.24"
 lazy val scalacheck          = "org.scalacheck"             %% "scalacheck"          % "1.13.4"
 
