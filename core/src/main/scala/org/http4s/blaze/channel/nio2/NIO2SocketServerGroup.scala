@@ -88,9 +88,13 @@ class NIO2SocketServerGroup private(bufferSize: Int, group: AsynchronousChannelG
           val address = ch.getRemoteAddress().asInstanceOf[InetSocketAddress]
 
           if (!acceptConnection(address)) ch.close()
-          else pipeFactory(new NIO2SocketConnection(ch))
-                  .base(new ByteBufferHead(ch, bufferSize))
-                  .sendInboundCommand(Connected)
+          else {
+            // TODO: This is generally the smart move, but it should be configurable
+            ch.setOption[java.lang.Boolean](java.net.StandardSocketOptions.TCP_NODELAY, true)
+            pipeFactory(new NIO2SocketConnection(ch))
+              .base(new ByteBufferHead(ch, bufferSize))
+              .sendInboundCommand(Connected)
+          }
 
           listen(channel, pipeFactory)    // Continue the circle of life
         }

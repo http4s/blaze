@@ -6,7 +6,7 @@ import java.util.concurrent.atomic.AtomicReference
 
 import org.http4s.blaze.channel.ServerChannel
 import org.http4s.blaze.http.util.HeaderNames
-import org.http4s.blaze.http.{ResponseBuilder, _}
+import org.http4s.blaze.http._
 import org.http4s.blaze.pipeline.stages.monitors.IntervalConnectionMonitor
 import org.http4s.blaze.util.{BufferTools, Execution}
 
@@ -23,7 +23,7 @@ object ExampleService {
 
 
   def service(status: Option[IntervalConnectionMonitor], channel: Option[AtomicReference[ServerChannel]] = None)
-             (request: HttpRequest): Future[ResponseBuilder] = {
+             (request: HttpRequest): Future[RouteAction] = {
     if (request.method == "POST") {
       // Accumulate the body. I think this should be made easier to do
       request.body.accumulate().map { body =>

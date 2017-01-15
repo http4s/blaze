@@ -128,15 +128,10 @@ class Http2ServerStage(streamId: Int,
       .onComplete(renderResponse(method, _))(config.serviceExecutor)
   }
 
-  private def renderResponse(method: String, response: Try[ResponseBuilder]): Unit = response match {
-    case Success(HttpResponse(builder)) =>
+  private def renderResponse(method: String, response: Try[RouteAction]): Unit = response match {
+    case Success(builder) =>
       builder.handle(getWriter(method == "HEAD", _))
         .onComplete(onComplete)(Execution.directec)
-
-    case Success(t) =>
-      val e = new Exception(s"Unhandled message type: $t")
-      logger.error(e)("Message type not understoon")
-      shutdownWithCommand(Cmd.Error(e))
 
     case Failure(t) => shutdownWithCommand(Cmd.Error(t))
   }

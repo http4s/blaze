@@ -53,7 +53,7 @@ class HttpServerStage(service: HttpService, config: HttpServerConfig) extends Ta
       .flatMap(checkCloseService)(config.serviceExecutor)
       .recover { case RequestTimeoutException => newRequestTimeoutResponse() }  // handle request timeouts
       .onComplete {
-        case Success((HttpResponse(resp), requireClose)) =>
+        case Success((resp, requireClose)) =>
           codec.renderResponse(resp, requireClose).onComplete {
             case Success(HttpServerCodec.Reload) => dispatchLoop()  // continue the loop
             case Success(HttpServerCodec.Close) => sendOutboundCommand(Cmd.Disconnect) // not able to server another on this session
@@ -64,19 +64,16 @@ class HttpServerStage(service: HttpService, config: HttpServerConfig) extends Ta
               shutdownWithCommand(Cmd.Error(ex))
           }
 
-          // What to do about websocket responses...
-        case Success((WSResponseBuilder(resp), requireClose)) => ???
-
         case Failure(EOF) => /* NOOP */
         case Failure(ex) =>
           val resp = make5xx(ex)
-          codec.renderResponse(resp.action, forceClose = true).onComplete { _ =>
+          codec.renderResponse(resp, forceClose = true).onComplete { _ =>
             shutdownWithCommand(Cmd.Error(ex))
           }
       }
   }
 
-  private def make5xx(error: Throwable): HttpResponse = {
+  private def make5xx(error: Throwable): RouteAction = {
     logger.error(error)("Failed to service request. Sending 500 response.")
     RouteAction.String(500, "Internal Server Error", Nil, "Internal Server Error.")
   }
@@ -99,7 +96,7 @@ class HttpServerStage(service: HttpService, config: HttpServerConfig) extends Ta
   }
 
   // TODO: can this be shared with http2?
-  private def newRequestTimeoutResponse(): (ResponseBuilder, Boolean) = {
+  private def newRequestTimeoutResponse(): (RouteAction, Boolean) = {
     val msg = s"Request timed out after ${config.requestPreludeTimeout}"
     RouteAction.String(408, "Request Time-out", Nil, msg) -> true // force close
   }

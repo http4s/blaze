@@ -30,7 +30,7 @@ object RouteAction {
     */
   def Streaming(code: Int, status: String, headers: Headers)
                (body: => Future[ByteBuffer])
-               (implicit ec: ExecutionContext = Execution.trampoline): HttpResponse = HttpResponse(
+               (implicit ec: ExecutionContext = Execution.trampoline): RouteAction =
     new RouteAction {
       override def handle[T <: BodyWriter](responder: (HttpResponsePrelude) => T): Future[T#Finished] = {
         val writer = responder(HttpResponsePrelude(code, status, headers))
@@ -60,7 +60,6 @@ object RouteAction {
         p.future
       }
     }
-  )
 
   /** generate a HTTP response from a single `ByteBuffer`
     *
@@ -70,7 +69,7 @@ object RouteAction {
     * read-only views of it when writing to the socket, so the resulting responses
     * can be reused multiple times.
     */
-  def Buffer(code: Int, status: String, body: ByteBuffer, headers: Headers): HttpResponse = HttpResponse(
+  def Buffer(code: Int, status: String, body: ByteBuffer, headers: Headers): RouteAction =
     new RouteAction {
       override def handle[T <: BodyWriter](responder: (HttpResponsePrelude) => T): Future[T#Finished] = {
         val finalHeaders = (HeaderNames.ContentLength, body.remaining().toString) +: headers
@@ -80,35 +79,34 @@ object RouteAction {
         writer.write(body.asReadOnlyBuffer()).flatMap(_ => writer.close())(Execution.directec)
       }
     }
-  )
 
   /** generate a HTTP response from a String */
-  def String(code: Int, status: String, headers: Headers, body: String): HttpResponse =
+  def String(code: Int, status: String, headers: Headers, body: String): RouteAction =
     Buffer(code, status, StandardCharsets.UTF_8.encode(body), Utf8StringHeader +: headers)
 
   /** Generate a 200 OK HTTP response from an `Array[Byte]` */
-  def Ok(body: Array[Byte], headers: Headers = Nil): HttpResponse =
+  def Ok(body: Array[Byte], headers: Headers = Nil): RouteAction =
     Buffer(200, "OK", ByteBuffer.wrap(body), headers)
 
   /** Generate a 200 OK HTTP response from an `Array[Byte]` */
-  def Ok(body: Array[Byte]): HttpResponse = Ok(body, Nil)
+  def Ok(body: Array[Byte]): RouteAction = Ok(body, Nil)
 
   /** Generate a 200 OK HTTP response from a `String` */
-  def Ok(body: String, headers: Headers): HttpResponse =
+  def Ok(body: String, headers: Headers): RouteAction =
     Ok(body.getBytes(StandardCharsets.UTF_8), Utf8StringHeader +: headers)
 
   /** Generate a 200 OK HTTP response from a `String` */
-  def Ok(body: String): HttpResponse = Ok(body, Nil)
+  def Ok(body: String): RouteAction = Ok(body, Nil)
 
   /** Generate a 200 OK HTTP response from a `ByteBuffer` */
-  def Ok(body: ByteBuffer, headers: Headers): HttpResponse =
+  def Ok(body: ByteBuffer, headers: Headers): RouteAction =
     Buffer(200, "OK", body, headers)
 
   /** Generate a 200 OK HTTP response from a `ByteBuffer` */
-  def Ok(body: ByteBuffer): HttpResponse =
+  def Ok(body: ByteBuffer): RouteAction =
     Ok(body, Nil)
 
-  def EntityTooLarge(): HttpResponse =
+  def EntityTooLarge(): RouteAction =
     String(413, "Request Entity Too Large", Nil, s"Request Entity Too Large")
 
   private val Utf8StringHeader = "content-type" -> "text/plain; charset=utf-8"

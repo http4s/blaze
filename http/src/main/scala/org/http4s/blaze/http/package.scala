@@ -1,8 +1,5 @@
 package org.http4s.blaze
 
-import org.http4s.blaze.pipeline.LeafBuilder
-import org.http4s.websocket.WebsocketBits.WebSocketFrame
-
 import scala.concurrent.Future
 
 package object http {
@@ -12,7 +9,7 @@ package object http {
   type Method = String
 
   // The basic type that represents a HTTP service
-  type HttpService = HttpRequest => Future[ResponseBuilder]
+  type HttpService = HttpRequest => Future[RouteAction]
 
   /** Standard HTTP request
     *
@@ -32,18 +29,11 @@ package object http {
     */
   case class HttpResponsePrelude(code: Int, status: String, headers: Headers)
 
-  sealed trait ResponseBuilder
-
-  /** Simple HTTP response type
-    *
-    * @param action post routing response builder.
-    */
-  case class HttpResponse(action: RouteAction) extends ResponseBuilder
-
-  // TODO: yielding a raw stage is ugly. There should be some helpers.
-  /** Websocket response
-    *
-    * @param pipeline [[LeafBuilder]] which completes a websocket pipeline.
-    */
-  case class WSResponseBuilder(pipeline: LeafBuilder[WebSocketFrame]) extends ResponseBuilder
+//  sealed trait ResponseBuilder
+//
+//  /** Simple HTTP response type
+//    *
+//    * @param action post routing response builder.
+//    */
+//  case class HttpResponse(action: RouteAction) extends ResponseBuilder
 }
