@@ -38,13 +38,14 @@ lazy val examples = Project("blaze-examples",
       dontPublish,
       libraryDependencies += logbackClassic,
       libraryDependencies += alpn_boot,
+      fork := true, // necessary to add ALPN classes to boot classpath
 
       // Adds ALPN to the boot classpath for Http2 support
       javaOptions in run <++= (managedClasspath in Runtime) map { attList =>
         for {
           file <- attList.map(_.data)
           path = file.getAbsolutePath if path.contains("jetty.alpn")
-        } yield { println(path); "-Xbootclasspath/p:" + path}
+        } yield { println(s"Alpn patth: $path"); "-Xbootclasspath/p:" + path}
       }
     )
 ).dependsOn(http)
@@ -126,11 +127,11 @@ lazy val asyncHttpClient     = "org.asynchttpclient"        %  "async-http-clien
 
 
 // Needed for Http2 support until implemented in the JDK
-lazy val alpn_api            = "org.eclipse.jetty.alpn"     % "alpn-api"             % "1.1.2.v20150522"
+lazy val alpn_api            = "org.eclipse.jetty.alpn"     % "alpn-api"             % "1.1.3.v20160715"
 
 // Note that the alpn_boot version is JVM version specific. Check the docs if getting weird errors.
 // Also note that only java8 and above has the require cipher suite for http2.
-lazy val alpn_boot           = "org.mortbay.jetty.alpn"     % "alpn-boot"            % "8.1.7.v20160121"
+lazy val alpn_boot           = "org.mortbay.jetty.alpn"     % "alpn-boot"            % "8.1.9.v20160720"
 
 /* publishing */
 lazy val publishing = Seq(

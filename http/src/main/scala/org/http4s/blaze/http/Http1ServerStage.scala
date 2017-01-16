@@ -11,6 +11,16 @@ import org.http4s.blaze.pipeline.Command.EOF
 import scala.util.{Failure, Success}
 import scala.util.control.NoStackTrace
 
+/** Http1 Server tail stage
+  *
+  * [[TailStage]] capable of decoding requests, obtaining results from the [[HttpService]],
+  * rendering the response and, if possible, restarting to continue serving requests on the
+  * this connection.
+  *
+  * Keep-Alive is supported and managed automatically by this stage via the [[Http1ServerCodec]]
+  * which examines the http version, and `connection`, `content-length`, and `transfer-encoding`
+  * headers to determine if the connection can be reused for a subsequent dispatch.
+  */
 class Http1ServerStage(service: HttpService, config: HttpServerStageConfig) extends TailStage[ByteBuffer] {
   import Http1ServerStage._
 
@@ -22,7 +32,7 @@ class Http1ServerStage(service: HttpService, config: HttpServerStageConfig) exte
 
   /////////////////////////////////////////////////////////////////////////////////////////
 
-  // Will act as our loop
+  // On startup we begin the dispatch loop
   override def stageStartup() {
     logger.debug("Starting HttpStage")
     dispatchLoop()
@@ -66,16 +76,10 @@ class Http1ServerStage(service: HttpService, config: HttpServerStageConfig) exte
 
         case Failure(EOF) => /* NOOP */
         case Failure(ex) =>
-          val resp = make5xx(ex)
-          codec.renderResponse(resp, forceClose = true).onComplete { _ =>
-            shutdownWithCommand(Cmd.Error(ex))
-          }
+          logger.error(ex)("Failed to service request. Sending 500 response.")
+          codec.renderResponse(RouteAction.InternalServerError(), forceClose = true)
+            .onComplete(_ => shutdownWithCommand(Cmd.Error(ex)))
       }
-  }
-
-  private def make5xx(error: Throwable): RouteAction = {
-    logger.error(error)("Failed to service request. Sending 500 response.")
-    RouteAction.String(500, "Internal Server Error", Nil, "Internal Server Error.")
   }
 
   private def shutdownWithCommand(cmd: Cmd.OutboundCommand): Unit = {
@@ -86,19 +90,23 @@ class Http1ServerStage(service: HttpService, config: HttpServerStageConfig) exte
   // Determine if this request requires the connection be closed
   private def requestRequiresClose(request: HttpRequest): Boolean = {
     val connHeader = request.headers.find { case (k, _) => k.equalsIgnoreCase(HeaderNames.Connection) }
-    if (request.minorVersion == 0) connHeader match {
-      case Some((_,v)) => !v.equalsIgnoreCase("keep-alive")
-      case None => true
-    } else connHeader match {
-      case Some((_, v)) => v.equalsIgnoreCase("close")
-      case None => false
+    if (request.minorVersion == 0) {
+      connHeader match {
+        case Some((_,v)) => !v.equalsIgnoreCase("keep-alive")
+        case None => true
+      }
+    } else {
+      connHeader match {
+        case Some((_, v)) => v.equalsIgnoreCase("close")
+        case None => false
+      }
     }
   }
 
   // TODO: can this be shared with http2?
   private def newRequestTimeoutResponse(): (RouteAction, Boolean) = {
     val msg = s"Request timed out after ${config.requestPreludeTimeout}"
-    RouteAction.String(408, "Request Time-out", Nil, msg) -> true // force close
+    RouteAction.String(msg, 408, "Request Time-out", Nil) -> true // force close
   }
 
   override protected def stageShutdown(): Unit = {

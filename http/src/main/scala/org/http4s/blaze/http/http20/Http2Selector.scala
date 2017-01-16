@@ -6,12 +6,13 @@ import javax.net.ssl.SSLEngine
 import org.http4s.blaze.http._
 import org.http4s.blaze.http.http20.NodeMsg.Http2Msg
 import org.http4s.blaze.pipeline.{LeafBuilder, TailStage}
-import org.http4s.blaze.util.Execution._
+import org.log4s.getLogger
 
-import scala.concurrent.ExecutionContext
 import scala.concurrent.duration.Duration
 
 object Http2Selector {
+
+  private val logger = getLogger
 
   private val HTTP_1_1 = "http/1.1"
   private val H2       = "h2"
@@ -21,18 +22,19 @@ object Http2Selector {
            service: HttpService,
             config: HttpServerStageConfig): ALPNSelector = {
 
-    // TODO: http2 needs to start using the config object
     def builder(s: String): LeafBuilder[ByteBuffer] = s match {
-    case H2 | H2_14 => LeafBuilder(http2Stage(service, config))
-    case _          => LeafBuilder(http1xStage(service, config))
+      case H2 | H2_14 => LeafBuilder(http2Stage(service, config))
+      case _          => LeafBuilder(http1xStage(service, config))
     }
 
-    def selector(protocols: Seq[String]): String =
+    def selector(protocols: Seq[String]): String = {
+      logger.debug(s"Available protocols: $protocols")
       protocols.find {
         case H2    => true
         case H2_14 => true
         case _     => false
       } getOrElse(HTTP_1_1)
+    }
     
     new ALPNSelector(engine, selector, builder)
   }

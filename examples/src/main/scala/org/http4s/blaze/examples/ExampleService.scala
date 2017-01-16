@@ -18,14 +18,7 @@ object ExampleService {
 
   def service(status: Option[IntervalConnectionMonitor], channel: Option[AtomicReference[ServerChannel]] = None)
              (request: HttpRequest): Future[RouteAction] = {
-    if (request.method == "POST") {
-      // Accumulate the body. I think this should be made easier to do
-      request.body.accumulate().map { body =>
-        val bodyString = StandardCharsets.UTF_8.decode(body)
-        RouteAction.Ok(s"You sent: $bodyString")
-      }
-    }
-    else Future.successful {
+    Future.successful {
       request.uri match {
         case "/plaintext" => RouteAction.Ok(helloWorld, (HeaderNames.ContentType -> "text/plain")::Nil)
         case "/ping" => RouteAction.Ok("pong")
@@ -51,9 +44,10 @@ object ExampleService {
           channel.flatMap(a => Option(a.get())).foreach(_.close())
           RouteAction.Ok("Killing server.")
 
-        case "/echo" =>
+        case "/echo" if request.method == "POST" =>
           val hs = request.headers.collect {
-            case h@(k, _) if k.equalsIgnoreCase("Content-type") => h
+            case h@(k, _) if k.equalsIgnoreCase("content-type") => h
+            case h@(k, _) if k.equalsIgnoreCase("content-length") => h
           }
 
           RouteAction.Streaming(200, "OK", hs) {

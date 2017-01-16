@@ -11,7 +11,7 @@ import org.log4s.getLogger
 
 import scala.collection.mutable.{ArrayBuffer, ListBuffer}
 import scala.concurrent.{Future, Promise}
-import scala.util.{Failure, Success}
+import scala.util.{Failure, Success, Try}
 
 /**
   * Parses messages from the pipeline.
@@ -34,13 +34,13 @@ private final class Http1ServerCodec(maxNonBodyBytes: Int, pipeline: TailStage[B
   private[this] val lock = parser
 
   def readyForNextRequest(): Boolean = lock.synchronized {
-    parser.isReset()
+    parser.isStart()
   }
 
   // TODO: how may of these locks are necessary? The only time things may be happening concurrently
   //       is when users are mishandling the body encoder.
   def getRequest(): Future[HttpRequest] = lock.synchronized {
-    if (parser.isReset()) {
+    if (parser.isStart()) {
       try {
         val req = maybeGetRequest()
         if (req != null) Future.successful(req)
@@ -75,7 +75,11 @@ private final class Http1ServerCodec(maxNonBodyBytes: Int, pipeline: TailStage[B
     val closing = forceClose || !HeaderTools.isKeepAlive(connection, minorVersion)
 
     if (closing) sb.append("connection: close\r\n")
-    else if (minorVersion == 0) sb.append("connection: keep-alive\r\n")
+    else if (minorVersion == 0 && sh.contentLength.isDefined && Try(sh.contentLength.get.toLong).isSuccess) {
+      // It is up to the user of the codec to ensure that this http/1.0 request has a keep-alive header
+      // and should signal that through `forceClose`.
+      sb.append("connection: keep-alive\r\n")
+    }
 
     sh match {
       case SpecialHeaders(Some(te), _, _) if te.equalsIgnoreCase("chunked") =>
@@ -250,7 +254,6 @@ private final class Http1ServerCodec(maxNonBodyBytes: Int, pipeline: TailStage[B
                    s"$len, attempted to send: ${written + bufSize}. Truncating."
 
         val ex = new IllegalStateException(msg)
-
         logger.error(ex)(msg)
         Future.failed(ex)
       } else if (cache.isEmpty && bufSize > InternalWriter.bufferLimit) {
@@ -295,7 +298,9 @@ private final class Http1ServerCodec(maxNonBodyBytes: Int, pipeline: TailStage[B
       private var prelude: StringBuilder,
       maxCacheSize: Int) extends InternalWriter {
 
-    prelude.append("transfer-encoding: chunked\r\n\r\n")
+    // The transfer-encoding header will be the last header, and before each write,
+    // we will append a '\r\n{length}\r\n
+    prelude.append("transfer-encoding: chunked\r\n")
     private val cache = new ListBuffer[ByteBuffer]
     private var cacheSize = 0
 
@@ -305,7 +310,7 @@ private final class Http1ServerCodec(maxNonBodyBytes: Int, pipeline: TailStage[B
         cache += buffer
         cacheSize += buffer.remaining()
 
-        if (cacheSize > maxCacheSize) flush()
+        if (cacheSize > maxCacheSize) doFlush()
         else InternalWriter.cachedSuccess
       }
     }

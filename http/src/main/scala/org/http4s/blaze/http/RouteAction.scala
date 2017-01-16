@@ -81,7 +81,7 @@ object RouteAction {
     }
 
   /** generate a HTTP response from a String */
-  def String(code: Int, status: String, headers: Headers, body: String): RouteAction =
+  def String(body: String, code: Int, status: String, headers: Headers): RouteAction =
     Buffer(code, status, StandardCharsets.UTF_8.encode(body), Utf8StringHeader +: headers)
 
   /** Generate a 200 OK HTTP response from an `Array[Byte]` */
@@ -106,8 +106,13 @@ object RouteAction {
   def Ok(body: ByteBuffer): RouteAction =
     Ok(body, Nil)
 
+  /** Generate a 413 'Entity Too Large' response */
   def EntityTooLarge(): RouteAction =
-    String(413, "Request Entity Too Large", Nil, s"Request Entity Too Large")
+    String(s"Request Entity Too Large", 413, "Request Entity Too Large", Nil)
+
+  /** Generate a 500 'Internal Server Error' with the specified message */
+  def InternalServerError(msg: String = "Internal Server Error", headers: Headers = Nil): RouteAction =
+    String(msg, 500, "Internal Server Error", headers)
 
   private val Utf8StringHeader = "content-type" -> "text/plain; charset=utf-8"
 }

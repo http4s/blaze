@@ -4,7 +4,7 @@ import org.http4s.blaze.http.{HttpService, RouteAction}
 import org.http4s.blaze.util.Execution
 
 import scala.concurrent.duration.Duration
-import scala.util.{Success, Try}
+import scala.util.Success
 
 /**
   * Create a new service that will race against a timer to resolve with a default value
@@ -20,7 +20,7 @@ private[blaze] object ServiceTimeoutFilter {
     apply(timeout, newServiceTimeoutResponse(timeout))(service)
 
   private def newServiceTimeoutResponse(timeout: Duration): RouteAction = {
-    val msg = s"Request timed out after $timeout"
-    RouteAction.String(500, "Internal Timeout", List(HeaderNames.Connection -> "close"), msg)
+    val msg = s"Internal Timeout.\nRequest timed out after $timeout"
+    RouteAction.InternalServerError(msg, List(HeaderNames.Connection -> "close"))
   }
 }

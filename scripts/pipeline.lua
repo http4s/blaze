@@ -4,7 +4,7 @@ init = function(args)
 
    local r = {}
    for i=1,depth do
-      r[i] = wrk.format(nil, "/")
+      r[i] = wrk.format(nil, "/plaintext")
    end
    req = table.concat(r)
 end
