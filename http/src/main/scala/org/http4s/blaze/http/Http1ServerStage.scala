@@ -11,14 +11,14 @@ import org.http4s.blaze.pipeline.Command.EOF
 import scala.util.{Failure, Success}
 import scala.util.control.NoStackTrace
 
-class HttpServerStage(service: HttpService, config: HttpServerStageConfig) extends TailStage[ByteBuffer] {
-  import HttpServerStage._
+class Http1ServerStage(service: HttpService, config: HttpServerStageConfig) extends TailStage[ByteBuffer] {
+  import Http1ServerStage._
 
   private implicit def implicitEC = Execution.trampoline
   val name = "HTTP/1.1_Stage"
 
   // The codec is responsible for reading data from `this` TailStage.
-  private[this] val codec = new  HttpServerCodec(config.maxNonBodyBytes, this)
+  private[this] val codec = new  Http1ServerCodec(config.maxNonBodyBytes, this)
 
   /////////////////////////////////////////////////////////////////////////////////////////
 
@@ -55,8 +55,8 @@ class HttpServerStage(service: HttpService, config: HttpServerStageConfig) exten
       .onComplete {
         case Success((resp, requireClose)) =>
           codec.renderResponse(resp, requireClose).onComplete {
-            case Success(HttpServerCodec.Reload) => dispatchLoop()  // continue the loop
-            case Success(HttpServerCodec.Close) => sendOutboundCommand(Cmd.Disconnect) // not able to server another on this session
+            case Success(Http1ServerCodec.Reload) => dispatchLoop()  // continue the loop
+            case Success(Http1ServerCodec.Close) => sendOutboundCommand(Cmd.Disconnect) // not able to server another on this session
 
             case Failure(EOF) => /* NOOP socket should now be closed */
             case Failure(ex) =>
@@ -107,7 +107,7 @@ class HttpServerStage(service: HttpService, config: HttpServerStageConfig) exten
   }
 }
 
-private object HttpServerStage {
+private object Http1ServerStage {
   object RequestTimeoutException extends Exception with NoStackTrace
   val TryRequestTimeoutExec = Failure(RequestTimeoutException)
 }

@@ -38,7 +38,7 @@ object Http2Selector {
   }
 
   private def http1xStage(service: HttpService, config: HttpServerStageConfig): TailStage[ByteBuffer] =
-    new HttpServerStage(service, config)
+    new Http1ServerStage(service, config)
 
   private def http2Stage(service: HttpService, config: HttpServerStageConfig): TailStage[ByteBuffer] = {
 

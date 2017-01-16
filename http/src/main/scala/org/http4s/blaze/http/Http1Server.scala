@@ -25,7 +25,7 @@ object Http1Server {
       if (useNio2) NIO2SocketServerGroup.fixedGroup(workerThreads = workerThreads)
       else NIO1SocketServerGroup.fixedGroup(workerThreads = workerThreads)
 
-    val builder = { ch: SocketConnection => LeafBuilder(new HttpServerStage(service(ch), config)) }
+    val builder = { ch: SocketConnection => LeafBuilder(new Http1ServerStage(service(ch), config)) }
 
     val channel = group.bind(address, builder)
     if (channel.isFailure) group.closeGroup()

@@ -1,6 +1,5 @@
 package org.http4s.blaze.http
 
-import java.io.IOException
 import java.nio.{ByteBuffer, CharBuffer}
 import java.nio.charset.StandardCharsets
 
@@ -12,7 +11,7 @@ import org.log4s.getLogger
 
 import scala.collection.mutable.{ArrayBuffer, ListBuffer}
 import scala.concurrent.{Future, Promise}
-import scala.util.{Failure, Success, Try}
+import scala.util.{Failure, Success}
 
 /**
   * Parses messages from the pipeline.
@@ -22,13 +21,14 @@ import scala.util.{Failure, Success, Try}
   * forward errors that occur during read and write operations by way
   * of the return values.
   */
-private final class HttpServerCodec(maxNonBodyBytes: Int, pipeline: TailStage[ByteBuffer]) {
-  import HttpServerCodec._
+private final class Http1ServerCodec(maxNonBodyBytes: Int, pipeline: TailStage[ByteBuffer]) {
+  import Http1ServerCodec._
 
   private[this] val parser = new BlazeServerParser[(String, String)](maxNonBodyBytes)
   private[this] var buffered: ByteBuffer = BufferTools.emptyBuffer
 
-  // Counter to allow certain machinery to identify the message exchange we are in
+  // Counter to ensure that the request body is not stored and
+  // used to pick data from the pipeline during a later request
   private[this] var requestId: Long = 0L
 
   private[this] val lock = parser
@@ -94,31 +94,27 @@ private final class HttpServerCodec(maxNonBodyBytes: Int, pipeline: TailStage[By
   }
 
   private def getBody(): MessageBody = {
-    if (parser.contentComplete()) {
-      MessageBody.emptyMessageBody
-    }
-    else {
-      new MessageBody {
-        // We store the request that this body is associated with. This is
-        // to avoid the situation where a user stores the reader and attempts
-        // to use it later, resulting in a corrupt HTTP protocol
-        private val thisRequest = requestId
+    if (parser.contentComplete()) MessageBody.emptyMessageBody
+    else new MessageBody {
+      // We store the request that this body is associated with. This is
+      // to avoid the situation where a user stores the reader and attempts
+      // to use it later, resulting in a corrupt HTTP protocol
+      private val thisRequest = requestId
 
-        override def apply(): Future[ByteBuffer] = lock.synchronized {
-          if (thisRequest != requestId || parser.contentComplete()) {
-            BufferTools.emptyFutureBuffer
-          }
+      override def apply(): Future[ByteBuffer] = lock.synchronized {
+        if (thisRequest != requestId || parser.contentComplete()) {
+          BufferTools.emptyFutureBuffer
+        }
+        else {
+          val buf = parser.parseBody(buffered)
+          if (buf.hasRemaining) Future.successful(buf)
+          else if (parser.contentComplete()) BufferTools.emptyFutureBuffer
           else {
-            val buf = parser.parseBody(buffered)
-            if (buf.hasRemaining) Future.successful(buf)
-            else if (parser.contentComplete()) BufferTools.emptyFutureBuffer
-            else {
-              // need more data
-              pipeline.channelRead().flatMap(buffer => lock.synchronized {
-                buffered = BufferTools.concatBuffers(buffered, buffer)
-                apply()
-              })(Execution.trampoline)
-            }
+            // need more data
+            pipeline.channelRead().flatMap(buffer => lock.synchronized {
+              buffered = BufferTools.concatBuffers(buffered, buffer)
+              apply()
+            })(Execution.trampoline)
           }
         }
       }
@@ -129,7 +125,7 @@ private final class HttpServerCodec(maxNonBodyBytes: Int, pipeline: TailStage[By
   private[this] def readAndGetRequest(p: Promise[HttpRequest]): Unit = {
     // we need to get more data
     pipeline.channelRead().onComplete {
-      case Success(buff)    =>
+      case Success(buff) =>
         lock.synchronized {
           try {
             buffered = BufferTools.concatBuffers(buffered, buff)
@@ -157,13 +153,13 @@ private final class HttpServerCodec(maxNonBodyBytes: Int, pipeline: TailStage[By
   // WARNING: may return `null` for performance reasons.
   // WARNING: must be called from within a `lock.synchronized` block
   private[this] def maybeGetRequest(): HttpRequest = {
-      if (parser.parsePrelude(buffered)) {
-        val prelude = parser.getRequestPrelude()
-        val body = getBody()
-        HttpRequest(prelude.method, prelude.uri, prelude.majorVersion, prelude.minorVersion, prelude.headers.toSeq, body)
-      } else {
-        null
-      }
+    if (parser.parsePrelude(buffered)) {
+      val prelude = parser.getRequestPrelude()
+      val body = getBody()
+      HttpRequest(prelude.method, prelude.uri, prelude.majorVersion, prelude.minorVersion, prelude.headers.toSeq, body)
+    } else {
+      null
+    }
   }
 
   def shutdown(): Unit = lock.synchronized {
@@ -176,6 +172,7 @@ private final class HttpServerCodec(maxNonBodyBytes: Int, pipeline: TailStage[By
     final override type Finished = RouteResult
 
     private[this] var closed = false
+    protected val lock: Object = this
 
     protected def doWrite(buffer: ByteBuffer): Future[Unit]
 
@@ -218,15 +215,19 @@ private final class HttpServerCodec(maxNonBodyBytes: Int, pipeline: TailStage[By
       if (sb == null) InternalWriter.cachedSuccess
       else doWrite(BufferTools.emptyBuffer)
 
-    override def doClose(): Future[RouteResult] = {
+    // This writer will always request that the connection be closed
+    override def doClose(): Future[RouteResult] =
       if (sb == null) Future.successful(Close)
       else doFlush().map(_ => Close)(Execution.directec)
-    }
   }
 
-  private class FixedLengthBodyWriter(forceClose: Boolean, sb: StringBuilder, len: Long) extends InternalWriter {
-    private var cache = new ArrayBuffer[ByteBuffer](3)
-    private var cachedBytes: Int = _
+  private class FixedLengthBodyWriter(
+      forceClose: Boolean,
+      sb: StringBuilder,
+      len: Long) extends InternalWriter {
+
+    private var cache = new ArrayBuffer[ByteBuffer](4)
+    private var cachedBytes: Int = 0
     private var closed = false
     private var written: Long = 0L
 
@@ -242,28 +243,22 @@ private final class HttpServerCodec(maxNonBodyBytes: Int, pipeline: TailStage[By
 
       if (bufSize == 0) InternalWriter.cachedSuccess
       else if (written + bufSize > len) {
-        // need to truncate and log an error.
-        val nextSize = len - written
-        written = len
-        buffer.limit(buffer.position() + nextSize.toInt)
-        if (buffer.hasRemaining) {
-          cache += buffer
-          cachedBytes += buffer.remaining()
-        }
-        logger.error(
-          s"StaticBodyWriter: Body overflow detected. Expected bytes: $len, attempted " +
-            s"to send: ${written + bufSize}. Truncating."
-        )
+        // This is a protocol error. We try to signal that something is wrong
+        // to the client by _not_ sending the data and hopefully resulting in
+        // some form of error on their end. HTTP/1.x sucks.
+        val msg =  s"StaticBodyWriter: Body overflow detected. Expected bytes: " +
+                   s"$len, attempted to send: ${written + bufSize}. Truncating."
 
-        InternalWriter.cachedSuccess
-      }
-      else if (cache.isEmpty && bufSize > InternalWriter.bufferLimit) {
+        val ex = new IllegalStateException(msg)
+
+        logger.error(ex)(msg)
+        Future.failed(ex)
+      } else if (cache.isEmpty && bufSize > InternalWriter.bufferLimit) {
         // just write the buffer if it alone fills the cache
         assert(cachedBytes == 0, "Invalid cached bytes state")
         written += bufSize
         pipeline.channelWrite(buffer)
-      }
-      else {
+      } else {
         cache += buffer
         written += bufSize
         cachedBytes += bufSize
@@ -286,9 +281,7 @@ private final class HttpServerCodec(maxNonBodyBytes: Int, pipeline: TailStage[By
 
     override def doClose(): Future[RouteResult] = {
       logger.debug("closed")
-      if (cache.nonEmpty) doFlush().map( _ => lock.synchronized {
-        selectComplete(forceClose)
-      })(Execution.directec)
+      if (cache.nonEmpty) doFlush().map( _ => selectComplete(forceClose))(Execution.directec)
       else {
         closed = true
         Future.successful(selectComplete(forceClose))
@@ -300,12 +293,10 @@ private final class HttpServerCodec(maxNonBodyBytes: Int, pipeline: TailStage[By
   private class ChunkedBodyWriter(
       forceClose: Boolean,
       private var prelude: StringBuilder,
-      maxCacheSize: Int
-  ) extends InternalWriter {
+      maxCacheSize: Int) extends InternalWriter {
+
     prelude.append("transfer-encoding: chunked\r\n\r\n")
-
     private val cache = new ListBuffer[ByteBuffer]
-
     private var cacheSize = 0
 
     override def doWrite(buffer: ByteBuffer): Future[Unit] = {
@@ -345,13 +336,8 @@ private final class HttpServerCodec(maxNonBodyBytes: Int, pipeline: TailStage[By
     }
 
     override def doClose(): Future[RouteResult] = {
-      flushCache(true).map( _ => lock.synchronized {
-        if (forceClose || !parser.contentComplete()) Close
-        else {
-          parser.reset()
-          Reload
-        }
-      })(Execution.directec)
+      flushCache(true)
+        .map( _ => selectComplete(forceClose))(Execution.directec)
     }
 
     private def lengthBuffer(): ByteBuffer = {
@@ -368,10 +354,13 @@ private final class HttpServerCodec(maxNonBodyBytes: Int, pipeline: TailStage[By
     * falls back to a [[ChunkedBodyWriter]]. If the buffer is not exceeded, the entire
     * body is written as a single chunk using standard encoding.
     */
-  private class SelectingWriter(forceClose: Boolean, minor: Int, sb: StringBuilder) extends InternalWriter {
+  private class SelectingWriter(
+      forceClose: Boolean,
+      minor: Int,
+      sb: StringBuilder) extends InternalWriter {
+
     private val cache = new ListBuffer[ByteBuffer]
     private var cacheSize = 0
-
     private var underlying: InternalWriter = null
 
     override def doWrite(buffer: ByteBuffer): Future[Unit] = {
@@ -396,7 +385,7 @@ private final class HttpServerCodec(maxNonBodyBytes: Int, pipeline: TailStage[By
       }
     }
 
-    override def doClose(): Future[HttpServerCodec.RouteResult] = {
+    override def doClose(): Future[Http1ServerCodec.RouteResult] = {
       if (underlying != null) underlying.close()
       else {
         // write everything we have as a fixed length body
@@ -405,9 +394,8 @@ private final class HttpServerCodec(maxNonBodyBytes: Int, pipeline: TailStage[By
         sb.append("content-length: ").append(cacheSize).append("\r\n\r\n")
         val prelude = StandardCharsets.US_ASCII.encode(CharBuffer.wrap(sb))
 
-        pipeline.channelWrite(prelude::buffs).map(_ => lock.synchronized {
-          selectComplete(forceClose)
-        })(Execution.directec)
+        pipeline.channelWrite(prelude::buffs)
+          .map(_ => selectComplete(forceClose))(Execution.directec)
       }
     }
 
@@ -427,7 +415,7 @@ private final class HttpServerCodec(maxNonBodyBytes: Int, pipeline: TailStage[By
 
   // Upon completion of rendering the HTTP response we need to determine if we
   // are going to continue using this session (socket).
-  private[this] def selectComplete(forceClose: Boolean): RouteResult = {
+  private[this] def selectComplete(forceClose: Boolean): RouteResult = lock.synchronized {
     // TODO: what should we do about the trailer headers?
     if (forceClose || !parser.contentComplete() || parser.inChunkedHeaders()) Close
     else {
@@ -438,7 +426,7 @@ private final class HttpServerCodec(maxNonBodyBytes: Int, pipeline: TailStage[By
   }
 }
 
-private object HttpServerCodec {
+private object Http1ServerCodec {
   private val logger = getLogger
 
   private val CRLFBytes = "\r\n".getBytes(StandardCharsets.US_ASCII)
