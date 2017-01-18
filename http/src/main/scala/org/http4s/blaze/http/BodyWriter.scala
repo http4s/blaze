@@ -3,8 +3,11 @@ package org.http4s.blaze.http
 import java.nio.ByteBuffer
 import scala.concurrent.Future
 
-/** Output pipe for writing http responses */
-abstract class BodyWriter private[http] {
+/** Output pipe for writing http responses
+  *
+  * This is, more or less, an asynchronous `OutputStream`
+  */
+trait BodyWriter {
 
   /** Type of value returned upon closing of the `BodyWriter`
     *
