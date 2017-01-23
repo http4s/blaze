@@ -13,9 +13,12 @@ lazy val core = Project("blaze-core",
 lazy val http = Project("blaze-http",
   file("http"),
   settings = publishing ++ mimaSettings ++ dependencies ++ Seq(
-    libraryDependencies ++= Seq(http4sWebsocket,
+    libraryDependencies ++= Seq(
+      http4sWebsocket,
       twitterHPACK,
-      alpn_api),
+      alpn_api,
+      asyncHttpClient % "test"
+    ),
     libraryDependencies ++= {
       VersionNumber(scalaBinaryVersion.value).numbers match {
         case Seq(2, 10) => Seq.empty
@@ -23,7 +26,9 @@ lazy val http = Project("blaze-http",
       }
     }
   )
-).dependsOn(core % "test->test;compile->compile")
+).dependsOn(
+  core % "test->test;compile->compile"
+)
 
 lazy val examples = Project("blaze-examples",
   file("examples"),
@@ -33,13 +38,14 @@ lazy val examples = Project("blaze-examples",
       dontPublish,
       libraryDependencies += logbackClassic,
       libraryDependencies += alpn_boot,
+      fork := true, // necessary to add ALPN classes to boot classpath
 
       // Adds ALPN to the boot classpath for Http2 support
       javaOptions in run <++= (managedClasspath in Runtime) map { attList =>
         for {
           file <- attList.map(_.data)
           path = file.getAbsolutePath if path.contains("jetty.alpn")
-        } yield { println(path); "-Xbootclasspath/p:" + path}
+        } yield { println(s"Alpn patth: $path"); "-Xbootclasspath/p:" + path}
       }
     )
 ).dependsOn(http)
@@ -109,20 +115,23 @@ lazy val dependencies = Seq(
   libraryDependencies += log4s
 )
 
-lazy val specs2              = "org.specs2"                 %% "specs2-core"         % "3.8.6"
 lazy val http4sWebsocket     = "org.http4s"                 %% "http4s-websocket"    % "0.1.6"
 lazy val logbackClassic      = "ch.qos.logback"             %  "logback-classic"     % "1.1.3"
 lazy val log4s               = "org.log4s"                  %% "log4s"               % "1.3.3"
 lazy val scalaXml =            "org.scala-lang.modules"     %% "scala-xml"           % "1.0.5"
 lazy val twitterHPACK        = "com.twitter"                %  "hpack"               % "v1.0.1"
 
+// Testing only dependencies
+lazy val specs2              = "org.specs2"                 %% "specs2-core"         % "3.8.6"
+lazy val asyncHttpClient     = "org.asynchttpclient"        %  "async-http-client"   % "2.0.24"
+
 
 // Needed for Http2 support until implemented in the JDK
-lazy val alpn_api            = "org.eclipse.jetty.alpn"     % "alpn-api"             % "1.1.2.v20150522"
+lazy val alpn_api            = "org.eclipse.jetty.alpn"     % "alpn-api"             % "1.1.3.v20160715"
 
 // Note that the alpn_boot version is JVM version specific. Check the docs if getting weird errors.
 // Also note that only java8 and above has the require cipher suite for http2.
-lazy val alpn_boot           = "org.mortbay.jetty.alpn"     % "alpn-boot"            % "8.1.7.v20160121"
+lazy val alpn_boot           = "org.mortbay.jetty.alpn"     % "alpn-boot"            % "8.1.9.v20160720"
 
 /* publishing */
 lazy val publishing = Seq(

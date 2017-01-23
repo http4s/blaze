@@ -1,5 +1,7 @@
 package org.http4s.blaze.http.http20
 
+import org.http4s.blaze.http.util.HeaderNames
+
 import scala.annotation.tailrec
 import scala.collection.BitSet
 
@@ -13,9 +15,9 @@ object Http2StageTools {
 
   // Response pseudo header
   val Status = ":status"
-  val Connection = "connection"
   val TE = "te"
-  val ContentLength = "content-length"
+  val Connection = HeaderNames.Connection
+  val ContentLength = HeaderNames.ContentLength
 
   /** Check of the header name is a valid http2 header name.
     * Pseudo headers are considered invalid and should be screened before hand.
