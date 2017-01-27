@@ -111,6 +111,7 @@ lazy val mimaSettings = Seq(
 /* dependencies */
 lazy val dependencies = Seq(
   libraryDependencies += specs2 % "test",
+  libraryDependencies += specs2Mock % "test",
   libraryDependencies += logbackClassic % "test",
   libraryDependencies += log4s
 )
@@ -123,6 +124,7 @@ lazy val twitterHPACK        = "com.twitter"                %  "hpack"          
 
 // Testing only dependencies
 lazy val specs2              = "org.specs2"                 %% "specs2-core"         % "3.8.6"
+lazy val specs2Mock          = "org.specs2"                 %% "specs2-mock"         % specs2.revision
 lazy val asyncHttpClient     = "org.asynchttpclient"        %  "async-http-client"   % "2.0.24"
 
 

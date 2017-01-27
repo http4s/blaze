@@ -14,8 +14,18 @@ import scala.util.control.NonFatal
 
 
 object NIO2SocketServerGroup {
-  
-  def fixedGroup(workerThreads: Int = defaultPoolSize, bufferSize: Int = 8*1024): NIO2SocketServerGroup = {
+
+  /** Create a new fixed size NIO2 SocketServerGroup
+    *
+    * @param workerThreads number of worker threads for the new group
+    * @param bufferSize buffer size use for IO operations
+    * @param channelOptions options to apply to the client connections
+    */
+  def fixedGroup(
+    workerThreads: Int = defaultPoolSize,
+    bufferSize: Int = DefaultBufferSize,
+    channelOptions: ChannelOptions = ChannelOptions.DefaultOptions
+  ): NIO2SocketServerGroup = {
     val factory = new ThreadFactory {
       val i = new AtomicInteger(0)
       override def newThread(r: Runnable): Thread = {
@@ -26,14 +36,28 @@ object NIO2SocketServerGroup {
     }
     
     val group = AsynchronousChannelGroup.withFixedThreadPool(workerThreads, factory)
-    apply(bufferSize, Some(group))
+    apply(bufferSize, Some(group), channelOptions)
   }
-  
-  def apply(bufferSize: Int = 8*1024, group: Option[AsynchronousChannelGroup] = None): NIO2SocketServerGroup =
-    new NIO2SocketServerGroup(bufferSize, group.orNull)
+
+  /** Create a new NIO2 SocketServerGroup
+    *
+    * @param bufferSize buffer size use for IO operations
+    * @param group optional `AsynchronousChannelGroup`, uses the system default if `None`
+    * @param channelOptions options to apply to the client connections
+    */
+  def apply(
+    bufferSize: Int = 8*1024,
+    group: Option[AsynchronousChannelGroup] = None,
+    channelOptions: ChannelOptions = ChannelOptions.DefaultOptions
+  ): NIO2SocketServerGroup =
+    new NIO2SocketServerGroup(bufferSize, group.orNull, channelOptions)
 }
 
-class NIO2SocketServerGroup private(bufferSize: Int, group: AsynchronousChannelGroup) extends ServerChannelGroup {
+final  class NIO2SocketServerGroup private(
+    bufferSize: Int,
+    group: AsynchronousChannelGroup,
+    channelOptions: ChannelOptions)
+  extends ServerChannelGroup {
 
   /** Closes the group along with all current connections.
     *
@@ -57,11 +81,11 @@ class NIO2SocketServerGroup private(bufferSize: Int, group: AsynchronousChannelG
     }
   }
 
-
-  private class NIO2ServerChannel(val socketAddress: InetSocketAddress,
-                                  ch: AsynchronousServerSocketChannel,
-                                  service: BufferPipelineBuilder) extends ServerChannel
-  {
+private final class NIO2ServerChannel(
+    val socketAddress: InetSocketAddress,
+    ch: AsynchronousServerSocketChannel,
+    service: BufferPipelineBuilder)
+  extends ServerChannel {
 
     override protected def closeChannel(): Unit =
       if (ch.isOpen()) {
@@ -88,26 +112,25 @@ class NIO2SocketServerGroup private(bufferSize: Int, group: AsynchronousChannelG
           val address = ch.getRemoteAddress().asInstanceOf[InetSocketAddress]
 
           if (!acceptConnection(address)) ch.close()
-          else pipeFactory(new NIO2SocketConnection(ch))
-                  .base(new ByteBufferHead(ch, bufferSize))
-                  .sendInboundCommand(Connected)
+          else {
+            channelOptions.applyToChannel(ch)
+            pipeFactory(new NIO2SocketConnection(ch))
+              .base(new ByteBufferHead(ch, bufferSize))
+              .sendInboundCommand(Connected)
+          }
 
-          listen(channel, pipeFactory)    // Continue the circle of life
+          listen(channel, pipeFactory) // Continue the circle of life
         }
 
         override def failed(exc: Throwable, attachment: Null): Unit = {
           exc match {
-            case _: AsynchronousCloseException                                                  => normalClose()
-            case _: ClosedChannelException                                                      => normalClose()
-            case _: ShutdownChannelGroupException                                               => normalClose()
-
-            case NonFatal(e) =>
-              logger.error(e)(s"Error accepting connection on address $socketAddress")
-
+            case _: AsynchronousCloseException => normalClose()
+            case _: ClosedChannelException => normalClose()
+            case _: ShutdownChannelGroupException => normalClose()
+            case _ =>
+              logger.error(exc)(s"Error accepting connection on address $socketAddress")
               // If the server channel cannot go on, disconnect it.
-              if (!channel.isOpen()) errorClose(e)
-
-            case e: Throwable                                                                   => errorClose(e)
+              if (!channel.isOpen()) errorClose(exc)
           }
         }
       })
