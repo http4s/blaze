@@ -22,15 +22,23 @@ import scala.util.control.NonFatal
 object NIO1SocketServerGroup {
 
   /** Default size of buffer to use in a [[SelectorLoop]] */
-  val defaultBufferSize: Int = 64*1024
+  private val DefaultBufferSize: Int = 64*1024
 
-  def apply(pool: SelectorLoopPool): NIO1SocketServerGroup =
-    new NIO1SocketServerGroup(pool)
+  /** Create a new [[NIO1SocketServerGroup]] from the [[SelectorLoopPool]]. */
+  def apply(
+    pool: SelectorLoopPool,
+    channelOptions: ChannelOptions = ChannelOptions.DefaultOptions
+  ): NIO1SocketServerGroup =
+    new NIO1SocketServerGroup(pool, channelOptions)
 
   /** Create a new [[NIO1SocketServerGroup]] with a fresh [[FixedSelectorPool]] */
-  def fixedGroup(workerThreads: Int = defaultPoolSize, bufferSize: Int = defaultBufferSize): NIO1SocketServerGroup = {
+  def fixedGroup(
+    workerThreads: Int = defaultPoolSize,
+    bufferSize: Int = DefaultBufferSize,
+    channelOptions: ChannelOptions = ChannelOptions.DefaultOptions
+  ): NIO1SocketServerGroup = {
     val pool = new FixedSelectorPool(workerThreads, bufferSize)
-    new NIO1SocketServerGroup(pool)
+    apply(pool, channelOptions)
   }
 }
 
@@ -40,7 +48,9 @@ object NIO1SocketServerGroup {
   *            for shutting it down. Shutting down the pool after giving it to this group will result
   *            in undefined behavior.
   */
-class NIO1SocketServerGroup(pool: SelectorLoopPool) extends ServerChannelGroup {
+final class NIO1SocketServerGroup private(
+    pool: SelectorLoopPool,
+    channelOptions: ChannelOptions) extends ServerChannelGroup {
   private[this] val logger = getLogger
 
   @volatile private var isClosed = false
@@ -59,7 +69,7 @@ class NIO1SocketServerGroup(pool: SelectorLoopPool) extends ServerChannelGroup {
 
   /** Create a [[ServerChannel]] that will serve the services on the requisite sockets */
   override def bind(address: InetSocketAddress, service: BufferPipelineBuilder): Try[ServerChannel] = {
-    Try{
+    Try {
       val ch = ServerSocketChannel.open().bind(address)
       val serverChannel = new NIO1ServerChannel(ch, service)
       t.listenOnChannel(serverChannel)
@@ -125,7 +135,7 @@ class NIO1SocketServerGroup(pool: SelectorLoopPool) extends ServerChannelGroup {
 
               // check to see if we want to keep this connection
               if (acceptConnection(address)) {
-                clientChannel.setOption[java.lang.Boolean](java.net.StandardSocketOptions.TCP_NODELAY, true)
+                channelOptions.applyToChannel(clientChannel)
                 loop.initChannel(service, clientChannel, key => new SocketChannelHead(clientChannel, loop, key))
               }
               else clientChannel.close()
