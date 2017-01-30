@@ -386,6 +386,7 @@ public abstract class BodyAndHeaderParser extends ParserBase {
                     final int buff_size = in.remaining();
 
                     if (remaining_chunk_size <= buff_size) {
+                        // End of this chunk
                         ByteBuffer result = submitPartialBuffer(in, (int)remaining_chunk_size);
                         _contentPosition = _chunkLength = 0;
                         _chunkState = ChunkState.CHUNK_LF;
@@ -426,6 +427,7 @@ public abstract class BodyAndHeaderParser extends ParserBase {
 
     /** Manages the buffer position while submitting the content -------- */
 
+    // TODO: do we care about these being `read-only`? It does ensure any underlying array is hidden...
     private ByteBuffer submitBuffer(ByteBuffer in) {
         ByteBuffer out = in.asReadOnlyBuffer();
         in.position(in.limit());
@@ -436,18 +438,9 @@ public abstract class BodyAndHeaderParser extends ParserBase {
         // Perhaps we are just right? Might be common.
         if (size == in.remaining()) {
             return submitBuffer(in);
+        } else {
+            return BufferTools.takeSlice(in, size).asReadOnlyBuffer();
         }
-
-        final int old_lim = in.limit();
-        final int end = in.position() + size;
-
-        // Make a slice buffer and return its read only image
-        in.limit(end);
-        ByteBuffer b = in.slice().asReadOnlyBuffer();
-        // fast forward our view of the data
-        in.limit(old_lim);
-        in.position(end);
-        return b;
     }
 
 }
