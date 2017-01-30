@@ -53,37 +53,32 @@ object BufferTools {
   /** Join the two buffers into a single ByteBuffer. This method is
     * guaranteed to return a ByteBuffer, but it may be empty. */
   def concatBuffers(oldbuff: ByteBuffer, newbuff: ByteBuffer): ByteBuffer = {
-    if (oldbuff == null && newbuff == null) emptyBuffer
-    else if (oldbuff != null && oldbuff.hasRemaining) {
-      if (!oldbuff.isReadOnly && oldbuff.capacity() >= oldbuff.limit() + newbuff.remaining()) {
-        // Enough room to append to end
-        oldbuff.mark()
-               .position(oldbuff.limit())
-               .limit(oldbuff.limit() + newbuff.remaining())
-
-        oldbuff.put(newbuff)
-               .reset()
-
-        oldbuff
-      }
-      else if (!oldbuff.isReadOnly && oldbuff.capacity() >= oldbuff.remaining() + newbuff.remaining()) {
-        // Enough room if we compact oldbuff
-        oldbuff.compact()
-               .put(newbuff)
-               .flip()
-
-        oldbuff
-      }
-      else {  // Need to make a larger buffer
-        val n = allocate(oldbuff.remaining() + newbuff.remaining())
-        n.put(oldbuff)
-         .put(newbuff)
-         .flip()
-
-        n
-      }
+    if (oldbuff == null) {
+      if (newbuff == null) emptyBuffer
+      else newbuff
     }
-    else newbuff
+    else if (newbuff == null) oldbuff // already established that oldbuff is not `null`
+    else if (!oldbuff.hasRemaining) newbuff
+    else if (!newbuff.hasRemaining) oldbuff
+    else if (!oldbuff.isReadOnly && oldbuff.capacity() >= oldbuff.limit() + newbuff.remaining()) {
+      // Enough room to append newbuff to the end tof oldbuff
+      oldbuff.mark()
+        .position(oldbuff.limit())
+        .limit(oldbuff.limit() + newbuff.remaining())
+
+      oldbuff.put(newbuff)
+        .reset()
+
+      oldbuff
+    }
+    else {  // Need to make a larger buffer
+      val n = allocate(oldbuff.remaining() + newbuff.remaining())
+      n.put(oldbuff)
+       .put(newbuff)
+       .flip()
+
+      n
+    }
   }
 
   /** Check the array of buffers to ensure they are all empty
