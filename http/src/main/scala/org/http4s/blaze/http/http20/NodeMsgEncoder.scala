@@ -9,9 +9,10 @@ import scala.annotation.tailrec
 import scala.collection.mutable.Buffer
 
 
-private[http20] class NodeMsgEncoder[HType](id: Int,
-                                      fencoder: Http20FrameEncoder,
-                                      hencoder: HeaderEncoder) {
+private[http20] class NodeMsgEncoder(
+    id: Int,
+    fencoder: Http20FrameEncoder,
+    hencoder: HeaderEncoder) {
 
   import NodeMsg.{ DataFrame, HeadersFrame }
 
@@ -95,7 +96,7 @@ private[http20] class NodeMsgEncoder[HType](id: Int,
   // Split the remaining header data into CONTINUATION frames.
   @tailrec
   private def mkContinuationFrames(maxPayload: Int, hBuff: ByteBuffer, acc: Buffer[ByteBuffer]): Unit = {
-    if (hBuff.remaining() >= maxPayload) {
+    if (hBuff.remaining() <= maxPayload) {
       acc ++= fencoder.mkContinuationFrame(id, true, hBuff)
     }
     else {
