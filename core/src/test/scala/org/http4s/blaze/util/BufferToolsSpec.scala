@@ -46,16 +46,23 @@ class BufferToolsSpec extends Specification {
       bb.getInt() should_== 2
     }
 
-    "compact a buffer to fit the second" in {
-      val b1 = ByteBuffer.allocate(8)
-      b1.putInt(0).putInt(1).flip()
-      b1.getInt() // Discard the first element
-      val b2 = b(2)
+    "a slice of buffer a is not corrupted by concat" in {
+      val a = ByteBuffer.allocate(8)
+      val b = ByteBuffer.allocate(4)
 
-      val bb = BufferTools.concatBuffers(b1, b2)
-      bb should_== b1
-      bb.getInt() should_== 1
-      bb.getInt() should_== 2
+      a.putInt(123).putInt(456).flip()
+      b.putInt(789).flip()
+      val slice = a.slice() // should contain the same view as buffer `a` right now
+
+      a.getInt() must_== 123
+
+      val c = BufferTools.concatBuffers(a, b)
+
+      slice.getInt() must_== 123
+      slice.getInt() must_== 456
+
+      c.getInt() must_== 456
+      c.getInt() must_== 789
     }
   }
 
