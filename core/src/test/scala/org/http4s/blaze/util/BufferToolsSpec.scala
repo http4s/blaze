@@ -66,6 +66,38 @@ class BufferToolsSpec extends Specification {
     }
   }
 
+  "BufferTools.takeSlice" should {
+    "Take a slice from a buffer" in {
+      val a = ByteBuffer.allocate(10)
+      a.putInt(123).putInt(456).flip()
+      a.remaining() must_== 8
+
+      val b = BufferTools.takeSlice(a, 4)
+
+      a.remaining must_== 4 // 4 bytes were consumed
+      a.getInt() must_== 456
+
+      b.remaining must_== 4
+      b.getInt() must_== 123
+    }
+
+    "throw an `IllegalArgumentException` if you try to slice too many bytes" in {
+      val a = ByteBuffer.allocate(10)
+      a.putInt(123).putInt(456).flip()
+      a.remaining() must_== 8
+
+      BufferTools.takeSlice(a, 10) must throwAn[IllegalArgumentException]
+    }
+
+    "throw an `IllegalArgumentException` if you try to slice negative bytes" in {
+      val a = ByteBuffer.allocate(10)
+      a.putInt(123).putInt(456).flip()
+      a.remaining() must_== 8
+
+      BufferTools.takeSlice(a, -4) must throwAn[IllegalArgumentException]
+    }
+  }
+
   "BufferTools.checkEmpty" should {
 
     "check if buffers are empty" in {
