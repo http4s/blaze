@@ -7,8 +7,9 @@ import scala.concurrent.Future
 /** Holds a single element that when read, will eject itself
   * from the pipeline.
   * @note There is an intrinsic race condition between this stage
-  *       removing itself and write commands, so this stage should
-  *       only be used under half duplex conditions.
+  *       removing itself and write commands. Therefore, pipeline
+  *       reads and writes must be performed in a thread safe manner
+  *       until the first read has completed.
   */
 class OneMessageStage[T](element: T) extends MidStage[T, T] {
 
