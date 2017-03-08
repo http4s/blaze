@@ -351,7 +351,7 @@ trait MidStage[I, O] extends Tail[I] with Head[O] {
   }
 
   /** Remove this `MidStage` from the pipeline */
-  final def removeStage(implicit ev: MidStage[I,O] =:= MidStage[I, I]): Unit = {
+  final def removeStage()(implicit ev: MidStage[I,O] =:= MidStage[I, I]): Unit = {
     stageShutdown()
 
     if (_prevStage != null && _nextStage != null) {

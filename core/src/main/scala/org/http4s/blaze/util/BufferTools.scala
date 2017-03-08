@@ -81,6 +81,26 @@ object BufferTools {
     }
   }
 
+  /** Take a slice of bytes from the `ByteBuffer`, consuming the bytes.
+    *
+    * @param buffer `ByteBuffer` to slice
+    * @param size number of bytes to slice. Must be less than or equal to the number of bytes remaining in `buffer`.
+    * @return the resulting view
+    */
+  def takeSlice(buffer: ByteBuffer, size: Int): ByteBuffer = {
+
+    if (size < 0 || size > buffer.remaining())
+      throw new IllegalArgumentException(s"Invalid size: $size. buffer: $buffer")
+
+    val currentLimit = buffer.limit()
+    buffer.limit(buffer.position() + size)
+    val slice = buffer.slice()
+
+    buffer.position(buffer.limit())
+      .limit(currentLimit)
+    slice
+  }
+
   /** Check the array of buffers to ensure they are all empty
     *
     * @param buffers `ByteBuffer`s to check for data
