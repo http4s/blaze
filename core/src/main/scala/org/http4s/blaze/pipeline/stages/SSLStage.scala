@@ -117,25 +117,26 @@ final class SSLStage(engine: SSLEngine, maxWrite: Int = 1024*1024) extends MidSt
     * after such an operation is stashed.
     */
   private def sslHandshake(data: ByteBuffer, r: HandshakeStatus): Unit = handshakeQueue.synchronized {
-    try r match {
+
+    @tailrec
+    def sslHandshakeLoop(data: ByteBuffer, r: HandshakeStatus): Unit = r match {
       case HandshakeStatus.NEED_UNWRAP =>
         val o = getScratchBuffer(maxBuffer)
         val r = engine.unwrap(data, o)
 
         if (r.getStatus == Status.BUFFER_UNDERFLOW) {
           channelRead().onComplete {
+            // use `sslHandshake` to reacquire the lock
             case Success(b) => sslHandshake(concatBuffers(data, b), r.getHandshakeStatus)
             case Failure(t) => handshakeFailure(t)
           }(trampoline)
         }
-        else sslHandshake(data, r.getHandshakeStatus)
+        else sslHandshakeLoop(data, r.getHandshakeStatus)
 
 
       case HandshakeStatus.NEED_TASK =>
         runTasks()
-        trampoline.execute(new Runnable {
-          def run(): Unit = sslHandshake(data, engine.getHandshakeStatus)
-        })
+        sslHandshakeLoop(data, engine.getHandshakeStatus)
 
 
       case HandshakeStatus.NEED_WRAP =>
@@ -146,6 +147,7 @@ final class SSLStage(engine: SSLEngine, maxWrite: Int = 1024*1024) extends MidSt
         if (r.bytesProduced() < 1) logger.warn(s"SSL Handshake WRAP produced 0 bytes.\n$r")
 
         channelWrite(copyBuffer(o)).onComplete {
+          // use `sslHandshake` to reacquire the lock
           case Success(_) => sslHandshake(data, r.getHandshakeStatus)
           case Failure(t) => handshakeFailure(t)
         }(trampoline)
@@ -160,7 +162,10 @@ final class SSLStage(engine: SSLEngine, maxWrite: Int = 1024*1024) extends MidSt
           case DelayedRead(sz, p) => doRead(sz, p)
           case DelayedWrite(d, p) => continueWrite(d, p)
         }
-    } catch {
+    }
+
+    try sslHandshakeLoop(data, r)
+    catch {
       case t: SSLException =>
         logger.warn(t)("SSLException in SSL handshake")
         handshakeFailure(t)
@@ -339,11 +344,12 @@ final class SSLStage(engine: SSLEngine, maxWrite: Int = 1024*1024) extends MidSt
     }
   }
 
+  @tailrec
   private def runTasks() {
-    var t = engine.getDelegatedTask
-    while(t != null) {
-      t.run()
-      t = engine.getDelegatedTask
+    val task = engine.getDelegatedTask
+    if (task != null) {
+      task.run()
+      runTasks()
     }
   }
 }
