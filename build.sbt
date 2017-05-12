@@ -117,15 +117,15 @@ lazy val dependencies = Seq(
 )
 
 lazy val http4sWebsocket     = "org.http4s"                 %% "http4s-websocket"    % "0.1.6"
-lazy val logbackClassic      = "ch.qos.logback"             %  "logback-classic"     % "1.1.3"
-lazy val log4s               = "org.log4s"                  %% "log4s"               % "1.3.3"
-lazy val scalaXml =            "org.scala-lang.modules"     %% "scala-xml"           % "1.0.5"
-lazy val twitterHPACK        = "com.twitter"                %  "hpack"               % "v1.0.1"
+lazy val logbackClassic      = "ch.qos.logback"             %  "logback-classic"     % "1.2.3"
+lazy val log4s               = "org.log4s"                  %% "log4s"               % "1.3.4"
+lazy val scalaXml =            "org.scala-lang.modules"     %% "scala-xml"           % "1.0.6"
+lazy val twitterHPACK        = "com.twitter"                %  "hpack"               % "1.0.2"
 
 // Testing only dependencies
-lazy val specs2              = "org.specs2"                 %% "specs2-core"         % "3.8.6"
+lazy val specs2              = "org.specs2"                 %% "specs2-core"         % "3.8.9"
 lazy val specs2Mock          = "org.specs2"                 %% "specs2-mock"         % specs2.revision
-lazy val asyncHttpClient     = "org.asynchttpclient"        %  "async-http-client"   % "2.0.24"
+lazy val asyncHttpClient     = "org.asynchttpclient"        %  "async-http-client"   % "2.0.32"
 
 
 // Needed for Http2 support until implemented in the JDK
@@ -133,7 +133,7 @@ lazy val alpn_api            = "org.eclipse.jetty.alpn"     % "alpn-api"        
 
 // Note that the alpn_boot version is JVM version specific. Check the docs if getting weird errors.
 // Also note that only java8 and above has the require cipher suite for http2.
-lazy val alpn_boot           = "org.mortbay.jetty.alpn"     % "alpn-boot"            % "8.1.9.v20160720"
+lazy val alpn_boot           = "org.mortbay.jetty.alpn"     % "alpn-boot"            % "8.1.11.v20170118"
 
 /* publishing */
 lazy val publishing = Seq(
