@@ -66,9 +66,9 @@ organization in ThisBuild := "org.http4s"
 
 version in ThisBuild := "0.14.0-SNAPSHOT"
 
-scalaVersion in ThisBuild := "2.11.8"
+scalaVersion in ThisBuild := "2.11.11"
 
-crossScalaVersions in ThisBuild := Seq("2.10.6", scalaVersion.value, "2.12.0")
+crossScalaVersions in ThisBuild := Seq("2.10.6", scalaVersion.value, "2.12.2")
 
 description in ThisBuild := "NIO Framework for Scala"
 
