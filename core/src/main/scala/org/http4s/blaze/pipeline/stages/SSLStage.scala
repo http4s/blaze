@@ -12,6 +12,7 @@ import scala.util.{Failure, Success}
 
 import org.http4s.blaze.pipeline.MidStage
 import org.http4s.blaze.pipeline.Command.EOF
+import org.http4s.blaze.util
 import org.http4s.blaze.util.Execution._
 import org.http4s.blaze.util.{BufferTools, ScratchBuffer}
 import org.http4s.blaze.util.BufferTools._
@@ -124,15 +125,23 @@ final class SSLStage(engine: SSLEngine, maxWrite: Int = 1024*1024) extends MidSt
         val o = getScratchBuffer(maxBuffer)
         val r = engine.unwrap(data, o)
 
-        if (r.getStatus == Status.BUFFER_UNDERFLOW) {
-          channelRead().onComplete {
-            // use `sslHandshake` to reacquire the lock
-            case Success(b) => sslHandshake(concatBuffers(data, b), r.getHandshakeStatus)
-            case Failure(t) => handshakeFailure(t)
-          }(trampoline)
-        }
-        else sslHandshakeLoop(data, r.getHandshakeStatus)
+        r.getStatus  match {
+          case Status.OK => 
+            sslHandshakeLoop(data, r.getHandshakeStatus)
 
+          case Status.BUFFER_UNDERFLOW =>
+            channelRead().onComplete {
+              // use `sslHandshake` to reacquire the lock
+              case Success(b) => sslHandshake(concatBuffers(data, b), r.getHandshakeStatus)
+              case Failure(t) => handshakeFailure(t)
+            }(trampoline)
+
+          case Status.CLOSED => // happens if the handshake fails for some reason
+            handshakeFailure(new SSLException(s"SSL Closed"))
+
+          case Status.BUFFER_OVERFLOW =>
+            handshakeFailure(util.bug(s"Unexpected status: ${Status.BUFFER_OVERFLOW}"))
+        }
 
       case HandshakeStatus.NEED_TASK =>
         runTasks()
