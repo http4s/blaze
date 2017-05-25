@@ -3,14 +3,16 @@ package org.http4s.blaze.http.http20
 import java.nio.ByteBuffer
 
 import org.http4s.blaze.http.http20.NodeMsg.Http2Msg
+import org.http4s.blaze.util.BufferTools
 
 import scala.annotation.tailrec
 import scala.collection.mutable.Buffer
 
 
-private[http20] class NodeMsgEncoder[HType](id: Int,
-                                      fencoder: Http20FrameEncoder,
-                                      hencoder: HeaderEncoder) {
+private[http20] class NodeMsgEncoder(
+    id: Int,
+    fencoder: Http20FrameEncoder,
+    hencoder: HeaderEncoder) {
 
   import NodeMsg.{ DataFrame, HeadersFrame }
 
@@ -65,11 +67,10 @@ private[http20] class NodeMsgEncoder[HType](id: Int,
       acc ++= fencoder.mkHeaderFrame(hsBuff, id, hs.priority, true, hs.endStream, 0)
     } else {
       // need to split into HEADERS and CONTINUATION frames
-      val l = hsBuff.limit()
-      hsBuff.limit(hsBuff.position() + maxPayloadSize - priorityBytes)
-      acc ++= fencoder.mkHeaderFrame(hsBuff.slice(), id, hs.priority, false, hs.endStream, 0)
+      val headerBuffer = BufferTools.takeSlice(hsBuff, maxPayloadSize - priorityBytes)
+      acc ++= fencoder.mkHeaderFrame(headerBuffer, id, hs.priority, false, hs.endStream, 0)
+
       // Add the rest of the continuation frames
-      hsBuff.limit(l)
       mkContinuationFrames(maxPayloadSize, hsBuff, acc)
     }
   }
@@ -95,14 +96,12 @@ private[http20] class NodeMsgEncoder[HType](id: Int,
   // Split the remaining header data into CONTINUATION frames.
   @tailrec
   private def mkContinuationFrames(maxPayload: Int, hBuff: ByteBuffer, acc: Buffer[ByteBuffer]): Unit = {
-    if (hBuff.remaining() >= maxPayload) {
+    if (hBuff.remaining() <= maxPayload) {
       acc ++= fencoder.mkContinuationFrame(id, true, hBuff)
     }
     else {
-      val l = hBuff.limit()
-      hBuff.limit(hBuff.position() + maxPayload)
-      acc ++= fencoder.mkContinuationFrame(id, false, hBuff.slice())
-      hBuff.limit(l)
+      val thisBuffer = BufferTools.takeSlice(hBuff, maxPayload)
+      acc ++= fencoder.mkContinuationFrame(id, false, thisBuffer)
       mkContinuationFrames(maxPayload, hBuff, acc)
     }
 

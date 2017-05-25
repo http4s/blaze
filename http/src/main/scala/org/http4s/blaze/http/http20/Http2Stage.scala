@@ -142,15 +142,12 @@ class Http2Stage private(nodeBuilder: Int => LeafBuilder[NodeMsg.Http2Msg],
         case Failure(t)  => onFailure(t, "processHandshake")
       }(Execution.trampoline)
     } else {
-      val l = buff.limit()
-      val p = buff.position()
-      buff.limit(p + clientTLSHandshakeString.length)
-      val header = UTF_8.decode(buff.slice()).toString()
+      val handshakeBuffer = BufferTools.takeSlice(buff, clientTLSHandshakeString.length)
+      val header = UTF_8.decode(handshakeBuffer).toString()
       logger.trace("Received header string: " + header)
 
       if (header == clientTLSHandshakeString) {
         logger.trace("Handshake complete. Entering readLoop")
-        buff.limit(l).position(p + clientTLSHandshakeString.length)
         decodeLoop(buff)
       } else {
         logger.info("HTTP/2.0: Failed to handshake, invalid header: " + header)
