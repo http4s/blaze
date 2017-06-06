@@ -26,7 +26,7 @@ class EchoServer {
     NIO2SocketServerGroup().bind(address, f).getOrElse(sys.error("Failed to start server."))
   }
   
-  def run(port: Int) {
+  def run(port: Int): Unit = {
     val address = new InetSocketAddress(port)
     val channel = prepare(address)
 
@@ -46,7 +46,7 @@ class EchoServer {
           b.put(msg).put(buff).flip()
 
           // Write it, wait for conformation, and start again
-          channelWrite(b).onSuccess{ case _ => stageStartup() }
+          channelWrite(b).foreach(_ => stageStartup())
 
         case Failure(EOF) => this.logger.debug("Channel closed.")
         case Failure(t)   => this.logger.error("Channel read failed: " + t)
