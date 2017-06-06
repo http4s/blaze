@@ -10,8 +10,8 @@ object GenericSSLContext {
 
   private class DefaultTrustManager extends X509TrustManager {
     def getAcceptedIssuers(): Array[X509Certificate] =  new Array[java.security.cert.X509Certificate](0)
-    def checkClientTrusted(certs: Array[X509Certificate], authType: String) { }
-    def checkServerTrusted(certs: Array[X509Certificate], authType: String) { }
+    def checkClientTrusted(certs: Array[X509Certificate], authType: String): Unit = { }
+    def checkServerTrusted(certs: Array[X509Certificate], authType: String): Unit = { }
   }
 
   /** Create a default SSLContext with an empty trust manager */

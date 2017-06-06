@@ -206,9 +206,9 @@ sealed trait Tail[I] extends Stage {
     * @param timeout time from now which is considered a timeout
     * @tparam T type of result expected
     */
-  private def scheduleTimeout[T](p: Promise[T], f: Future[T], timeout: Duration) {
+  private def scheduleTimeout[T](p: Promise[T], f: Future[T], timeout: Duration): Unit = {
     val r = new Runnable {
-      def run() {
+      def run(): Unit = {
         val a = new TimeoutException("Read request timed out")
         p.tryFailure(a)
       }

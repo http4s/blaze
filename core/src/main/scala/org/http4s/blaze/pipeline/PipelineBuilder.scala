@@ -45,7 +45,7 @@ final class TrunkBuilder[I1, O] private[pipeline](protected val head: MidStage[I
 
   def append[N](stage: MidStage[O, N]): TrunkBuilder[I1, N] = {
     if (stage._prevStage != null) sys.error(s"Stage $stage must be fresh")
-    if (stage.isInstanceOf[HeadStage[_]]) sys.error("Cannot append HeadStages: $stage")
+    if (stage.isInstanceOf[HeadStage[_]]) sys.error(s"Cannot append HeadStages: $stage")
 
     tail._nextStage = stage
     stage._prevStage = tail

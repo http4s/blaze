@@ -178,7 +178,7 @@ private[nio1] abstract class NIO1HeadStage(ch: SelectableChannel,
 
     // intended to be called from within the SelectorLoop but if
     // it's closed it will be performed in the current thread
-    def doClose(t: Throwable) {
+    def doClose(t: Throwable): Unit = {
 
       // this is the only place that writes to the variable
       if (closedReason == null) {
@@ -224,7 +224,7 @@ private[nio1] abstract class NIO1HeadStage(ch: SelectableChannel,
   /** Unsets a channel interest
    *  only to be called by the SelectorLoop thread
    **/
-  private def unsetOp(op: Int) {
+  private def unsetOp(op: Int): Unit = {
     // assert(Thread.currentThread() == loop,
     //       s"Expected to be called only by SelectorLoop thread, was called by ${Thread.currentThread.getName}")
 
@@ -241,7 +241,7 @@ private[nio1] abstract class NIO1HeadStage(ch: SelectableChannel,
   }
 
   // only to be called by the SelectorLoop thread
-  private def setOp(op: Int) {
+  private def setOp(op: Int) : Unit = {
     // assert(Thread.currentThread() == loop,
     //       s"Expected to be called only by SelectorLoop thread, was called by ${Thread.currentThread.getName}")
 

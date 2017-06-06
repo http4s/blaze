@@ -102,7 +102,7 @@ trait ByteToObjectStage[O] extends MidStage[ByteBuffer, O] {
   }(trampoline)
 
   /** Maintains the state of the internal _decodeBuffer */
-  private def cleanBuffers(slice: ByteBuffer) {
+  private def cleanBuffers(slice: ByteBuffer): Unit = {
     if (slice.position() > 0) {
       _decodeBuffer.position(_decodeBuffer.position() + slice.position())
     }

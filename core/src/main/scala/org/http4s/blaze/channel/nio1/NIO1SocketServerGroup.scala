@@ -60,7 +60,7 @@ final class NIO1SocketServerGroup private(
   private val t = new AcceptThread()
   t.start()
 
-  override def closeGroup() {
+  override def closeGroup(): Unit = {
     logger.info("Closing NIO1SocketServerGroup")
     isClosed = true
     s.wakeup()
@@ -86,7 +86,7 @@ final class NIO1SocketServerGroup private(
     private val queue = new AtomicReference[List[NIO1ServerChannel]](Nil)
 
     /** Add a channel to the selector loop */
-    def listenOnChannel(channel: NIO1ServerChannel) {
+    def listenOnChannel(channel: NIO1ServerChannel): Unit = {
       def go(): Unit = queue.get() match {
         case null                                    => channel.close() // Queue is closed.
         case q if queue.compareAndSet(q, channel::q) => s.wakeup()      // Successful set. Wake the loop.
@@ -190,7 +190,7 @@ final class NIO1SocketServerGroup private(
     extends ServerChannel
   {
 
-    override protected def closeChannel() {
+    override protected def closeChannel(): Unit = {
       logger.info(s"Closing NIO1 channel ${channel.getLocalAddress()} at ${new Date}")
       try channel.close()
       catch { case NonFatal(t) => logger.debug(t)("Failure during channel close") }
