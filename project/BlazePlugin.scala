@@ -3,6 +3,7 @@ package org.http4s.build
 import sbt._
 import Keys._
 
+import sbtrelease._
 import com.typesafe.tools.mima.plugin.MimaPlugin, MimaPlugin.autoImport._
 import verizon.build.RigPlugin
 
@@ -17,7 +18,7 @@ object BlazePlugin extends AutoPlugin {
 
   override def trigger = allRequirements
 
-  override def requires = RigPlugin && MimaPlugin
+  override def requires = RigPlugin && MimaPlugin && ReleasePlugin
 
   override lazy val projectSettings: Seq[Setting[_]] = Seq(
     scalaVersion := (sys.env.get("TRAVIS_SCALA_VERSION") orElse sys.env.get("SCALA_VERSION") getOrElse "2.12.2-bin-typelevel-4"),
@@ -40,7 +41,6 @@ object BlazePlugin extends AutoPlugin {
 
     scalacOptions in Compile ++= Seq(
       "-Yno-adapted-args" // Curiously missing from RigPlugin
-
     ) ++ {
       // https://issues.scala-lang.org/browse/SI-8340
       CrossVersion.partialVersion(scalaVersion.value) match {
@@ -65,7 +65,6 @@ object BlazePlugin extends AutoPlugin {
     // Lots of Dead Code in Tests
     scalacOptions in Test -= "-Ywarn-dead-code",
     fork in run := true,
-
     mimaFailOnProblem := blazeMimaVersion.value.isDefined,
     mimaPreviousArtifacts := mimaPreviousVersion(version.value).map { pv =>
       organization.value % (normalizedName.value + "_" + scalaBinaryVersion.value) % pv

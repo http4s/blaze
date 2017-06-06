@@ -64,6 +64,7 @@ final class NIO1SocketServerGroup private(
     logger.info("Closing NIO1SocketServerGroup")
     isClosed = true
     s.wakeup()
+    ()
   }
 
 
@@ -89,7 +90,7 @@ final class NIO1SocketServerGroup private(
     def listenOnChannel(channel: NIO1ServerChannel): Unit = {
       def go(): Unit = queue.get() match {
         case null                                    => channel.close() // Queue is closed.
-        case q if queue.compareAndSet(q, channel::q) => s.wakeup()      // Successful set. Wake the loop.
+        case q if queue.compareAndSet(q, channel::q) => s.wakeup(); ()     // Successful set. Wake the loop.
         case _                                       => go()            // Lost race. Try again.
       }
 

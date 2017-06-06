@@ -37,11 +37,12 @@ private[nio2] final class ByteBufferHead(channel: AsynchronousSocketChannel, buf
           sendInboundCommand(Disconnected)
           closeWithError(e)
           p.tryFailure(e)
+          ()
         }
 
         def completed(result: Integer, attachment: Null): Unit = {
           if (result.intValue < i) go(i - result.intValue)  // try to write again
-          else p.trySuccess(())      // All done
+          else p.trySuccess(()); ()      // All done
         }
       })
     }
@@ -62,10 +63,11 @@ private[nio2] final class ByteBufferHead(channel: AsynchronousSocketChannel, buf
           sendInboundCommand(Disconnected)
           closeWithError(e)
           p.tryFailure(e)
+          ()
         }
 
         def completed(result: JLong, attachment: Null): Unit = {
-          if (BufferTools.checkEmpty(srcs)) p.trySuccess(())
+          if (BufferTools.checkEmpty(srcs)){ p.trySuccess(()); () }
           else go(BufferTools.dropEmpty(srcs))
         }
       })

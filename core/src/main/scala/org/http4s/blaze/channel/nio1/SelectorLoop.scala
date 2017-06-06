@@ -36,6 +36,7 @@ final class SelectorLoop(id: String, selector: Selector, bufferSize: Int) extend
     logger.info(s"Shutting down SelectorLoop ${getName()}")
     _isClosed = true
     selector.wakeup()
+    ()
   }
 
   @inline
@@ -52,6 +53,7 @@ final class SelectorLoop(id: String, selector: Selector, bufferSize: Int) extend
     if (head eq null) {
       queueTail.set(node)
       selector.wakeup()
+      ()
     } else head.lazySet(node)
   }
 
