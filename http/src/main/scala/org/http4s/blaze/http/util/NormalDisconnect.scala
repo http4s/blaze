@@ -16,7 +16,7 @@ private[http] object NormalDisconnect {
   }
 
   def unapply(t: Throwable): Option[Exception] = t match {
-    case t@ Command.EOF      => Some(t)
+    case t@ Command.EOF      => Some(Command.EOF)
     case t: TimeoutException => Some(t)
     case _                   => None
   }

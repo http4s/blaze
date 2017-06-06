@@ -10,12 +10,12 @@ import scala.collection.immutable.VectorBuilder
 
 private[blaze] object BlazeServerParser {
 
-  final case class Prelude[Headers](
+  final case class Prelude[HeadersT](
      method: String,
      uri: String,
      majorVersion: Int,
      minorVersion: Int,
-     headers: Iterable[Headers])
+     headers: Iterable[HeadersT])
 }
 
 private[blaze] final class BlazeServerParser[Header](maxNonBody: Int)(implicit hl: HeaderLike[Header])

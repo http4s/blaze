@@ -108,7 +108,7 @@ private trait Http20FrameEncoder {
     val size = settings.length * 6
 
     val buffer = BufferTools.allocate(HeaderSize + size)
-    val flags = if (ack) Flags.ACK else 0
+    val flags = if (ack) Flags.ACK.toInt else 0
 
     writeFrameHeader(size, FrameTypes.SETTINGS, flags.toByte, 0, buffer)
 
@@ -154,7 +154,7 @@ private trait Http20FrameEncoder {
     val size = 8
     require(data.length == size, "Ping data must be 8 bytes long")
 
-    val flags = if (ack) Flags.ACK else 0
+    val flags = if (ack) Flags.ACK.toInt else 0
 
     val buffer = ByteBuffer.allocate(HeaderSize + size)
     writeFrameHeader(size, FrameTypes.PING, flags.toByte, 0x0, buffer)
@@ -193,7 +193,7 @@ private trait Http20FrameEncoder {
 
   def mkContinuationFrame(streamId: Int, end_headers: Boolean, headerBuffer: ByteBuffer): Seq[ByteBuffer] = {
     require(streamId > 0, "Invalid stream ID for CONTINUATION frame")
-    val flag = if (end_headers) Flags.END_HEADERS else 0x0
+    val flag = if (end_headers) Flags.END_HEADERS.toInt else 0x0
 
     val buffer = BufferTools.allocate(HeaderSize)
     writeFrameHeader(headerBuffer.remaining(), FrameTypes.CONTINUATION, flag.toByte, streamId, buffer)
