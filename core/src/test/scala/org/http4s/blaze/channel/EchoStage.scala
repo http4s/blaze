@@ -23,7 +23,7 @@ class EchoStage extends TailStage[ByteBuffer] {
         b.put(msg).put(buff).flip()
 
         // Write it, wait for conformation, and start again
-        channelWrite(b).onSuccess{ case _ => stageStartup() }
+        channelWrite(b).foreach(_ => stageStartup())
 
       case Failure(EOF) => logger.debug("Channel closed.")
       case Failure(t) => logger.error(t)("Channel read failed")

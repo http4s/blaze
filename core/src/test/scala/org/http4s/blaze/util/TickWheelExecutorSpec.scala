@@ -15,7 +15,7 @@ class TickWheelExecutorSpec extends Specification {
     "Execute a simple task with no delay" in {
       val i = new AtomicInteger(0)
       ec.schedule(new Runnable {
-        def run() { i.set(1) }
+        def run(): Unit = { i.set(1) }
       }, Duration.Zero)
 
       i.get() should_== 1
@@ -24,7 +24,7 @@ class TickWheelExecutorSpec extends Specification {
     "Execute a simple task with negative delay" in {
       val i = new AtomicInteger(0)
       ec.schedule(new Runnable {
-        def run() { i.set(1) }
+        def run(): Unit = { i.set(1) }
       }, -2.seconds)
 
       i.get() should_== 1
@@ -33,7 +33,7 @@ class TickWheelExecutorSpec extends Specification {
     "Not schedule a simple task with Inf delay" in {
       val i = new AtomicInteger(0)
       ec.schedule(new Runnable {
-        def run() { i.set(1) }
+        def run(): Unit = { i.set(1) }
       }, Duration.Inf)
       Thread.sleep(100)
       i.get() should_== 0
@@ -42,7 +42,7 @@ class TickWheelExecutorSpec extends Specification {
     "Execute a simple task with a short delay" in {
       val i = new AtomicInteger(0)
       ec.schedule(new Runnable {
-        def run() { i.set(1) }
+        def run(): Unit = { i.set(1) }
       }, 200.millis)
       TimingTools.spin(5.seconds)(i.get == 1)
       i.get() should_== 1
@@ -52,7 +52,7 @@ class TickWheelExecutorSpec extends Specification {
       val ec = new TickWheelExecutor(3, 2.seconds)
       val i = new AtomicInteger(0)
       ec.schedule(new Runnable {
-        def run() { i.set(1) }
+        def run(): Unit = { i.set(1) }
       }, 7.seconds)
 
       TimingTools.spin(5.seconds)(false)
@@ -69,7 +69,7 @@ class TickWheelExecutorSpec extends Specification {
 
       0 until 1000 foreach { j =>
         ec.schedule(new Runnable {
-          def run() { i.incrementAndGet() }
+          def run(): Unit = { i.incrementAndGet() }
         }, j.millis)
       }
 
@@ -84,7 +84,7 @@ class TickWheelExecutorSpec extends Specification {
 
       val cancels = 0 until 1000 map { j =>
         val c = ec.schedule(new Runnable {
-          def run() { i.incrementAndGet() }
+          def run(): Unit = { i.incrementAndGet() }
         }, (j+500).millis)
         c
       }
@@ -104,13 +104,13 @@ class TickWheelExecutorSpec extends Specification {
       }
 
       ec.schedule(new Runnable{
-        def run() {
+        def run(): Unit = {
           sys.error("Woops!")
         }
       }, 3.millis)
 
       ec.schedule(new Runnable{
-        def run() {
+        def run(): Unit = {
           sys.error("Woops!")
         }
       }, Duration.Zero)
@@ -124,11 +124,11 @@ class TickWheelExecutorSpec extends Specification {
       ec.shutdown()
 
       ec.schedule(new Runnable{
-         def run() { sys.error("Woops!")}
+         def run(): Unit = { sys.error("Woops!")}
       }, Duration.Zero) must throwA[RuntimeException]
 
       ec.schedule(new Runnable{
-        def run() { sys.error("Woops!")}
+        def run(): Unit = { sys.error("Woops!")}
       }, Duration.Inf) must throwA[RuntimeException]
     }
   }

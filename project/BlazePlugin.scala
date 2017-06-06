@@ -6,6 +6,7 @@ import Keys._
 import com.typesafe.tools.mima.plugin.MimaPlugin, MimaPlugin.autoImport._
 import verizon.build.RigPlugin
 
+
 object BlazePlugin extends AutoPlugin {
 
   object autoImport {
@@ -38,12 +39,15 @@ object BlazePlugin extends AutoPlugin {
 
 
     scalacOptions in Compile ++= Seq(
-      "-Yno-adapted-args", // Curiously missing from RigPlugin
-      "-Ypartial-unification" // Needed on 2.11 for Either, good idea in general
+      "-Yno-adapted-args" // Curiously missing from RigPlugin
+
     ) ++ {
       // https://issues.scala-lang.org/browse/SI-8340
       CrossVersion.partialVersion(scalaVersion.value) match {
-        case Some((2, n)) if n >= 11 => Seq("-Ywarn-numeric-widen")
+        case Some((2, n)) if n >= 11 => Seq(
+          "-Ywarn-numeric-widen",
+          "-Ypartial-unification" // Needed on 2.11 for Either, good idea in general
+        )
         case _ => Seq.empty
       }
     },
@@ -58,6 +62,8 @@ object BlazePlugin extends AutoPlugin {
       "-language:implicitConversions",
       s"-target:jvm-${jvmTarget.value}"
     ),
+    // Lots of Dead Code in Tests
+    scalacOptions in Test -= "-Ywarn-dead-code",
     fork in run := true,
 
     mimaFailOnProblem := blazeMimaVersion.value.isDefined,

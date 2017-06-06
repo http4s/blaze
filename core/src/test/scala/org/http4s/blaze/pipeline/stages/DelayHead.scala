@@ -30,7 +30,7 @@ abstract class DelayHead[I](delay: Duration) extends HeadStage[I] {
     rememberPromise(p)
 
     TimingTools.highres.schedule(new Runnable {
-      def run() {
+      def run(): Unit = {
         p.trySuccess(next())
         unqueue(p)
       }
@@ -43,7 +43,7 @@ abstract class DelayHead[I](delay: Duration) extends HeadStage[I] {
   override def writeRequest(data: I): Future[Unit] = {
     val p = Promise[Unit]
     TimingTools.highres.schedule(new Runnable {
-      def run() {
+      def run(): Unit = {
         p.trySuccess(())
         unqueue(p)
       }

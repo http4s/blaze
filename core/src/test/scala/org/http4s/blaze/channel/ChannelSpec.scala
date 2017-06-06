@@ -39,7 +39,7 @@ class ChannelSpec extends Specification {
     title should {
       "Bind the port and then be closed" in {
         val (group,channel) = new BasicServer(_ => new EchoStage, isNIO2).prepare(new InetSocketAddress(0))
-        Thread.sleep(CommonDelay)
+        Thread.sleep(CommonDelay.toLong)
         channel.close()
         group.closeGroup()
         channel.join()
