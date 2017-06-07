@@ -211,6 +211,7 @@ sealed trait Tail[I] extends Stage {
       def run(): Unit = {
         val a = new TimeoutException("Read request timed out")
         p.tryFailure(a)
+        ()
       }
     }
 

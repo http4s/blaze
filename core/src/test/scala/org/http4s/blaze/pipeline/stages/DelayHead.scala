@@ -16,12 +16,18 @@ abstract class DelayHead[I](delay: Duration) extends HeadStage[I] {
 
   private val awaitingPromises = new mutable.HashSet[Promise[_]]()
 
-  private def rememberPromise(p: Promise[_]): Unit = awaitingPromises.synchronized {
-    awaitingPromises += p
+  private def rememberPromise(p: Promise[_]): Unit = {
+    awaitingPromises.synchronized {
+      awaitingPromises += p
+    }
+    ()
   }
 
-  private def unqueue(p: Promise[_]): Unit = awaitingPromises.synchronized {
-    awaitingPromises.remove(p)
+  private def unqueue(p: Promise[_]): Unit = {
+    awaitingPromises.synchronized {
+      awaitingPromises.remove(p)
+    }
+    ()
   }
 
   override def readRequest(size: Int): Future[I] = {

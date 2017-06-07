@@ -25,8 +25,8 @@ trait SlowHead[O] extends HeadStage[O] {
         override def run(): Unit = {
           val delay = Random.nextFloat()*10
           Thread.sleep(delay.toLong)
-          if (readGuard.compareAndSet(true, false)) p.success(get)
-          else p.completeWith(Future(sys.error("Read guard breached!")))
+          if (readGuard.compareAndSet(true, false)) { p.success(get); () }
+          else { p.completeWith(Future(sys.error("Read guard breached!"))); () }
         }
       }.start()
 
@@ -43,8 +43,11 @@ trait SlowHead[O] extends HeadStage[O] {
         override def run(): Unit = {
           val delay = Random.nextFloat()*20
           Thread.sleep(delay.toLong)
-          if (writeGuard.compareAndSet(true, false)) p.success(get)
-          else p.completeWith(Future(sys.error("Write guard breached!")))
+          if (writeGuard.compareAndSet(true, false)) {
+            p.success{get; ()}
+            ()
+          }
+          else { p.completeWith(Future(sys.error("Write guard breached!"))); () }
         }
       }.start()
 

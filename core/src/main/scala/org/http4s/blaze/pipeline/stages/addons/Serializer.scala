@@ -64,37 +64,40 @@ trait WriteSerializer[I] extends TailStage[I] { self =>
   }
 
   // Needs to be in a synchronized because it is called from continuations
-  private def _checkQueue(t: Try[Unit]): Unit = _serializerWriteLock.synchronized (t match {
-    case f@ Failure(_) =>
-      _serializerWriteQueue.clear()
-      val p = _serializerWritePromise
-      _serializerWritePromise = null
-      p.tryComplete(f)
-
-    case Success(_)    =>
-      if (_serializerWriteQueue.isEmpty) _serializerWritePromise = null  // Nobody has written anything
-      else {      // stuff to write
-        val f = {
-          if (_serializerWriteQueue.length > 1) { // multiple messages, just give them the queue
-            val a = _serializerWriteQueue
-            _serializerWriteQueue = new ArrayBuffer[I](a.size + 10)
-            super.channelWrite(a)
-          } else {          // only a single element to write, don't send the while queue
-            val h = _serializerWriteQueue.head
-            _serializerWriteQueue.clear()
-            super.channelWrite(h)
-          }
-        }
-
+  private def _checkQueue(t: Try[Unit]): Unit = {
+    _serializerWriteLock.synchronized (t match {
+      case f@ Failure(_) =>
+        _serializerWriteQueue.clear()
         val p = _serializerWritePromise
-        _serializerWritePromise = Promise[Unit]
+        _serializerWritePromise = null
+        p.tryComplete(f)
 
-        f.onComplete { t =>
-          _checkQueue(t)
-          p.complete(t)
-        }(trampoline)
-      }
-  })
+      case Success(_)    =>
+        if (_serializerWriteQueue.isEmpty) _serializerWritePromise = null  // Nobody has written anything
+        else {      // stuff to write
+          val f = {
+            if (_serializerWriteQueue.length > 1) { // multiple messages, just give them the queue
+              val a = _serializerWriteQueue
+              _serializerWriteQueue = new ArrayBuffer[I](a.size + 10)
+              super.channelWrite(a)
+            } else {          // only a single element to write, don't send the while queue
+              val h = _serializerWriteQueue.head
+              _serializerWriteQueue.clear()
+              super.channelWrite(h)
+            }
+          }
+
+          val p = _serializerWritePromise
+          _serializerWritePromise = Promise[Unit]
+
+          f.onComplete { t =>
+            _checkQueue(t)
+            p.complete(t)
+          }(trampoline)
+        }
+    })
+    ()
+  }
 }
 
 /** Serializes read requests */

@@ -69,7 +69,7 @@ class TickWheelExecutorSpec extends Specification {
 
       0 until 1000 foreach { j =>
         ec.schedule(new Runnable {
-          def run(): Unit = { i.incrementAndGet() }
+          def run(): Unit = { i.incrementAndGet(); () }
         }, j.millis)
       }
 
@@ -84,7 +84,7 @@ class TickWheelExecutorSpec extends Specification {
 
       val cancels = 0 until 1000 map { j =>
         val c = ec.schedule(new Runnable {
-          def run(): Unit = { i.incrementAndGet() }
+          def run(): Unit = { i.incrementAndGet(); () }
         }, (j+500).millis)
         c
       }

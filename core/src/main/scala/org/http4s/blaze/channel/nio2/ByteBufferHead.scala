@@ -92,6 +92,7 @@ private[nio2] final class ByteBufferHead(channel: AsynchronousSocketChannel, buf
         sendInboundCommand(Disconnected)
         closeWithError(e)
         p.tryFailure(e)
+        ()
       }
 
       def completed(i: Integer, attachment: Null): Unit = {
@@ -100,10 +101,12 @@ private[nio2] final class ByteBufferHead(channel: AsynchronousSocketChannel, buf
           val b = ByteBuffer.allocate(buffer.remaining())
           b.put(buffer).flip()
           p.trySuccess(b)
+          ()
         } else {   // must be end of stream
           sendInboundCommand(Disconnected)
           closeWithError(EOF)
           p.tryFailure(EOF)
+          ()
         }
       }
     })

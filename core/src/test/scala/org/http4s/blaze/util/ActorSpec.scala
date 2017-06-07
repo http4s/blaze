@@ -26,8 +26,9 @@ class ActorSpec extends Specification {
       case OptMsg(Some(-1)) => throw E("Fail.")
       case OptMsg(Some(_)) => ???
       case OptMsg(None)   => ()
-      case Continuation(f) => f("Completed")
-
+      case Continuation(f) =>
+        f("Completed")
+        ()
       case NOOP => // NOOP
     }
 
