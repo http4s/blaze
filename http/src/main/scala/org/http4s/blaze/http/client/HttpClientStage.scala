@@ -146,8 +146,11 @@ class HttpClientStage(timeout: Duration)
         }
       }
     } catch {
-      case NonFatal(t) => p.tryFailure(t)
+      case NonFatal(t) =>
+        p.tryFailure(t)
+        ()
     }
+    ()
   }
 
 }

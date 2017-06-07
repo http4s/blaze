@@ -237,6 +237,7 @@ class Http2Stage private(nodeBuilder: Int => LeafBuilder[NodeMsg.Http2Msg],
   private def streamError(streamId: Int, e: Http2Exception): Unit = {
     frameHandler.flowControl.removeNode(streamId, Cmd.EOF, true)
     channelWrite(frameHandler.mkRstStreamFrame(streamId, e.code))
+    ()
   }
 
   //////////////////////////////////////////////////////////////////////////////////

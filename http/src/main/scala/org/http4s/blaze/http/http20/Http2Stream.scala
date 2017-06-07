@@ -173,7 +173,10 @@ private[http20] final class Http2Stream(val streamId: Int,
         val rem = encodeMessages(frames, acc)
         val f = ops.writeBuffers(acc)
 
-        if (rem.isEmpty) p.completeWith(f)
+        if (rem.isEmpty) {
+          p.completeWith(f)
+          ()
+        }
         else {
           pendingOutboundFrames = (p, rem)
         }
