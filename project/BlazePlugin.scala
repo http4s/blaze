@@ -4,6 +4,7 @@ import sbt._
 import Keys._
 
 import sbtrelease._
+import sbtrelease.ReleasePlugin.autoImport._
 import com.typesafe.tools.mima.plugin.MimaPlugin, MimaPlugin.autoImport._
 import verizon.build.RigPlugin
 
@@ -21,6 +22,10 @@ object BlazePlugin extends AutoPlugin {
   override def requires = RigPlugin && MimaPlugin && ReleasePlugin
 
   override lazy val projectSettings: Seq[Setting[_]] = Seq(
+    // Override rig's default of the Travis build number being the bugfix number
+    releaseVersion := { ver =>
+      Version(ver).map(_.withoutQualifier.string).getOrElse(versionFormatError)
+    },
     scalaVersion := (sys.env.get("TRAVIS_SCALA_VERSION") orElse sys.env.get("SCALA_VERSION") getOrElse "2.12.2-bin-typelevel-4"),
     scalaOrganization := {
       CrossVersion.partialVersion(scalaVersion.value) match {
