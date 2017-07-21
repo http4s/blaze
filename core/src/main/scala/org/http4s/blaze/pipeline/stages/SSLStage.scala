@@ -287,12 +287,12 @@ final class SSLStage(engine: SSLEngine, maxWrite: Int = 1024*1024) extends MidSt
       val out = new ArrayBuffer[ByteBuffer]
       writeLoop(data, out) match {
         case SSLSuccess if BufferTools.checkEmpty(data) =>
-          p.completeWith(channelWrite(out))
+          p.completeWith(channelWrite(out)); ()
 
         case SSLSuccess => // must have more data to write
           channelWrite(out).onComplete {
             case Success(_) => continueWrite(data, p)
-            case Failure(t) => p.tryFailure(t)
+            case Failure(t) => p.tryFailure(t); ()
           }(trampoline)
 
         case SSLNeedHandshake(r) =>
@@ -305,7 +305,7 @@ final class SSLStage(engine: SSLEngine, maxWrite: Int = 1024*1024) extends MidSt
             }(trampoline)
           } else sslHandshake(readData, r)
 
-        case SSLFailure(t) => p.tryFailure(t)
+        case SSLFailure(t) => p.tryFailure(t); ()
       }
     }
   }
