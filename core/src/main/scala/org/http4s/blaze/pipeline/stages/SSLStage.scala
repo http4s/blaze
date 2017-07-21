@@ -281,37 +281,35 @@ final class SSLStage(engine: SSLEngine, maxWrite: Int = 1024*1024) extends MidSt
   }
 
   // Attempts to continue write requests
-  private def continueWrite(data: Array[ByteBuffer], p: Promise[Unit]): Unit = {
-    handshakeQueue.synchronized {
-      if (inHandshake()) handshakeQueue += DelayedWrite(data, p)
-      else {
-        val out = new ArrayBuffer[ByteBuffer]
-        writeLoop(data, out) match {
-          case SSLSuccess if BufferTools.checkEmpty(data) =>
-            p.completeWith(channelWrite(out))
+  private def continueWrite(data: Array[ByteBuffer], p: Promise[Unit]): Unit = handshakeQueue.synchronized {
+    if (inHandshake()) handshakeQueue += DelayedWrite(data, p)
+    else {
+      val out = new ArrayBuffer[ByteBuffer]
+      writeLoop(data, out) match {
+        case SSLSuccess if BufferTools.checkEmpty(data) =>
+          p.completeWith(channelWrite(out))
 
-          case SSLSuccess => // must have more data to write
+        case SSLSuccess => // must have more data to write
+          channelWrite(out).onComplete {
+            case Success(_) => continueWrite(data, p)
+            case Failure(t) => p.tryFailure(t)
+          }(trampoline)
+
+        case SSLNeedHandshake(r) =>
+          handshakeQueue += DelayedWrite(data, p)
+          val readData = takeQueuedBytes()
+          if (out.nonEmpty) { // need to write
             channelWrite(out).onComplete {
-              case Success(_) => continueWrite(data, p)
-              case Failure(t) => p.tryFailure(t)
+              case Success(_) => sslHandshake(readData, r)
+              case Failure(t) => handshakeFailure(t)
             }(trampoline)
+          } else sslHandshake(readData, r)
 
-          case SSLNeedHandshake(r) =>
-            handshakeQueue += DelayedWrite(data, p)
-            val readData = takeQueuedBytes()
-            if (out.nonEmpty) { // need to write
-              channelWrite(out).onComplete {
-                case Success(_) => sslHandshake(readData, r)
-                case Failure(t) => handshakeFailure(t)
-              }(trampoline)
-            } else sslHandshake(readData, r)
-
-          case SSLFailure(t) => p.tryFailure(t)
-        }
+        case SSLFailure(t) => p.tryFailure(t)
       }
     }
-    ()
   }
+
 
   // this should just write as much data to the accumulator as possible only
   // modify its input arguments.
