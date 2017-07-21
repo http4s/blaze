@@ -20,7 +20,7 @@ abstract class ServerChannelGroup {
     *
     * Should also be used for any requisite logging purposes. */
   protected def acceptConnection(address: InetSocketAddress): Boolean = {
-    logger.info(s"Connection to $address accepted at ${new Date}.")
+    logger.info(s"Connection from $address accepted at ${new Date}.")
     true
   }  
 }
