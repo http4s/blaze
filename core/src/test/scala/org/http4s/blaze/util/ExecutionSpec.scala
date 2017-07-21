@@ -53,7 +53,7 @@ class ExecutionSpec extends Specification {
 
       submit {
         sys.error("Boom")
-        ok
+        ()
       }
 
       i must be equalTo(0)

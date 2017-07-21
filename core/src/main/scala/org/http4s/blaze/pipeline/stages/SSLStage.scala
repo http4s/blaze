@@ -281,8 +281,12 @@ final class SSLStage(engine: SSLEngine, maxWrite: Int = 1024*1024) extends MidSt
   }
 
   // Attempts to continue write requests
-  private def continueWrite(data: Array[ByteBuffer], p: Promise[Unit]): Unit = handshakeQueue.synchronized {
-    if (inHandshake()) handshakeQueue += DelayedWrite(data, p)
+  private def continueWrite(data: Array[ByteBuffer], p: Promise[Unit]): Unit =
+    handshakeQueue.synchronized {
+    if (inHandshake()) {
+      handshakeQueue += DelayedWrite(data, p)
+      ()
+    }
     else {
       val out = new ArrayBuffer[ByteBuffer]
       writeLoop(data, out) match {
@@ -309,6 +313,7 @@ final class SSLStage(engine: SSLEngine, maxWrite: Int = 1024*1024) extends MidSt
       }
     }
   }
+
 
 
   // this should just write as much data to the accumulator as possible only
