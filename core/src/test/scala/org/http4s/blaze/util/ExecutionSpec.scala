@@ -48,18 +48,16 @@ class ExecutionSpec extends Specification {
       i must be equalTo(10)
     }
 
-    /* This Job Can't Fail As the i+=1 is Dead Code
     "submit a failing job" in {
       var i = 0
 
       submit {
         sys.error("Boom")
-        i += 1
+        ok
       }
 
       i must be equalTo(0)
     }
-    */
 
     "interleave failing and successful `Runnables`" in {
       var i = 0
