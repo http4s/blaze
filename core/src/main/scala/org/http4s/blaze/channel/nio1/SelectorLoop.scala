@@ -2,7 +2,6 @@ package org.http4s.blaze.channel.nio1
 
 
 import org.http4s.blaze.pipeline.{Command => Cmd}
-import org.http4s.blaze.util.BufferTools
 import org.http4s.blaze.pipeline._
 import org.http4s.blaze.channel.BufferPipelineBuilder
 
