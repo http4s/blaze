@@ -53,7 +53,9 @@ abstract class TimeoutHelpers extends Specification {
     override def inboundCommand(cmd: InboundCommand): Unit = {
       super.inboundCommand(cmd)
       cmd match {
-        case Disconnected => disconnectCount.incrementAndGet()
+        case Disconnected =>
+          disconnectCount.incrementAndGet()
+          ()
         case _ => ()
       }
     }

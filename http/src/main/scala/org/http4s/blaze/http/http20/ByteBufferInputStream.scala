@@ -35,12 +35,14 @@ final private class ByteBufferInputStream(buffer: ByteBuffer) extends InputStrea
   override def mark(readlimit: Int): Unit = {
     markSize = readlimit
     buffer.mark()
+    ()
   }
 
   override def reset(): Unit = {
     if (markSize > 0) {
       markSize = 0
       buffer.reset()
+      ()
     }
     else throw new IOException("Invalid mark")
   }

@@ -27,7 +27,7 @@ class IntervalConnectionMonitor(val interval: Duration) extends ConnectionMonito
       val currentTime = System.nanoTime()
       val ticks = currentTime - lastupdate
       lastupdate = currentTime
-      currentMean = currentMean*math.pow(1.0-alpha, ticks) + c.toDouble*alpha
+      currentMean = currentMean*math.pow(1.0-alpha, ticks.toDouble) + c.toDouble*alpha
     }
   }
 

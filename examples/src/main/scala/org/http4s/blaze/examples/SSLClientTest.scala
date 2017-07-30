@@ -9,8 +9,8 @@ object SSLClientTest {
 
   implicit def ec = Execution.trampoline
 
-  def main(args: Array[String]) {
-    val f = HttpClient.GET("https://www.google.com/"){ r => r.stringBody().map((r -> _)) }
+  def main(args: Array[String]): Unit = {
+    val f = HttpClient.GET("https://www.google.com/"){ r => r.stringBody().map(r -> _)}
 
     val (r, body) = Await.result(f, 10.seconds)
 

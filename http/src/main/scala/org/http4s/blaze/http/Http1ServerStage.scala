@@ -33,7 +33,7 @@ class Http1ServerStage(service: HttpService, config: HttpServerStageConfig) exte
   /////////////////////////////////////////////////////////////////////////////////////////
 
   // On startup we begin the dispatch loop
-  override def stageStartup() {
+  override def stageStartup(): Unit = {
     logger.debug("Starting HttpStage")
     dispatchLoop()
   }

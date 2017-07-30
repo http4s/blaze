@@ -55,7 +55,7 @@ object RouteAction {
         }
 
         // Start our loop in the EC
-        ec.prepare().execute(new Runnable { def run(): Unit = go() })
+        ec.execute(new Runnable { def run(): Unit = go() })
 
         p.future
       }

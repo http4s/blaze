@@ -48,17 +48,17 @@ abstract class ConnectionMonitor {
     }
 
     def writeRequest(data: ByteBuffer): Future[Unit] = {
-      bytesOutBound(data.remaining)
+      bytesOutBound(data.remaining.toLong)
       channelWrite(data)
     }
 
     override def writeRequest(data: Seq[ByteBuffer]): Future[Unit] = {
-      bytesOutBound(data.foldLeft(0)((i, b) => i + b.remaining))
+      bytesOutBound(data.foldLeft(0)((i, b) => i + b.remaining()).toLong)
       channelWrite(data)
     }
 
     def readRequest(size: Int): Future[ByteBuffer] =
-      channelRead(size).map { b => bytesInbound(b.remaining); b}(directec)
+      channelRead(size).map { b => bytesInbound(b.remaining.toLong); b}(directec)
   }
 }
 

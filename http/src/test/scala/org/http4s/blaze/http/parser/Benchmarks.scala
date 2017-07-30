@@ -29,7 +29,7 @@ class Benchmarks extends Specification {
       "\r\n"
   }
 
-  def run(i: Int)(f: Int => Any) {
+  def run(i: Int)(f: Int => Any): Unit = {
 
     // Do a warmup
     var ii = math.min(i, 1000000)
@@ -51,7 +51,7 @@ class Benchmarks extends Specification {
     else println("Result to fast to give accurate performance measurement")
   }
 
-  def checkingBenchmark(iterations: Int) {
+  def checkingBenchmark(iterations: Int): Unit = {
     val p = new BenchParser() {
       val sb = new StringBuilder
 
@@ -81,7 +81,7 @@ class Benchmarks extends Specification {
     val blim = b.limit()
     val reconstructed = body + ", " + body + " again!"
 
-    def iteration(remaining: Int)  {
+    def iteration(remaining: Int): Unit =  {
       b.position(0)
 
       if (remaining % 250000 == 0) println(s"Iteration $remaining")
@@ -117,7 +117,7 @@ class Benchmarks extends Specification {
     run(iterations)(iteration(_))
   }
 
-  def rawBenchmark(iterations: Int) {
+  def rawBenchmark(iterations: Int): Unit = {
     val p = new BenchParser()
     val b = ByteBuffer.wrap(mockChunked.getBytes())
 
@@ -139,10 +139,10 @@ class Benchmarks extends Specification {
       assert(!p.requestLineComplete())
     }
 
-    run(iterations)(iteration(_))
+    run(iterations)(iteration)
   }
 
-  def headerCounterBenchmark(iterations: Int) {
+  def headerCounterBenchmark(iterations: Int): Unit = {
     val p = new BenchParser() {
       val headers = new ListBuffer[(String, String)]
 
@@ -151,7 +151,7 @@ class Benchmarks extends Specification {
         false
       }
 
-      def clear() {
+      def clear(): Unit = {
         headers.clear()
         super.reset()
       }

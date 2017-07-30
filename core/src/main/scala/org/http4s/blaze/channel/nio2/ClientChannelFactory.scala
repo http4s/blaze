@@ -30,13 +30,15 @@ final class ClientChannelFactory(
     try {
       val ch = AsynchronousSocketChannel.open(group.orNull)
       ch.connect(remoteAddress, null: Null, new CompletionHandler[Void, Null] {
-        def failed(exc: Throwable, attachment: Null) {
+        def failed(exc: Throwable, attachment: Null): Unit = {
           p.failure(exc)
+          ()
         }
 
-        def completed(result: Void, attachment: Null) {
+        def completed(result: Void, attachment: Null): Unit = {
           channelOptions.applyToChannel(ch)
           p.success(new ByteBufferHead(ch, bufferSize = bufferSize))
+          ()
         }
       })
     }

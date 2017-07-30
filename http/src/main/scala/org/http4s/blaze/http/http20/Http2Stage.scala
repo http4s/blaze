@@ -112,15 +112,15 @@ class Http2Stage private(nodeBuilder: Int => LeafBuilder[NodeMsg.Http2Msg],
     var newSettings: Vector[Setting] = Vector.empty
 
     if (http2Settings.maxInboundStreams != Default.MAX_CONCURRENT_STREAMS) {
-      newSettings :+= Setting(Http2Settings.MAX_CONCURRENT_STREAMS, http2Settings.maxInboundStreams)
+      newSettings :+= Setting(Http2Settings.MAX_CONCURRENT_STREAMS, http2Settings.maxInboundStreams.toLong)
     }
 
     if (http2Settings.inboundWindow != Default.INITIAL_WINDOW_SIZE) {
-      newSettings :+= Setting(Http2Settings.INITIAL_WINDOW_SIZE, http2Settings.inboundWindow)
+      newSettings :+= Setting(Http2Settings.INITIAL_WINDOW_SIZE, http2Settings.inboundWindow.toLong)
     }
 
     if (headerDecoder.maxTableSize != Default.HEADER_TABLE_SIZE) {
-      newSettings :+= Setting(Http2Settings.HEADER_TABLE_SIZE, headerDecoder.maxTableSize)
+      newSettings :+= Setting(Http2Settings.HEADER_TABLE_SIZE, headerDecoder.maxTableSize.toLong)
     }
 
     logger.trace(s"Sending settings: " + newSettings)
@@ -224,7 +224,7 @@ class Http2Stage private(nodeBuilder: Int => LeafBuilder[NodeMsg.Http2Msg],
       }
     }
 
-    val goAwayBuffs = frameHandler.mkGoAwayFrame(lastStream, e.code, e.msgBuffer())
+    val goAwayBuffs = frameHandler.mkGoAwayFrame(lastStream, e.code.toLong, e.msgBuffer())
 
     e.stream.foreach{ streamId => // make a RstStreamFrame, if possible.
       if (streamId > 0) streamError(streamId, e)
@@ -237,6 +237,7 @@ class Http2Stage private(nodeBuilder: Int => LeafBuilder[NodeMsg.Http2Msg],
   private def streamError(streamId: Int, e: Http2Exception): Unit = {
     frameHandler.flowControl.removeNode(streamId, Cmd.EOF, true)
     channelWrite(frameHandler.mkRstStreamFrame(streamId, e.code))
+    ()
   }
 
   //////////////////////////////////////////////////////////////////////////////////

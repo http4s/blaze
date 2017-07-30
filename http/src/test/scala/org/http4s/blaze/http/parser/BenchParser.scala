@@ -11,7 +11,7 @@ class BenchParser(maxReq: Int = 1034, maxHeader: Int = 1024) extends Http1Server
 
   def parsecontent(s: ByteBuffer): ByteBuffer = parseContent(s)
 
-  def badMessage(status: Int, reason: String) {
+  def badMessage(status: Int, reason: String): Unit = {
     sys.error(s"Bad message: $status, $reason")
   }
 

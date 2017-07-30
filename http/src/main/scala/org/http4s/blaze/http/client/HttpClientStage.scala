@@ -28,7 +28,7 @@ class HttpClientStage(timeout: Duration)
   private val hdrs = new ListBuffer[(String, String)]
 
 
-  override protected def reset() {
+  override protected def reset(): Unit = {
     super.reset()
     code = 0
     reason = null
@@ -42,7 +42,7 @@ class HttpClientStage(timeout: Duration)
                                  reason: String,
                                  scheme: String,
                            majorversion: Int,
-                           minorversion: Int) {
+                           minorversion: Int): Unit = {
     this.code = code
     this.reason = reason
   }
@@ -129,7 +129,7 @@ class HttpClientStage(timeout: Duration)
           // Reads the body buffers until completion.
           def next(): Future[ByteBuffer] = {
             if (contentComplete()) Future.successful(BufferTools.emptyBuffer)
-            else if (buffer.hasRemaining()) {
+            else if (buffer.hasRemaining) {
               val n1 = parseContent(buffer)
               if (n1 != null) Future.successful(n1)
               else next()
@@ -142,12 +142,15 @@ class HttpClientStage(timeout: Duration)
             }
           }
 
-          ClientResponse(this.code, this.reason, hdrs.result(), next)
+          ClientResponse(this.code, this.reason, hdrs.result(), next _)
         }
       }
     } catch {
-      case NonFatal(t) => p.tryFailure(t)
+      case NonFatal(t) =>
+        p.tryFailure(t)
+        ()
     }
+    ()
   }
 
 }

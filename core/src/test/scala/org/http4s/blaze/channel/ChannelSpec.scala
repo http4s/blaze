@@ -39,7 +39,7 @@ class ChannelSpec extends Specification {
     title should {
       "Bind the port and then be closed" in {
         val (group,channel) = new BasicServer(_ => new EchoStage, isNIO2).prepare(new InetSocketAddress(0))
-        Thread.sleep(CommonDelay)
+        Thread.sleep(CommonDelay.toLong)
         channel.close()
         group.closeGroup()
         channel.join()
@@ -49,7 +49,7 @@ class ChannelSpec extends Specification {
       "Execute shutdown hooks" in {
         val i = new AtomicInteger(0)
         val (group,channel) = new BasicServer(_ => new EchoStage, isNIO2).prepare(new InetSocketAddress(0))
-        channel.addShutdownHook{ () => i.incrementAndGet() } must_== true
+        channel.addShutdownHook{ () => i.incrementAndGet(); () } must_== true
         channel.close()
         group.closeGroup()
         channel.join()
@@ -59,9 +59,9 @@ class ChannelSpec extends Specification {
       "Execute shutdown hooks when one throws an exception" in {
         val i = new AtomicInteger(0)
         val (group,channel) = new BasicServer(_ => new EchoStage, isNIO2).prepare(new InetSocketAddress(0))
-        channel.addShutdownHook{ () => i.incrementAndGet() } must_== true
+        channel.addShutdownHook{ () => i.incrementAndGet(); () } must_== true
         channel.addShutdownHook{ () => sys.error("Foo") }    must_== true
-        channel.addShutdownHook{ () => i.incrementAndGet() } must_== true
+        channel.addShutdownHook{ () => i.incrementAndGet(); () } must_== true
         channel.close()
 
         group.closeGroup()
@@ -73,7 +73,7 @@ class ChannelSpec extends Specification {
       "Execute shutdown hooks when the ServerChannelGroup is shutdown" in {
         val i = new AtomicInteger(0)
         val (group,channel) = new BasicServer(_ => new EchoStage, isNIO2).prepare(new InetSocketAddress(0))
-        channel.addShutdownHook{ () => i.incrementAndGet() } must_== true
+        channel.addShutdownHook{ () => i.incrementAndGet(); () } must_== true
         group.closeGroup()
 
         channel.join()

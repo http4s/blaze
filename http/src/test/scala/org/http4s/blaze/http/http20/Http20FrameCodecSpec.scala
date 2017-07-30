@@ -201,7 +201,7 @@ class Http20FrameCodecSpec extends Specification {
       })
 
     "make a round trip" in {
-      val settings = (0 until 100).map(i => Setting(i, i + 3))
+      val settings = (0 until 100).map(i => Setting(i, (i + 3).toLong))
 
       val buff1 = encoder.mkSettingsFrame(false, settings)
       dec(false, settings).decodeBuffer(buff1) must_== Continue
@@ -209,7 +209,7 @@ class Http20FrameCodecSpec extends Specification {
     }
 
     "reject settings on ACK" in {
-      val settings = (0 until 100).map(i => Setting(i, i + 3))
+      val settings = (0 until 100).map(i => Setting(i, (i + 3).toLong))
       encoder.mkSettingsFrame(true, settings) must throwA[Exception]
     }
   }

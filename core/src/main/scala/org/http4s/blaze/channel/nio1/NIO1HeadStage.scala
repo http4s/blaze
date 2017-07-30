@@ -59,13 +59,15 @@ private[nio1] abstract class NIO1HeadStage(ch: SelectableChannel,
         readPromise = null
         if (p != null) {
           p.tryComplete(r)
+          ()
         }
-        else { /* NOOP: was handled during an exception event */ }
+        else { /* NOOP: was handled during an exception event */ ()}
 
       case Failure(e) =>
         val ee = checkError(e)
         sendInboundCommand(Disconnected)
         closeWithError(ee)    // will complete the promise with the error
+        ()
     }
   }
 
@@ -77,17 +79,19 @@ private[nio1] abstract class NIO1HeadStage(ch: SelectableChannel,
       override def run(): Unit = {
         if (closedReason != null) {
           p.tryFailure(closedReason)
+          ()
         }
         else if (readPromise == null) {
           readPromise = p
           setOp(SelectionKey.OP_READ)
+          ()
         }
         else {
           p.tryFailure(new IllegalStateException("Cannot have more than one pending read request"))
+          ()
         }
       }
     })
-
     p.future
   }
 
@@ -107,11 +111,13 @@ private[nio1] abstract class NIO1HeadStage(ch: SelectableChannel,
         writePromise = null
         if (p != null) {
           p.tryComplete(cachedSuccess)
+          ()
         }
-        else { /* NOOP: channel must have been closed in some manner */ }
+        else { /* NOOP: channel must have been closed in some manner */ ()}
 
       case Incomplete => /* Need to wait for another go around to try and send more data */
         BufferTools.dropEmpty(buffers)
+        ()
 
       case WriteError(t) =>
         unsetOp(SelectionKey.OP_WRITE)
@@ -129,6 +135,7 @@ private[nio1] abstract class NIO1HeadStage(ch: SelectableChannel,
       override def run(): Unit = {
         if (closedReason != null) {
           p.tryFailure(closedReason)
+          ()
         }
         else if (writePromise == null) {
           val writes = data.toArray
@@ -137,12 +144,14 @@ private[nio1] abstract class NIO1HeadStage(ch: SelectableChannel,
             writeData = writes
             setOp(SelectionKey.OP_WRITE)
             p.future
+            ()
           }
-          else p.tryComplete(cachedSuccess) // Empty buffer, just return success
+          else p.tryComplete(cachedSuccess); () // Empty buffer, just return success
         } else {
           val t = new IllegalStateException("Cannot have more than one pending write request")
           logger.error(t)(s"Multiple pending write requests")
           p.tryFailure(t)
+          ()
         }
       }
     })
@@ -178,7 +187,7 @@ private[nio1] abstract class NIO1HeadStage(ch: SelectableChannel,
 
     // intended to be called from within the SelectorLoop but if
     // it's closed it will be performed in the current thread
-    def doClose(t: Throwable) {
+    def doClose(t: Throwable): Unit = {
 
       // this is the only place that writes to the variable
       if (closedReason == null) {
@@ -224,7 +233,7 @@ private[nio1] abstract class NIO1HeadStage(ch: SelectableChannel,
   /** Unsets a channel interest
    *  only to be called by the SelectorLoop thread
    **/
-  private def unsetOp(op: Int) {
+  private def unsetOp(op: Int): Unit = {
     // assert(Thread.currentThread() == loop,
     //       s"Expected to be called only by SelectorLoop thread, was called by ${Thread.currentThread.getName}")
 
@@ -232,6 +241,7 @@ private[nio1] abstract class NIO1HeadStage(ch: SelectableChannel,
       val ops = key.interestOps()
       if ((ops & op) != 0) {
         key.interestOps(ops & ~op)
+        ()
       }
     } catch {
       case _: CancelledKeyException =>
@@ -241,7 +251,7 @@ private[nio1] abstract class NIO1HeadStage(ch: SelectableChannel,
   }
 
   // only to be called by the SelectorLoop thread
-  private def setOp(op: Int) {
+  private def setOp(op: Int) : Unit = {
     // assert(Thread.currentThread() == loop,
     //       s"Expected to be called only by SelectorLoop thread, was called by ${Thread.currentThread.getName}")
 
@@ -249,6 +259,7 @@ private[nio1] abstract class NIO1HeadStage(ch: SelectableChannel,
       val ops = key.interestOps()
       if ((ops & op) == 0) {
         key.interestOps(ops | op)
+        ()
       }
     } catch {
       case _: CancelledKeyException =>

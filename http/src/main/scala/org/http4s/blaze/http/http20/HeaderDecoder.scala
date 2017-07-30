@@ -29,7 +29,10 @@ class HeaderDecoder(maxHeaderSize: Int,
   private var acc = new ArrayBuffer[(String, String)]
 
   /** abstract method that adds the key value pair to the internal representation */
-  protected def addHeader(name: String, value: String, sensitive: Boolean): Unit = acc += ((name, value))
+  protected def addHeader(name: String, value: String, sensitive: Boolean): Unit = {
+    acc += ((name, value))
+    ()
+  }
 
   /** Returns the header collection and clears the builder */
   def result(): Seq[(String,String)] = {

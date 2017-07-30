@@ -43,6 +43,7 @@ class ALPNSelector(engine: SSLEngine,
     try {
       val b = builder(selected.getOrElse(selector(Nil)))
       this.replaceTail(b, true)
+      ()
     } catch {
       case t: Throwable =>
         logger.error(t)("Failure building pipeline")
@@ -51,16 +52,16 @@ class ALPNSelector(engine: SSLEngine,
   }
 
   private class ServerProvider extends ALPN.ServerProvider {
-    import scala.collection.JavaConversions._
+    import scala.collection.JavaConverters._
 
     override def select(protocols: util.List[String]): String = {
       logger.debug("Available protocols: " + protocols)
-      val s = selector(protocols)
+      val s = selector(protocols.asScala)
       selected = Some(s)
       s
     }
 
-    override def unsupported() {
+    override def unsupported(): Unit = {
       logger.debug(s"Unsupported protocols, defaulting to $selected")
     }
   }

@@ -22,6 +22,7 @@ class SerializingStageSpec extends Specification {
 
     def write(data: Int): Unit = {
       ints += data
+      ()
     }
 
     def name: String = "SlowIntHead"

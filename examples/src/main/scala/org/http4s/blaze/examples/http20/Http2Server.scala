@@ -26,7 +26,7 @@ class Http2Server(port: Int) {
 }
 
 object Http2Server {
-  def main(args: Array[String]) {
+  def main(args: Array[String]): Unit = {
     println("Hello world!")
     new Http2Server(8443).run().join()
   }

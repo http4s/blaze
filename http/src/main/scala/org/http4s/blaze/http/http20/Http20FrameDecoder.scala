@@ -60,7 +60,7 @@ private trait Http20FrameDecoder {
         case FrameTypes.CONTINUATION  => decodeContinuationFrame(buffer, streamId, flags)
 
         // this concludes the types established by HTTP/2.0, but it could be an extension
-        case code                     => onExtensionFrame(code, streamId, flags, buffer.slice())
+        case code                     => onExtensionFrame(code.toInt, streamId, flags, buffer.slice())
       }
 
       // reset buffer limits

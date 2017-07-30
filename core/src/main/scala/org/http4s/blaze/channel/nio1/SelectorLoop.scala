@@ -36,10 +36,11 @@ final class SelectorLoop(id: String, selector: Selector, bufferSize: Int) extend
     logger.info(s"Shutting down SelectorLoop ${getName()}")
     _isClosed = true
     selector.wakeup()
+    ()
   }
 
   @inline
-  final def executeTask(r: Runnable) {
+  final def executeTask(r: Runnable): Unit =  {
     if (Thread.currentThread() == thisLoop) r.run()
     else enqueTask(r)
   }
@@ -52,12 +53,13 @@ final class SelectorLoop(id: String, selector: Selector, bufferSize: Int) extend
     if (head eq null) {
       queueTail.set(node)
       selector.wakeup()
+      ()
     } else head.lazySet(node)
   }
 
-  def initChannel(builder: BufferPipelineBuilder, ch: SelectableChannel, mkStage: SelectionKey => NIO1HeadStage) {
+  def initChannel(builder: BufferPipelineBuilder, ch: SelectableChannel, mkStage: SelectionKey => NIO1HeadStage): Unit = {
     enqueTask( new Runnable {
-      def run() {
+      def run(): Unit = {
         try {
           ch.configureBlocking(false)
           val key = ch.register(selector, 0)
@@ -75,7 +77,7 @@ final class SelectorLoop(id: String, selector: Selector, bufferSize: Int) extend
     })
   }
 
-  private def runTasks() {
+  private def runTasks(): Unit = {
     @tailrec def spin(n: Node): Node = {
       val next = n.get()
       if (next ne null) next
@@ -103,7 +105,7 @@ final class SelectorLoop(id: String, selector: Selector, bufferSize: Int) extend
   }
 
   // Main thread method. The loop will break if the Selector loop is closed
-  override def run() {
+  override def run(): Unit = {
     // The scratch buffer is a direct buffer as this will often be used for I/O
     val scratch = ByteBuffer.allocateDirect(bufferSize)
 
@@ -172,11 +174,11 @@ final class SelectorLoop(id: String, selector: Selector, bufferSize: Int) extend
     killSelector()
   }
 
-  private def killSelector() {
-    import scala.collection.JavaConversions._
+  private def killSelector(): Unit = {
+    import scala.collection.JavaConverters._
 
     try {
-      selector.keys().foreach { k =>
+      selector.keys().asScala.foreach { k =>
         try {
           val head = k.attachment()
           if (head != null) {

@@ -52,7 +52,7 @@ class TickWheelExecutor(wheelSize: Int = 512, tick: Duration = 200.milli) {
   // new Thread that actually runs the execution.
 
   private val thread = new Thread(s"TickWheelExecutor: $wheelSize spokes, $tick interval") {
-    override def run() {
+    override def run(): Unit = {
       cycle(System.currentTimeMillis())
     }
   }
@@ -153,7 +153,7 @@ class TickWheelExecutor(wheelSize: Int = 512, tick: Duration = 200.milli) {
     val now = System.currentTimeMillis()
     val lastTick = (lastTickTime * _tickInv).toLong
     val thisTick = (now * _tickInv).toLong
-    val ticks = math.min(thisTick - lastTick, wheelSize)
+    val ticks = math.min(thisTick - lastTick, wheelSize.toLong)
 
     @tailrec
     def go(i: Long): Unit = if (i < ticks) { // will do at least one tick
@@ -174,7 +174,7 @@ class TickWheelExecutor(wheelSize: Int = 512, tick: Duration = 200.milli) {
     }
   }
 
-  protected def onNonFatal(t: Throwable) {
+  protected def onNonFatal(t: Throwable): Unit = {
     logger.error(t)("Non-Fatal Exception caught while executing scheduled task")
   }
   
@@ -191,7 +191,7 @@ class TickWheelExecutor(wheelSize: Int = 512, tick: Duration = 200.milli) {
       *
       * @param time current system time (in milliseconds)
       */
-    def prune(time: Long) {
+    def prune(time: Long): Unit = {
       @tailrec
       def checkNext(prev: Node): Unit = {
         val next = prev.next

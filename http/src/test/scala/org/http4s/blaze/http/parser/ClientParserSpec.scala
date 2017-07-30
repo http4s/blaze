@@ -35,7 +35,7 @@ class ClientParserSpec extends Specification {
 
     def parseResponse(b: ByteBuffer) = this.parseResponseLine(b)
 
-    def submitResponseLine(code: Int, reason: String, scheme: String, majorversion: Int, minorversion: Int) {
+    def submitResponseLine(code: Int, reason: String, scheme: String, majorversion: Int, minorversion: Int): Unit = {
       this.code = code
       this.reason = reason
       this.scheme = scheme

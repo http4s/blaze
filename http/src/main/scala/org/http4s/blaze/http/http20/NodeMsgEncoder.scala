@@ -63,6 +63,7 @@ private[http20] class NodeMsgEncoder[HType](id: Int,
 
     if (hsBuff.remaining() + priorityBytes <= maxPayloadSize) {
       acc ++= fencoder.mkHeaderFrame(hsBuff, id, hs.priority, true, hs.endStream, 0)
+      ()
     } else {
       // need to split into HEADERS and CONTINUATION frames
       val l = hsBuff.limit()
@@ -97,6 +98,7 @@ private[http20] class NodeMsgEncoder[HType](id: Int,
   private def mkContinuationFrames(maxPayload: Int, hBuff: ByteBuffer, acc: Buffer[ByteBuffer]): Unit = {
     if (hBuff.remaining() >= maxPayload) {
       acc ++= fencoder.mkContinuationFrame(id, true, hBuff)
+      ()
     }
     else {
       val l = hBuff.limit()
