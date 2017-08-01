@@ -2,6 +2,7 @@ package org.http4s.blaze.channel
 
 import java.io.Closeable
 import java.net.InetSocketAddress
+import java.util.concurrent.atomic.AtomicInteger
 import org.log4s.getLogger
 import org.http4s.blaze.util.Execution
 import scala.util.control.NonFatal
@@ -9,13 +10,13 @@ import scala.concurrent.ExecutionContext
 
 /** Representation of a bound server */
 abstract class ServerChannel extends Closeable { self =>
-  import ServerChannel.State._
+  import ServerChannel._
 
   protected val logger = getLogger
 
   private var state: State = Open
 
-  private val shutdownHooks = new scala.collection.mutable.Queue[Hook]
+  private val shutdownHooks = Vector.newBuilder[Hook]
 
   /** Close out any resources associated with the [[ServerChannel]] */
   protected def closeChannel(): Unit
@@ -28,19 +29,19 @@ abstract class ServerChannel extends Closeable { self =>
     * @note this method is idempotent
     */
   final def close(): Unit = {
-    val run = shutdownHooks.synchronized {
-      if (state != Open) false
+    val hooks = shutdownHooks.synchronized {
+      if (state != Open) Vector.empty
       else {
         state = Closing
         // Need to close the channel, get all the hooks, then notify the listeners
         closeChannel()
-        true
+        val hooks = shutdownHooks.result()
+        shutdownHooks.clear()
+        hooks
       }
     }
 
-    // We move this outside of the lock to ensure that we don't schedule work
-    // inside the lock since the EC could run the task immediately.
-    if (run) scheduleHook()
+    scheduleHooks(hooks)
   }
 
   /** Wait for this server channel to close, including execution of all successfully
@@ -53,6 +54,9 @@ abstract class ServerChannel extends Closeable { self =>
   }
 
   /** Add code to be executed when the [[ServerChannel]] is closed
+    *
+    * @note There are no guarantees as to order of shutdown hook execution
+    *       or that they will be executed sequentially.
     *
     * @param f hook to execute on shutdown
     * @return true if the hook was successfully registered, false otherwise.
@@ -67,28 +71,30 @@ abstract class ServerChannel extends Closeable { self =>
     }
   }
 
-  // Checks if we have a hook, and if we do, schedule it and then check again
-  private[this] def scheduleHook(): Unit = {
-    val hook = shutdownHooks.synchronized {
-      if (shutdownHooks.nonEmpty) Some(shutdownHooks.dequeue())
-      else {
-        // all our hooks are done! Switch to closed state, notify
-        // all the listeners
-        state = Closed
-        shutdownHooks.notifyAll()
-        None
+  // Schedules all the shutdown hooks.
+  private[this] def scheduleHooks(hooks: Vector[Hook]): Unit = {
+    // Its important that this calls `closeAndNotify` even if
+    // there are no hooks to execute.
+    if (hooks.isEmpty) closeAndNotify()
+    else {
+      val countdown = new AtomicInteger(hooks.size)
+      hooks.foreach { hook =>
+        hook.ec.execute(new HookRunnable(countdown, hook.task))
       }
-    }
-    hook match {
-      case Some(hook) => hook.ec.execute(new HookRunnable(hook.task))
-      case None => ()
     }
   }
 
-  private case class Hook(task: () => Unit, ec: ExecutionContext)
+  // set the terminal state and notify any callers of `join`.
+  // This method should be idempotent.
+  private[this] def closeAndNotify(): Unit = shutdownHooks.synchronized {
+    state = Closed
+    shutdownHooks.notifyAll()
+  }
+
+  private[this] case class Hook(task: () => Unit, ec: ExecutionContext)
 
   // Bundles the task of executing a hook and scheduling the next hook
-  private[this] class HookRunnable(hook: () => Unit) extends Runnable {
+  private[this] class HookRunnable(countdown: AtomicInteger, hook: () => Unit) extends Runnable {
     override def run(): Unit = {
       try hook()
       catch {
@@ -96,19 +102,18 @@ abstract class ServerChannel extends Closeable { self =>
           logger.error(t)(s"Exception occurred during Channel shutdown.")
       }
       finally {
-        // We bounce these through the thread local trampoline to ensure
-        // that we don't get a SOE if everyone is using the direct EC.
-        Execution.trampoline.execute(new Runnable {
-          override def run(): Unit = scheduleHook()
-        })
+        // If we're the last hook to run, we notify any listeners
+        if (countdown.decrementAndGet() == 0) {
+          closeAndNotify()
+        }
       }
     }
   }
 }
 
 private object ServerChannel {
-  object State extends Enumeration {
-    type State = Value
-    val Open, Closing, Closed = Value
-  }
+  sealed trait State
+  case object Open extends State
+  case object Closing extends State
+  case object Closed extends State
 }
