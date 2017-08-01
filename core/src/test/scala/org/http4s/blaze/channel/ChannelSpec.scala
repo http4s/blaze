@@ -17,7 +17,7 @@ class ChannelSpec extends Specification {
       val factory = if (nio2) NIO2SocketServerGroup.fixedGroup(workerThreads = 2)
                     else      NIO1SocketServerGroup.fixedGroup(workerThreads = 2)
 
-      (factory,factory.bind(address, f).getOrElse(sys.error("Failed to initialize socket at address " + address)))
+      (factory, factory.bind(address, f).getOrElse(sys.error("Failed to initialize socket at address " + address)))
     }
   }
 

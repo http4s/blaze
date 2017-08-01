@@ -1,67 +1,119 @@
 package org.http4s.blaze.channel
 
-
 import java.io.Closeable
 import java.net.InetSocketAddress
-import java.util.concurrent.CountDownLatch
-import java.util.concurrent.atomic.AtomicReference
-
-import scala.annotation.tailrec
-import scala.util.control.NonFatal
-
+import java.util.concurrent.atomic.AtomicInteger
 import org.log4s.getLogger
+import org.http4s.blaze.util.Execution
+import scala.util.control.NonFatal
+import scala.concurrent.ExecutionContext
 
 /** Representation of a bound server */
 abstract class ServerChannel extends Closeable { self =>
+  import ServerChannel._
+
   protected val logger = getLogger
 
-  private val shutdownHooks = new AtomicReference[Vector[()=> Unit]](Vector.empty)
+  private var state: State = Open
+
+  private val shutdownHooks = Vector.newBuilder[Hook]
 
   /** Close out any resources associated with the [[ServerChannel]] */
   protected def closeChannel(): Unit
 
-  /** Close the [[ServerChannel]] and execute any shutdown hooks */
+  /** The bound socket address for this [[ServerChannel]] */
+  def socketAddress: InetSocketAddress
+
+  /** Close the [[ServerChannel]] and execute any shutdown hooks
+    *
+    * @note this method is idempotent
+    */
   final def close(): Unit = {
-    closeChannel()
-    runShutdownHooks()
+    val hooks = shutdownHooks.synchronized {
+      if (state != Open) Vector.empty
+      else {
+        state = Closing
+        // Need to close the channel, get all the hooks, then notify the listeners
+        closeChannel()
+        val hooks = shutdownHooks.result()
+        shutdownHooks.clear()
+        hooks
+      }
+    }
+
+    scheduleHooks(hooks)
   }
 
-  /** Wait for this server channel to close */
-  final def join(): Unit = {
-    val l = new CountDownLatch(1)
-
-    if (!addShutdownHook(() => l.countDown()))
-      l.countDown()
-
-    l.await()
+  /** Wait for this server channel to close, including execution of all successfully
+    * registered shutdown hooks.
+    */
+  final def join(): Unit = shutdownHooks.synchronized {
+    while (state != Closed) {
+      shutdownHooks.wait()
+    }
   }
 
   /** Add code to be executed when the [[ServerChannel]] is closed
     *
+    * @note There are no guarantees as to order of shutdown hook execution
+    *       or that they will be executed sequentially.
+    *
     * @param f hook to execute on shutdown
-    * @return true if the hook was successfully registered, false otherwise
+    * @return true if the hook was successfully registered, false otherwise.
     */
-  final def addShutdownHook(f: () => Unit): Boolean = {
-    @tailrec
-    def go(): Boolean = shutdownHooks.get() match {
-      case null                                                     => false
-      case hooks if(shutdownHooks.compareAndSet(hooks, hooks :+ f)) => true
-      case _                                                        => go()
-    }
-
-    go()
-  }
-
-  private def runShutdownHooks(): Unit = {
-    val hooks = shutdownHooks.getAndSet(null)
-    if (hooks != null) {
-      hooks.foreach { f =>
-        try f()
-        catch { case NonFatal(t) => logger.error(t)(s"Exception occurred during Channel shutdown.") }
+  final def addShutdownHook(f: () => Unit)(implicit ec: ExecutionContext = Execution.directec): Boolean = {
+    shutdownHooks.synchronized {
+      if (state != Open) false
+      else {
+        shutdownHooks += Hook(f, ec)
+        true
       }
     }
   }
 
-  /* Return the bound socket address for this server channel */
-  def socketAddress: InetSocketAddress
+  // Schedules all the shutdown hooks.
+  private[this] def scheduleHooks(hooks: Vector[Hook]): Unit = {
+    // Its important that this calls `closeAndNotify` even if
+    // there are no hooks to execute.
+    if (hooks.isEmpty) closeAndNotify()
+    else {
+      val countdown = new AtomicInteger(hooks.size)
+      hooks.foreach { hook =>
+        hook.ec.execute(new HookRunnable(countdown, hook.task))
+      }
+    }
+  }
+
+  // set the terminal state and notify any callers of `join`.
+  // This method should be idempotent.
+  private[this] def closeAndNotify(): Unit = shutdownHooks.synchronized {
+    state = Closed
+    shutdownHooks.notifyAll()
+  }
+
+  private[this] case class Hook(task: () => Unit, ec: ExecutionContext)
+
+  // Bundles the task of executing a hook and scheduling the next hook
+  private[this] class HookRunnable(countdown: AtomicInteger, hook: () => Unit) extends Runnable {
+    override def run(): Unit = {
+      try hook()
+      catch {
+        case NonFatal(t) =>
+          logger.error(t)(s"Exception occurred during Channel shutdown.")
+      }
+      finally {
+        // If we're the last hook to run, we notify any listeners
+        if (countdown.decrementAndGet() == 0) {
+          closeAndNotify()
+        }
+      }
+    }
+  }
+}
+
+private object ServerChannel {
+  sealed trait State
+  case object Open extends State
+  case object Closing extends State
+  case object Closed extends State
 }
