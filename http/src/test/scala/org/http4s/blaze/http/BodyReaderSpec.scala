@@ -17,23 +17,23 @@ class BodyReaderSpec extends Specification {
   "BodyReader.singleBuffer" should {
     "Return the empty reader if the buffer is empty" in {
       val reader = BodyReader.singleBuffer(ByteBuffer.allocate(0))
-      reader.isEmpty must beTrue
+      reader.isExhausted must beTrue
     }
 
     "Provide the buffer on first invocation" in {
       val buf = ByteBuffer.allocate(10)
       val reader = BodyReader.singleBuffer(buf)
-      reader.isEmpty must beFalse
+      reader.isExhausted must beFalse
 
       await(reader()) must_== buf
-      reader.isEmpty must beTrue
+      reader.isExhausted must beTrue
     }
 
     "discard clears the buffer" in {
       val buf = ByteBuffer.allocate(10)
       val reader = BodyReader.singleBuffer(buf)
       reader.discard()
-      reader.isEmpty must beTrue
+      reader.isExhausted must beTrue
       await(reader()).hasRemaining must beFalse
     }
 
@@ -82,10 +82,10 @@ class BodyReaderSpec extends Specification {
     override def discard(): Unit = synchronized { buffers.clear() }
 
     override def apply(): Future[ByteBuffer] = synchronized {
-      if (!isEmpty) Future.successful(buffers.dequeue())
+      if (!isExhausted) Future.successful(buffers.dequeue())
       else Future.successful(BufferTools.emptyBuffer)
     }
 
-    override def isEmpty: Boolean = synchronized { buffers.isEmpty }
+    override def isExhausted: Boolean = synchronized { buffers.isEmpty }
   }
 }

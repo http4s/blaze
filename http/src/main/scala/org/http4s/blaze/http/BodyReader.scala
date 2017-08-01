@@ -34,7 +34,7 @@ trait BodyReader {
     * value of `true` guarantees that no more data can be obtained from this `MessageBody`, but a
     * return value of `false` does not guarantee more data.
     */
-  def isEmpty: Boolean
+  def isExhausted: Boolean
 
   /** Accumulate any remaining data.
     *
@@ -61,13 +61,13 @@ private object BodyReader {
   val EmptyBodyReader: BodyReader = new BodyReader {
     override def discard(): Unit = ()
     override def apply(): Future[ByteBuffer] = BufferTools.emptyFutureBuffer
-    override def isEmpty: Boolean = true
+    override def isExhausted: Boolean = true
   }
 
   /** Construct a [[BodyReader]] with exactly one chunk of data
     *
     * This method takes ownership if the passed `ByteBuffer`: any changes to the underlying
-    * buffer will be visible to the consumer of this `MessageBody` and vise versa.
+    * buffer will be visible to the consumer of this `MessageBody` and vice versa.
     *
     * @note if the passed buffer is empty, the `EmptyBodyReader` is returned.
     */
@@ -80,7 +80,7 @@ private object BodyReader {
         buff = BufferTools.emptyBuffer
       }
 
-      override def isEmpty: Boolean = this.synchronized { !buff.hasRemaining }
+      override def isExhausted: Boolean = this.synchronized { !buff.hasRemaining }
 
       override def apply(): Future[ByteBuffer] = this.synchronized {
         if (buff.hasRemaining) {
