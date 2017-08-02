@@ -5,10 +5,10 @@ import org.http4s.blaze.http.parser.BaseExceptions.*;
 
 public abstract class Http1ClientParser extends BodyAndHeaderParser {
 
-    public Http1ClientParser(int maxRequestLineSize, int maxHeaderLength, int initialBufferSize, int maxChunkSize,
+    public Http1ClientParser(int maxResponseLineSize, int maxHeaderLength, int initialBufferSize, int maxChunkSize,
                              boolean isLenient) {
         super(initialBufferSize, maxHeaderLength, maxChunkSize, isLenient);
-        this.maxRequestLineSize = maxRequestLineSize;
+        this.maxResponseLineSize = maxResponseLineSize;
 
         _internalReset();
     }
@@ -36,7 +36,7 @@ public abstract class Http1ClientParser extends BodyAndHeaderParser {
         END,
     }
 
-    private final int maxRequestLineSize;
+    private final int maxResponseLineSize;
 
     private RequestLineState _requestLineState = RequestLineState.START;
     private String _lineScheme = null;
@@ -89,7 +89,7 @@ public abstract class Http1ClientParser extends BodyAndHeaderParser {
                 switch (_requestLineState) {
                     case START:
                         _requestLineState = RequestLineState.VERSION;
-                        resetLimit(maxRequestLineSize);
+                        resetLimit(maxResponseLineSize);
 
                     case VERSION:
                         for(ch = next(in, false); ch != HttpTokens.SPACE && ch != HttpTokens.TAB; ch = next(in, false)) {
