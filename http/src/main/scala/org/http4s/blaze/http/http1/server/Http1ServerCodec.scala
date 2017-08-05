@@ -1,10 +1,12 @@
-package org.http4s.blaze.http
+package org.http4s.blaze.http.http1.server
 
-import java.nio.{ByteBuffer, CharBuffer}
 import java.nio.charset.StandardCharsets
+import java.nio.{ByteBuffer, CharBuffer}
 
+import org.http4s.blaze.http._
 import org.http4s.blaze.http.util.HeaderTools
 import org.http4s.blaze.http.util.HeaderTools.SpecialHeaders
+import org.http4s.blaze.pipeline.Command.EOF
 import org.http4s.blaze.pipeline.TailStage
 import org.http4s.blaze.util.{BufferTools, Execution}
 import org.log4s.getLogger
@@ -55,7 +57,7 @@ private final class Http1ServerCodec(maxNonBodyBytes: Int, pipeline: TailStage[B
       }
     } else {
       val msg = "Attempted to get next request when protocol was in invalid state"
-      Future.failed(new IllegalArgumentException(msg))
+      Future.failed(new IllegalStateException(msg))
     }
   }
 
@@ -97,18 +99,29 @@ private final class Http1ServerCodec(maxNonBodyBytes: Int, pipeline: TailStage[B
     }
   }
 
-  private def getBody(): MessageBody = {
-    if (parser.contentComplete()) MessageBody.emptyMessageBody
-    else new MessageBody {
+  private def getBody(): BodyReader = {
+    if (parser.contentComplete()) BodyReader.EmptyBodyReader
+    else new BodyReader {
       // We store the request that this body is associated with. This is
       // to avoid the situation where a user stores the reader and attempts
       // to use it later, resulting in a corrupt HTTP protocol
       private val thisRequest = requestId
+      private var discarded = false
+
+      override def isExhausted: Boolean = lock.synchronized {
+        discarded || thisRequest != requestId || parser.contentComplete()
+      }
+
+      /** Throw away this `MessageBody` */
+      override def discard(): Unit = lock.synchronized {
+        discarded = false
+      }
 
       override def apply(): Future[ByteBuffer] = lock.synchronized {
-        if (thisRequest != requestId || parser.contentComplete()) {
+        if (discarded || parser.contentComplete()) {
           BufferTools.emptyFutureBuffer
         }
+        else if (thisRequest != requestId) Future.failed(EOF)
         else {
           val buf = parser.parseBody(buffered)
           if (buf.hasRemaining) Future.successful(buf)

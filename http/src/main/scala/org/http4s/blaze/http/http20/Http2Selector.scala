@@ -4,6 +4,7 @@ import java.nio.ByteBuffer
 import javax.net.ssl.SSLEngine
 
 import org.http4s.blaze.http._
+import org.http4s.blaze.http.http1.server.Http1ServerStage
 import org.http4s.blaze.http.http20.NodeMsg.Http2Msg
 import org.http4s.blaze.pipeline.{LeafBuilder, TailStage}
 import org.log4s.getLogger

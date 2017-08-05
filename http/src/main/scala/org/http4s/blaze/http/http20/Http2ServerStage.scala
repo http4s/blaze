@@ -42,7 +42,7 @@ class Http2ServerStage(streamId: Int,
   private def startRequest(): Unit = {
     channelRead(timeout = config.requestPreludeTimeout).onComplete  {
       case Success(HeadersFrame(_, endStream, hs)) =>
-        if (endStream) checkAndRunRequest(hs, MessageBody.emptyMessageBody)
+        if (endStream) checkAndRunRequest(hs, BodyReader.EmptyBodyReader)
         else getBodyReader(hs)
 
       case Success(frame) =>
@@ -69,13 +69,13 @@ class Http2ServerStage(streamId: Int,
     }
 
     length match {
-      case Some(Right(len)) => checkAndRunRequest(hs, new BodyReader(len))
+      case Some(Right(len)) => checkAndRunRequest(hs, new H2BodyReader(len))
       case Some(Left(error)) => shutdownWithCommand(Cmd.Error(PROTOCOL_ERROR(error, streamId, fatal = false)))
-      case None => checkAndRunRequest(hs, new BodyReader(-1))
+      case None => checkAndRunRequest(hs, new H2BodyReader(-1))
     }
   }
 
-  private def checkAndRunRequest(hs: Headers, body: MessageBody): Unit = {
+  private def checkAndRunRequest(hs: Headers, body: BodyReader): Unit = {
 
     val normalHeaders = new ArrayBuffer[(String, String)](hs.size)
     var method: String = null
@@ -218,14 +218,24 @@ class Http2ServerStage(streamId: Int,
     }
   }
 
-  private class BodyReader(length: Long) extends MessageBody {
+  private class H2BodyReader(length: Long) extends BodyReader {
     private var bytesRead = 0L
     private var finished = false
 
     private val lock = this
 
+    override def discard(): Unit = lock.synchronized {
+      if (!finished) {
+        finished = true
+      }
+    }
+
+    override def isExhausted: Boolean = lock.synchronized {
+      finished || bytesRead >= length
+    }
+
     def apply(): Future[ByteBuffer] = lock.synchronized {
-      if (finished) MessageBody.emptyMessageBody()
+      if (finished) BufferTools.emptyFutureBuffer
       else {
         channelRead().flatMap( frame => lock.synchronized (frame match {
           case DataFrame(endStream, bytes, _) =>
@@ -247,7 +257,7 @@ class Http2ServerStage(streamId: Int,
             logger.warn(s"Discarding headers: $ts")
             if (endStream) {
               finished = true
-              MessageBody.emptyMessageBody()
+              BufferTools.emptyFutureBuffer
             }
             else {
               // trailing headers must be the end of the stream
