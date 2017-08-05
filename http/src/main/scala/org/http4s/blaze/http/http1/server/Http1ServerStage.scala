@@ -1,15 +1,15 @@
-package org.http4s.blaze.http
-
+package org.http4s.blaze.http.http1.server
 
 import java.nio.ByteBuffer
 
 import org.http4s.blaze.http.util.{HeaderNames, ServiceTimeoutFilter}
+import org.http4s.blaze.http.{HttpRequest, HttpServerStageConfig, RouteAction, _}
+import org.http4s.blaze.pipeline.Command.EOF
 import org.http4s.blaze.pipeline.{Command => Cmd, _}
 import org.http4s.blaze.util.Execution
-import org.http4s.blaze.pipeline.Command.EOF
 
-import scala.util.{Failure, Success}
 import scala.util.control.NoStackTrace
+import scala.util.{Failure, Success}
 
 /** Http1 Server tail stage
   *

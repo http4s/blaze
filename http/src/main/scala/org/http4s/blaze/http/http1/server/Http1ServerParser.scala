@@ -1,4 +1,4 @@
-package org.http4s.blaze.http
+package org.http4s.blaze.http.http1.server
 
 import java.nio.ByteBuffer
 
@@ -10,7 +10,7 @@ import scala.collection.immutable.VectorBuilder
 
 private[blaze] object BlazeServerParser {
 
-  final case class Prelude[HeadersT](
+  final case class RequestPrelude[HeadersT](
      method: String,
      uri: String,
      majorVersion: Int,
@@ -87,10 +87,10 @@ private[blaze] final class BlazeServerParser[Header](maxNonBody: Int)(implicit h
   /**
     * Get the request prelude
     */
-  def getRequestPrelude(): BlazeServerParser.Prelude[Header] = {
+  def getRequestPrelude(): BlazeServerParser.RequestPrelude[Header] = {
     val hs = headers.result()
     headers.clear()
 
-    BlazeServerParser.Prelude(method, uri, major, minor, hs)
+    BlazeServerParser.RequestPrelude(method, uri, major, minor, hs)
   }
 }

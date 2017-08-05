@@ -1,11 +1,12 @@
-package org.http4s.blaze.http
+package org.http4s.blaze.http.http1.server
 
 import java.nio.ByteBuffer
 import java.nio.charset.StandardCharsets
 
 import org.http4s.blaze.http.parser.ResponseParser
+import org.http4s.blaze.http.{BodyReader, HttpRequest, HttpServerStageConfig, RouteAction}
+import org.http4s.blaze.pipeline.LeafBuilder
 import org.http4s.blaze.pipeline.stages.GatheringSeqHead
-import org.http4s.blaze.pipeline.{Command, LeafBuilder}
 import org.http4s.blaze.util.{BufferTools, Execution}
 import org.specs2.mutable.Specification
 
@@ -72,7 +73,7 @@ class HttpServerStageSpec extends Specification {
 
   "HttpServerStage" should {
     "respond to a simple ping" in {
-      val request = HttpRequest("GET", "/ping", 1, 1, Nil, MessageBody.emptyMessageBody)
+      val request = HttpRequest("GET", "/ping", 1, 1, Nil, BodyReader.EmptyBodyReader)
 
       val resp = runPipeline(request)
       val (code, hs, body) = ResponseParser(resp)
@@ -82,8 +83,8 @@ class HttpServerStageSpec extends Specification {
     }
 
     "run two requests" in {
-      val request1 = HttpRequest("GET", "/ping", 1, 1, Nil, MessageBody.emptyMessageBody)
-      val request2 = HttpRequest("GET", "/pong", 1, 1, Nil, MessageBody.emptyMessageBody)
+      val request1 = HttpRequest("GET", "/ping", 1, 1, Nil, BodyReader.EmptyBodyReader)
+      val request2 = HttpRequest("GET", "/pong", 1, 1, Nil, BodyReader.EmptyBodyReader)
 
       val resp = runPipeline(request1, request2)
 
@@ -106,7 +107,7 @@ class HttpServerStageSpec extends Specification {
 
     "run a request with a body" in {
       val b = StandardCharsets.UTF_8.encode("data")
-      val req = HttpRequest("POST", "/foo", 1, 1, Seq("content-length" -> "4"), MessageBody(b))
+      val req = HttpRequest("POST", "/foo", 1, 1, Seq("content-length" -> "4"), BodyReader.singleBuffer(b))
 
       val resp = runPipeline(req)
 

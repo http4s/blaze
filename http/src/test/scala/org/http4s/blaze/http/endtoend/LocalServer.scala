@@ -3,7 +3,8 @@ package org.http4s.blaze.http.endtoend
 import java.net.InetSocketAddress
 
 import org.http4s.blaze.channel.nio1.NIO1SocketServerGroup
-import org.http4s.blaze.http.{HttpServerStageConfig, Http1ServerStage, HttpService}
+import org.http4s.blaze.http.http1.server.Http1ServerStage
+import org.http4s.blaze.http.{HttpServerStageConfig, HttpService}
 import org.http4s.blaze.pipeline.LeafBuilder
 
 final class LocalServer private(service: HttpService, port: Int) {

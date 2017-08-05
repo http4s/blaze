@@ -1,4 +1,4 @@
-package org.http4s.blaze.http
+package org.http4s.blaze.http.http1.server
 
 import java.net.InetSocketAddress
 
@@ -6,6 +6,7 @@ import org.http4s.blaze.channel
 import org.http4s.blaze.channel._
 import org.http4s.blaze.channel.nio1.NIO1SocketServerGroup
 import org.http4s.blaze.channel.nio2.NIO2SocketServerGroup
+import org.http4s.blaze.http.{HttpServerStageConfig, _}
 import org.http4s.blaze.pipeline.LeafBuilder
 
 import scala.util.Try
