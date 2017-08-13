@@ -15,7 +15,7 @@ import scala.collection.mutable.ListBuffer
 import scala.concurrent.duration._
 import scala.concurrent.{Await, Future}
 
-class HttpServerStageSpec extends Specification {
+class Http1ServerStageSpec extends Specification {
 
   private implicit def ec = Execution.trampoline
 
@@ -26,7 +26,7 @@ class HttpServerStageSpec extends Specification {
     def go(requests: List[HttpRequest]): Unit = requests match {
       case Nil => // break loop
       case h::t =>
-        val s = s"${h.method} ${h.uri} HTTP/1.1\r\n"
+        val s = s"${h.method} ${h.url} HTTP/1.1\r\n"
         val hs = h.headers.foldLeft(s){ (acc, h) => acc + s"${h._1}: ${h._2}\r\n"}
 
         acc += StandardCharsets.UTF_8.encode(hs + (if (t.isEmpty) "connection: close\r\n\r\n" else "\r\n"))
@@ -59,7 +59,7 @@ class HttpServerStageSpec extends Specification {
   }
 
   private def service(request: HttpRequest): Future[RouteAction] = {
-    request.uri match {
+    request.url match {
       case _ if request.method == "POST" =>
         request.body.accumulate().map { body =>
           val bodyStr = StandardCharsets.UTF_8.decode(body)

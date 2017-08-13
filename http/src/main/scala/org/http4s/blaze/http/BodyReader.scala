@@ -16,7 +16,7 @@ import scala.util.{Failure, Success}
   */
 trait BodyReader {
 
-  /** Throw away this `MessageBody` */
+  /** Throw away this [[BodyReader]] */
   def discard(): Unit
 
   /** Get a `Future` which may contain message body data.
@@ -25,13 +25,13 @@ trait BodyReader {
     */
   def apply(): Future[ByteBuffer]
 
-  /** Examine whether the `MessageBody` may yield additional data.
+  /** Examine whether the [[BodyReader]] may yield additional data.
     *
     * This may be a result of being discarded, failure, or deletion of the data stream.
     *
-    * Because `MessageBody` is async it is not, in general, possible to definitively determine
+    * Because [[BodyReader]] is async it is not, in general, possible to definitively determine
     * if more data remains in the stream. Therefore, the contract of this method is that a return
-    * value of `true` guarantees that no more data can be obtained from this `MessageBody`, but a
+    * value of `true` guarantees that no more data can be obtained from this [[BodyReader]], but a
     * return value of `false` does not guarantee more data.
     */
   def isExhausted: Boolean
@@ -42,13 +42,20 @@ trait BodyReader {
     * the `ByteBuffer` will be empty as defined by `ByteBuffer.hasRemaining()`
     *
     * @param max maximum bytes to accumulate before resulting in a failed future with the exception
-    *            `MessageBody.BodyReaderOverflowException`.
+    *            [[BodyReader.BodyReaderOverflowException]].
     */
   def accumulate(max: Int = Int.MaxValue): Future[ByteBuffer] =
     BodyReader.accumulate(max, this)
 }
 
 private object BodyReader {
+
+  /** Provides a simple way to proxy a `BodyReader` */
+  abstract class Proxy(underlying: BodyReader) extends BodyReader {
+    override def discard(): Unit = underlying.discard()
+    override def isExhausted: Boolean = underlying.isExhausted
+    override def apply(): Future[ByteBuffer] = underlying.apply()
+  }
 
   final class BodyReaderOverflowException(val max: Int, val accumulated: Long)
     extends Exception(s"Message body overflowed. Maximum permitted: $max, accumulated: $accumulated")
@@ -67,7 +74,7 @@ private object BodyReader {
   /** Construct a [[BodyReader]] with exactly one chunk of data
     *
     * This method takes ownership if the passed `ByteBuffer`: any changes to the underlying
-    * buffer will be visible to the consumer of this `MessageBody` and vice versa.
+    * buffer will be visible to the consumer of this [[BodyReader]] and vice versa.
     *
     * @note if the passed buffer is empty, the `EmptyBodyReader` is returned.
     */

@@ -2,7 +2,7 @@ package org.http4s.blaze.http.parser;
 
 
 import java.nio.ByteBuffer;
-import org.http4s.blaze.http.parser.BaseExceptions.BadRequest;
+import org.http4s.blaze.http.parser.BaseExceptions.BadMessage;
 import org.http4s.blaze.http.parser.BaseExceptions.BadCharacter;
 
 
@@ -79,7 +79,7 @@ public abstract class ParserBase {
     }
 
     /** Returns the string in the buffer minus an leading or trailing whitespace or quotes */
-    final protected String getTrimmedString() throws BaseExceptions.BadRequest {
+    final protected String getTrimmedString() throws BadMessage {
         if (_bufferPosition == 0) return "";
 
         int start = 0;
@@ -106,7 +106,7 @@ public abstract class ParserBase {
             if (quoted) {
                 if (ch == '"') break;
                 else if (ch != HttpTokens.SPACE && ch != HttpTokens.TAB) {
-                    throw new BaseExceptions.BadRequest("String might not quoted correctly: '" + getString() + "'");
+                    throw new BadMessage("String might not quoted correctly: '" + getString() + "'");
                 }
             }
             else if (ch != HttpTokens.SPACE && ch != HttpTokens.TAB) break;
@@ -137,13 +137,13 @@ public abstract class ParserBase {
     }
 
     // Removes CRs but returns LFs
-    final protected char next(final ByteBuffer buffer, boolean allow8859) throws BaseExceptions.BadRequest {
+    final protected char next(final ByteBuffer buffer, boolean allow8859) throws BaseExceptions.BadMessage {
 
         if (!buffer.hasRemaining()) return HttpTokens.EMPTY_BUFF;
 
         if (_segmentByteLimit <= _segmentBytePosition) {
             shutdownParser();
-            throw new BadRequest("Request length limit exceeded: " + _segmentByteLimit);
+            throw new BaseExceptions.BadMessage("Request length limit exceeded: " + _segmentByteLimit);
         }
 
         final byte b = buffer.get();

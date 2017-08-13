@@ -104,7 +104,7 @@ public abstract class Http1ServerParser extends BodyAndHeaderParser {
     /* ------------------------------------------------------------------ */
 
     /** parses the request line. Returns true if completed successfully, false if needs input */
-    protected final boolean parseRequestLine(ByteBuffer in) throws InvalidState, BadRequest {
+    protected final boolean parseRequestLine(ByteBuffer in) throws InvalidState, BadMessage {
         lineLoop: while(true) {
             char ch;
             switch (_lineState) {
@@ -126,7 +126,7 @@ public abstract class Http1ServerParser extends BodyAndHeaderParser {
                     if (!HttpTokens.isWhiteSpace(ch)) {
                         String badmethod = _methodString + (char)ch;
                         shutdownParser();
-                        throw new BadRequest("Invalid request method: '" + badmethod + "'");
+                        throw new BadMessage("Invalid request method: '" + badmethod + "'");
                     }
 
                    _lineState = LineState.SPACE1;
@@ -159,7 +159,7 @@ public abstract class Http1ServerParser extends BodyAndHeaderParser {
 
                     if (ch != 'H') {
                         shutdownParser();
-                        throw new BadRequest("Http version started with illegal character: " + ch);
+                        throw new BadMessage("Http version started with illegal character: " + ch);
                     }
 
                     putChar(ch);
@@ -186,7 +186,7 @@ public abstract class Http1ServerParser extends BodyAndHeaderParser {
                         String reason =  "Bad HTTP version: " + getString();
                         clearBuffer();
                         shutdownParser();
-                        throw new BadRequest(reason);
+                        throw new BadMessage(reason);
                     }
 
                     String scheme = getString(bufferPosition() - 4);
@@ -202,6 +202,4 @@ public abstract class Http1ServerParser extends BodyAndHeaderParser {
             }    // switch
         }        // while loop
     }
-
-
 }

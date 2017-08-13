@@ -2,7 +2,7 @@ package org.http4s.blaze.http.parser;
 
 import java.nio.ByteBuffer;
 
-import org.http4s.blaze.http.parser.BaseExceptions.BadRequest;
+import org.http4s.blaze.http.parser.BaseExceptions.BadMessage;
 import org.http4s.blaze.http.parser.BaseExceptions.InvalidState;
 import org.http4s.blaze.util.BufferTools;
 
@@ -76,7 +76,7 @@ public abstract class BodyAndHeaderParser extends ParserBase {
      * @param value The value of the header
      * @return True if the parser should return to its caller
      */
-    protected abstract boolean headerComplete(String name, String value) throws BaseExceptions.BadRequest;
+    protected abstract boolean headerComplete(String name, String value) throws BaseExceptions.BadMessage;
 
     /** determines if a body must not follow the headers */
     public abstract boolean mustNotHaveBody();
@@ -87,7 +87,7 @@ public abstract class BodyAndHeaderParser extends ParserBase {
         return _hstate == HeaderState.END;
     }
 
-    /** Determine if the parser is in a state that is guarenteed to not produce any more body content */
+    /** Determine if the parser is in a state that is guaranteed to not produce any more body content */
     public final boolean contentComplete() {
         return mustNotHaveBody() ||
             _endOfContent == EndOfContent.END ||
@@ -141,10 +141,10 @@ public abstract class BodyAndHeaderParser extends ParserBase {
      *
      * @param in input ByteBuffer
      * @return true if successful, false if more input is needed
-     * @throws BaseExceptions.BadRequest on invalid input
+     * @throws BaseExceptions.BadMessage on invalid input
      * @throws BaseExceptions.InvalidState if called when the parser is not ready to accept headers
      */
-    protected final boolean parseHeaders(ByteBuffer in) throws BaseExceptions.BadRequest, BaseExceptions.InvalidState {
+    protected final boolean parseHeaders(ByteBuffer in) throws BaseExceptions.BadMessage, BaseExceptions.InvalidState {
 
         headerLoop: while (true) {
             char ch;
@@ -198,7 +198,7 @@ public abstract class BodyAndHeaderParser extends ParserBase {
 
                     String value;
                     try { value = getTrimmedString(); }
-                    catch (BaseExceptions.BadRequest e) {
+                    catch (BaseExceptions.BadMessage e) {
                         shutdownParser();
                         throw e;
                     }
@@ -224,7 +224,7 @@ public abstract class BodyAndHeaderParser extends ParserBase {
                             else {
                                 shutdownParser();
                                 // TODO: server should return 501 - https://tools.ietf.org/html/rfc7230#page-30
-                                throw new BadRequest("Unknown Transfer-Encoding: " + value);
+                                throw new BadMessage("Unknown Transfer-Encoding: " + value);
                             }
                         }
                         else if (_endOfContent != EndOfContent.CHUNKED_CONTENT && _headerName.equalsIgnoreCase("Content-Length")) {
@@ -236,7 +236,7 @@ public abstract class BodyAndHeaderParser extends ParserBase {
                                     // https://tools.ietf.org/html/rfc7230#page-31
                                     long oldLen = _contentLength;
                                     shutdownParser();
-                                    throw new BadRequest("Duplicate Content-Length headers detected: " +
+                                    throw new BadMessage("Duplicate Content-Length headers detected: " +
                                                          oldLen + " and " + len + "\n");
                                 }
                                 else if (len > 0) {
@@ -249,12 +249,12 @@ public abstract class BodyAndHeaderParser extends ParserBase {
                                 }
                                 else { // negative content-length
                                     shutdownParser();
-                                    throw new BadRequest("Cannot have negative Content-Length: '" + len + "'\n");
+                                    throw new BadMessage("Cannot have negative Content-Length: '" + len + "'\n");
                                 }
                             }
                             catch (NumberFormatException t) {
                                 shutdownParser();
-                                throw new BadRequest("Invalid Content-Length: '" + value + "'\n");
+                                throw new BadMessage("Invalid Content-Length: '" + value + "'\n");
                             }
                         }
                     }
@@ -328,7 +328,7 @@ public abstract class BodyAndHeaderParser extends ParserBase {
         }
     }
 
-    private ByteBuffer chunkedContent(ByteBuffer in) throws BaseExceptions.BadRequest, BaseExceptions.InvalidState {
+    private ByteBuffer chunkedContent(ByteBuffer in) throws BaseExceptions.BadMessage, BaseExceptions.InvalidState {
         while(true) {
             char ch;
             sw: switch (_chunkState) {
@@ -363,7 +363,7 @@ public abstract class BodyAndHeaderParser extends ParserBase {
 
                             if (_chunkLength > maxChunkSize) {
                                 shutdownParser();
-                                throw new BadRequest("Chunk length too large: " + _chunkLength);
+                                throw new BadMessage("Chunk length too large: " + _chunkLength);
                             }
                         }
                     }
@@ -407,7 +407,7 @@ public abstract class BodyAndHeaderParser extends ParserBase {
 
                     if (ch != HttpTokens.LF) {
                         shutdownParser();
-                        throw new BadRequest("Bad chunked encoding char: '" + ch + "'");
+                        throw new BadMessage("Bad chunked encoding char: '" + ch + "'");
                     }
 
                     _chunkState = ChunkState.START;

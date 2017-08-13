@@ -6,7 +6,7 @@ import org.specs2.mutable._
 
 import java.nio.ByteBuffer
 import org.http4s.blaze.http.parser.BodyAndHeaderParser.EndOfContent
-import org.http4s.blaze.http.parser.BaseExceptions.{InvalidState, BadRequest}
+import org.http4s.blaze.http.parser.BaseExceptions.{InvalidState, BadMessage}
 import scala.collection.mutable.ListBuffer
 
 class ServerParserSpec extends Specification {
@@ -94,7 +94,7 @@ class ServerParserSpec extends Specification {
         p.reset()
         val (h, t) = line.splitAt(i)
         val l2 = h + ch + t
-        p.parseLine(l2) must throwA[BadRequest]
+        p.parseLine(l2) must throwA[BadMessage]
       }
     }
 
@@ -119,20 +119,20 @@ class ServerParserSpec extends Specification {
 
     "Give bad request on invalid request line" in {
       val p = new Parser()
-      p.parseLine("POST /enlighten/calais.asmx KTTPS/1.1\r\n") should throwA[BadRequest]
+      p.parseLine("POST /enlighten/calais.asmx KTTPS/1.1\r\n") should throwA[BadMessage]
 
       p.reset()
-      p.parseLine("POST /enlighten/calais.asmx HKTTPS/1.1\r\n") should throwA[BadRequest]
+      p.parseLine("POST /enlighten/calais.asmx HKTTPS/1.1\r\n") should throwA[BadMessage]
 
       p.reset()
-      p.parseLine("POST=/enlighten/calais.asmx HKTTPS/1.1\r\n") should throwA[BadRequest]
+      p.parseLine("POST=/enlighten/calais.asmx HKTTPS/1.1\r\n") should throwA[BadMessage]
     }
 
     "Give bad request on negative content-length" in {
       val p = new Parser()
       val line = "GET /enlighten/calais.asmx HTTPS/1.0\r\n"
       p.parseLine(line) must_== true
-      p.parseheaders(buildHeaderString(Seq("content-length" -> "-1"))) should throwA[BadRequest]
+      p.parseheaders(buildHeaderString(Seq("content-length" -> "-1"))) should throwA[BadMessage]
     }
 
     "Accept multiple same length content-length headers" in {
@@ -146,7 +146,7 @@ class ServerParserSpec extends Specification {
       val p = new Parser()
       val line = "GET /enlighten/calais.asmx HTTPS/1.0\r\n"
       p.parseLine(line) must_== true
-      p.parseheaders(buildHeaderString(Seq("content-length" -> "1", "content-length" -> "2"))) should throwA[BadRequest]
+      p.parseheaders(buildHeaderString(Seq("content-length" -> "1", "content-length" -> "2"))) should throwA[BadMessage]
     }
 
     "Match Http1.0 requests" in {
@@ -180,7 +180,7 @@ class ServerParserSpec extends Specification {
         p.reset()
         val (h, t) = k.splitAt(i)
         val hs = (h + ch + t, "0") :: Nil
-        p.parseheaders(buildHeaderString(hs)) must throwA[BadRequest]
+        p.parseheaders(buildHeaderString(hs)) must throwA[BadMessage]
       }
     }
 
@@ -371,13 +371,13 @@ class ServerParserSpec extends Specification {
         "Some-Header\r\n"
 
       val p = new Parser(maxHeader = header.length - 1)
-      p.parseheaders(header) should throwA[BadRequest]
+      p.parseheaders(header) should throwA[BadMessage]
     }
 
     "throw an error if the request line is too long" in {
 
       val p = new Parser(maxReq = request.length - 1)
-      p.parseLine(request) should throwA[BadRequest]
+      p.parseLine(request) should throwA[BadMessage]
     }
   }
 }

@@ -19,7 +19,7 @@ object ExampleService {
   def service(status: Option[IntervalConnectionMonitor], channel: Option[AtomicReference[ServerChannel]] = None)
              (request: HttpRequest): Future[RouteAction] = {
     Future.successful {
-      request.uri match {
+      request.url match {
         case "/plaintext" => RouteAction.Ok(helloWorld, (HeaderNames.ContentType -> "text/plain")::Nil)
         case "/ping" => RouteAction.Ok("pong")
         case "/bigstring" => RouteAction.Ok(bigstring)
