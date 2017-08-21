@@ -5,7 +5,7 @@ import org.specs2.mutable._
 import java.nio.charset.StandardCharsets.ISO_8859_1
 import scala.collection.mutable.ListBuffer
 import java.nio.ByteBuffer
-import org.http4s.blaze.http.parser.BaseExceptions.{InvalidState, BadResponse}
+import org.http4s.blaze.http.parser.BaseExceptions.{InvalidState, BadMessage}
 
 class ClientParserSpec extends Specification {
 
@@ -62,7 +62,7 @@ class ClientParserSpec extends Specification {
         p.reset()
         val (h, t) = resp.splitAt(i)
         val l2 = h + ch + t
-        p.parseResponse(wrap(l2.getBytes(ISO_8859_1))) must throwA[BadResponse]
+        p.parseResponse(wrap(l2.getBytes(ISO_8859_1))) must throwA[BadMessage]
       }
     }
 
@@ -90,7 +90,7 @@ class ClientParserSpec extends Specification {
       val p = new TestParser
 
       val badVerison = "HTTP/1.7 200 OK\r\n"
-      p.parseResponse(wrap(badVerison.getBytes(ISO_8859_1))) should throwA[BadResponse]
+      p.parseResponse(wrap(badVerison.getBytes(ISO_8859_1))) should throwA[BadMessage]
 
       p.reset()
       val weirdCode = "HTTP/1.1 200 OK\r\n"
@@ -98,27 +98,27 @@ class ClientParserSpec extends Specification {
 
       p.reset()
       val badCodeChar = "HTTP/1.1 T200 OK\r\n"
-      p.parseResponse(wrap(badCodeChar.getBytes(ISO_8859_1))) should throwA[BadResponse]
+      p.parseResponse(wrap(badCodeChar.getBytes(ISO_8859_1))) should throwA[BadMessage]
 
       p.reset()
       val missingSpace = "HTTP/1.1 200OK\r\n"
-      p.parseResponse(wrap(missingSpace.getBytes(ISO_8859_1))) should throwA[BadResponse]
+      p.parseResponse(wrap(missingSpace.getBytes(ISO_8859_1))) should throwA[BadMessage]
 
       p.reset()
       val noSpace = "HTTP/1.1 200OK\r\n"
-      p.parseResponse(wrap(noSpace.getBytes(ISO_8859_1))) should throwA[BadResponse]
+      p.parseResponse(wrap(noSpace.getBytes(ISO_8859_1))) should throwA[BadMessage]
 
       p.reset()
       val badCode = "HTTP/1.1 20 OK\r\n"
-      p.parseResponse(wrap(badCode.getBytes(ISO_8859_1))) should throwA[BadResponse]
+      p.parseResponse(wrap(badCode.getBytes(ISO_8859_1))) should throwA[BadMessage]
 
       p.reset()
       val badCode2 = "HTTP/1.1 600 OK\r\n"
-      p.parseResponse(wrap(badCode2.getBytes(ISO_8859_1))) should throwA[BadResponse]
+      p.parseResponse(wrap(badCode2.getBytes(ISO_8859_1))) should throwA[BadMessage]
 
       p.reset()
       val badLf = "HTTP/1.1 200 OK\r\r\n"
-      p.parseResponse(wrap(badLf.getBytes(ISO_8859_1))) should throwA[BadResponse]
+      p.parseResponse(wrap(badLf.getBytes(ISO_8859_1))) should throwA[BadMessage]
     }
     
     "not fail on missing reason" in {

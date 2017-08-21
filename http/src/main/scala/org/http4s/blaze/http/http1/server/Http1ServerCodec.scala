@@ -112,7 +112,7 @@ private final class Http1ServerCodec(maxNonBodyBytes: Int, pipeline: TailStage[B
         discarded || thisRequest != requestId || parser.contentComplete()
       }
 
-      /** Throw away this `MessageBody` */
+      /** Throw away this [[BodyReader]] */
       override def discard(): Unit = lock.synchronized {
         discarded = false
       }

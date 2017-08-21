@@ -3,21 +3,23 @@ package org.http4s.blaze.http.endtoend
 import java.nio.charset.StandardCharsets
 
 import org.asynchttpclient.RequestBuilder
-import org.http4s.blaze.http.{HttpService, RouteAction}
+import org.http4s.blaze.http._
 import org.http4s.blaze.util.BufferTools
 import org.specs2.mutable.Specification
 
-import scala.concurrent.{ExecutionContext, Future}
+import scala.concurrent.{Await, Awaitable, ExecutionContext, Future}
 import scala.concurrent.duration._
 
 class ServerSpec extends Specification {
 
   implicit def ec = ExecutionContext.global
 
+  def await[T](t: Awaitable[T]): T = Await.result(t, 5.seconds)
+
   val helloWorld = "Hello, world!"
 
   val service: HttpService = { request =>
-    request.uri match {
+    request.url match {
       case "/hello" => Future.successful(RouteAction.Ok(helloWorld))
       case "/headers" => Future.successful {
         val str = request.headers
@@ -28,7 +30,7 @@ class ServerSpec extends Specification {
       }
 
       case "/streaming" => Future.successful {
-        var remaining = 1000
+        @volatile var remaining = 1000
         RouteAction.Streaming(200, "OK", Nil) {
           if (remaining == 0) Future.successful(BufferTools.emptyBuffer)
           else {
@@ -52,43 +54,56 @@ class ServerSpec extends Specification {
   }
 
   val server = LocalServer(0)(service)
-  val client = new HttpClient("localhost", server.getAddress.getPort, 10.seconds)
+  val client = HttpClient.basicHttp1Client
 
   def makeUrl(url: String): String = s"http://localhost:${server.getAddress.getPort}$url"
 
   "blaze server" should {
     "do a hello world request" in {
-      val resp = client.runGet("/hello")
-      resp.getResponseBody(StandardCharsets.UTF_8) must_== helloWorld
-      resp.getHeaders.get("content-length") must_== helloWorld.length.toString
+      val (body, len) = await {
+        client.GET(makeUrl("/hello")){ resp =>
+          ClientResponse.stringBody(resp).map { body =>
+            val len = resp.headers.collectFirst {
+              case (k, v) if k.equalsIgnoreCase("content-length") => v
+            }
+
+            body -> len
+          }
+        }
+      }
+      body must_== helloWorld
+      len must beSome(helloWorld.length.toString)
     }
 
     "echo headers" in {
-      val req = new RequestBuilder()
-        .addHeader("special1", "val1")
-        .addHeader("special2", "val2")
-        .setUrl(makeUrl("/headers"))
-        .setMethod("GET")
-        .build()
-      val resp = client.runRequest(req)
+      val hs = Seq(
+        "special1" -> "val1",
+        "special2" -> "val2")
 
-      resp.getResponseBody(StandardCharsets.UTF_8) must_== "special1: val1\nspecial2: val2\n"
+      val body = await(client.GET(makeUrl("/headers"), headers = hs)(ClientResponse.stringBody(_)))
+      body must_== "special1: val1\nspecial2: val2\n"
     }
 
     "stream a response body" in {
-      val resp = client.runGet("/streaming")
-      resp.getResponseBody() must_== (0 until 1000).foldRight(""){ (remaining, acc) => acc + s"remaining: $remaining\n" }
+      val resp = await {
+        client.GET(makeUrl("/streaming"))(ClientResponse.stringBody(_))
+      }
+      resp must_== (0 until 1000).foldRight(""){ (remaining, acc) => acc + s"remaining: $remaining\n" }
     }
 
     "post a body" in {
-      val req = new RequestBuilder()
-        .setUrl(makeUrl("/post"))
-        .setMethod("POST")
-        .setBody("this is the body")
-        .build()
+      val b = "this is the body"
+      val hs = Seq("content-length" -> b.length.toString)
+      val req = HttpRequest(
+        method = "POST",
+        url = makeUrl("/post"),
+        majorVersion = 1, minorVersion = 1,
+        headers = hs,
+        body = BodyReader.singleBuffer(StandardCharsets.UTF_8.encode(b))
+      )
 
-      val resp = client.runRequest(req)
-      resp.getResponseBody() must_== "You posted: this is the body"
+      val responseBody = await { client(req)(ClientResponse.stringBody(_)) }
+      responseBody must_== s"You posted: $b"
     }
   }
 

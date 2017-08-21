@@ -43,6 +43,7 @@ public abstract class Http1ClientParser extends BodyAndHeaderParser {
     private int _majorVersion = 0;
     private int _minorVersion = 0;
     private int _statusCode = 0;
+    private boolean isHeadRequest = false;
 
     final public boolean isStartState() {
         return _requestLineState == RequestLineState.START;
@@ -72,17 +73,23 @@ public abstract class Http1ClientParser extends BodyAndHeaderParser {
         _majorVersion = 0;
         _minorVersion = 0;
         _statusCode = 0;
+        isHeadRequest = false;
+    }
+
+    public final void isHeadRequest(boolean isHeadRequest) {
+        this.isHeadRequest = isHeadRequest;
     }
 
     @Override
     public boolean mustNotHaveBody() {
-        return _statusCode < 200 ||
+        return isHeadRequest ||
+          _statusCode <  200 ||
           _statusCode == 204 ||
-          _statusCode == 304; // TODO: or request was HEAD
+          _statusCode == 304;
     }
 
     /** parses the request line. Returns true if completed successfully, false if needs input */
-    protected final boolean parseResponseLine(ByteBuffer in) throws BaseExceptions.InvalidState, BaseExceptions.BadResponse {
+    protected final boolean parseResponseLine(ByteBuffer in) throws BaseExceptions.InvalidState, BaseExceptions.BadMessage {
         try {
             lineLoop: while(true) {
                 char ch;
@@ -112,7 +119,7 @@ public abstract class Http1ClientParser extends BodyAndHeaderParser {
                             String reason =  "Bad HTTP version: " + getString();
                             clearBuffer();
                             shutdownParser();
-                            throw new BadResponse(reason);
+                            throw new BadMessage(reason);
                         }
 
                         _lineScheme = getString(bufferPosition() - 4);
@@ -129,7 +136,7 @@ public abstract class Http1ClientParser extends BodyAndHeaderParser {
 
                         if (!HttpTokens.isDigit(ch)) {
                             shutdownParser();
-                            throw new BadResponse("Received invalid token when needed code: '" + (char)ch + "'");
+                            throw new BadMessage("Received invalid token when needed code: '" + (char)ch + "'");
                         }
                         _statusCode = 10*_statusCode + (ch - HttpTokens.ZERO);
                         _requestLineState = RequestLineState.STATUS_CODE;
@@ -143,7 +150,7 @@ public abstract class Http1ClientParser extends BodyAndHeaderParser {
 
                         if (_statusCode < 100 || _statusCode >= 600) {
                             shutdownParser();
-                            throw new BadResponse("Invalid status code '" +
+                            throw new BadMessage("Invalid status code '" +
                                     _statusCode + "'. Must be between 100 and 599");
                         }
 
@@ -154,7 +161,7 @@ public abstract class Http1ClientParser extends BodyAndHeaderParser {
 
                         if (!HttpTokens.isWhiteSpace(ch)) {
                             shutdownParser();
-                            throw new BadResponse("Invalid request: Expected SPACE but found '" + (char)ch + "'");
+                            throw new BadMessage("Invalid request: Expected SPACE but found '" + (char)ch + "'");
                         }
 
                         _requestLineState = RequestLineState.SPACE2;
@@ -190,9 +197,9 @@ public abstract class Http1ClientParser extends BodyAndHeaderParser {
                                 "RequestLineState: '" + _requestLineState + "'");
                 }    // switch
             }        // while loop
-        } catch (BaseExceptions.BadRequest ex) {
+        } catch (BaseExceptions.BadMessage ex) {
             shutdownParser();
-            throw new BadResponse(ex.getMessage());
+            throw ex;
         }
     }
 

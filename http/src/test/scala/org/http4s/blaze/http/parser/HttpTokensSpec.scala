@@ -3,7 +3,7 @@ package org.http4s.blaze.http.parser
 
 import org.specs2.mutable._
 
-import org.http4s.blaze.http.parser.BaseExceptions.BadRequest
+import org.http4s.blaze.http.parser.BaseExceptions.BadMessage
 
 class HttpTokensSpec extends Specification {
 
@@ -16,7 +16,7 @@ class HttpTokensSpec extends Specification {
 
       bigChrs.map(c => HttpTokens.hexCharToInt(c)) should_== (0 until 16 toList)
 
-      HttpTokens.hexCharToInt('x') should throwA[BadRequest]
+      HttpTokens.hexCharToInt('x') should throwA[BadMessage]
     }
     
     "Identify hex chars" in {
