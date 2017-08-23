@@ -58,7 +58,7 @@ jvmTarget in ThisBuild := {
 /* global build settings */
 organization in ThisBuild := "org.http4s"
 
-version in ThisBuild := "0.12.7-SNAPSHOT"
+version in ThisBuild := "0.12.7"
 
 scalaVersion in ThisBuild := "2.11.8"
 
