@@ -26,7 +26,7 @@ trait HttpClient extends ClientActions {
     * @param request request to dispatch
     * @return the response. The cleanup of the resources associated with
     *         this dispatch are tied to the [[BodyReader]] of the [[ClientResponse]].
-    *         Release of resources is triggered by complete consumption of the [[BodyReader]]
+    *         Release of resources is triggered by complete consumption of the `MessageBody`
     *         or by calling `MessageBody.discard()`, whichever comes first.
     */
   def unsafeDispatch(request: HttpRequest): Future[ReleaseableResponse]
@@ -56,6 +56,11 @@ object HttpClient {
     */
   lazy val basicHttp1Client: HttpClient = {
     val pool = new BasicHttp1ClientSessionManager(HttpClientConfig.Default)
+    new HttpClientImpl(pool)
+  }
+
+  lazy val pooledHttpClient: HttpClient = {
+    val pool = ClientSessionManagerImpl(HttpClientConfig.Default)
     new HttpClientImpl(pool)
   }
 }
