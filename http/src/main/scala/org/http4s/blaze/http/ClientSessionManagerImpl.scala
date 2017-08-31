@@ -100,7 +100,7 @@ private final class ClientSessionManagerImpl(sessionCache: java.util.Map[Connect
       case Success(head) =>
         val clientStage = new Http1ClientStage(config)
         var builder = LeafBuilder(clientStage)
-        if (urlComposition.scheme == "https") {
+        if (urlComposition.scheme.equalsIgnoreCase("https")) {
           val engine = config.getClientSslEngine()
           engine.setUseClientMode(true)
           builder = builder.prepend(new SSLStage(engine))
@@ -130,7 +130,7 @@ private final class ClientSessionManagerImpl(sessionCache: java.util.Map[Connect
         ()
 
       case proxy: Http1SessionProxy => addSessionToCache(proxy.id, proxy)
-      case other => sys.error("The impossible happened!")
+      case other => sys.error(s"The impossible happened! Found invalid type: $other")
     }
   }
 
