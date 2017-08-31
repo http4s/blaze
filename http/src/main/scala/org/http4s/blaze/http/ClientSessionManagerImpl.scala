@@ -126,8 +126,10 @@ private final class ClientSessionManagerImpl(sessionCache: java.util.Map[Connect
       case _: Http2ClientSession => () // nop
       case h1: Http1ClientSession if !h1.isReady =>
         logger.debug(s"Closing unready session $h1")
-        h1.closeNow() // we just orphan the Future. Don't care.
-        ()
+        h1.closeNow().onComplete {
+          case Failure(t) => logger.info(t)(s"Failure closing session $session")
+          case _ => ()
+        }
 
       case proxy: Http1SessionProxy => addSessionToCache(proxy.id, proxy)
       case other => sys.error(s"The impossible happened! Found invalid type: $other")
