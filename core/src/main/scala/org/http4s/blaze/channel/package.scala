@@ -9,6 +9,5 @@ package object channel {
   type BufferPipelineBuilder = SocketConnection => LeafBuilder[ByteBuffer]
 
   /** Default number of threads used to make a new [[SelectorLoopPool]] if not specified */
-  val defaultPoolSize: Int = math.max(4, Runtime.getRuntime.availableProcessors() + 1)
-
+  lazy val DefaultPoolSize: Int = math.max(4, Runtime.getRuntime.availableProcessors() + 1)
 }

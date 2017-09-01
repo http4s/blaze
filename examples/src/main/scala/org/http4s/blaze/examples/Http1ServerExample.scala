@@ -39,7 +39,7 @@ class Http1ServerExample(factory: ServerChannelGroup, port: Int)
 /** Opens a demo server on ports 8080 */
 object NIO1HttpServer {
   def main(args: Array[String]): Unit = {
-    val f = NIO1SocketServerGroup.fixedGroup(workerThreads = channel.defaultPoolSize)
+    val f = NIO1SocketServerGroup.fixedGroup(workerThreads = channel.DefaultPoolSize)
     new Http1ServerExample(f, 8080)()
       .run()
       .join()
@@ -62,7 +62,7 @@ object NIO2HttpServer {
 object SSLHttpServer {
   def main(args: Array[String]): Unit = {
     val sslContext = ExampleKeystore.sslContext()
-    val f = NIO1SocketServerGroup.fixedGroup(workerThreads = channel.defaultPoolSize)
+    val f = NIO1SocketServerGroup.fixedGroup(workerThreads = channel.DefaultPoolSize)
     new Http1ServerExample(f, 4430)({ builder =>
       val eng = sslContext.createSSLEngine()
       eng.setUseClientMode(false)
@@ -79,7 +79,7 @@ object ClientAuthSSLHttpServer {
 
   def main(args: Array[String]): Unit = {
     val sslContext = ExampleKeystore.clientAuthSslContext()
-    val f = NIO1SocketServerGroup.fixedGroup(workerThreads = channel.defaultPoolSize)
+    val f = NIO1SocketServerGroup.fixedGroup(workerThreads = channel.DefaultPoolSize)
     new Http1ServerExample(f, 4430)({ builder =>
         val eng = sslContext.createSSLEngine()
         eng.setUseClientMode(false)

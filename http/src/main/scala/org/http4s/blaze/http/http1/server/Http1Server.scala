@@ -20,7 +20,7 @@ object Http1Server {
             address: InetSocketAddress,
             config: HttpServerStageConfig,
             useNio2: Boolean = false,
-            workerThreads: Int = channel.defaultPoolSize): Try[GroupAndChannel] = {
+            workerThreads: Int = channel.DefaultPoolSize): Try[GroupAndChannel] = {
 
     val group: ServerChannelGroup =
       if (useNio2) NIO2SocketServerGroup.fixedGroup(workerThreads = workerThreads)
