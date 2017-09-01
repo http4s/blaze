@@ -1,22 +1,37 @@
 package org.http4s.blaze.http.endtoend
 
+import java.net.InetSocketAddress
 import java.nio.charset.StandardCharsets
 
-import org.asynchttpclient.RequestBuilder
-import org.http4s.blaze.http._
+import org.http4s.blaze.http.endtoend.scaffolds._
+import org.http4s.blaze.http.{BodyReader, HttpRequest, HttpService, RouteAction}
 import org.http4s.blaze.util.BufferTools
 import org.specs2.mutable.Specification
 
-import scala.concurrent.{Await, Awaitable, ExecutionContext, Future}
+import scala.concurrent.{ExecutionContext, Future}
 import scala.concurrent.duration._
 
-class ServerSpec extends Specification {
+class Http1ServerSpec extends BaseServerSpec(false) {
+  override def newServer(service: HttpService): ServerScaffold = new Http1ServerScaffold(service)
+
+  override def newClient(): ClientScaffold = new AsyncHttpClientScaffold(10.seconds)
+}
+
+class Http2ServerSpec extends BaseServerSpec(isSecure = true) {
+  override def newServer(service: HttpService): ServerScaffold = new Http2ServerScaffold(service)
+
+  override def newClient(): ClientScaffold = new Http2ClientScaffold
+}
+
+abstract class BaseServerSpec(isSecure: Boolean) extends Specification {
 
   implicit def ec = ExecutionContext.global
 
-  def await[T](t: Awaitable[T]): T = Await.result(t, 5.seconds)
+  def newServer(service: HttpService): ServerScaffold
 
-  val helloWorld = "Hello, world!"
+  def newClient(): ClientScaffold
+
+  private val helloWorld = "Hello, world!"
 
   val service: HttpService = { request =>
     request.url match {
@@ -30,7 +45,7 @@ class ServerSpec extends Specification {
       }
 
       case "/streaming" => Future.successful {
-        @volatile var remaining = 1000
+        var remaining = 1000
         RouteAction.Streaming(200, "OK", Nil) {
           if (remaining == 0) Future.successful(BufferTools.emptyBuffer)
           else {
@@ -53,63 +68,52 @@ class ServerSpec extends Specification {
     }
   }
 
-  val server = LocalServer(0)(service)
-  val client = HttpClient.basicHttp1Client
+  private val client = newClient()
 
-  def makeUrl(url: String): String = s"http://localhost:${server.getAddress.getPort}$url"
+  def makeUrl(address: InetSocketAddress, uri: String): String =
+    // TODO: a hard coded IPv4 address isn't very satisfying here
+    s"http${if (isSecure) "s" else "" }://0.0.0.0:${address.getPort}$uri"
 
   "blaze server" should {
     "do a hello world request" in {
-      val (body, len) = await {
-        client.GET(makeUrl("/hello")){ resp =>
-          ClientResponse.stringBody(resp).map { body =>
-            val len = resp.headers.collectFirst {
-              case (k, v) if k.equalsIgnoreCase("content-length") => v
-            }
-
-            body -> len
-          }
-        }
+      newServer(service) { address =>
+        val (resp, body) = client.runGet(makeUrl(address, "/hello"))
+        new String(body, StandardCharsets.UTF_8) must_== helloWorld
+        val clen = resp.headers.collectFirst { case (k, v) if k.equalsIgnoreCase("content-length") => v }
+        clen must beSome(helloWorld.length.toString)
       }
-      body must_== helloWorld
-      len must beSome(helloWorld.length.toString)
     }
 
     "echo headers" in {
-      val hs = Seq(
-        "special1" -> "val1",
-        "special2" -> "val2")
-
-      val body = await(client.GET(makeUrl("/headers"), headers = hs)(ClientResponse.stringBody(_)))
-      body must_== "special1: val1\nspecial2: val2\n"
+      val hs = Seq("special1" -> "val1", "special2" -> "val2")
+      newServer(service) { address =>
+        val (prelude, body) = client.runGet(makeUrl(address, "/headers"), hs)
+        new String(body, StandardCharsets.UTF_8) must_== "special1: val1\nspecial2: val2\n"
+      }
     }
 
     "stream a response body" in {
-      val resp = await {
-        client.GET(makeUrl("/streaming"))(ClientResponse.stringBody(_))
+      newServer(service) { address =>
+        val (_,body) = client.runGet(makeUrl(address, "/streaming"))
+        val responseString = new String(body, StandardCharsets.UTF_8)
+        responseString must_== (0 until 1000).foldRight(""){ (remaining, acc) => acc + s"remaining: $remaining\n" }
       }
-      resp must_== (0 until 1000).foldRight(""){ (remaining, acc) => acc + s"remaining: $remaining\n" }
     }
 
     "post a body" in {
-      val b = "this is the body"
-      val hs = Seq("content-length" -> b.length.toString)
-      val req = HttpRequest(
-        method = "POST",
-        url = makeUrl("/post"),
-        majorVersion = 1, minorVersion = 1,
-        headers = hs,
-        body = BodyReader.singleBuffer(StandardCharsets.UTF_8.encode(b))
-      )
+      val body = "this is the body"
+      val bodyReader = BodyReader.singleBuffer(StandardCharsets.UTF_8.encode(body))
 
-      val responseBody = await { client(req)(ClientResponse.stringBody(_)) }
-      responseBody must_== s"You posted: $b"
+      newServer(service) { address =>
+        val req = HttpRequest("POST", makeUrl(address, "/post"), 1, 1, Seq(), bodyReader)
+        val (_, body) = client.runRequest(req)
+        new String(body, StandardCharsets.UTF_8) must_== "You posted: this is the body"
+      }
     }
   }
 
   // Need to clean up after the spec is complete
   step {
-    server.close()
     client.close()
   }
 }

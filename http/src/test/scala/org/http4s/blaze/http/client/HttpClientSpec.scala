@@ -10,7 +10,7 @@ import scala.concurrent.duration._
 
 class HttpClientSpec extends Specification {
 
-  val client = HttpClient.basicHttp1Client
+  val client = HttpClient.pooledHttpClient
 
   // TODO: we shouldn't be calling out to external resources for tests
   "HttpClient" should {

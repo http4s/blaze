@@ -4,6 +4,7 @@ import org.http4s.blaze.channel.nio2.ClientChannelFactory
 import org.http4s.blaze.http.ClientSessionManagerImpl._
 import org.http4s.blaze.http.HttpClientSession.{Closed, ReleaseableResponse, Status}
 import org.http4s.blaze.http.http1.client.Http1ClientStage
+import org.http4s.blaze.http.http2.client.Http2ClientSelector
 import org.http4s.blaze.http.util.UrlTools.UrlComposition
 import org.http4s.blaze.pipeline.stages.SSLStage
 import org.http4s.blaze.pipeline.{Command, LeafBuilder}
@@ -40,6 +41,7 @@ private final class ClientSessionManagerImpl(sessionCache: java.util.Map[Connect
 
   private[this] val logger = getLogger
   private[this] val socketFactory = new ClientChannelFactory(group = config.channelGroup)
+  private[this] val http2ClientSelector = new Http2ClientSelector(config)
 
   override def acquireSession(request: HttpRequest): Future[HttpClientSession] = {
     logger.debug(s"Acquiring session for request $request")
@@ -67,7 +69,7 @@ private final class ClientSessionManagerImpl(sessionCache: java.util.Map[Connect
         val it = sessions.iterator
         while(session == null && it.hasNext) it.next() match {
           case h2: Http2ClientSession if h2.status == Closed =>
-            h2.closeNow() // make sure its closed
+            discardSession(h2) // make sure its closed
             it.remove()
 
           case h2: Http2ClientSession if h2.quality > 0.1 =>
@@ -98,18 +100,34 @@ private final class ClientSessionManagerImpl(sessionCache: java.util.Map[Connect
     socketFactory.connect(urlComposition.getAddress).onComplete {
       case Failure(e) => p.tryFailure(e)
       case Success(head) =>
-        val clientStage = new Http1ClientStage(config)
-        var builder = LeafBuilder(clientStage)
         if (urlComposition.scheme.equalsIgnoreCase("https")) {
           val engine = config.getClientSslEngine()
           engine.setUseClientMode(true)
-          builder = builder.prepend(new SSLStage(engine))
-        }
 
-        builder.base(head)
-        head.sendInboundCommand(Command.Connected)
-        p.trySuccess(new Http1SessionProxy(id, clientStage))
-      }
+          val rawSession = Promise[HttpClientSession]
+
+          LeafBuilder(http2ClientSelector.newStage(engine, rawSession))
+            .prepend(new SSLStage(engine))
+            .base(head)
+          head.sendInboundCommand(Command.Connected)
+
+          p.completeWith(rawSession.future.map {
+            case h1: Http1ClientSession =>
+              new Http1SessionProxy(id, h1)
+
+            case h2: Http2ClientSession =>
+              addSessionToCache(id, h2)
+              h2
+          })
+
+        } else {
+          val clientStage = new Http1ClientStage(config)
+          val builder = LeafBuilder(clientStage)
+          builder.base(head)
+          head.sendInboundCommand(Command.Connected)
+          p.trySuccess(new Http1SessionProxy(id, clientStage))
+        }
+    }
 
     p.future
   }
@@ -126,10 +144,7 @@ private final class ClientSessionManagerImpl(sessionCache: java.util.Map[Connect
       case _: Http2ClientSession => () // nop
       case h1: Http1ClientSession if !h1.isReady =>
         logger.debug(s"Closing unready session $h1")
-        h1.closeNow().onComplete {
-          case Failure(t) => logger.info(t)(s"Failure closing session $session")
-          case _ => ()
-        }
+        discardSession(h1)
 
       case proxy: Http1SessionProxy => addSessionToCache(proxy.id, proxy)
       case other => sys.error(s"The impossible happened! Found invalid type: $other")
@@ -140,15 +155,19 @@ private final class ClientSessionManagerImpl(sessionCache: java.util.Map[Connect
   override def close(): Future[Unit] = {
     logger.debug(s"Closing session")
     sessionCache.synchronized {
-      sessionCache.asScala.values.foreach(_.asScala.foreach { session =>
-        try session.closeNow()
-        catch { case NonFatal(t) =>
-          logger.warn(t)("Exception caught while closing session")
-        }
-      })
+      sessionCache.asScala.values.foreach(_.asScala.foreach(discardSession(_)))
       sessionCache.clear()
     }
     Future.successful(())
+  }
+
+  private[this] def discardSession(session: HttpClientSession): Unit = {
+    try session.closeNow().onComplete {
+      case Failure(t) => logger.info(t)(s"Failure closing session $session")
+      case _ => ()
+    } catch { case NonFatal(t) =>
+      logger.warn(t)("Exception caught while closing session")
+    }
   }
 
   private[this] def addSessionToCache(id: ConnectionId, session: HttpClientSession): Unit = {
