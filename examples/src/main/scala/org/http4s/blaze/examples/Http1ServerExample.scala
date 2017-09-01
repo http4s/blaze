@@ -4,11 +4,12 @@ import java.net.InetSocketAddress
 import java.nio.ByteBuffer
 import java.util.concurrent.atomic.AtomicReference
 
+import org.http4s.blaze.channel
 import org.http4s.blaze.channel._
 import org.http4s.blaze.channel.nio1.NIO1SocketServerGroup
 import org.http4s.blaze.channel.nio2.NIO2SocketServerGroup
-import org.http4s.blaze.http.http1.server.Http1ServerStage
 import org.http4s.blaze.http.HttpServerStageConfig
+import org.http4s.blaze.http.http1.server.Http1ServerStage
 import org.http4s.blaze.pipeline.stages.SSLStage
 import org.http4s.blaze.pipeline.LeafBuilder
 import org.http4s.blaze.pipeline.stages.monitors.IntervalConnectionMonitor
@@ -38,7 +39,7 @@ class Http1ServerExample(factory: ServerChannelGroup, port: Int)
 /** Opens a demo server on ports 8080 */
 object NIO1HttpServer {
   def main(args: Array[String]): Unit = {
-    val f = NIO1SocketServerGroup.fixedGroup(workerThreads = Consts.poolSize)
+    val f = NIO1SocketServerGroup.fixedGroup(workerThreads = channel.DefaultPoolSize)
     new Http1ServerExample(f, 8080)()
       .run()
       .join()
@@ -61,7 +62,7 @@ object NIO2HttpServer {
 object SSLHttpServer {
   def main(args: Array[String]): Unit = {
     val sslContext = ExampleKeystore.sslContext()
-    val f = NIO1SocketServerGroup.fixedGroup(workerThreads = Consts.poolSize)
+    val f = NIO1SocketServerGroup.fixedGroup(workerThreads = channel.DefaultPoolSize)
     new Http1ServerExample(f, 4430)({ builder =>
       val eng = sslContext.createSSLEngine()
       eng.setUseClientMode(false)
@@ -78,7 +79,7 @@ object ClientAuthSSLHttpServer {
 
   def main(args: Array[String]): Unit = {
     val sslContext = ExampleKeystore.clientAuthSslContext()
-    val f = NIO1SocketServerGroup.fixedGroup(workerThreads = Consts.poolSize)
+    val f = NIO1SocketServerGroup.fixedGroup(workerThreads = channel.DefaultPoolSize)
     new Http1ServerExample(f, 4430)({ builder =>
         val eng = sslContext.createSSLEngine()
         eng.setUseClientMode(false)

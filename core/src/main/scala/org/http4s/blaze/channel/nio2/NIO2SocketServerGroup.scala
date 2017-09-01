@@ -22,7 +22,7 @@ object NIO2SocketServerGroup {
     * @param channelOptions options to apply to the client connections
     */
   def fixedGroup(
-    workerThreads: Int = defaultPoolSize,
+    workerThreads: Int = DefaultPoolSize,
     bufferSize: Int = DefaultBufferSize,
     channelOptions: ChannelOptions = ChannelOptions.DefaultOptions
   ): NIO2SocketServerGroup = {

@@ -33,7 +33,7 @@ object NIO1SocketServerGroup {
 
   /** Create a new [[NIO1SocketServerGroup]] with a fresh [[FixedSelectorPool]] */
   def fixedGroup(
-    workerThreads: Int = defaultPoolSize,
+    workerThreads: Int = DefaultPoolSize,
     bufferSize: Int = DefaultBufferSize,
     channelOptions: ChannelOptions = ChannelOptions.DefaultOptions
   ): NIO1SocketServerGroup = {
