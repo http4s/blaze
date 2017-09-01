@@ -1,7 +1,7 @@
 package org.http4s.blaze.examples
 
 import java.security.KeyStore
-import javax.net.ssl.{TrustManagerFactory, KeyManagerFactory, SSLContext}
+import javax.net.ssl.{KeyManagerFactory, SSLContext, TrustManagerFactory}
 
 import org.http4s.blaze.util.BogusKeystore
 
