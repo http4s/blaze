@@ -20,7 +20,7 @@ class Http2ServerExample(port: Int) {
     TrunkBuilder(new SSLStage(eng)).cap(Http2Selector(eng, ExampleService.service(None), HttpServerStageConfig()))
   }
 
-  private val factory = NIO1SocketServerGroup.fixedGroup(workerThreads = channel.defaultPoolSize)
+  private val factory = NIO1SocketServerGroup.fixedGroup(workerThreads = channel.DefaultPoolSize)
 
   def run(): ServerChannel = factory.bind(new InetSocketAddress(port), f).getOrElse(sys.error("Failed to start server."))
 }
