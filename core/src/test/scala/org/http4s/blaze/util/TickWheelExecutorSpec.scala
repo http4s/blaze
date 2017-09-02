@@ -1,7 +1,8 @@
 package org.http4s.blaze.util
 
-import org.specs2.mutable._
+import java.util.concurrent.{CountDownLatch, TimeUnit}
 
+import org.specs2.mutable._
 import java.util.concurrent.atomic.AtomicInteger
 
 
@@ -95,10 +96,10 @@ class TickWheelExecutorSpec extends Specification {
     }
 
     "Gracefully handle exceptions" in {
-      @volatile var failed = 0
+      val latch = new CountDownLatch(2)
       val ec = new TickWheelExecutor(3, 1.millis) {
         override protected def onNonFatal(t: Throwable): Unit = {
-          failed += 1
+          latch.countDown()
           super.onNonFatal(t)
         }
       }
@@ -115,8 +116,7 @@ class TickWheelExecutorSpec extends Specification {
         }
       }, Duration.Zero)
 
-      Thread.sleep(100)
-      failed should_== 2
+      latch.await(5, TimeUnit.SECONDS) must beTrue
     }
 
     "Shutdown" in {
