@@ -31,10 +31,10 @@ private[http] class Http2TlsServerHandshaker(
     Future(installHttp2ServerStage(peerSettings, data))
 
   override protected def handlePrelude(): Future[ByteBuffer] =
-    StageTools.accumulateAtLeast(bits.clientHandshakeString.length, this).flatMap { buf =>
-      val prelude = BufferTools.takeSlice(buf, bits.clientHandshakeString.length)
+    StageTools.accumulateAtLeast(bits.ClientHandshakeString.length, this).flatMap { buf =>
+      val prelude = BufferTools.takeSlice(buf, bits.ClientHandshakeString.length)
       val preludeString = StandardCharsets.UTF_8.decode(prelude).toString
-      if (preludeString == bits.clientHandshakeString) Future.successful(buf)
+      if (preludeString == bits.ClientHandshakeString) Future.successful(buf)
       else {
         val msg = s"Invalid prelude: $preludeString"
         logger.error(msg)

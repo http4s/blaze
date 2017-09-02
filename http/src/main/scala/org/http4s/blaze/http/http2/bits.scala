@@ -3,62 +3,62 @@ package org.http4s.blaze.http.http2
 import java.nio.ByteBuffer
 import java.nio.charset.StandardCharsets
 
-object bits {
+private object bits {
 
-  def LengthFieldSize = 3
-  def HeaderSize = 9
+  val LengthFieldSize: Int = 3
+  val HeaderSize: Int = 9
 
-  def clientHandshakeString = "PRI * HTTP/2.0\r\n\r\nSM\r\n\r\n"
+  val ClientHandshakeString: String = "PRI * HTTP/2.0\r\n\r\nSM\r\n\r\n"
 
   def getHandshakeBuffer(): ByteBuffer =
     clientHandshakeBuffer.duplicate()
 
   object Masks {
-    val STREAMID  = 0x7fffffff
-    val LENGTH    =   0xffffff
-    val int31     = 0x7fffffff
-    val exclusive = ~int31
+    val STREAMID: Int = 0x7fffffff
+    val LENGTH: Int = 0xffffff
+    val int31: Int = 0x7fffffff
+    val exclusive: Int = ~int31
   }
 
   object FrameTypes {
-    val DATA          = 0x0.toByte
-    val HEADERS       = 0x1.toByte
-    val PRIORITY      = 0x2.toByte
-    val RST_STREAM    = 0x3.toByte
-    val SETTINGS      = 0x4.toByte
-    val PUSH_PROMISE  = 0x5.toByte
-    val PING          = 0x6.toByte
-    val GOAWAY        = 0x7.toByte
-    val WINDOW_UPDATE = 0x8.toByte
-    val CONTINUATION  = 0x9.toByte
+    val DATA: Byte = 0x0
+    val HEADERS: Byte = 0x1
+    val PRIORITY: Byte = 0x2
+    val RST_STREAM: Byte = 0x3
+    val SETTINGS: Byte = 0x4
+    val PUSH_PROMISE: Byte = 0x5
+    val PING: Byte = 0x6
+    val GOAWAY: Byte = 0x7
+    val WINDOW_UPDATE: Byte = 0x8
+    val CONTINUATION: Byte = 0x9
   }
 
   //////////////////////////////////////////////////
 
   object Flags {
-    val END_STREAM = 0x1.toByte
-    def END_STREAM(flags: Byte): Boolean  = checkFlag(flags, END_STREAM)   // Data, Header
+    val END_STREAM: Byte = 0x1
+    def END_STREAM(flags: Byte): Boolean = checkFlag(flags, END_STREAM) // Data, Header
 
-    val PADDED = 0x8.toByte
-    def PADDED(flags: Byte): Boolean      = checkFlag(flags, PADDED)       // Data, Header
+    val PADDED: Byte = 0x8
+    def PADDED(flags: Byte): Boolean = checkFlag(flags, PADDED) // Data, Header
 
-    val END_HEADERS = 0x4.toByte
-    def END_HEADERS(flags: Byte): Boolean = checkFlag(flags, END_HEADERS)  // Header, push_promise
+    val END_HEADERS: Byte = 0x4
+    def END_HEADERS(flags: Byte): Boolean = checkFlag(flags, END_HEADERS) // Header, push_promise
 
-    val PRIORITY = 0x20.toByte
-    def PRIORITY(flags: Byte): Boolean    = checkFlag(flags, PRIORITY)     // Header
+    val PRIORITY: Byte = 0x20
+    def PRIORITY(flags: Byte): Boolean = checkFlag(flags, PRIORITY) // Header
 
-    val ACK = 0x1.toByte
-    def ACK(flags: Byte): Boolean         = checkFlag(flags, ACK)          // ping
+    val ACK: Byte = 0x1
+    def ACK(flags: Byte): Boolean = checkFlag(flags, ACK) // ping
 
-    def DepID(id: Int): Int               = id & Masks.int31
-    def DepExclusive(id: Int): Boolean    = (Masks.exclusive & id) != 0
+    def DepID(id: Int): Int = id & Masks.int31
+    def DepExclusive(id: Int): Boolean = (Masks.exclusive & id) != 0
 
     @inline
-    private def checkFlag(flags: Byte, flag: Byte) = (flags & flag) != 0
+    private[this] def checkFlag(flags: Byte, flag: Byte) = (flags & flag) != 0
   }
 
-  private val clientHandshakeBuffer: ByteBuffer =
-    ByteBuffer.wrap(bits.clientHandshakeString.getBytes(StandardCharsets.UTF_8))
+  private[this] val clientHandshakeBuffer: ByteBuffer =
+    ByteBuffer.wrap(ClientHandshakeString.getBytes(StandardCharsets.UTF_8))
       .asReadOnlyBuffer()
 }

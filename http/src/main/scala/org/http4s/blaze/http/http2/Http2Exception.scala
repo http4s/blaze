@@ -2,7 +2,6 @@ package org.http4s.blaze.http.http2
 
 import java.nio.ByteBuffer
 import java.nio.charset.StandardCharsets.UTF_8
-
 import scala.collection.mutable
 import scala.util.control.NoStackTrace
 
@@ -72,9 +71,7 @@ object Http2Exception {
       else None
     }
 
-    def unapply(code: Int): Option[Unit] = {
-      if (code == this.code) Some(()) else None
-    }
+    def unapply(code: Int): Boolean = code == this.code
 
     override val toString: String = s"$name(0x${Integer.toHexString(code.toInt)})"
   }
@@ -109,5 +106,4 @@ object Http2Exception {
   val ENHANCE_YOUR_CALM        = mkErrorGen(0xb, "ENHANCE_YOUR_CALM")
   val INADEQUATE_SECURITY      = mkErrorGen(0xc, "INADEQUATE_SECURITY")
   val HTTP_1_1_REQUIRED        = mkErrorGen(0xd, "HTTP_1_1_REQUIRED")
-
 }

@@ -1,9 +1,7 @@
 package org.http4s.blaze.http.http2
 
-import org.http4s.blaze.http.http2.Http2Settings.Setting
-import org.http4s.blaze.http.http2.SettingsDecoder.SettingsFrame
+import org.http4s.blaze.http.http2.Http2Settings._
 import org.log4s.getLogger
-
 import scala.collection.mutable
 
 /** A bundle of HTTP2 settings
@@ -59,8 +57,6 @@ sealed abstract class Http2Settings {
     * header field.
     */
   def maxHeaderListSize: Int
-
-  import Http2Settings._
 
   final def toSeq: Seq[Setting] = Seq(
     HEADER_TABLE_SIZE(headerTableSize),
@@ -167,14 +163,14 @@ object Http2Settings {
 }
 
 /** Internal mutable representation of the [[Http2Settings]] */
-private final case class MutableHttp2Settings private(
-                                                       var headerTableSize: Int,
-                                                       var initialWindowSize: Int,
-                                                       var pushEnabled: Boolean,
-                                                       var maxConcurrentStreams: Int,
-                                                       var maxFrameSize: Int,
-                                                       var maxHeaderListSize: Int)
-  extends Http2Settings { // initially unbounded
+private final class MutableHttp2Settings private(
+  var headerTableSize: Int,
+  var initialWindowSize: Int,
+  var pushEnabled: Boolean,
+  var maxConcurrentStreams: Int,
+  var maxFrameSize: Int,
+  var maxHeaderListSize: Int
+) extends Http2Settings { // initially unbounded
 
   // Have we received a GOAWAY frame?
   var receivedGoAway = false
@@ -189,7 +185,7 @@ private object MutableHttp2Settings {
 
   /** Construct a new [[MutableHttp2Settings]] from a [[Http2Settings]] instance */
   def apply(settings: Http2Settings): MutableHttp2Settings =
-    MutableHttp2Settings(
+    new MutableHttp2Settings(
       headerTableSize = settings.headerTableSize,
       initialWindowSize = settings.initialWindowSize,
       pushEnabled = settings.pushEnabled,
