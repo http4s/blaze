@@ -1,11 +1,13 @@
 package org.http4s.blaze.http.http2
 
 import org.http4s.blaze.util.{Execution, SerialExecutionContext}
-
 import scala.collection.mutable.ListBuffer
 import scala.concurrent.ExecutionContext
 
-class MockFlowControl(mySettings: Http2Settings, peerSettings: Http2Settings) extends SessionFlowControl(mySettings, peerSettings) {
+private class MockFlowControl(
+  mySettings: Http2Settings,
+  peerSettings: Http2Settings
+) extends SessionFlowControlImpl(mySettings, peerSettings) {
   sealed trait Operation
   case class SessionConsumed(bytes: Int) extends Operation
   case class StreamConsumed(stream: StreamFlowWindow, consumed: Int) extends Operation
@@ -41,10 +43,6 @@ private class MockHttp2StreamState(
 
   override val flowWindow: StreamFlowWindow = tools.flowControl.newStreamFlowWindow(streamId)
 
-
-  /** Called when the outbound flow window of the session or this stream has had some data
-    * acked and we may now be able to make forward progress.
-    */
   override def outboundFlowWindowChanged(): Unit = {
     outboundFlowAcks += 1
     super.outboundFlowWindowChanged()

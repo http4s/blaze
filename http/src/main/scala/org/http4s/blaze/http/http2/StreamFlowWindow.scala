@@ -36,7 +36,6 @@ abstract class StreamFlowWindow {
     * @param delta change in intial window size. Maybe be positive or negative, but must not
     *              cause the window to overflow Int.MaxValue.
     */
-  // TODO: why is these returning a `MaybeError`? This feels like a real exception...
   def peerSettingsInitialWindowChange(delta: Int): MaybeError
 
   /** Signal that a stream window update was received for `count` bytes */

@@ -148,7 +148,7 @@ private abstract class Http2ConnectionImpl(
   /** Get the current state of the `Session` */
   final def state: ConnectionState = currentState
 
-  private[this] val sessionFlowControl = new SessionFlowControl(mySettings, peerSettings) {
+  private[this] val sessionFlowControl = new SessionFlowControlImpl(mySettings, peerSettings) {
     override protected def onSessonBytesConsumed(consumed: Int): Unit = {
       val update = flowStrategy.checkSession(this)
       if (update > 0) {

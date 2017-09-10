@@ -5,8 +5,8 @@ import org.specs2.mutable.Specification
 
 class SessionFlowControlSpec extends Specification {
 
-  class TestSessionFlowControl(inbound: Http2Settings, outbound: Http2Settings)
-    extends SessionFlowControl(inbound, outbound) {
+  private class TestSessionFlowControl(inbound: Http2Settings, outbound: Http2Settings)
+    extends SessionFlowControlImpl(inbound, outbound) {
     var sessionConsumed: Int = 0
 
     var streamThatConsumed: StreamFlowWindow = null
@@ -22,12 +22,12 @@ class SessionFlowControlSpec extends Specification {
     }
   }
 
-  def flowControl(): TestSessionFlowControl = {
+  private def flowControl(): TestSessionFlowControl = {
     val settings = Http2Settings.default
     flowControl(settings, settings)
   }
 
-  def flowControl(inbound: Http2Settings, outbound: Http2Settings): TestSessionFlowControl = {
+  private def flowControl(inbound: Http2Settings, outbound: Http2Settings): TestSessionFlowControl = {
     new TestSessionFlowControl(inbound, outbound)
   }
 
