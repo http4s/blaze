@@ -1,4 +1,4 @@
-package org.http4s.blaze.examples.http20
+package org.http4s.blaze.examples.http2
 
 import java.net.InetSocketAddress
 
