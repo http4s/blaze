@@ -18,14 +18,14 @@ class HeaderDecoderSpec extends Specification {
       val bb = HeaderCodecHelpers.encodeHeaders(testHeaders, Int.MaxValue)
       val dec = new HeaderDecoder(Int.MaxValue, false, Int.MaxValue)
       dec.decode(bb, -1, true) must_== Continue
-      dec.result() must_== testHeaders
+      dec.finish() must_== testHeaders
 
       // Decode another block to make sure we don't contaminate the first
       val nextHs = (0 until 10).map { i => i.toString -> i.toString }
       val nextEncodedHs = HeaderCodecHelpers.encodeHeaders(nextHs, Int.MaxValue)
 
       dec.decode(nextEncodedHs, -1, true) must_== Continue
-      dec.result() must_== nextHs
+      dec.finish() must_== nextHs
     }
 
     "decode a header block in chunks" in {
@@ -36,7 +36,7 @@ class HeaderDecoderSpec extends Specification {
 
       dec.decode(b1, -1, false) must_== Continue
       dec.decode(bb, -1, true) must_== Continue
-      dec.result() must_== testHeaders
+      dec.finish() must_== testHeaders
     }
 
     "count the current header block size" in {
@@ -48,7 +48,7 @@ class HeaderDecoderSpec extends Specification {
       dec.currentHeaderBlockSize must_== headersBlockSize
       dec.headerListSizeOverflow must beFalse
 
-      dec.result() must_== testHeaders
+      dec.finish() must_== testHeaders
       dec.currentHeaderBlockSize must_== 0
     }
 
@@ -58,7 +58,7 @@ class HeaderDecoderSpec extends Specification {
 
       dec.decode(bb, -1, true) must_== Continue
       dec.headerListSizeOverflow must beTrue
-      dec.result() must_== testHeaders // didn't get the second round
+      dec.finish() must_== testHeaders // didn't get the second round
       dec.headerListSizeOverflow must beFalse
     }
 
