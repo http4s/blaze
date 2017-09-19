@@ -4,7 +4,7 @@ import java.nio.ByteBuffer
 
 import org.http4s.blaze.http.Headers
 import org.http4s.blaze.util.BufferTools
-import Http2Exception.{PROTOCOL_ERROR, REFUSED_STREAM}
+import Http2Exception.PROTOCOL_ERROR
 
 /** A [[Http2FrameHandler]] that decodes raw HEADERS, PUSH_PROMISE,
   * and CONTINUATION frames from ByteBuffer packets to a complete
@@ -80,7 +80,7 @@ private[http2] abstract class HeaderAggregatingFrameHandler(
       val r = headerDecoder.decode(buffer, streamId, true)
       if (!r.success) r
       else {
-        val hs = headerDecoder.result()
+        val hs = headerDecoder.finish()
         onCompleteHeadersFrame(streamId, priority, endStream, hs)
       }
     } else {
@@ -105,7 +105,7 @@ private[http2] abstract class HeaderAggregatingFrameHandler(
       val r = headerDecoder.decode(buffer, streamId, true)
       if (!r.success) r
       else {
-        val hs = headerDecoder.result()
+        val hs = headerDecoder.finish()
         onCompletePushPromiseFrame(streamId, promisedId, hs)
       }
     } else {
@@ -136,7 +136,7 @@ private[http2] abstract class HeaderAggregatingFrameHandler(
           val r = headerDecoder.decode(newBuffer, streamId, true)
           if (!r.success) r
           else {
-            val hs = headerDecoder.result()
+            val hs = headerDecoder.finish()
             val i = hInfo // drop the reference before doing the stateful action
             hInfo = null
 

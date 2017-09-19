@@ -17,7 +17,7 @@ final class Http2FrameEncoder(
 
   // Encoder side
   def setMaxTableSize(size: Int): Unit =
-    headerEncoder.setMaxTableSize(size)
+    headerEncoder.maxTableSize(size)
 
   def sessionWindowUpdate(size: Int): ByteBuffer =
     streamWindowUpdate(0, size)

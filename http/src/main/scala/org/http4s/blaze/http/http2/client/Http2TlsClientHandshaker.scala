@@ -52,7 +52,10 @@ private[http] class Http2TlsClientHandshaker(
         mySettings,
         peerSettings,
         http2Encoder,
-        new HeaderDecoder(mySettings.maxHeaderListSize, mySettings.headerTableSize),
+        new HeaderDecoder(
+          mySettings.maxHeaderListSize,
+          /*discard overflow headers*/ true,
+          mySettings.headerTableSize),
         flowStrategy,
         executor
       )

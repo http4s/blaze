@@ -6,27 +6,34 @@ import java.nio.charset.StandardCharsets.US_ASCII
 
 import com.twitter.hpack.Encoder
 
-
-/** Simple Headers type for use in blaze and testing */
-class HeaderEncoder(private var maxTableSize: Int) {
-
-//  require(maxTableSize <= DefaultSettings.HEADER_TABLE_SIZE, "Invalid initial table size")
-
-  private[this] val encoder = new Encoder(getMaxTableSize)
+/** HTTP/2 HPACK header encoder
+  *
+  * @param initialMaxTableSize maximum HPACK table size the peer
+  *                            will allow.
+  */
+class HeaderEncoder(initialMaxTableSize: Int) {
+  private[this] var _maxTableSize = initialMaxTableSize
+  private[this] val encoder = new Encoder(maxTableSize)
   private[this] val os = new ByteArrayOutputStream(1024)
 
 
-  /** Note that the default value is 4096 bytes */
-  def getMaxTableSize(): Int = maxTableSize
+  /** The current value of SETTINGS_HEADER_TABLE_SIZE */
+  def maxTableSize: Int = _maxTableSize
 
   /** This should only be changed by the peer */
-  def setMaxTableSize(max: Int): Unit = {
-    maxTableSize = max
+  def maxTableSize(max: Int): Unit = {
+    _maxTableSize = max
     encoder.setMaxHeaderTableSize(os, max)
   }
 
+  /** Encode the headers into the payload of a HEADERS frame */
   def encodeHeaders(hs: Seq[(String, String)]): ByteBuffer = {
-    hs.foreach { case (k,v) => encoder.encodeHeader(os, k.getBytes(US_ASCII), v.getBytes(US_ASCII), false) }
+    hs.foreach { case (k,v) =>
+      val keyBytes = k.getBytes(US_ASCII)
+      val valueBytes = v.getBytes(US_ASCII)
+      encoder.encodeHeader(os, keyBytes, valueBytes, false)
+    }
+
     val buff = ByteBuffer.wrap(os.toByteArray())
     os.reset()
     buff

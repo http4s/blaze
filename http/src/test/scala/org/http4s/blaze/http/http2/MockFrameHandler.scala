@@ -23,7 +23,7 @@ private[http2] class MockFrameHandler(inHeaders: Boolean) extends Http2FrameHand
 
 // TODO: test the header size limits
 private[http2] class MockHeaderAggregatingFrameHandler extends HeaderAggregatingFrameHandler(
-    Http2Settings.default, new HeaderDecoder(20*1024, 4096)) {
+    Http2Settings.default, new HeaderDecoder(20*1024, true, 4096)) {
 
   override def onCompletePushPromiseFrame(streamId: Int, promisedId: Int, headers: Headers): Http2Result = ???
   override def onCompleteHeadersFrame(streamId: Int, priority: Option[Priority], end_stream: Boolean, headers: Headers): Http2Result = ???

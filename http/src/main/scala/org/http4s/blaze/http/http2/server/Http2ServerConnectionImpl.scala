@@ -18,7 +18,10 @@ private object Http2ServerConnectionImpl {
 
     val headerEncoder = new HeaderEncoder(peerSettings.headerTableSize)
     val http2Encoder = new Http2FrameEncoder(peerSettings, headerEncoder)
-    val headerDecoder = new HeaderDecoder(mySettings.maxHeaderListSize, mySettings.headerTableSize)
+    val headerDecoder = new HeaderDecoder(
+      mySettings.maxHeaderListSize,
+      true, // discard overflow headers
+      mySettings.headerTableSize)
     val flowStrategy = new DefaultFlowStrategy(mySettings)
     val ec = Execution.trampoline
 

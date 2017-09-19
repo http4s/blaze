@@ -7,12 +7,12 @@ import java.nio.ByteBuffer
   * This is just an adapter to work with the twitter hpack
   * implementation. I would really like to get rid of it.
   */
-final private class ByteBufferInputStream(buffer: ByteBuffer) extends InputStream {
+private final class ByteBufferInputStream(buffer: ByteBuffer) extends InputStream {
 
-  private var markSize = 0
+  private[this] var markSize = -1
 
   override def read(): Int = {
-    if (buffer.hasRemaining()) {
+    if (buffer.hasRemaining) {
       markSize -= 1
       buffer.get() & 0xff
     }
@@ -20,16 +20,17 @@ final private class ByteBufferInputStream(buffer: ByteBuffer) extends InputStrea
   }
 
   override def read(b: Array[Byte], off: Int, len: Int): Int = {
-    if (buffer.remaining() == 0) -1
+    if (!buffer.hasRemaining) -1
     else {
-      val readSize = math.min(len, buffer.remaining())
+      val readSize = math.min(len, buffer.remaining)
       markSize -= readSize
+      // the buffer.get call will check the array bounds
       buffer.get(b, off, readSize)
       readSize
     }
   }
 
-  override def available(): Int = buffer.remaining()
+  override def available(): Int = buffer.remaining
 
   override def mark(readlimit: Int): Unit = {
     markSize = readlimit
@@ -38,8 +39,8 @@ final private class ByteBufferInputStream(buffer: ByteBuffer) extends InputStrea
   }
 
   override def reset(): Unit = {
-    if (markSize > 0) {
-      markSize = 0
+    if (markSize >= 0) {
+      markSize = -1
       buffer.reset()
       ()
     }
