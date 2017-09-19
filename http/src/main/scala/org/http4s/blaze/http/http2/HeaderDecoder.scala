@@ -9,6 +9,7 @@ import org.http4s.blaze.util.BufferTools
 import com.twitter.hpack.{Decoder, HeaderListener}
 
 import scala.collection.immutable.VectorBuilder
+import scala.util.control.NonFatal
 
 /** Decoder of HEADERS frame payloads into a collection of key-value
   * pairs using a HPACK decoder.
@@ -31,6 +32,7 @@ final class HeaderDecoder(
   private[this] val acc = new VectorBuilder[(String, String)]
   private[this] var leftovers: ByteBuffer = null
   private[this] var headerBlockSize = 0
+  private[this] var sawEndHeaders = false
 
   private[this] val decoder = new Decoder(maxHeaderListSize, maxTableSize)
   private[this] val listener = new HeaderListener {
@@ -47,10 +49,17 @@ final class HeaderDecoder(
   def setMaxHeaderTableSize(max: Int): Unit = decoder.setMaxHeaderTableSize(max)
 
   /** Returns the header collection and clears the builder */
-  def result(): Seq[(String,String)] = {
+  def finish(): Seq[(String,String)] = {
+    if (!sawEndHeaders) {
+      throw new IllegalStateException(
+        "Should only be called after decoding the a terminating header fragment")
+    }
+
+    leftovers = null
+    headerBlockSize = 0
+    sawEndHeaders = false
     val result = acc.result()
     acc.clear()
-    headerBlockSize = 0
     result
   }
 
@@ -67,14 +76,20 @@ final class HeaderDecoder(
     streamId: Int,
     endHeaders: Boolean,
     listener: HeaderListener): MaybeError = {
+    if (sawEndHeaders) {
+      throw new IllegalStateException(
+        "called doDecode() after receiving an endHeaders flag")
+    }
+
     try {
+      sawEndHeaders = endHeaders
       val buff = BufferTools.concatBuffers(leftovers, buffer)
       decoder.decode(new ByteBufferInputStream(buff), listener)
 
       if (!buff.hasRemaining()) leftovers = null
       else if (buff ne buffer) leftovers = buff // we made a copy with concatBuffers
       else {  // buff == input buffer. Need to copy the input buffer so we are not sharing it
-        val b = BufferTools.allocate(buff.remaining())
+      val b = BufferTools.allocate(buff.remaining())
         b.put(buff).flip()
         leftovers = b
       }
@@ -84,7 +99,7 @@ final class HeaderDecoder(
       }
 
       Continue
-    } catch { case t: Throwable =>
+    } catch { case NonFatal(_) =>
       Error(COMPRESSION_ERROR.goaway(s"Compression error on stream $streamId"))
     }
   }

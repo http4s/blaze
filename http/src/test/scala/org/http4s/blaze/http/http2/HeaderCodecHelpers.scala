@@ -11,6 +11,6 @@ object HeaderCodecHelpers {
   def decodeHeaders(bb: ByteBuffer, maxTableSize: Int): Seq[(String, String)] = {
     val dec = new HeaderDecoder(Int.MaxValue, false, maxTableSize)
     dec.decode(bb, -1, true)
-    dec.result()
+    dec.finish()
   }
 }
