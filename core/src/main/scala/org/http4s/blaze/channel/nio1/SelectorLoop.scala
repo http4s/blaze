@@ -41,10 +41,14 @@ final class SelectorLoop(id: String, selector: Selector, bufferSize: Int) extend
   @inline
   final def executeTask(r: Runnable): Unit =  {
     if (Thread.currentThread() == thisLoop) r.run()
-    else enqueTask(r)
+    else enqueueTask(r)
   }
 
-  def enqueTask(r: Runnable): Unit = {
+  @deprecated("Renamed to enqueueTask", "0.12.8")
+  def enqueTask(r: Runnable): Unit =
+    enqueueTask(r)
+
+  def enqueueTask(r: Runnable): Unit = {
     if (_isClosed) throw new RejectedExecutionException("This SelectorLoop is closed.")
 
     val node = new Node(r)
@@ -57,7 +61,7 @@ final class SelectorLoop(id: String, selector: Selector, bufferSize: Int) extend
   }
 
   def initChannel(builder: BufferPipelineBuilder, ch: SelectableChannel, mkStage: SelectionKey => NIO1HeadStage): Unit = {
-    enqueTask( new Runnable {
+    enqueueTask( new Runnable {
       def run(): Unit = {
         try {
           ch.configureBlocking(false)

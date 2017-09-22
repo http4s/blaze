@@ -48,8 +48,7 @@ lazy val http = Project("blaze-http", file("http"))
     libraryDependencies ++= Seq(
       asyncHttpClient
     ).map(_ % Test)
-  )
-  .dependsOn(core % "test->test;compile->compile")
+  ).dependsOn(core % "test->test;compile->compile")
 
 lazy val examples = Project("blaze-examples",file("examples"))
   .enablePlugins(DisablePublishingPlugin)

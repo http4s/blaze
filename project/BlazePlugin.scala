@@ -88,7 +88,7 @@ object BlazePlugin extends AutoPlugin {
   lazy val logbackClassic      = "ch.qos.logback"             %  "logback-classic"     % "1.2.3"
   lazy val twitterHPACK        = "com.twitter"                %  "hpack"               % "1.0.2"
   lazy val asyncHttpClient     = "org.asynchttpclient"        %  "async-http-client"   % "2.0.32"
-  lazy val http4sWebsocket     = "org.http4s"                 %% "http4s-websocket"    % "0.1.6"
+  lazy val http4sWebsocket     = "org.http4s"                 %% "http4s-websocket"    % "0.2.0"
   lazy val scalaXml            = "org.scala-lang.modules"     %% "scala-xml"           % "1.0.6"
   lazy val log4s               = "org.log4s"                  %% "log4s"               % "1.3.4"
   lazy val specs2              = "org.specs2"                 %% "specs2-core"         % "3.8.9"
