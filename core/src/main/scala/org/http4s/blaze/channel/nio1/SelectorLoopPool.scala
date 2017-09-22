@@ -20,7 +20,7 @@ trait SelectorLoopPool {
 class FixedSelectorPool(poolSize: Int, bufferSize: Int) extends SelectorLoopPool {
 
   private val loops = 0.until(poolSize).map { id =>
-    val l = new SelectorLoop(s"FixedPoolLoop-$id", Selector.open(), bufferSize)
+    val l = new SelectorLoop(s"blaze-nio-fixed-selector-pool-$id", Selector.open(), bufferSize)
     l.setDaemon(true)
     l.start()
     l

@@ -70,7 +70,7 @@ class NIO1SocketServerGroup(pool: SelectorLoopPool) extends ServerChannelGroup {
   }
 
 
-  private class AcceptThread extends Thread("NIO1SocketServerGroup Acceptor") {
+  private class AcceptThread extends Thread("blaze-nio1-acceptor") {
     setDaemon(true)
 
     private val queue = new AtomicReference[List[NIO1ServerChannel]](Nil)

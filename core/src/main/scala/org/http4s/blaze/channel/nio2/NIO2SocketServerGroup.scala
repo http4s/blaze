@@ -19,7 +19,7 @@ object NIO2SocketServerGroup {
     val factory = new ThreadFactory {
       val i = new AtomicInteger(0)
       override def newThread(r: Runnable): Thread = {
-        val t = new Thread(r, "NIO2SocketServerGroup-" + i.getAndIncrement())
+        val t = new Thread(r, "blaze-nio2-fixed-pool-" + i.getAndIncrement())
         t.setDaemon(false)
         t
       }
