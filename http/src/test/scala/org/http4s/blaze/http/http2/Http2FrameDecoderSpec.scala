@@ -3,7 +3,7 @@ package org.http4s.blaze.http.http2
 import java.nio.ByteBuffer
 
 import org.http4s.blaze.http.http2.Http2Settings.Setting
-import org.http4s.blaze.http.http2.Priority.Dependant
+import org.http4s.blaze.http.http2.Priority.Dependent
 import org.http4s.blaze.http.http2.bits.Flags
 import org.specs2.mutable.Specification
 
@@ -233,7 +233,7 @@ class Http2FrameDecoderSpec extends Specification {
 
       dec.decodeBuffer(testData) must_== Continue
       listener.streamId must beSome(1)
-      listener.priority must beSome(Priority.Dependant(2, true, 256))
+      listener.priority must beSome(Priority.Dependent(2, true, 256))
       listener.endHeaders must beSome(false)
       listener.endStream must beSome(false)
       listener.buffer must_== ByteBuffer.wrap(new Array(3))
@@ -274,7 +274,7 @@ class Http2FrameDecoderSpec extends Specification {
 
       dec.decodeBuffer(testData) must_== Continue
       listener.streamId must beSome(1)
-      listener.priority must beSome(Priority.Dependant(2, false, 3))
+      listener.priority must beSome(Priority.Dependent(2, false, 3))
       listener.endHeaders must beSome(false)
       listener.endStream must beSome(false)
       listener.buffer must_== buffer(0x00)
@@ -355,8 +355,8 @@ class Http2FrameDecoderSpec extends Specification {
 
     class PriorityListener extends MockFrameListener(false) {
       var streamId: Option[Int] = None
-      var priority: Option[Dependant] = None
-      override def onPriorityFrame(streamId: Int, priority: Dependant): Http2Result = {
+      var priority: Option[Dependent] = None
+      override def onPriorityFrame(streamId: Int, priority: Dependent): Http2Result = {
         this.streamId = Some(streamId)
         this.priority = Some(priority)
         Continue
@@ -383,7 +383,7 @@ class Http2FrameDecoderSpec extends Specification {
 
       dec.decodeBuffer(testData) must_== Continue
       listener.streamId must beSome(1)
-      listener.priority must beSome(Priority.Dependant(2, false, 1))
+      listener.priority must beSome(Priority.Dependent(2, false, 1))
     }
 
     "simple PRIORITY frame with exclusive" >> {
@@ -400,7 +400,7 @@ class Http2FrameDecoderSpec extends Specification {
 
       dec.decodeBuffer(testData) must_== Continue
       listener.streamId must beSome(1)
-      listener.priority must beSome(Priority.Dependant(2, true, 1))
+      listener.priority must beSome(Priority.Dependent(2, true, 1))
     }
 
     "frame with dependent stream being itself" >> {

@@ -15,7 +15,7 @@ private[http2] class MockFrameListener(inHeaders: Boolean) extends Http2FrameLis
   override def onHeadersFrame(streamId: Int, priority: Priority, end_headers: Boolean, end_stream: Boolean, buffer: ByteBuffer): Http2Result = ???
   override def onSettingsFrame(ack: Boolean, settings: Seq[Setting]): Http2Result = ???
   override def onRstStreamFrame(streamId: Int, code: Long): Http2Result = ???
-  override def onPriorityFrame(streamId: Int, priority: Priority.Dependant): Http2Result = ???
+  override def onPriorityFrame(streamId: Int, priority: Priority.Dependent): Http2Result = ???
   override def onContinuationFrame(streamId: Int, endHeaders: Boolean, data: ByteBuffer): Http2Result = ???
   override def onDataFrame(streamId: Int, isLast: Boolean, data: ByteBuffer, flowSize: Int): Http2Result = ???
   override def onWindowUpdateFrame(streamId: Int, sizeIncrement: Int): Http2Result = ???

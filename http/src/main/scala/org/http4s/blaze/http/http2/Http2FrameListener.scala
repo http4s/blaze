@@ -65,7 +65,7 @@ trait Http2FrameListener {
     * @param streamId stream id associated with this priority frame. The codec will never set this to 0.
     * @param priority priority data
     */
-  def onPriorityFrame(streamId: Int, priority: Priority.Dependant): Http2Result
+  def onPriorityFrame(streamId: Int, priority: Priority.Dependent): Http2Result
 
   /** Called on successful receipt of a RST_STREAM frame
     *
