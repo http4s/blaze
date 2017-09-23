@@ -14,23 +14,24 @@ private object bits {
     clientHandshakeBuffer.duplicate()
 
   object Masks {
-    val STREAMID: Int = 0x7fffffff
+    val INT31: Int = 0x7fffffff
+    val EXCLUSIVE: Int = ~INT31
+    val STREAMID: Int = INT31
     val LENGTH: Int = 0xffffff
-    val int31: Int = 0x7fffffff
-    val exclusive: Int = ~int31
+
   }
 
   object FrameTypes {
-    val DATA: Byte = 0x0
-    val HEADERS: Byte = 0x1
-    val PRIORITY: Byte = 0x2
-    val RST_STREAM: Byte = 0x3
-    val SETTINGS: Byte = 0x4
-    val PUSH_PROMISE: Byte = 0x5
-    val PING: Byte = 0x6
-    val GOAWAY: Byte = 0x7
-    val WINDOW_UPDATE: Byte = 0x8
-    val CONTINUATION: Byte = 0x9
+    val DATA: Byte = 0x00
+    val HEADERS: Byte = 0x01
+    val PRIORITY: Byte = 0x02
+    val RST_STREAM: Byte = 0x03
+    val SETTINGS: Byte = 0x04
+    val PUSH_PROMISE: Byte = 0x05
+    val PING: Byte = 0x06
+    val GOAWAY: Byte = 0x07
+    val WINDOW_UPDATE: Byte = 0x08
+    val CONTINUATION: Byte = 0x09
   }
 
   //////////////////////////////////////////////////
@@ -51,8 +52,8 @@ private object bits {
     val ACK: Byte = 0x1
     def ACK(flags: Byte): Boolean = checkFlag(flags, ACK) // ping
 
-    def DepID(id: Int): Int = id & Masks.int31
-    def DepExclusive(id: Int): Boolean = (Masks.exclusive & id) != 0
+    def DepID(id: Int): Int = id & Masks.STREAMID
+    def DepExclusive(id: Int): Boolean = (Masks.EXCLUSIVE & id) != 0
 
     @inline
     private[this] def checkFlag(flags: Byte, flag: Byte) = (flags & flag) != 0
