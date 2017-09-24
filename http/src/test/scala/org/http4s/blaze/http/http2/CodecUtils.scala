@@ -6,8 +6,11 @@ import java.util
 import org.http4s.blaze.util.BufferTools._
 
 object CodecUtils {
+
+  def byteData: Array[Byte] = "The quick brown fox jumps over the lazy dog".getBytes()
+
   def mkData(size: Int): ByteBuffer = {
-    val s = "The quick brown fox jumps over the lazy dog".getBytes()
+    val s = byteData
     val buff = ByteBuffer.allocate(size)
     while(buff.hasRemaining) buff.put(s, 0, math.min(buff.remaining(), s.length))
     buff.flip()
@@ -24,10 +27,4 @@ object CodecUtils {
 
   def decoder(h: Http2FrameListener, inHeaders: Boolean = false): TestHttp2FrameDecoder =
     new TestHttp2FrameDecoder(h)
-
-  val bonusSize = 10
-
-  def addBonus(buffers: Seq[ByteBuffer]): ByteBuffer = {
-    joinBuffers(buffers :+ ByteBuffer.allocate(bonusSize))
-  }
 }
