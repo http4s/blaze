@@ -41,17 +41,18 @@ private object SettingsDecoder {
   def decodeSettingsFrame(buffer: ByteBuffer, streamId: Int, flags: Byte): Either[Http2Exception, SettingsFrame] = {
     import Http2Exception._
 
-    val len = buffer.remaining()
+    val len = buffer.remaining
     val isAck = Flags.ACK(flags)
 
-    val settingsCount = len / 6 // 6 bytes per setting
     if (len % 6 != 0) { // Invalid frame size
     val msg = s"SETTINGS frame payload must be multiple of 6 bytes, size: $len"
       return Left(FRAME_SIZE_ERROR.goaway(msg))
     }
 
+    val settingsCount = len / 6 // 6 bytes per setting
+
     if (isAck && settingsCount != 0) {
-      val msg = "SETTINGS ACK frame with settings payload"
+      val msg = s"SETTINGS ACK frame with settings payload ($settingsCount settings)"
       return Left(FRAME_SIZE_ERROR.goaway(msg))
     }
 
@@ -59,17 +60,15 @@ private object SettingsDecoder {
       return Left(PROTOCOL_ERROR.goaway(s"SETTINGS frame with invalid stream id: $streamId"))
     }
 
-    val settings = new ArrayBuffer[Setting](settingsCount)
+    val settings = Vector.newBuilder[Setting]
 
-    def go(remaining: Int): Unit = if (remaining > 0) {
+    while(buffer.hasRemaining) {
       val id: Int = buffer.getShort() & 0xffff
       val value = buffer.getInt()
       settings += Setting(id, value)
-      go(remaining - 1)
     }
-    go(settingsCount)
 
-    Right(SettingsFrame(isAck, settings))
+    Right(SettingsFrame(isAck, settings.result))
   }
 
   /** Create a [[MutableHttp2Settings]] from a collection of settings */

@@ -54,7 +54,7 @@ private class Http2ClientStage(request: HttpRequest, executor: ExecutionContext)
     case Failure(t) => shutdownWithError(t, "Failed to construct valid request")
     case Success(hs) =>
       val eos = request.body.isExhausted
-      val headerFrame = HeadersFrame(None, eos, hs)
+      val headerFrame = HeadersFrame(Priority.NoPriority, eos, hs)
 
       channelWrite(headerFrame).onComplete {
         case Success(_) =>

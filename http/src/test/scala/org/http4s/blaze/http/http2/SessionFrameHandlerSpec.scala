@@ -16,9 +16,9 @@ class SessionFrameHandlerSpec extends Specification with Http2SpecTools {
 
     lazy val activeStreams: mutable.HashMap[Int, MockHttp2StreamState] = new mutable.HashMap[Int, MockHttp2StreamState]()
 
-    lazy val handler: SessionFrameHandler[MockHttp2StreamState] = new MockSessionFrameHandler
+    lazy val handler: SessionFrameListener[MockHttp2StreamState] = new MockSessionFrameListener
 
-    class MockSessionFrameHandler extends SessionFrameHandler[MockHttp2StreamState](
+    class MockSessionFrameListener extends SessionFrameListener[MockHttp2StreamState](
       tools.mySettings,
       tools.headerDecoder,
       activeStreams,
@@ -28,7 +28,7 @@ class SessionFrameHandlerSpec extends Specification with Http2SpecTools {
       override def onPingFrame(ack: Boolean, data: Array[Byte]): Http2Result = ???
       override protected def handlePushPromise(streamId: Int, promisedId: Int, headers: Headers): Http2Result = ???
       override def onSettingsFrame(ack: Boolean, settings: Seq[Setting]): Http2Result = ???
-      override def onGoAwayFrame(lastStream: Int, errorCode: Long, debugData: ByteBuffer): Http2Result = ???
+      override def onGoAwayFrame(lastStream: Int, errorCode: Long, debugData: Array[Byte]): Http2Result = ???
     }
   }
 
@@ -37,7 +37,7 @@ class SessionFrameHandlerSpec extends Specification with Http2SpecTools {
     "on HEADERS frame" >> {
       class HandlerCtx(isClient: Boolean) extends Ctx(isClient) {
         var observedStreamId: Option[Int] = None
-        override lazy val handler = new MockSessionFrameHandler {
+        override lazy val handler = new MockSessionFrameListener {
           override protected def newInboundStream(streamId: Int): Option[MockHttp2StreamState] = {
             observedStreamId = Some(streamId)
             None
@@ -47,20 +47,20 @@ class SessionFrameHandlerSpec extends Specification with Http2SpecTools {
 
       "result in a protocol for stream ID 0" >> {
         val ctx = new HandlerCtx(false)
-        ctx.handler.onCompleteHeadersFrame(0, None, true, Nil) must beLike(ConnectionProtoError)
+        ctx.handler.onCompleteHeadersFrame(0, Priority.NoPriority, true, Nil) must beLike(ConnectionProtoError)
         ctx.observedStreamId must beNone
       }
 
       "result in a PROTOCOL_ERROR for idle outbound stream" >> {
         val ctx = new HandlerCtx(false)
-        ctx.handler.onCompleteHeadersFrame(2, None, true, Nil) must beLike(ConnectionProtoError)
+        ctx.handler.onCompleteHeadersFrame(2, Priority.NoPriority, true, Nil) must beLike(ConnectionProtoError)
         ctx.observedStreamId must beNone
       }
 
       "result in a Http2StreamException with code STREAM_CLOSED for closed outbound stream" >> {
         val ctx = new HandlerCtx(false)
         val Some(id) = ctx.tools.idManager.takeOutboundId()
-        ctx.handler.onCompleteHeadersFrame(id, None, true, Nil) must beLike {
+        ctx.handler.onCompleteHeadersFrame(id, Priority.NoPriority, true, Nil) must beLike {
           case Error(err: Http2SessionException) =>
             err.code must_== Http2Exception.PROTOCOL_ERROR.code
         }
@@ -69,7 +69,7 @@ class SessionFrameHandlerSpec extends Specification with Http2SpecTools {
 
       "initiate a new stream for idle inbound stream (server)" >> {
         val ctx = new HandlerCtx(false)
-        ctx.handler.onCompleteHeadersFrame(1, None, true, Nil) must beLike { case Error(err) =>
+        ctx.handler.onCompleteHeadersFrame(1, Priority.NoPriority, true, Nil) must beLike { case Error(err) =>
           err.code must_== Http2Exception.REFUSED_STREAM.code
         }
         ctx.observedStreamId must beSome(1)
@@ -81,7 +81,7 @@ class SessionFrameHandlerSpec extends Specification with Http2SpecTools {
       case class PushPromise(streamId: Int, promisedId: Int, headers: Headers)
       class HandlerCtx(isClient: Boolean) extends Ctx(isClient) {
         var pushPromiseResult: Option[PushPromise] = None
-        override lazy val handler = new MockSessionFrameHandler {
+        override lazy val handler = new MockSessionFrameListener {
           override protected def handlePushPromise(streamId: Int, promisedId: Int, headers: Headers): Http2Result = {
             pushPromiseResult = Some(PushPromise(streamId, promisedId, headers))
             Continue

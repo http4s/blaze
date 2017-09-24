@@ -1,6 +1,7 @@
 package org.http4s.blaze.http.http2
 
-import org.http4s.blaze.util.{Execution, SerialExecutionContext}
+import org.http4s.blaze.util.Execution
+
 import scala.collection.mutable.ListBuffer
 import scala.concurrent.ExecutionContext
 
@@ -33,8 +34,7 @@ private class MockWriteListener extends WriteListener {
   }
 }
 
-private class MockHttp2StreamState(
-    val streamId: Int, tools: Http2MockTools)
+private class MockHttp2StreamState(val streamId: Int, tools: Http2MockTools)
   extends Http2StreamState(tools.writeListener, tools.frameEncoder, tools.sessionExecutor) {
 
   var outboundFlowAcks: Int = 0
@@ -79,5 +79,5 @@ private class Http2MockTools(isClient: Boolean) {
 
   lazy val idManager: StreamIdManager = StreamIdManager(isClient)
 
-  def newStream(id: Int): MockHttp2StreamState = new MockHttp2StreamState(id, this)
+   def newStream(id: Int): MockHttp2StreamState = new MockHttp2StreamState(id, this)
 }

@@ -26,7 +26,7 @@ case class DataFrame(endStream: Boolean, data: ByteBuffer) extends StreamMessage
   * @param endStream signal if this is the last frame of the stream
   * @param headers attached headers
   */
-case class HeadersFrame(priority: Option[Priority],
+case class HeadersFrame(priority: Priority,
                        endStream: Boolean,
                          headers: Seq[(String,String)]) extends StreamMessage {
   override def flowBytes: Int = 0

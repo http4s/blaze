@@ -58,7 +58,7 @@ private object Http2FrameSerializer {
 
   // TODO: document the rest of these.
   def mkHeaderFrame(streamId: Int,
-                    priority: Option[Priority],
+                    priority: Priority,
                     endHeaders: Boolean,
                     endStream: Boolean,
                     padding: Byte,
@@ -78,7 +78,7 @@ private object Http2FrameSerializer {
       flags |= Flags.PADDED
     }
 
-    if (priority.nonEmpty) {
+    if (priority.isDefined) {
       size1 += 4 + 1      // stream dep and weight
       flags |= Flags.PRIORITY
     }
@@ -92,8 +92,8 @@ private object Http2FrameSerializer {
     if (padding > 0) header.put((padding - 1).toByte)
 
     priority match {
-      case Some(p) => writePriority(p, header)
-      case None    => // NOOP
+      case p: Priority.Dependent => writePriority(p, header)
+      case Priority.NoPriority    => // NOOP
     }
 
     header.flip()
@@ -101,7 +101,7 @@ private object Http2FrameSerializer {
     header::headerData::paddedTail(padding - 1)
   }
 
-  def mkPriorityFrame(streamId: Int, priority: Priority): ByteBuffer = {
+  def mkPriorityFrame(streamId: Int, priority: Priority.Dependent): ByteBuffer = {
     require(streamId > 0, "Invalid streamID for PRIORITY frame")
 
     val size = 5
@@ -195,22 +195,22 @@ private object Http2FrameSerializer {
   }
 
   def mkGoAwayFrame(lastStreamId: Int, error: Http2Exception): Seq[ByteBuffer] = {
-    val msgString = StandardCharsets.UTF_8.encode(error.getMessage)
+    val msgString = error.getMessage.getBytes(StandardCharsets.UTF_8)
     mkGoAwayFrame(lastStreamId, error.code, msgString)
   }
 
 
-  def mkGoAwayFrame(lastStreamId: Int, error: Long, debugData: ByteBuffer): Seq[ByteBuffer] = {
+  def mkGoAwayFrame(lastStreamId: Int, error: Long, debugData: Array[Byte]): Seq[ByteBuffer] = {
     require(lastStreamId >= 0, "Invalid last stream id for GOAWAY frame")
     val size = 8
 
     val buffer = BufferTools.allocate(HeaderSize + size)
-    writeFrameHeader(size + debugData.remaining(), FrameTypes.GOAWAY, 0x0, 0x0, buffer)
-    buffer.putInt(lastStreamId & Masks.int31)
+    writeFrameHeader(size + debugData.length, FrameTypes.GOAWAY, 0x0, 0x0, buffer)
+    buffer.putInt(lastStreamId & Masks.INT31)
           .putInt(error.toInt)
           .flip()
 
-    buffer::debugData::Nil
+    buffer::ByteBuffer.wrap(debugData)::Nil
   }
 
   def mkWindowUpdateFrame(streamId: Int, increment: Int): ByteBuffer = {
@@ -221,7 +221,7 @@ private object Http2FrameSerializer {
 
     val buffer = BufferTools.allocate(HeaderSize + size)
     writeFrameHeader(size, FrameTypes.WINDOW_UPDATE, 0x0, streamId, buffer)
-    buffer.putInt(Masks.int31 & increment)
+    buffer.putInt(Masks.INT31 & increment)
           .flip()
 
     buffer
@@ -240,8 +240,8 @@ private object Http2FrameSerializer {
 
   //////////////////////////////////////////////////////////////////////////////////////////
 
-  private[this] def writePriority(p: Priority, buffer: ByteBuffer): Unit = {
-    buffer.putInt(p.dependentStreamId | (if (p.exclusive) Masks.exclusive else 0))
+  private[this] def writePriority(p: Priority.Dependent, buffer: ByteBuffer): Unit = {
+    buffer.putInt(p.dependentStreamId | (if (p.exclusive) Masks.EXCLUSIVE else 0))
     buffer.put(((p.priority - 1) & 0xff).toByte)
     ()
   }

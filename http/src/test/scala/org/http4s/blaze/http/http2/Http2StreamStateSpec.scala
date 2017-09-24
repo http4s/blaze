@@ -24,11 +24,11 @@ class Http2StreamStateSpec extends Specification with Http2SpecTools {
         val stage = new MockHttp2StreamState(1, tools)
         val tail = makePipeline(stage)
 
-        stage.invokeInboundHeaders(None, false /* EOS */, Nil) must_== Continue
+        stage.invokeInboundHeaders(Priority.NoPriority, false /* EOS */, Nil) must_== Continue
         stage.invokeInboundData(true, BufferTools.emptyBuffer, 0) must_== Continue
 
         // messages
-        await(tail.channelRead(1)) must_== HeadersFrame(None, false, Nil)
+        await(tail.channelRead(1)) must_== HeadersFrame(Priority.NoPriority, false, Nil)
         await(tail.channelRead(1)) must_== DataFrame(true, BufferTools.emptyBuffer)
         await(tail.channelRead(1)) must throwA[Command.EOF.type]
       }
@@ -69,15 +69,15 @@ class Http2StreamStateSpec extends Specification with Http2SpecTools {
         val tools = newTools
         val stage = new MockHttp2StreamState(1, tools)
 
-        stage.invokeInboundHeaders(None, true, Nil) must_== Continue
-        stage.invokeInboundHeaders(None, false, Nil) must beLike(connectionError(Http2Exception.STREAM_CLOSED))
+        stage.invokeInboundHeaders(Priority.NoPriority, true, Nil) must_== Continue
+        stage.invokeInboundHeaders(Priority.NoPriority, false, Nil) must beLike(connectionError(Http2Exception.STREAM_CLOSED))
       }
 
       "DATA frame after EOS is a connection PROTOCOL_ERROR" >> {
         val tools = newTools
         val stage = new MockHttp2StreamState(1, tools)
 
-        stage.invokeInboundHeaders(None, true, Nil) must_== Continue
+        stage.invokeInboundHeaders(Priority.NoPriority, true, Nil) must_== Continue
         stage.invokeInboundData(false, BufferTools.emptyBuffer, 0) must beLike(connectionError(Http2Exception.STREAM_CLOSED))
       }
 
@@ -116,10 +116,10 @@ class Http2StreamStateSpec extends Specification with Http2SpecTools {
         val tail = makePipeline(stage)
 
 
-        stage.invokeInboundHeaders(None, endStream = true, Nil) must_== Continue
+        stage.invokeInboundHeaders(Priority.NoPriority, endStream = true, Nil) must_== Continue
 
         // messages
-        await(tail.channelRead(1)) must_== HeadersFrame(None, true, Nil)
+        await(tail.channelRead(1)) must_== HeadersFrame(Priority.NoPriority, true, Nil)
         await(tail.channelRead(1)) must throwA[Command.EOF.type]
       }
 
@@ -139,7 +139,7 @@ class Http2StreamStateSpec extends Specification with Http2SpecTools {
         val tools = newTools
         val stage = new MockHttp2StreamState(1, tools)
 
-        val f = stage.writeRequest(HeadersFrame(None, true, Nil))
+        val f = stage.writeRequest(HeadersFrame(Priority.NoPriority, true, Nil))
         tools.writeListener.observedInterests.result must_== stage::Nil
       }
 
@@ -151,7 +151,7 @@ class Http2StreamStateSpec extends Specification with Http2SpecTools {
         tools.flowControl.sessionOutboundWindow must_== 100
         stage.flowWindow.streamOutboundWindow must_== 0
 
-        val f = stage.writeRequest(HeadersFrame(None, true, Nil))
+        val f = stage.writeRequest(HeadersFrame(Priority.NoPriority, true, Nil))
         tools.writeListener.observedInterests.result must_== stage::Nil
       }
 
@@ -163,7 +163,7 @@ class Http2StreamStateSpec extends Specification with Http2SpecTools {
         tools.flowControl.sessionOutboundWindow must_== 0
         stage.flowWindow.streamOutboundWindow must_== 100
 
-        val f = stage.writeRequest(HeadersFrame(None, true, Nil))
+        val f = stage.writeRequest(HeadersFrame(Priority.NoPriority, true, Nil))
         tools.writeListener.observedInterests.result must_== stage::Nil
       }
 
@@ -218,10 +218,10 @@ class Http2StreamStateSpec extends Specification with Http2SpecTools {
           val stage = new MockHttp2StreamState(1, tools)
           val tail = makePipeline(stage)
 
-          stage.invokeInboundHeaders(None, true /* EOS */, Nil) must_== Continue
+          stage.invokeInboundHeaders(Priority.NoPriority, true /* EOS */, Nil) must_== Continue
 
           // first message
-          await(tail.channelRead(1)) must_== HeadersFrame(None, true, Nil)
+          await(tail.channelRead(1)) must_== HeadersFrame(Priority.NoPriority, true, Nil)
           await(tail.channelRead(1)) must throwA[Command.EOF.type]
         }
 
@@ -242,11 +242,11 @@ class Http2StreamStateSpec extends Specification with Http2SpecTools {
           val stage = new MockHttp2StreamState(1, tools)
           val tail = makePipeline(stage)
 
-          stage.invokeInboundHeaders(None, false /* EOS */, Nil) must_== Continue
+          stage.invokeInboundHeaders(Priority.NoPriority, false /* EOS */, Nil) must_== Continue
           stage.invokeInboundData(true, BufferTools.emptyBuffer, 0) must_== Continue
 
           // messages
-          await(tail.channelRead(1)) must_== HeadersFrame(None, false, Nil)
+          await(tail.channelRead(1)) must_== HeadersFrame(Priority.NoPriority, false, Nil)
           await(tail.channelRead(1)) must_== DataFrame(true, BufferTools.emptyBuffer)
           await(tail.channelRead(1)) must throwA[Command.EOF.type]
         }
@@ -282,7 +282,7 @@ class Http2StreamStateSpec extends Specification with Http2SpecTools {
         val tools = newTools
         val stage = new MockHttp2StreamState(1, tools)
         val tail = makePipeline(stage)
-        stage.invokeInboundHeaders(None, true, Nil) must_== Continue
+        stage.invokeInboundHeaders(Priority.NoPriority, true, Nil) must_== Continue
         tail.sendOutboundCommand(Command.Disconnect)
 
         stage.onStreamFinishedResult must beLike {
@@ -294,7 +294,7 @@ class Http2StreamStateSpec extends Specification with Http2SpecTools {
         val tools = newTools
         val stage = new MockHttp2StreamState(1, tools)
         val tail = makePipeline(stage)
-        tail.channelWrite(HeadersFrame(None, true, Nil))
+        tail.channelWrite(HeadersFrame(Priority.NoPriority, true, Nil))
         stage.performStreamWrite().isEmpty must beFalse // actually wrote the data
         tail.sendOutboundCommand(Command.Disconnect)
 
@@ -308,8 +308,8 @@ class Http2StreamStateSpec extends Specification with Http2SpecTools {
         val stage = new MockHttp2StreamState(1, tools)
         val tail = makePipeline(stage)
 
-        stage.invokeInboundHeaders(None, true, Nil) must_== Continue
-        tail.channelWrite(HeadersFrame(None, true, Nil))
+        stage.invokeInboundHeaders(Priority.NoPriority, true, Nil) must_== Continue
+        tail.channelWrite(HeadersFrame(Priority.NoPriority, true, Nil))
 
         stage.performStreamWrite().isEmpty must beFalse // actually wrote the data
         tail.sendOutboundCommand(Command.Disconnect)

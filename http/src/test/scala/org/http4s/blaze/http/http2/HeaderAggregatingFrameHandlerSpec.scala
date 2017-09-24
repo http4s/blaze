@@ -14,10 +14,10 @@ class HeaderAggregatingFrameHandlerSpec extends Specification {
     new HeaderEncoder(Http2Settings.default.headerTableSize).encodeHeaders(hs)
 
   "HEADERS frame with compressors" should {
-    def dec(sId: Int, p: Option[Priority], es: Boolean, hs: Headers) =
-      decoder(new MockHeaderAggregatingFrameHandler {
+    def dec(sId: Int, p: Priority, es: Boolean, hs: Headers): TestHttp2FrameDecoder =
+      decoder(new MockHeaderAggregatingFrameListener {
         override def onCompleteHeadersFrame(streamId: Int,
-                                            priority: Option[Priority],
+                                            priority: Priority,
                                             end_stream: Boolean,
                                             headers: Headers): Http2Result = {
           sId must_== streamId
@@ -32,23 +32,23 @@ class HeaderAggregatingFrameHandlerSpec extends Specification {
       val hs = Seq("foo" -> "bar", "biz" -> "baz")
       val hsBuf = encodeHeaders(hs)
 
-      val bs = Http2FrameSerializer.mkHeaderFrame(1, None, true, true, 0.toByte, hsBuf)
+      val bs = Http2FrameSerializer.mkHeaderFrame(1, Priority.NoPriority, true, true, 0.toByte, hsBuf)
 
-      dec(1, None, true, hs).decodeBuffer(BufferTools.joinBuffers(bs)) must_== Halt
+      dec(1, Priority.NoPriority, true, hs).decodeBuffer(BufferTools.joinBuffers(bs)) must_== Halt
     }
 
     "Make a round trip with a continuation frame" in {
       val hs = Seq("foo" -> "bar", "biz" -> "baz")
       val hsBuf = encodeHeaders(hs)
       val first = BufferTools.takeSlice(hsBuf, hsBuf.remaining() - 1)
-      val bs = Http2FrameSerializer.mkHeaderFrame(1, None, false, true, 0.toByte, first)
+      val bs = Http2FrameSerializer.mkHeaderFrame(1, Priority.NoPriority, false, true, 0.toByte, first)
 
-      val decoder = dec(1, None, true, hs)
+      val decoder = dec(1, Priority.NoPriority, true, hs)
 
-      decoder.handler.inHeaderSequence must beFalse
+      decoder.listener.inHeaderSequence must beFalse
       decoder.decodeBuffer(BufferTools.joinBuffers(bs)) must_== Continue
 
-      decoder.handler.inHeaderSequence must beTrue
+      decoder.listener.inHeaderSequence must beTrue
 
       val bs2 = Http2FrameSerializer.mkContinuationFrame(1, true, hsBuf)
       decoder.decodeBuffer(BufferTools.joinBuffers(bs2)) must_== Halt
@@ -56,14 +56,14 @@ class HeaderAggregatingFrameHandlerSpec extends Specification {
 
     "Make a round trip with a continuation frame" in {
       val hs = Seq("foo" -> "bar", "biz" -> "baz")
-      val bs = Http2FrameSerializer.mkHeaderFrame(1, None, false, true, 0.toByte, BufferTools.emptyBuffer)
+      val bs = Http2FrameSerializer.mkHeaderFrame(1, Priority.NoPriority, false, true, 0.toByte, BufferTools.emptyBuffer)
 
-      val decoder = dec(1, None, true, hs)
+      val decoder = dec(1, Priority.NoPriority, true, hs)
 
-      decoder.handler.inHeaderSequence must beFalse
+      decoder.listener.inHeaderSequence must beFalse
       decoder.decodeBuffer(BufferTools.joinBuffers(bs)) must_== Continue
 
-      decoder.handler.inHeaderSequence must beTrue
+      decoder.listener.inHeaderSequence must beTrue
 
       val bs2 = Http2FrameSerializer.mkContinuationFrame(1, true, encodeHeaders(hs))
       decoder.decodeBuffer(BufferTools.joinBuffers(bs2)) must_== Halt
@@ -72,42 +72,42 @@ class HeaderAggregatingFrameHandlerSpec extends Specification {
     "Make a round trip with a continuation frame" in {
       val hs1 = Seq("foo" -> "bar")
       val hs2 = Seq("biz" -> "baz")
-      val bs = Http2FrameSerializer.mkHeaderFrame(1, None, false, true, 0.toByte, encodeHeaders(hs1))
+      val bs = Http2FrameSerializer.mkHeaderFrame(1, Priority.NoPriority, false, true, 0.toByte, encodeHeaders(hs1))
 
-      val decoder = dec(1, None, true, hs1 ++ hs2)
+      val decoder = dec(1, Priority.NoPriority, true, hs1 ++ hs2)
 
-      decoder.handler.inHeaderSequence must beFalse
+      decoder.listener.inHeaderSequence must beFalse
       decoder.decodeBuffer(BufferTools.joinBuffers(bs)) must_== Continue
 
-      decoder.handler.inHeaderSequence must beTrue
+      decoder.listener.inHeaderSequence must beTrue
 
       val bs2 = Http2FrameSerializer.mkContinuationFrame(1, true, encodeHeaders(hs2))
       decoder.decodeBuffer(BufferTools.joinBuffers(bs2)) must_== Halt
     }
 
     "Fail on invalid frame sequence (bad streamId)" in {
-      val bs = Http2FrameSerializer.mkHeaderFrame(1, None, false, true, 0.toByte, BufferTools.emptyBuffer)
+      val bs = Http2FrameSerializer.mkHeaderFrame(1, Priority.NoPriority, false, true, 0.toByte, BufferTools.emptyBuffer)
 
-      val decoder = dec(1, None, true, Seq())
+      val decoder = dec(1, Priority.NoPriority, true, Seq())
 
-      decoder.handler.inHeaderSequence must beFalse
+      decoder.listener.inHeaderSequence must beFalse
       decoder.decodeBuffer(BufferTools.joinBuffers(bs)) must_== Continue
 
-      decoder.handler.inHeaderSequence must beTrue
+      decoder.listener.inHeaderSequence must beTrue
 
       val bs2 = Http2FrameSerializer.mkContinuationFrame(2, true, BufferTools.emptyBuffer)
       decoder.decodeBuffer(BufferTools.joinBuffers(bs2)) must beAnInstanceOf[Error]
     }
 
     "Fail on invalid frame sequence (wrong frame type)" in {
-      val bs = Http2FrameSerializer.mkHeaderFrame(1, None, false, true, 0.toByte, BufferTools.emptyBuffer)
+      val bs = Http2FrameSerializer.mkHeaderFrame(1, Priority.NoPriority, false, true, 0.toByte, BufferTools.emptyBuffer)
 
-      val decoder = dec(1, None, true, Seq())
+      val decoder = dec(1, Priority.NoPriority, true, Seq())
 
-      decoder.handler.inHeaderSequence must beFalse
+      decoder.listener.inHeaderSequence must beFalse
       decoder.decodeBuffer(BufferTools.joinBuffers(bs)) must_== Continue
 
-      decoder.handler.inHeaderSequence must beTrue
+      decoder.listener.inHeaderSequence must beTrue
 
       val bs2 = Http2FrameSerializer.mkWindowUpdateFrame(2, 1)
       decoder.decodeBuffer(bs2) must beAnInstanceOf[Error]
@@ -161,7 +161,7 @@ class HeaderAggregatingFrameHandlerSpec extends Specification {
 
   "PUSH_PROMISE frame with header decoder" should {
     def dec(sId: Int, pId: Int, hs: Headers) =
-      decoder(new MockHeaderAggregatingFrameHandler {
+      decoder(new MockHeaderAggregatingFrameListener {
         override def onCompletePushPromiseFrame(streamId: Int,
                                                 promisedId: Int,
                                                 headers: Headers): Http2Result = {
@@ -187,10 +187,10 @@ class HeaderAggregatingFrameHandlerSpec extends Specification {
 
       val decoder = dec(1, 2, hs)
 
-      decoder.handler.inHeaderSequence must beFalse
+      decoder.listener.inHeaderSequence must beFalse
       decoder.decodeBuffer(BufferTools.joinBuffers(bs)) must_== Continue
 
-      decoder.handler.inHeaderSequence must beTrue
+      decoder.listener.inHeaderSequence must beTrue
 
       val bs2 = Http2FrameSerializer.mkContinuationFrame(1, true, BufferTools.emptyBuffer)
       decoder.decodeBuffer(BufferTools.joinBuffers(bs2)) must_== Halt
@@ -203,10 +203,10 @@ class HeaderAggregatingFrameHandlerSpec extends Specification {
 
       val decoder = dec(1, 2, hs)
 
-      decoder.handler.inHeaderSequence must beFalse
+      decoder.listener.inHeaderSequence must beFalse
       decoder.decodeBuffer(BufferTools.joinBuffers(bs)) must_== Continue
 
-      decoder.handler.inHeaderSequence must beTrue
+      decoder.listener.inHeaderSequence must beTrue
 
       val bs2 = Http2FrameSerializer.mkContinuationFrame(1, true, encodeHeaders(hs))
       decoder.decodeBuffer(BufferTools.joinBuffers(bs2)) must_== Halt
@@ -219,10 +219,10 @@ class HeaderAggregatingFrameHandlerSpec extends Specification {
 
       val decoder = dec(1, 2, hs1 ++ hs2)
 
-      decoder.handler.inHeaderSequence must beFalse
+      decoder.listener.inHeaderSequence must beFalse
       decoder.decodeBuffer(BufferTools.joinBuffers(bs)) must_== Continue
 
-      decoder.handler.inHeaderSequence must beTrue
+      decoder.listener.inHeaderSequence must beTrue
 
       val bs2 = Http2FrameSerializer.mkContinuationFrame(1, true, encodeHeaders(hs2))
       decoder.decodeBuffer(BufferTools.joinBuffers(bs2)) must_== Halt

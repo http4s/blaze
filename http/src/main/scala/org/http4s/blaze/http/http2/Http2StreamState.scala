@@ -224,7 +224,7 @@ private abstract class Http2StreamState(
   }
 
   // Must be called with a complete headers block, either the prelude or trailers
-  final def invokeInboundHeaders(priority: Option[Priority], endStream: Boolean, headers: Seq[(String,String)]): MaybeError = {
+  final def invokeInboundHeaders(priority: Priority, endStream: Boolean, headers: Seq[(String,String)]): MaybeError = {
     if (receivedEndStream) {
       // https://tools.ietf.org/html/rfc7540#section-5.1 section 'closed'
       closeWithError(None) // the GOAWAY will be sent by the FrameHandler

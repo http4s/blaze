@@ -39,7 +39,7 @@ abstract class PriorKnowledgeHandshaker[T](mySettings: ImmutableHttp2Settings) e
 
   private[this] def receiveSettings(acc: ByteBuffer): Future[(MutableHttp2Settings, ByteBuffer)] = {
     logger.debug("receiving settings")
-    Http2FrameDecoder.getFrameSize(acc) match {
+    getFrameSize(acc) match {
       case -1 =>
         channelRead().flatMap { buff =>
           receiveSettings(BufferTools.concatBuffers(acc, buff))
@@ -92,5 +92,17 @@ abstract class PriorKnowledgeHandshaker[T](mySettings: ImmutableHttp2Settings) e
   private[this] def sendSettingsAck(): Future[Unit] = {
     val ackSettings = Http2FrameSerializer.mkSettingsAckFrame()
     channelWrite(ackSettings)
+  }
+
+  private[this] def getFrameSize(buffer: ByteBuffer): Int = {
+    if (buffer.remaining < bits.HeaderSize) -1
+    else {
+      buffer.mark()
+      val len = Http2FrameDecoder.getLengthField(buffer)
+      buffer.reset()
+
+      if (len == -1) len
+      else len + bits.HeaderSize
+    }
   }
 }

@@ -13,13 +13,13 @@ import scala.collection.mutable.Map
   * Concurrency is not controlled by this type; it is expected that thread safety
   * will be managed by the [[Http2ConnectionImpl]].
   */
-private abstract class SessionFrameHandler[StreamState <: Http2StreamState](
+private abstract class SessionFrameListener[StreamState <: Http2StreamState](
     mySettings: Http2Settings,
     headerDecoder: HeaderDecoder,
     activeStreams: Map[Int, StreamState],
     sessionFlowControl: SessionFlowControl,
     idManager: StreamIdManager)
-  extends HeaderAggregatingFrameHandler(mySettings, headerDecoder) {
+  extends HeaderAggregatingFrameListener(mySettings, headerDecoder) {
 
   private[this] val logger = getLogger
 
@@ -39,7 +39,7 @@ private abstract class SessionFrameHandler[StreamState <: Http2StreamState](
 
   // Concrete methods ////////////////////////////////////////////////////////////////////
 
-  override def onCompleteHeadersFrame(streamId: Int, priority: Option[Priority], endStream: Boolean, headers: Headers): Http2Result = {
+  override def onCompleteHeadersFrame(streamId: Int, priority: Priority, endStream: Boolean, headers: Headers): Http2Result = {
     activeStreams.get(streamId) match {
       case Some(stream) =>
         stream.invokeInboundHeaders(priority, endStream, headers)
@@ -119,7 +119,8 @@ private abstract class SessionFrameHandler[StreamState <: Http2StreamState](
   }
 
   // TODO: what would priority handling look like?
-  override def onPriorityFrame(streamId: Int, priority: Priority): Http2Result = Continue
+  override def onPriorityFrame(streamId: Int, priority: Priority.Dependent): Http2Result =
+    Continue
 
   // https://tools.ietf.org/html/rfc7540#section-6.4
   override def onRstStreamFrame(streamId: Int, code: Long): Http2Result = {

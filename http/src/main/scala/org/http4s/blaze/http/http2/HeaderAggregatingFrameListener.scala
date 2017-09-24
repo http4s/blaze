@@ -6,16 +6,16 @@ import org.http4s.blaze.http.Headers
 import org.http4s.blaze.util.BufferTools
 import Http2Exception.PROTOCOL_ERROR
 
-/** A [[Http2FrameHandler]] that decodes raw HEADERS, PUSH_PROMISE,
+/** A [[Http2FrameListener]] that decodes raw HEADERS, PUSH_PROMISE,
   * and CONTINUATION frames from ByteBuffer packets to a complete
   * collections of headers.
   *
   * @note This class is not 'thread safe' and should be treated accordingly
   */
-private[http2] abstract class HeaderAggregatingFrameHandler(
+private[http2] abstract class HeaderAggregatingFrameListener(
     inboundSettings: Http2Settings,
     headerDecoder: HeaderDecoder)
-  extends Http2FrameHandler {
+  extends Http2FrameListener {
 
   private[this] sealed trait PartialFrame {
     def streamId: Int
@@ -24,7 +24,7 @@ private[http2] abstract class HeaderAggregatingFrameHandler(
 
   private[this] case class PHeaders(
       streamId: Int,
-      priority: Option[Priority],
+      priority: Priority,
       endStream: Boolean,
       var buffer: ByteBuffer) extends PartialFrame
 
@@ -46,7 +46,7 @@ private[http2] abstract class HeaderAggregatingFrameHandler(
     * @param headers decompressed headers.
     */
   def onCompleteHeadersFrame(streamId: Int,
-                             priority: Option[Priority],
+                             priority: Priority,
                              endStream: Boolean,
                              headers: Headers): Http2Result
 
@@ -65,7 +65,7 @@ private[http2] abstract class HeaderAggregatingFrameHandler(
   final override def inHeaderSequence: Boolean = hInfo != null
 
   final override def onHeadersFrame(streamId: Int,
-                                    priority: Option[Priority],
+                                    priority: Priority,
                                     endHeaders: Boolean,
                                     endStream: Boolean,
                                     buffer: ByteBuffer): Http2Result = {

@@ -68,7 +68,7 @@ private abstract class Http2ConnectionImpl(
   final protected def activeStreamCount: Int = activeStreams.size
 
   /** Create a new decoder wrapping this Http2FrameHandler */
-  protected def newHttp2Decoder(handler: Http2FrameHandler): Http2FrameDecoder
+  protected def newHttp2Decoder(handler: Http2FrameListener): Http2FrameDecoder
 
   /** Acquire a new `HeadStage[StreamMessage]` that will be a part of this `Session`.
     *
@@ -205,7 +205,7 @@ private abstract class Http2ConnectionImpl(
     }
   }
 
-  private class SessionFrameHandlerImpl extends SessionFrameHandler[Http2StreamStateBase](
+  private class SessionFrameHandlerImpl extends SessionFrameListener[Http2StreamStateBase](
       mySettings, headerDecoder, activeStreams, sessionFlowControl, idManager) {
 
     override protected def handlePushPromise(streamId: Int, promisedId: Int, headers: Headers): Http2Result = {
@@ -292,8 +292,8 @@ private abstract class Http2ConnectionImpl(
       }
     }
 
-    override def onGoAwayFrame(lastStream: Int, errorCode: Long, debugData: ByteBuffer): Http2Result = {
-      val message = StandardCharsets.UTF_8.decode(debugData).toString
+    override def onGoAwayFrame(lastStream: Int,errorCode: Long,debugData: Array[Byte]): Http2Result = {
+      val message = new String(debugData, StandardCharsets.UTF_8)
       logger.debug {
         val errorName = Http2Exception.errorName(errorCode)
         val errorCodeStr = s"0x${java.lang.Long.toHexString(errorCode)}: $errorName"

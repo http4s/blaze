@@ -6,7 +6,7 @@ import java.util.Locale
 import org.http4s.blaze.http._
 import org.http4s.blaze.http.http2.Http2Exception._
 import org.http4s.blaze.http.http2.Http2StageTools._
-import org.http4s.blaze.http.http2.{DataFrame, HeadersFrame, StreamMessage}
+import org.http4s.blaze.http.http2.{DataFrame, HeadersFrame, Priority, StreamMessage}
 import org.http4s.blaze.http.util.ServiceTimeoutFilter
 import org.http4s.blaze.pipeline.{TailStage, Command => Cmd}
 import org.http4s.blaze.util.{BufferTools, Execution}
@@ -142,7 +142,7 @@ class Http2ServerStage(streamId: Int,
     hs += ((Status, Integer.toString(prelude.code)))
     prelude.headers.foreach{ case (k, v) => hs += ((k.toLowerCase(Locale.ROOT), v)) }
 
-    val headersFrame = HeadersFrame(None, isHeadRequest, hs)
+    val headersFrame = HeadersFrame(Priority.NoPriority, isHeadRequest, hs)
 
     if (isHeadRequest) new NoopWriter(headersFrame)
     else new StandardWriter(headersFrame)

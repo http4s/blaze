@@ -46,7 +46,7 @@ final class Http2FrameEncoder(
   }
 
   def headerFrame(streamId: Int,
-                  priority: Option[Priority],
+                  priority: Priority,
                   endStream: Boolean,
                   headers: Seq[(String, String)]): Seq[ByteBuffer] = {
     val rawHeaders = headerEncoder.encodeHeaders(headers)
