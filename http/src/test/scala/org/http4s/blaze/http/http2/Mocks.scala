@@ -36,4 +36,11 @@ private class Http2MockTools(isClient: Boolean) {
   lazy val flowControl: MockFlowControl = new MockFlowControl(mySettings, peerSettings)
 
   lazy val sessionExecutor: ExecutionContext = Execution.trampoline
+
+  lazy val headerEncoder: HeaderEncoder = new HeaderEncoder(peerSettings.headerTableSize)
+
+  lazy val headerDecoder: HeaderDecoder =
+    new HeaderDecoder(mySettings.maxHeaderListSize,
+      true, // discard overflow headers
+      mySettings.headerTableSize)
 }
