@@ -15,7 +15,7 @@ class Http2FrameSerializerSpec extends Specification {
     def dat = mkData(DataSize)
 
     def dec(sId: Int, endStream: Boolean, padding: Int): TestHttp2FrameDecoder =
-      decoder(new MockFrameHandler(false) {
+      decoder(new MockFrameListener(false) {
         override def onDataFrame(streamId: Int, isLast: Boolean, data: ByteBuffer, flowSize: Int): Http2Result = {
           streamId must_== sId
           isLast must_== endStream
@@ -52,7 +52,7 @@ class Http2FrameSerializerSpec extends Specification {
     def dat = mkData(20)
 
     def dec(sId: Int, pri: Priority, end_h: Boolean,  end_s: Boolean) =
-      decoder(new MockFrameHandler(false) {
+      decoder(new MockFrameListener(false) {
         override def onHeadersFrame(streamId: Int,
                                     priority: Priority,
                                     end_headers: Boolean,
@@ -98,7 +98,7 @@ class Http2FrameSerializerSpec extends Specification {
 
   "PRIORITY frame" should {
     def dec(sId: Int, p: Priority.Dependent) =
-      decoder(new MockFrameHandler(false) {
+      decoder(new MockFrameListener(false) {
         override def onPriorityFrame(streamId: Int, priority: Priority.Dependent): Http2Result = {
           sId must_== streamId
           p must_== priority
@@ -132,7 +132,7 @@ class Http2FrameSerializerSpec extends Specification {
 
   "RST_STREAM frame" should {
     def dec(sId: Int, c: Int) =
-      decoder(new MockFrameHandler(false) {
+      decoder(new MockFrameListener(false) {
 
         override def onRstStreamFrame(streamId: Int, code: Long): Http2Result = {
           sId must_== streamId
@@ -154,7 +154,7 @@ class Http2FrameSerializerSpec extends Specification {
 
   "SETTINGS frame" should {
     def dec(a: Boolean, s: Seq[Setting]) =
-      decoder(new MockFrameHandler(false) {
+      decoder(new MockFrameListener(false) {
         override def onSettingsFrame(ack: Boolean, settings: Seq[Setting]): Http2Result = {
           s must_== settings
           a must_== ack

@@ -205,7 +205,7 @@ private abstract class Http2StreamState(
   final def invokeInboundData(endStream: Boolean, data: ByteBuffer, flowBytes: Int): MaybeError = {
     // https://tools.ietf.org/html/rfc7540#section-5.1 section 'closed'
     if (receivedEndStream) {
-      closeWithError(None) // the GOAWAY will be sent by the FrameHandler
+      closeWithError(None) // the GOAWAY will be sent by the `Http2FrameListener`
       Error(STREAM_CLOSED.goaway(s"Stream($streamId received DATA frame after EOS"))
     } else if (streamIsClosed) {
       // Shouldn't get here: should have been removed from active streams
@@ -227,7 +227,7 @@ private abstract class Http2StreamState(
   final def invokeInboundHeaders(priority: Priority, endStream: Boolean, headers: Seq[(String,String)]): MaybeError = {
     if (receivedEndStream) {
       // https://tools.ietf.org/html/rfc7540#section-5.1 section 'closed'
-      closeWithError(None) // the GOAWAY will be sent by the FrameHandler
+      closeWithError(None) // the GOAWAY will be sent by the `Http2FrameListener`
       Error(STREAM_CLOSED.goaway(s"Stream($streamId received DATA frame after EOS"))
     } else if (receivedPreludeHeaders && !endStream) {
       // https://tools.ietf.org/html/rfc7540#section-8.1

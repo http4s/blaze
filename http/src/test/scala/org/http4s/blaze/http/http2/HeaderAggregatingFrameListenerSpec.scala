@@ -6,7 +6,7 @@ import org.http4s.blaze.http._
 import org.http4s.blaze.util.BufferTools
 import org.specs2.mutable.Specification
 
-class HeaderAggregatingFrameHandlerSpec extends Specification {
+class HeaderAggregatingFrameListenerSpec extends Specification {
 
   import CodecUtils._
 
@@ -118,7 +118,7 @@ class HeaderAggregatingFrameHandlerSpec extends Specification {
     def dat = mkData(20)
 
     def dec(sId: Int, pId: Int, end_h: Boolean) =
-      decoder(new MockFrameHandler(false) {
+      decoder(new MockFrameListener(false) {
         override def onPushPromiseFrame(streamId: Int,
                                         promisedId: Int,
                                         end_headers: Boolean,

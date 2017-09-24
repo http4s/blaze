@@ -67,8 +67,8 @@ private abstract class Http2ConnectionImpl(
 
   final protected def activeStreamCount: Int = activeStreams.size
 
-  /** Create a new decoder wrapping this Http2FrameHandler */
-  protected def newHttp2Decoder(handler: Http2FrameListener): Http2FrameDecoder
+  /** Create a new decoder wrapping this Http2FrameListener */
+  protected def newHttp2Decoder(listener: Http2FrameListener): Http2FrameDecoder
 
   /** Acquire a new `HeadStage[StreamMessage]` that will be a part of this `Session`.
     *
@@ -176,7 +176,7 @@ private abstract class Http2ConnectionImpl(
   private[this] val activeStreams = new HashMap[Int, Http2StreamStateBase]
 
   // This must be instantiated last since it has a dependency of `activeStreams` and `idManager`.
-  private[this] val http2Decoder = newHttp2Decoder(new SessionFrameHandlerImpl)
+  private[this] val http2Decoder = newHttp2Decoder(new SessionFrameListenerImpl)
 
   // TODO: thread the write buffer size in as a parameter
   private[this] val writeController = new WriteController(64*1024) {
@@ -205,7 +205,7 @@ private abstract class Http2ConnectionImpl(
     }
   }
 
-  private class SessionFrameHandlerImpl extends SessionFrameListener[Http2StreamStateBase](
+  private class SessionFrameListenerImpl extends SessionFrameListener[Http2StreamStateBase](
       mySettings, headerDecoder, activeStreams, sessionFlowControl, idManager) {
 
     override protected def handlePushPromise(streamId: Int, promisedId: Int, headers: Headers): Http2Result = {

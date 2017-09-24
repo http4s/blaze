@@ -79,7 +79,7 @@ private final class Http2ServerConnectionImpl(
   // Need to be able to read data
   override protected def readData(): Future[ByteBuffer] = channelRead()
 
-  // Create a new decoder wrapping this Http2FrameHandler
+  // Create a new decoder wrapping this `Http2FrameListener`
   override protected def newHttp2Decoder(listener: Http2FrameListener): Http2FrameDecoder =
     new Http2FrameDecoder(mySettings, listener)
 }
