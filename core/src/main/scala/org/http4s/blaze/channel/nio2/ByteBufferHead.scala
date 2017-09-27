@@ -30,18 +30,19 @@ private[nio2] final class ByteBufferHead(channel: AsynchronousSocketChannel, buf
 
     val p = Promise[Unit]
 
-    def go(i: Int) {
+    def go(i: Int): Unit = {
       channel.write(data, null: Null, new CompletionHandler[Integer, Null] {
         def failed(exc: Throwable, attachment: Null): Unit = {
           val e = checkError(exc)
           sendInboundCommand(Disconnected)
           closeWithError(e)
           p.tryFailure(e)
+          ()
         }
 
-        def completed(result: Integer, attachment: Null) {
+        def completed(result: Integer, attachment: Null): Unit = {
           if (result.intValue < i) go(i - result.intValue)  // try to write again
-          else p.trySuccess(())      // All done
+          else p.trySuccess(()); ()      // All done
         }
       })
     }
@@ -51,28 +52,31 @@ private[nio2] final class ByteBufferHead(channel: AsynchronousSocketChannel, buf
   }
 
   override def writeRequest(data: Seq[ByteBuffer]): Future[Unit] = {
+    if (data.isEmpty) Future.successful(())
+    else {
+      val p = Promise[Unit]
+      val srcs = data.toArray
 
-    val p = Promise[Unit]
-    val srcs = data.toArray
+      def go(index: Int): Unit = {
+        channel.write[Null](srcs, index, srcs.length - index, -1L, TimeUnit.MILLISECONDS, null: Null, new CompletionHandler[JLong, Null] {
+          def failed(exc: Throwable, attachment: Null): Unit = {
+            val e = checkError(exc)
+            sendInboundCommand(Disconnected)
+            closeWithError(e)
+            p.tryFailure(e)
+            ()
+          }
 
-    def go(index: Int): Unit = {
-      channel.write[Null](srcs, index, srcs.length - index, -1L, TimeUnit.MILLISECONDS, null: Null, new CompletionHandler[JLong, Null] {
-        def failed(exc: Throwable, attachment: Null) {
-          val e = checkError(exc)
-          sendInboundCommand(Disconnected)
-          closeWithError(e)
-          p.tryFailure(e)
-        }
+          def completed(result: JLong, attachment: Null): Unit = {
+            if (BufferTools.checkEmpty(srcs)){ p.trySuccess(()); () }
+            else go(BufferTools.dropEmpty(srcs))
+          }
+        })
+      }
+      go(0)
 
-        def completed(result: JLong, attachment: Null) {
-          if (BufferTools.checkEmpty(srcs)) p.trySuccess(())
-          else go(BufferTools.dropEmpty(srcs))
-        }
-      })
+      p.future
     }
-    go(0)
-
-    p.future
   }
 
   def readRequest(size: Int): Future[ByteBuffer] = {
@@ -90,18 +94,21 @@ private[nio2] final class ByteBufferHead(channel: AsynchronousSocketChannel, buf
         sendInboundCommand(Disconnected)
         closeWithError(e)
         p.tryFailure(e)
+        ()
       }
 
-      def completed(i: Integer, attachment: Null) {
+      def completed(i: Integer, attachment: Null): Unit = {
         if (i.intValue() >= 0) {
           buffer.flip()
           val b = ByteBuffer.allocate(buffer.remaining())
           b.put(buffer).flip()
           p.trySuccess(b)
+          ()
         } else {   // must be end of stream
           sendInboundCommand(Disconnected)
           closeWithError(EOF)
           p.tryFailure(EOF)
+          ()
         }
       }
     })
