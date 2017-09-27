@@ -46,7 +46,9 @@ lazy val http = Project("blaze-http", file("http"))
     },
     // Test Dependencies
     libraryDependencies ++= Seq(
-      asyncHttpClient
+      asyncHttpClient,
+      scalacheck,
+      specs2Scalacheck
     ).map(_ % Test)
   )
   .dependsOn(core % "test->test;compile->compile")
