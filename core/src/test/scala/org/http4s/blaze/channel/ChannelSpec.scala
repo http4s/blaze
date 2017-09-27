@@ -1,12 +1,17 @@
 package org.http4s.blaze.channel
 
-import java.net.InetSocketAddress
+import java.net.{InetSocketAddress, Socket}
+import java.nio.ByteBuffer
 import java.util.concurrent.atomic.AtomicInteger
 
 import org.http4s.blaze.channel.nio1.NIO1SocketServerGroup
 import org.http4s.blaze.channel.nio2.NIO2SocketServerGroup
-
+import org.http4s.blaze.pipeline.{Command, TailStage}
+import org.http4s.blaze.util.Execution
 import org.specs2.mutable.Specification
+
+import scala.concurrent.{Await, Awaitable, Future, Promise}
+import scala.concurrent.duration._
 
 
 class ChannelSpec extends Specification {
@@ -86,6 +91,42 @@ class ChannelSpec extends Specification {
         channel.close()
         group.closeGroup()
         channel.addShutdownHook { () => sys.error("Blam!") } must_== false
+      }
+
+      class ZeroWritingStage(batch: Boolean) extends TailStage[ByteBuffer] {
+        private[this] val writeResult = Promise[Unit]
+
+        def name = this.getClass.getSimpleName
+
+        def completeF: Future[Unit] = writeResult.future
+
+        override protected def stageStartup(): Unit = {
+          val f = if (batch) channelWrite(Seq.empty) else channelWrite(ByteBuffer.allocate(0))
+          writeResult.tryCompleteWith(f)
+          f.onComplete(_ => sendOutboundCommand(Command.Disconnect))(Execution.directec)
+        }
+      }
+
+      def writeBuffer(batch: Boolean): Unit = {
+        val stage = new ZeroWritingStage(batch)
+        val (group,channel) = new BasicServer(_ => stage, isNIO2).prepare(new InetSocketAddress(0))
+        val socket = new Socket()
+        socket.connect(channel.socketAddress)
+
+        Await.result(stage.completeF, 2.seconds)
+        socket.close()
+        channel.close()
+        group.closeGroup()
+      }
+
+      "Write an empty buffer" in {
+        writeBuffer(false)
+        ok // if we made it this far, it worked.
+      }
+
+      "Write an empty collection of buffers" in {
+        writeBuffer(true)
+        ok // if we made it this far, it worked.
       }
     }
   }
