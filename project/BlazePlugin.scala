@@ -26,14 +26,7 @@ object BlazePlugin extends AutoPlugin {
     releaseVersion := { ver =>
       Version(ver).map(_.withoutQualifier.string).getOrElse(versionFormatError)
     },
-    scalaVersion := (sys.env.get("TRAVIS_SCALA_VERSION") orElse sys.env.get("SCALA_VERSION") getOrElse "2.12.2-bin-typelevel-4"),
-    scalaOrganization := {
-      CrossVersion.partialVersion(scalaVersion.value) match {
-        case Some((2, n)) if n >= 11 => "org.typelevel"
-        case _ => "org.scala-lang"
-      }
-    },
-
+    scalaVersion := (sys.env.get("TRAVIS_SCALA_VERSION") orElse sys.env.get("SCALA_VERSION") getOrElse "2.12.3"),
     jvmTarget := {
       VersionNumber(scalaVersion.value).numbers match {
         case Seq(2, 10, _*) => "1.7"
