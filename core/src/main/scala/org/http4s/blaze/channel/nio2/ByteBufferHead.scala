@@ -52,29 +52,31 @@ private[nio2] final class ByteBufferHead(channel: AsynchronousSocketChannel, buf
   }
 
   override def writeRequest(data: Seq[ByteBuffer]): Future[Unit] = {
+    if (data.isEmpty) Future.successful(())
+    else {
+      val p = Promise[Unit]
+      val srcs = data.toArray
 
-    val p = Promise[Unit]
-    val srcs = data.toArray
+      def go(index: Int): Unit = {
+        channel.write[Null](srcs, index, srcs.length - index, -1L, TimeUnit.MILLISECONDS, null: Null, new CompletionHandler[JLong, Null] {
+          def failed(exc: Throwable, attachment: Null): Unit = {
+            val e = checkError(exc)
+            sendInboundCommand(Disconnected)
+            closeWithError(e)
+            p.tryFailure(e)
+            ()
+          }
 
-    def go(index: Int): Unit = {
-      channel.write[Null](srcs, index, srcs.length - index, -1L, TimeUnit.MILLISECONDS, null: Null, new CompletionHandler[JLong, Null] {
-        def failed(exc: Throwable, attachment: Null): Unit = {
-          val e = checkError(exc)
-          sendInboundCommand(Disconnected)
-          closeWithError(e)
-          p.tryFailure(e)
-          ()
-        }
+          def completed(result: JLong, attachment: Null): Unit = {
+            if (BufferTools.checkEmpty(srcs)){ p.trySuccess(()); () }
+            else go(BufferTools.dropEmpty(srcs))
+          }
+        })
+      }
+      go(0)
 
-        def completed(result: JLong, attachment: Null): Unit = {
-          if (BufferTools.checkEmpty(srcs)){ p.trySuccess(()); () }
-          else go(BufferTools.dropEmpty(srcs))
-        }
-      })
+      p.future
     }
-    go(0)
-
-    p.future
   }
 
   def readRequest(size: Int): Future[ByteBuffer] = {
