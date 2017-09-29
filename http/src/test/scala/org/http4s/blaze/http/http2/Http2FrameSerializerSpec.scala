@@ -26,7 +26,7 @@ class Http2FrameSerializerSpec extends Specification with ScalaCheck {
       def flowSize: Int = data.remaining + padding
     }
 
-    implicit lazy val genDataFrame: Arbitrary[DataFrame] = Arbitrary {
+    implicit lazy val genDataFrame: Arbitrary[DataFrame] = Arbitrary(
       for {
         streamId <- Gen.posNum[Int]
         isLast <- tfGen
@@ -34,7 +34,7 @@ class Http2FrameSerializerSpec extends Specification with ScalaCheck {
         bytes <- Gen.choose(0, 16 * 1024 - padding)
 
       } yield DataFrame(streamId, isLast, mkData(bytes), padding)
-    }
+    )
 
     def dec(dataFrame: DataFrame): TestHttp2FrameDecoder =
       decoder(new MockFrameListener(false) {
@@ -78,18 +78,18 @@ class Http2FrameSerializerSpec extends Specification with ScalaCheck {
       def flowSize: Int = data.remaining + padding
     }
 
-    implicit lazy val arbHeaders = Arbitrary {
+    implicit lazy val arbHeaders: Arbitrary[HeadersFrame] = Arbitrary(
       for {
         streamId <- Gen.posNum[Int]
         hasDep <- tfGen
-        priority <- if (hasDep) genPriority.filter(_.dependentStreamId != streamId) else Gen.const(Priority.NoPriority)
+        priority <- (if (hasDep) genPriority.filter(_.dependentStreamId != streamId) else Gen.const(Priority.NoPriority))
         endHeaders <- tfGen
         endStream <- tfGen
         padding <- Gen.choose(0, 256)
         bytes <- Gen.choose(0, 16 * 1024 - padding)
       } yield HeadersFrame(
-        streamId, priority, endHeaders, endStream, mkData(bytes), padding)
-    }
+          streamId, priority, endHeaders, endStream, mkData(bytes), padding)
+    )
 
     def dat = mkData(20)
 
@@ -193,7 +193,7 @@ class Http2FrameSerializerSpec extends Specification with ScalaCheck {
   "RST_STREAM frame" should {
     case class RstFrame(streamId: Int, code: Long)
 
-    implicit lazy val arbRstFrame = Arbitrary(
+    implicit lazy val arbRstFrame: Arbitrary[RstFrame] = Arbitrary(
       for {
         streamId <- Gen.posNum[Int]
         code <- Gen.choose(Int.MinValue, Int.MaxValue).map(_ & Masks.INT32)
@@ -247,7 +247,7 @@ class Http2FrameSerializerSpec extends Specification with ScalaCheck {
   "PING frame" should {
     case class PingFrame(ack: Boolean, data: Array[Byte])
 
-    implicit lazy val arbPing = Arbitrary(
+    implicit lazy val arbPing: Arbitrary[PingFrame] = Arbitrary(
       for {
         ack <- tfGen
         bytes <- Gen.listOfN(8, Gen.choose(Byte.MinValue, Byte.MaxValue))
@@ -272,7 +272,7 @@ class Http2FrameSerializerSpec extends Specification with ScalaCheck {
   "GOAWAY frame" should {
     case class GoAwayFrame(lastStream: Int, err: Long, data: Array[Byte])
 
-    implicit lazy val arbGoAway = Arbitrary(
+    implicit lazy val arbGoAway: Arbitrary[GoAwayFrame] = Arbitrary(
       for {
         lastStream <- Gen.choose(0, Int.MaxValue)
         err <- Gen.choose(0l, 0xffffffffl)
@@ -300,7 +300,7 @@ class Http2FrameSerializerSpec extends Specification with ScalaCheck {
   "WINDOW_UPDATE frame" should {
     case class WindowUpdateFrame(streamId: Int, increment: Int)
 
-    implicit lazy val arbWindowUpdate = Arbitrary(
+    implicit lazy val arbWindowUpdate: Arbitrary[WindowUpdateFrame] = Arbitrary(
       for {
         streamId <- Gen.choose(0, Int.MaxValue)
         increment <- Gen.posNum[Int]
