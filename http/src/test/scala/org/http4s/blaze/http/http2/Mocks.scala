@@ -43,4 +43,6 @@ private class Http2MockTools(isClient: Boolean) {
     new HeaderDecoder(mySettings.maxHeaderListSize,
       true, // discard overflow headers
       mySettings.headerTableSize)
+
+  lazy val frameEncoder: Http2FrameEncoder = new Http2FrameEncoder(peerSettings, headerEncoder)
 }
