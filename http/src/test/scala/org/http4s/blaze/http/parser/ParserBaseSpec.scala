@@ -1,6 +1,7 @@
 package org.http4s.blaze.http.parser
 
 import java.nio.ByteBuffer
+import java.nio.charset.StandardCharsets
 
 import org.http4s.blaze.http.parser.BaseExceptions.BadCharacter
 import org.specs2.mutable.Specification
@@ -14,7 +15,7 @@ class ParserBaseSpec extends Specification {
 
   "ParserBase.next" should {
     "Provide the next valid char" in {
-      val buffer = ByteBuffer.wrap("OK".getBytes)
+      val buffer = ByteBuffer.wrap("OK".getBytes(StandardCharsets.UTF_8))
         new Base().next(buffer, false) must_== 'O'.toByte
     }
 

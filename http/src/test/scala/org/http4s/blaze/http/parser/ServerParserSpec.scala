@@ -215,7 +215,7 @@ class ServerParserSpec extends Specification {
 
     "Parse a full request" in {
       val p = new Parser()
-      val b = ByteBuffer.wrap(mockFiniteLength.getBytes())
+      val b = strToBuffer(mockFiniteLength)
 
       p.parseLine(b) should_== (true)
 
@@ -234,7 +234,7 @@ class ServerParserSpec extends Specification {
 
     "Parse a full request in fragments" in {
       val p = new Parser()
-      val b = ByteBuffer.wrap(mockFiniteLength.getBytes())
+      val b = strToBuffer(mockFiniteLength)
 
       val blim = b.limit()
 
@@ -260,7 +260,7 @@ class ServerParserSpec extends Specification {
 
     "Parse a chunked request" in {
       val p = new Parser()
-      val b = ByteBuffer.wrap(mockChunked.getBytes())
+      val b = strToBuffer(mockChunked)
 
       p.parseLine(b) should_== (true)
 
@@ -280,7 +280,7 @@ class ServerParserSpec extends Specification {
     "Parse a chunked request with trailers" in {
       val p = new Parser()
       val req = mockChunked.substring(0, mockChunked.length - 2) + "Foo\r\n\r\n"
-      val b = ByteBuffer.wrap(req.getBytes())
+      val b = strToBuffer(req)
 
       println(mockChunked)
 
@@ -303,7 +303,7 @@ class ServerParserSpec extends Specification {
 
     "Give parse a chunked request in fragments" in {
       val p = new Parser()
-      val b = ByteBuffer.wrap(mockChunked.getBytes())
+      val b = strToBuffer(mockChunked)
       val blim = b.limit()
 
       // Do it one char at a time /////////////////////////////////////////
@@ -334,7 +334,7 @@ class ServerParserSpec extends Specification {
     "Give parse a chunked request in fragments with a trailer" in {
       val p = new Parser()
       val req = mockChunked.substring(0, mockChunked.length - 2) + "Foo\r\n\r\n"
-      val b = ByteBuffer.wrap(req.getBytes())
+      val b = strToBuffer(req)
       val blim = b.limit()
 
       // Do it one char at a time /////////////////////////////////////////

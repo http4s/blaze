@@ -1,10 +1,10 @@
 package org.http4s.blaze.http.parser
 
 import scala.language.reflectiveCalls
-
 import java.nio.ByteBuffer
-import scala.collection.mutable.ListBuffer
+import java.nio.charset.StandardCharsets
 
+import scala.collection.mutable.ListBuffer
 import org.specs2.mutable._
 
 class Benchmarks extends Specification {
@@ -77,7 +77,7 @@ class Benchmarks extends Specification {
     }
 
 
-    val b = ByteBuffer.wrap(mockChunked.getBytes())
+    val b = ByteBuffer.wrap(mockChunked.getBytes(StandardCharsets.UTF_8))
     val blim = b.limit()
     val reconstructed = body + ", " + body + " again!"
 
@@ -119,7 +119,7 @@ class Benchmarks extends Specification {
 
   def rawBenchmark(iterations: Int): Unit = {
     val p = new BenchParser()
-    val b = ByteBuffer.wrap(mockChunked.getBytes())
+    val b = ByteBuffer.wrap(mockChunked.getBytes(StandardCharsets.UTF_8))
 
     def iteration(remaining: Int): Unit = if (remaining > 0) {
       b.position(0)
@@ -156,7 +156,7 @@ class Benchmarks extends Specification {
         super.reset()
       }
     }
-    val b = ByteBuffer.wrap(mockChunked.getBytes())
+    val b = ByteBuffer.wrap(mockChunked.getBytes(StandardCharsets.UTF_8))
 
     def iteration(remaining: Int): Unit = if (remaining > 0) {
       b.position(0)
