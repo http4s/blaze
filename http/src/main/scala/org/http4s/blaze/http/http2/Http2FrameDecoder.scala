@@ -31,10 +31,14 @@ class Http2FrameDecoder(mySettings: Http2Settings, listener: Http2FrameListener)
 
     if (mySettings.maxFrameSize < len) {
       Error(FRAME_SIZE_ERROR.goaway(s"HTTP2 packet is too large to handle. Stream: $streamId"))
-    } else if (listener.inHeaderSequence && frameType != FrameTypes.CONTINUATION) {
+    } else if (frameType != FrameTypes.CONTINUATION && listener.inHeaderSequence) {
     // We are in the middle of some header frames which is a no-go
       val msg = s"Received frame type ${hexStr(frameType.toInt)} while in HEADERS sequence"
       Error(PROTOCOL_ERROR.goaway(msg))
+    } else if (frameType == FrameTypes.CONTINUATION && !listener.inHeaderSequence) {
+      // Received a CONTINUATION without preceding HEADERS or PUSH_PROMISE frames
+      Error(PROTOCOL_ERROR.goaway(
+        s"Received CONTINUATION frame outside of a HEADERS sequence"))
     } else if (buffer.remaining < len) {   // We still don't have a full frame
       buffer.reset()
       BufferUnderflow
@@ -258,9 +262,6 @@ class Http2FrameDecoder(mySettings: Http2Settings, listener: Http2FrameListener)
     if (streamId == 0) {
       val msg = s"CONTINUATION frame with invalid stream dependency on 0x0"
       Error(PROTOCOL_ERROR.goaway(msg))
-    } else if (!listener.inHeaderSequence) {
-      Error(PROTOCOL_ERROR.goaway(
-        s"Received CONTINUATION frame outside of a HEADERS sequence"))
     } else {
       listener.onContinuationFrame(streamId, Flags.END_HEADERS(flags), buffer.slice())
     }
@@ -308,5 +309,6 @@ private object Http2FrameDecoder {
     }
   }
 
-  private def hexStr(i: Int): String = "0x" + Integer.toHexString(i)
+  /** Convert an integer into its hex representation with a preceding '0x' */
+  def hexStr(i: Int): String = "0x" + Integer.toHexString(i)
 }

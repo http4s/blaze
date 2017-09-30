@@ -10,8 +10,8 @@ import Http2Settings.Setting
   * the frames are properly formatted but doesn't concern itself with validating the sanity of a
   * frames content.
   *
-  * For example, the `FrameDecoder` is responsible for ensuring that the body of a WINDOW_UPDATE
-  * is 4 bytes long and the `FrameHandler` would be expected to signal an error if the
+  * For example, the [[Http2FrameDecoder]] is responsible for ensuring that the body of a WINDOW_UPDATE
+  * is 4 bytes long and the [[Http2FrameListener]] would be expected to signal an error if the
   * window increment was 0 or the update was for an idle stream.
   */
 trait Http2FrameListener {
