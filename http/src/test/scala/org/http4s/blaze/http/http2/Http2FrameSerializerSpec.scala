@@ -4,85 +4,139 @@ import java.nio.ByteBuffer
 import java.util
 
 import org.http4s.blaze.http.http2.Http2Settings.Setting
+import org.http4s.blaze.http.http2.bits.Masks
 import org.http4s.blaze.util.BufferTools._
+import org.scalacheck.{Arbitrary, Gen}
 import org.specs2.mutable.Specification
+import org.specs2.ScalaCheck
 
-class Http2FrameSerializerSpec extends Specification {
+class Http2FrameSerializerSpec extends Specification with ScalaCheck {
   import CodecUtils._
 
-  "DATA frame" should {
-    val DataSize = 20
-    def dat = mkData(DataSize)
+  lazy val tfGen: Gen[Boolean] = Gen.oneOf(true, false)
 
-    def dec(sId: Int, endStream: Boolean, padding: Int): TestHttp2FrameDecoder =
+  lazy val genPriority: Gen[Priority.Dependent] = for {
+    depId <- Gen.posNum[Int]
+    exclusive <- tfGen
+    weight <- Gen.choose(1, 256)
+  } yield Priority.Dependent(depId, exclusive, weight)
+
+  "DATA frame" should {
+    case class DataFrame(streamId: Int, endStream: Boolean, data: ByteBuffer, padding: Int) {
+      def flowSize: Int = data.remaining + padding
+    }
+
+    implicit lazy val genDataFrame: Arbitrary[DataFrame] = Arbitrary(
+      for {
+        streamId <- Gen.posNum[Int]
+        isLast <- tfGen
+        padding <- Gen.choose(0, 256)
+        bytes <- Gen.choose(0, 16 * 1024 - padding)
+
+      } yield DataFrame(streamId, isLast, mkData(bytes), padding)
+    )
+
+    def dec(dataFrame: DataFrame): TestHttp2FrameDecoder =
       decoder(new MockFrameListener(false) {
-        override def onDataFrame(streamId: Int, isLast: Boolean, data: ByteBuffer, flowSize: Int): Http2Result = {
-          streamId must_== sId
-          isLast must_== endStream
-          compare(data::Nil, dat::Nil) must beTrue
-          data.remaining must_== DataSize
-          padding + data.remaining must_== flowSize
+        override def onDataFrame(streamId: Int, isLast: Boolean,
+                                 data: ByteBuffer, flowSize: Int): Http2Result = {
+          streamId must_== dataFrame.streamId
+          isLast must_== dataFrame.endStream
+          compare(data::Nil, dataFrame.data.duplicate::Nil) must beTrue
+          data.remaining must_== dataFrame.data.remaining
+          dataFrame.flowSize must_== flowSize
 
           Continue
         }
     })
 
-    def roundTrip(streamId: Int, endStream: Boolean, padding: Int): Http2Result = {
-      val frame = joinBuffers(Http2FrameSerializer.mkDataFrame(streamId, endStream, padding, dat))
-      dec(streamId, endStream, padding).decodeBuffer(frame)
-    }
-
-    "make round trip" in {
-      roundTrip(streamId = 1, endStream = true, padding = 0) must_== Continue
-    }
-
-    "Decode 'END_STREAM flag" in {
-      roundTrip(streamId = 3, endStream = false, padding = 0) must_== Continue
+    "roundtrip" >> prop { dataFrame: DataFrame =>
+      val frame = joinBuffers(
+        Http2FrameSerializer.mkDataFrame(
+          dataFrame.streamId, dataFrame.endStream, dataFrame.padding, dataFrame.data.duplicate()))
+      dec(dataFrame).decodeBuffer(frame) == Continue
     }
 
     "Decode padded buffers" in {
       forall(0 to 256) { i: Int =>
-        roundTrip(streamId = 3, endStream = false, padding = i) must_== Continue
+        def dat = mkData(20)
+        val frame = joinBuffers(Http2FrameSerializer.mkDataFrame(3, false, i, dat))
+        dec(DataFrame(3, false, dat, i)).decodeBuffer(frame) must_== Continue
       }
     }
   }
 
   // This doesn't check header compression
   "HEADERS frame" should {
+    case class HeadersFrame(
+     streamId: Int,
+     priority: Priority,
+     endHeaders: Boolean,
+     endStream: Boolean,
+     data: ByteBuffer,
+     padding: Int) {
+      def flowSize: Int = data.remaining + padding
+    }
+
+    implicit lazy val arbHeaders: Arbitrary[HeadersFrame] = Arbitrary(
+      for {
+        streamId <- Gen.posNum[Int]
+        hasDep <- tfGen
+        priority <- (if (hasDep) genPriority.filter(_.dependentStreamId != streamId) else Gen.const(Priority.NoPriority))
+        endHeaders <- tfGen
+        endStream <- tfGen
+        padding <- Gen.choose(0, 256)
+        bytes <- Gen.choose(0, 16 * 1024 - padding)
+      } yield HeadersFrame(
+          streamId, priority, endHeaders, endStream, mkData(bytes), padding)
+    )
+
     def dat = mkData(20)
 
-    def dec(sId: Int, pri: Priority, end_h: Boolean,  end_s: Boolean) =
+    def dec(headerFrame: HeadersFrame) =
       decoder(new MockFrameListener(false) {
         override def onHeadersFrame(streamId: Int,
                                     priority: Priority,
                                     end_headers: Boolean,
                                     end_stream: Boolean,
                                     buffer: ByteBuffer): Http2Result = {
-          sId must_== streamId
-          pri must_== priority
-          end_h must_== end_headers
-          end_s must_== end_stream
-          assert(compare(buffer::Nil, dat::Nil))
+          headerFrame.streamId must_== streamId
+          headerFrame.priority must_== priority
+          headerFrame.endHeaders must_== end_headers
+          headerFrame.endStream must_== end_stream
+          assert(compare(buffer::Nil, headerFrame.data.duplicate::Nil))
           Continue
         }
     })
 
+    "roundtrip" >> prop { headerFrame: HeadersFrame =>
+      val buff1 = joinBuffers(Http2FrameSerializer.mkHeaderFrame(
+        headerFrame.streamId,
+        headerFrame.priority,
+        headerFrame.endHeaders,
+        headerFrame.endStream,
+        headerFrame.padding,
+        headerFrame.data.duplicate))
+
+      dec(headerFrame).decodeBuffer(buff1) must_== Continue
+    }
+
     "make round trip" in {
       val buff1 = joinBuffers(Http2FrameSerializer.mkHeaderFrame(1, Priority.NoPriority, true, true, 0, dat))
-      dec(1, Priority.NoPriority, true, true).decodeBuffer(buff1) must_== Continue
+      dec(HeadersFrame(1, Priority.NoPriority, true, true, dat, 0)).decodeBuffer(buff1) must_== Continue
       buff1.remaining() must_== 0
 
       val priority = Priority.Dependent(3, false, 6)
-
       val buff2 = joinBuffers(Http2FrameSerializer.mkHeaderFrame(2, priority, true, false, 0, dat))
-      dec(2, priority, true, false).decodeBuffer(buff2) must_== Continue
+      dec(HeadersFrame(2, priority, true, false, dat, 0)).decodeBuffer(buff2) must_== Continue
       buff2.remaining() must_== 0
     }
 
-    "preserve padding" in {
-      val buff = addBonus(Http2FrameSerializer.mkHeaderFrame(1, Priority.NoPriority, true, true, 0, dat))
-      dec(1, Priority.NoPriority, true, true).decodeBuffer(buff) must_== Continue
-      buff.remaining() must_== bonusSize
+    "handle padding" in {
+      val paddingSize = 10
+      val buff = joinBuffers(
+        Http2FrameSerializer.mkHeaderFrame(1, Priority.NoPriority, true, true, paddingSize, dat))
+      dec(HeadersFrame(1, Priority.NoPriority, true, true, dat, paddingSize)).decodeBuffer(buff) must_== Continue
     }
 
     "fail on bad stream ID" in {
@@ -97,26 +151,32 @@ class Http2FrameSerializerSpec extends Specification {
   }
 
   "PRIORITY frame" should {
-    def dec(sId: Int, p: Priority.Dependent) =
+
+    case class PriorityFrame(streamId: Int, priority: Priority.Dependent)
+
+    def dec(priorityFrame: PriorityFrame) =
       decoder(new MockFrameListener(false) {
         override def onPriorityFrame(streamId: Int, priority: Priority.Dependent): Http2Result = {
-          sId must_== streamId
-          p must_== priority
+          priorityFrame.streamId must_== streamId
+          priorityFrame.priority must_== priority
           Continue
         }
       })
 
-    "make a round trip" in {
-      val buff1 = Http2FrameSerializer.mkPriorityFrame(1, Priority.Dependent(2, true, 1))
-      dec(1, Priority.Dependent(2, true, 1)).decodeBuffer(buff1) must_== Continue
-      buff1.remaining() must_== 0
+    implicit lazy val arbPriority = Arbitrary(
+      for {
+        streamId <- Gen.posNum[Int]
+        p <- genPriority.filter(_.dependentStreamId != streamId)
+      } yield PriorityFrame(streamId, p)
+    )
 
-      val buff2 = Http2FrameSerializer.mkPriorityFrame(1, Priority.Dependent(2, false, 10))
-      dec(1, Priority.Dependent(2, false, 10)).decodeBuffer(buff2) must_== Continue
-      buff2.remaining() must_== 0
+    "roundtrip" >> prop { p: PriorityFrame =>
+      val buff1 = Http2FrameSerializer.mkPriorityFrame(p.streamId, p.priority)
+      dec(p).decodeBuffer(buff1) must_== Continue
+      buff1.remaining() must_== 0
     }
 
-    "fail on bad priority" in {
+    "fail to make a bad dependent Priority" in {
       Priority.Dependent(1, true, 500) must throwA[Exception]
       Priority.Dependent(1, true, -500) must throwA[Exception]
     }
@@ -131,19 +191,27 @@ class Http2FrameSerializerSpec extends Specification {
   }
 
   "RST_STREAM frame" should {
-    def dec(sId: Int, c: Int) =
-      decoder(new MockFrameListener(false) {
+    case class RstFrame(streamId: Int, code: Long)
 
+    implicit lazy val arbRstFrame: Arbitrary[RstFrame] = Arbitrary(
+      for {
+        streamId <- Gen.posNum[Int]
+        code <- Gen.choose(Int.MinValue, Int.MaxValue).map(_ & Masks.INT32)
+      } yield RstFrame(streamId, code)
+    )
+
+    def dec(rstFrame: RstFrame) =
+      decoder(new MockFrameListener(false) {
         override def onRstStreamFrame(streamId: Int, code: Long): Http2Result = {
-          sId must_== streamId
-          c must_== code
+          rstFrame.streamId must_== streamId
+          rstFrame.code must_== code
           Continue
         }
       })
 
-    "make round trip" in {
-      val buff1 = Http2FrameSerializer.mkRstStreamFrame(1, 0)
-      dec(1, 0).decodeBuffer(buff1) must_== Continue
+    "roundtrip" >> prop { rst: RstFrame =>
+      val buff1 = Http2FrameSerializer.mkRstStreamFrame(rst.streamId, rst.code)
+      dec(rst).decodeBuffer(buff1) must_== Continue
       buff1.remaining() must_== 0
     }
 
@@ -153,84 +221,105 @@ class Http2FrameSerializerSpec extends Specification {
   }
 
   "SETTINGS frame" should {
-    def dec(a: Boolean, s: Seq[Setting]) =
+    case class SettingsFrame(ack: Boolean, settings: Seq[Setting])
+
+    def dec(settingsFrame: SettingsFrame) =
       decoder(new MockFrameListener(false) {
         override def onSettingsFrame(ack: Boolean, settings: Seq[Setting]): Http2Result = {
-          s must_== settings
-          a must_== ack
+          settingsFrame.ack must_== ack
+          settingsFrame.settings must_== settings
           Continue
         }
       })
 
-    "make a round trip" in {
-      val settings = (0 until 100).map(i => Setting(i, i + 3))
+    "roundtrip" >> prop { ack: Boolean =>
+      val settings = if (ack) Seq.empty else (0 until 100).map(i => Setting(i, i + 3))
 
-      val buff1 = Http2FrameSerializer.mkSettingsFrame(settings)
-      dec(false, settings).decodeBuffer(buff1) must_== Continue
+      val buff1 =
+        if (ack) Http2FrameSerializer.mkSettingsAckFrame()
+        else Http2FrameSerializer.mkSettingsFrame(settings)
+
+      dec(SettingsFrame(ack, settings)).decodeBuffer(buff1) must_== Continue
       buff1.remaining() must_== 0
     }
   }
 
   "PING frame" should {
-    def dec(d: ByteBuffer, a: Boolean) =
+    case class PingFrame(ack: Boolean, data: Array[Byte])
+
+    implicit lazy val arbPing: Arbitrary[PingFrame] = Arbitrary(
+      for {
+        ack <- tfGen
+        bytes <- Gen.listOfN(8, Gen.choose(Byte.MinValue, Byte.MaxValue))
+      } yield PingFrame(ack, bytes.toArray)
+    )
+
+    def dec(pingFrame: PingFrame) =
       decoder(new MockHeaderAggregatingFrameListener {
         override def onPingFrame(ack: Boolean, data: Array[Byte]): Http2Result = {
-          ack must_== a
-          assert(compare(ByteBuffer.wrap(data)::Nil, d::Nil))
+          pingFrame.ack must_== ack
+          assert(util.Arrays.equals(pingFrame.data, data))
           Continue
         }
       })
 
-    "make a simple round trip" in {
-      val data = Array(1,2,3,4,5,6,7,8).map(_.toByte)
-
-      val bs1 = Http2FrameSerializer.mkPingFrame(false, data)
-      dec(ByteBuffer.wrap(data), false).decodeBuffer(bs1) must_== Continue
-
-      val bs2 = Http2FrameSerializer.mkPingFrame(true, data)
-      dec(ByteBuffer.wrap(data), true).decodeBuffer(bs2) must_== Continue
+    "make a simple round trip" >> prop { pingFrame: PingFrame =>
+      val pingBuffer = Http2FrameSerializer.mkPingFrame(pingFrame.ack, pingFrame.data)
+      dec(pingFrame).decodeBuffer(pingBuffer) must_== Continue
     }
   }
 
   "GOAWAY frame" should {
-    def dec(sId: Int, err: Long, d: Array[Byte]) =
+    case class GoAwayFrame(lastStream: Int, err: Long, data: Array[Byte])
+
+    implicit lazy val arbGoAway: Arbitrary[GoAwayFrame] = Arbitrary(
+      for {
+        lastStream <- Gen.choose(0, Int.MaxValue)
+        err <- Gen.choose(0l, 0xffffffffl)
+        dataSize <- Gen.choose(0, 256)
+        bytes <- Gen.listOfN(dataSize, Gen.choose(Byte.MinValue, Byte.MaxValue))
+      } yield GoAwayFrame(lastStream, err, bytes.toArray)
+    )
+
+    def dec(goAway: GoAwayFrame) =
       decoder(new MockHeaderAggregatingFrameListener {
-
-
         override def onGoAwayFrame(lastStream: Int, errorCode: Long, debugData: Array[Byte]): Http2Result = {
-          sId must_== lastStream
-          err must_== errorCode
-          assert(util.Arrays.equals(d, debugData))
+          goAway.lastStream must_== lastStream
+          goAway.err must_== errorCode
+          assert(util.Arrays.equals(goAway.data, debugData))
           Continue
         }
       })
 
-    "make a simple round trip" in {
-      val bs1 = Http2FrameSerializer.mkGoAwayFrame(1, 0, Array[Byte]())
-      dec(1, 0, Array[Byte]()).decodeBuffer(joinBuffers(bs1)) must_== Continue
-    }
-
-    "make a round trip with data" in {
-      def data = byteData
-
-      val bs1 = Http2FrameSerializer.mkGoAwayFrame(1, 0, data)
-      dec(1, 0, data).decodeBuffer(joinBuffers(bs1)) must_== Continue
+    "roundtrip" >> prop { goAway: GoAwayFrame =>
+      val encodedGoAway = Http2FrameSerializer.mkGoAwayFrame(goAway.lastStream, goAway.err, goAway.data)
+      dec(goAway).decodeBuffer(joinBuffers(encodedGoAway)) must_== Continue
     }
   }
 
   "WINDOW_UPDATE frame" should {
-    def dec(sId: Int, inc: Int) =
+    case class WindowUpdateFrame(streamId: Int, increment: Int)
+
+    implicit lazy val arbWindowUpdate: Arbitrary[WindowUpdateFrame] = Arbitrary(
+      for {
+        streamId <- Gen.choose(0, Int.MaxValue)
+        increment <- Gen.posNum[Int]
+      } yield WindowUpdateFrame(streamId, increment)
+    )
+
+    def dec(update: WindowUpdateFrame) =
       decoder(new MockHeaderAggregatingFrameListener {
         override def onWindowUpdateFrame(streamId: Int, sizeIncrement: Int): Http2Result = {
-          sId must_== streamId
-          inc must_== sizeIncrement
+          update.streamId must_== streamId
+          update.increment must_== sizeIncrement
           Continue
         }
       })
 
-    "make a simple round trip" in {
-      val bs1 = Http2FrameSerializer.mkWindowUpdateFrame(0, 10)
-      dec(0, 10).decodeBuffer(bs1) must_== Continue
+    "roundtrip" >> prop { updateFrame: WindowUpdateFrame =>
+      val updateBuffer = Http2FrameSerializer.mkWindowUpdateFrame(
+        updateFrame.streamId, updateFrame.increment)
+      dec(updateFrame).decodeBuffer(updateBuffer) must_== Continue
     }
 
     "fail on invalid stream" in {
@@ -240,8 +329,6 @@ class Http2FrameSerializerSpec extends Specification {
     "fail on invalid window update" in {
       Http2FrameSerializer.mkWindowUpdateFrame(1, 0) must throwA[Exception]
       Http2FrameSerializer.mkWindowUpdateFrame(1, -1) must throwA[Exception]
-      println(Integer.MAX_VALUE)
-      Http2FrameSerializer.mkWindowUpdateFrame(1, Integer.MAX_VALUE + 1) must throwA[Exception]
     }
   }
 }

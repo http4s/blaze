@@ -8,6 +8,7 @@ import org.specs2.mutable.Specification
 
 class HeaderAggregatingFrameListenerSpec extends Specification {
 
+  import BufferTools._
   import CodecUtils._
 
   private def encodeHeaders(hs: Seq[(String, String)]): ByteBuffer =
@@ -32,7 +33,7 @@ class HeaderAggregatingFrameListenerSpec extends Specification {
       val hs = Seq("foo" -> "bar", "biz" -> "baz")
       val hsBuf = encodeHeaders(hs)
 
-      val bs = Http2FrameSerializer.mkHeaderFrame(1, Priority.NoPriority, true, true, 0.toByte, hsBuf)
+      val bs = Http2FrameSerializer.mkHeaderFrame(1, Priority.NoPriority, true, true, 0, hsBuf)
 
       dec(1, Priority.NoPriority, true, hs).decodeBuffer(BufferTools.joinBuffers(bs)) must_== Halt
     }
@@ -41,7 +42,7 @@ class HeaderAggregatingFrameListenerSpec extends Specification {
       val hs = Seq("foo" -> "bar", "biz" -> "baz")
       val hsBuf = encodeHeaders(hs)
       val first = BufferTools.takeSlice(hsBuf, hsBuf.remaining() - 1)
-      val bs = Http2FrameSerializer.mkHeaderFrame(1, Priority.NoPriority, false, true, 0.toByte, first)
+      val bs = Http2FrameSerializer.mkHeaderFrame(1, Priority.NoPriority, false, true, 0, first)
 
       val decoder = dec(1, Priority.NoPriority, true, hs)
 
@@ -52,11 +53,12 @@ class HeaderAggregatingFrameListenerSpec extends Specification {
 
       val bs2 = Http2FrameSerializer.mkContinuationFrame(1, true, hsBuf)
       decoder.decodeBuffer(BufferTools.joinBuffers(bs2)) must_== Halt
+      decoder.listener.inHeaderSequence must beFalse
     }
 
     "Make a round trip with a continuation frame" in {
       val hs = Seq("foo" -> "bar", "biz" -> "baz")
-      val bs = Http2FrameSerializer.mkHeaderFrame(1, Priority.NoPriority, false, true, 0.toByte, BufferTools.emptyBuffer)
+      val bs = Http2FrameSerializer.mkHeaderFrame(1, Priority.NoPriority, false, true, 0, BufferTools.emptyBuffer)
 
       val decoder = dec(1, Priority.NoPriority, true, hs)
 
@@ -67,12 +69,13 @@ class HeaderAggregatingFrameListenerSpec extends Specification {
 
       val bs2 = Http2FrameSerializer.mkContinuationFrame(1, true, encodeHeaders(hs))
       decoder.decodeBuffer(BufferTools.joinBuffers(bs2)) must_== Halt
+      decoder.listener.inHeaderSequence must beFalse
     }
 
     "Make a round trip with a continuation frame" in {
       val hs1 = Seq("foo" -> "bar")
       val hs2 = Seq("biz" -> "baz")
-      val bs = Http2FrameSerializer.mkHeaderFrame(1, Priority.NoPriority, false, true, 0.toByte, encodeHeaders(hs1))
+      val bs = Http2FrameSerializer.mkHeaderFrame(1, Priority.NoPriority, false, true, 0, encodeHeaders(hs1))
 
       val decoder = dec(1, Priority.NoPriority, true, hs1 ++ hs2)
 
@@ -83,10 +86,11 @@ class HeaderAggregatingFrameListenerSpec extends Specification {
 
       val bs2 = Http2FrameSerializer.mkContinuationFrame(1, true, encodeHeaders(hs2))
       decoder.decodeBuffer(BufferTools.joinBuffers(bs2)) must_== Halt
+      decoder.listener.inHeaderSequence must beFalse
     }
 
     "Fail on invalid frame sequence (bad streamId)" in {
-      val bs = Http2FrameSerializer.mkHeaderFrame(1, Priority.NoPriority, false, true, 0.toByte, BufferTools.emptyBuffer)
+      val bs = Http2FrameSerializer.mkHeaderFrame(1, Priority.NoPriority, false, true, 0, BufferTools.emptyBuffer)
 
       val decoder = dec(1, Priority.NoPriority, true, Seq())
 
@@ -100,7 +104,7 @@ class HeaderAggregatingFrameListenerSpec extends Specification {
     }
 
     "Fail on invalid frame sequence (wrong frame type)" in {
-      val bs = Http2FrameSerializer.mkHeaderFrame(1, Priority.NoPriority, false, true, 0.toByte, BufferTools.emptyBuffer)
+      val bs = Http2FrameSerializer.mkHeaderFrame(1, Priority.NoPriority, false, true, 0, BufferTools.emptyBuffer)
 
       val decoder = dec(1, Priority.NoPriority, true, Seq())
 
@@ -138,10 +142,10 @@ class HeaderAggregatingFrameListenerSpec extends Specification {
       buff1.remaining() must_== 0
     }
 
-    "preserve padding" in {
-      val buff = addBonus(Http2FrameSerializer.mkPushPromiseFrame(1, 2, true, bonusSize, dat))
+    "handle padding" in {
+      val paddingSize = 10
+      val buff = joinBuffers(Http2FrameSerializer.mkPushPromiseFrame(1, 2, true, paddingSize, dat))
       dec(1, 2, true).decodeBuffer(buff) must_== Continue
-      buff.remaining() must_== bonusSize
     }
 
     "fail on bad stream ID" in {
@@ -177,7 +181,9 @@ class HeaderAggregatingFrameListenerSpec extends Specification {
       val hsBuf = encodeHeaders(hs)
       val bs = Http2FrameSerializer.mkPushPromiseFrame(1, 2, true, 0, hsBuf)
 
-      dec(1, 2, hs).decodeBuffer(BufferTools.joinBuffers(bs)) must_== Halt
+      val decoder = dec(1, 2, hs)
+      decoder.decodeBuffer(BufferTools.joinBuffers(bs)) must_== Halt
+      decoder.listener.inHeaderSequence must beFalse
     }
 
     "Make a round trip with a continuation frame" in {
@@ -194,9 +200,10 @@ class HeaderAggregatingFrameListenerSpec extends Specification {
 
       val bs2 = Http2FrameSerializer.mkContinuationFrame(1, true, BufferTools.emptyBuffer)
       decoder.decodeBuffer(BufferTools.joinBuffers(bs2)) must_== Halt
+      decoder.listener.inHeaderSequence must beFalse
     }
 
-    "Make a round trip with a continuation frame" in {
+    "Make a round trip with a zero leanth HEADERS and a continuation frame" in {
       val hs = Seq("foo" -> "bar", "biz" -> "baz")
 
       val bs = Http2FrameSerializer.mkPushPromiseFrame(1, 2, false, 0, BufferTools.emptyBuffer)
@@ -210,6 +217,7 @@ class HeaderAggregatingFrameListenerSpec extends Specification {
 
       val bs2 = Http2FrameSerializer.mkContinuationFrame(1, true, encodeHeaders(hs))
       decoder.decodeBuffer(BufferTools.joinBuffers(bs2)) must_== Halt
+      decoder.listener.inHeaderSequence must beFalse
     }
 
     "Make a round trip with a continuation frame" in {
@@ -226,6 +234,7 @@ class HeaderAggregatingFrameListenerSpec extends Specification {
 
       val bs2 = Http2FrameSerializer.mkContinuationFrame(1, true, encodeHeaders(hs2))
       decoder.decodeBuffer(BufferTools.joinBuffers(bs2)) must_== Halt
+      decoder.listener.inHeaderSequence must beFalse
     }
 
     "Fail on invalid frame sequence (wrong streamId)" in {

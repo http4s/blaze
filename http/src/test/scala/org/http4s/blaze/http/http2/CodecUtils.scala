@@ -27,10 +27,4 @@ object CodecUtils {
 
   def decoder(h: Http2FrameListener, inHeaders: Boolean = false): TestHttp2FrameDecoder =
     new TestHttp2FrameDecoder(h)
-
-  val bonusSize = 10
-
-  def addBonus(buffers: Seq[ByteBuffer]): ByteBuffer = {
-    joinBuffers(buffers :+ ByteBuffer.allocate(bonusSize))
-  }
 }

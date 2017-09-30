@@ -10,7 +10,12 @@ import Http2Exception.PROTOCOL_ERROR
   * and CONTINUATION frames from ByteBuffer packets to a complete
   * collections of headers.
   *
-  * @note This class is not 'thread safe' and should be treated accordingly
+  * If the size of the raw header blcok exceeds the MAX_HEADER_LIST_SIZE parameter
+  * we send a GOAWAY frame. This can legally be handled with a 431 response, but the
+  * headers must be processed to keep the header decompressor in a valid state.
+  * https://tools.ietf.org/html/rfc7540#section-10.5.1
+  *
+  * @note This class is not 'thread safe' and should be treated accordingly.
   */
 private[http2] abstract class HeaderAggregatingFrameListener(
     inboundSettings: Http2Settings,
@@ -45,10 +50,12 @@ private[http2] abstract class HeaderAggregatingFrameListener(
     * @param endStream this is the last inbound frame for this stream.
     * @param headers decompressed headers.
     */
-  def onCompleteHeadersFrame(streamId: Int,
-                             priority: Priority,
-                             endStream: Boolean,
-                             headers: Headers): Http2Result
+  def onCompleteHeadersFrame(
+    streamId: Int,
+    priority: Priority,
+    endStream: Boolean,
+    headers: Headers
+  ): Http2Result
 
   /** Called on the successful receipt of a complete PUSH_PROMISE block
     *
@@ -60,22 +67,25 @@ private[http2] abstract class HeaderAggregatingFrameListener(
 
   ////////////////////////////////////////////////////////////////////////////
 
-  final def setMaxHeaderTableSize(maxSize: Int): Unit = { headerDecoder.setMaxHeaderTableSize(maxSize) }
+  final def setMaxHeaderTableSize(maxSize: Int): Unit =
+    headerDecoder.setMaxHeaderTableSize(maxSize)
 
   final override def inHeaderSequence: Boolean = hInfo != null
 
-  final override def onHeadersFrame(streamId: Int,
-                                    priority: Priority,
-                                    endHeaders: Boolean,
-                                    endStream: Boolean,
-                                    buffer: ByteBuffer): Http2Result = {
+  final override def onHeadersFrame(
+    streamId: Int,
+    priority: Priority,
+    endHeaders: Boolean,
+    endStream: Boolean,
+    buffer: ByteBuffer
+  ): Http2Result = {
 
     if (inHeaderSequence) {
-      Error(PROTOCOL_ERROR.goaway(s"Received HEADERS frame while in in headers sequence. Stream $streamId"))
-    } else if (buffer.remaining() > inboundSettings.maxHeaderListSize) {
-      // TODO: this can legally be handled with a 431 response, but the headers must be processed to keep
-      //       the header decompressor in a valid state. https://tools.ietf.org/html/rfc7540#section-10.5.1
-      headerSizeError(buffer.remaining(), streamId)
+      Error(PROTOCOL_ERROR.goaway(
+        s"Received HEADERS frame while in in headers sequence. Stream id " +
+          Http2FrameDecoder.hexStr(streamId)))
+    } else if (buffer.remaining > inboundSettings.maxHeaderListSize) {
+      headerSizeError(buffer.remaining, streamId)
     } else if (endHeaders) {
       val r = headerDecoder.decode(buffer, streamId, true)
       if (!r.success) r
@@ -89,18 +99,15 @@ private[http2] abstract class HeaderAggregatingFrameListener(
     }
   }
 
-  final override def onPushPromiseFrame(streamId: Int,
-                                        promisedId: Int,
-                                        endHeaders: Boolean,
-                                        buffer: ByteBuffer): Http2Result = {
+  final override def onPushPromiseFrame(
+    streamId: Int,
+    promisedId: Int,
+    endHeaders: Boolean,
+    buffer: ByteBuffer
+  ): Http2Result = {
 
-    if (inHeaderSequence) {
-      val msg = "Received HEADERS frame while in in headers sequence"
-      Error(PROTOCOL_ERROR.goaway(msg))
-    } else if (buffer.remaining() > inboundSettings.maxHeaderListSize) {
-      // TODO: this can legally be handled with a 431 response, but the headers must be processed to keep
-      //       the header decompressor in a valid state. https://tools.ietf.org/html/rfc7540#section-10.5.1
-      headerSizeError(buffer.remaining(), streamId)
+    if (inboundSettings.maxHeaderListSize < buffer.remaining) {
+      headerSizeError(buffer.remaining, streamId)
     } else if (endHeaders) {
       val r = headerDecoder.decode(buffer, streamId, true)
       if (!r.success) r
@@ -114,20 +121,18 @@ private[http2] abstract class HeaderAggregatingFrameListener(
     }
   }
 
-  final override def onContinuationFrame(streamId: Int, endHeaders: Boolean, buffer: ByteBuffer): Http2Result = {
-    if (!inHeaderSequence) {
-      val msg = s"Invalid CONTINUATION frame: not in partial header frame. Stream $streamId"
-      Error(PROTOCOL_ERROR.goaway(msg))
-    } else if (hInfo.streamId != streamId) {
+  final override def onContinuationFrame(
+    streamId: Int,
+    endHeaders: Boolean,
+    buffer: ByteBuffer
+  ): Http2Result = {
+    if (hInfo.streamId != streamId) {
       val msg = s"Invalid CONTINUATION frame: stream Id's don't match. " +
         s"Expected ${hInfo.streamId}, received $streamId"
       Error(PROTOCOL_ERROR.goaway(msg))
     } else {
-      val totalSize = buffer.remaining() + hInfo.buffer.remaining()
-
-      if (totalSize > inboundSettings.maxHeaderListSize) {
-        // TODO: this can legally be handled with a 431 response, but the headers must be processed to keep
-        // TODO: the header decompressor in a valid state. https://tools.ietf.org/html/rfc7540#section-10.5.1
+      val totalSize = buffer.remaining + hInfo.buffer.remaining
+      if (inboundSettings.maxHeaderListSize < totalSize) {
         headerSizeError(totalSize, streamId)
       } else {
         val newBuffer = BufferTools.concatBuffers(hInfo.buffer, buffer)
@@ -153,8 +158,9 @@ private[http2] abstract class HeaderAggregatingFrameListener(
     }
   }
 
-  private def headerSizeError(size: Int, stream: Int): Error = {
-    val msg = s"Stream($stream) sent too large of a header block. Received: $size. Limit: ${inboundSettings.maxHeaderListSize}"
+  private[this] def headerSizeError(size: Int, streamId: Int): Error = {
+    val msg = s"Stream(${Http2FrameDecoder.hexStr(streamId)}) sent too large of " +
+      s"a header block. Received: $size. Limit: ${inboundSettings.maxHeaderListSize}"
     Error(PROTOCOL_ERROR.goaway(msg))
   }
 }

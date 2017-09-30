@@ -21,7 +21,6 @@ private[http2] class MockFrameListener(inHeaders: Boolean) extends Http2FrameLis
   override def onWindowUpdateFrame(streamId: Int, sizeIncrement: Int): Http2Result = ???
 }
 
-// TODO: test the header size limits
 private[http2] class MockHeaderAggregatingFrameListener extends HeaderAggregatingFrameListener(
   Http2Settings.default, new HeaderDecoder(20*1024, true, 4096)) {
 
