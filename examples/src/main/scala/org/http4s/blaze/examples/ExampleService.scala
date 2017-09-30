@@ -31,7 +31,7 @@ object ExampleService {
             Future.successful {
               if (i < 1000) {
                 i += 1
-                ByteBuffer.wrap(s"i: $i\n".getBytes)
+                ByteBuffer.wrap(s"i: $i\n".getBytes(StandardCharsets.UTF_8))
               }
               else BufferTools.emptyBuffer
             }

@@ -1,14 +1,14 @@
 package org.http4s.blaze.pipeline.stages
 
 import java.nio.ByteBuffer
-import javax.net.ssl.{SSLEngineResult, SSLEngine}
+import javax.net.ssl.{SSLEngine, SSLEngineResult}
 import SSLEngineResult.HandshakeStatus._
+import java.nio.charset.StandardCharsets
 
 import org.http4s.blaze.pipeline.Command.Connected
 import org.http4s.blaze.pipeline.LeafBuilder
-import org.http4s.blaze.util.{GenericSSLContext, BufferTools}
+import org.http4s.blaze.util.{BufferTools, GenericSSLContext}
 import org.http4s.blaze.util.Execution
-
 import org.specs2.mutable.Specification
 
 import scala.concurrent.duration._
@@ -191,7 +191,8 @@ class SSLStageSpec extends Specification {
     }
   }
 
-  def mkBuffer(str: String): ByteBuffer = ByteBuffer.wrap(str.getBytes())
+  def mkBuffer(str: String): ByteBuffer =
+    ByteBuffer.wrap(str.getBytes(StandardCharsets.UTF_8))
   
   def mkClientServerEngines(): (SSLEngine, SSLEngine) = {
     val clientEng = GenericSSLContext.clientSSLContext().createSSLEngine()
