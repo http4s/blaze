@@ -1,13 +1,15 @@
 package org.http4s.blaze.http.http2
 
 import java.nio.ByteBuffer
+import java.nio.charset.StandardCharsets
 import java.util
 
 import org.http4s.blaze.util.BufferTools._
 
 object CodecUtils {
 
-  def byteData: Array[Byte] = "The quick brown fox jumps over the lazy dog".getBytes()
+  def byteData: Array[Byte] =
+    "The quick brown fox jumps over the lazy dog".getBytes(StandardCharsets.UTF_8)
 
   def mkData(size: Int): ByteBuffer = {
     val s = byteData
