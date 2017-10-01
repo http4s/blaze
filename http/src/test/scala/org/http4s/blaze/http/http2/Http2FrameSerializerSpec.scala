@@ -86,7 +86,7 @@ class Http2FrameSerializerSpec extends Specification with ScalaCheck {
         endHeaders <- tfGen
         endStream <- tfGen
         padding <- Gen.choose(0, 256)
-        bytes <- Gen.choose(0, 16 * 1024 - padding)
+        bytes <- Gen.choose(0, 16*1024 - padding - (if (hasDep) 5 else 0))
       } yield HeadersFrame(
           streamId, priority, endHeaders, endStream, mkData(bytes), padding)
     )
