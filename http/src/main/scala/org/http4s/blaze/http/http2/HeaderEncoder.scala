@@ -12,17 +12,11 @@ import com.twitter.hpack.Encoder
   *                            will allow.
   */
 class HeaderEncoder(initialMaxTableSize: Int) {
-  private[this] var _maxTableSize = initialMaxTableSize
-  private[this] val encoder = new Encoder(maxTableSize)
+  private[this] val encoder = new Encoder(initialMaxTableSize)
   private[this] val os = new ByteArrayOutputStream(1024)
-
-
-  /** The current value of SETTINGS_HEADER_TABLE_SIZE */
-  def maxTableSize: Int = _maxTableSize
 
   /** This should only be changed by the peer */
   def maxTableSize(max: Int): Unit = {
-    _maxTableSize = max
     encoder.setMaxHeaderTableSize(os, max)
   }
 
