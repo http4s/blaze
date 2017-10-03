@@ -1,10 +1,7 @@
 package org.http4s.blaze.http.http2
 
 import java.nio.ByteBuffer
-
 import org.http4s.blaze.util.BufferTools
-
-import scala.collection.immutable.VectorBuilder
 import scala.collection.mutable.ArrayBuffer
 
 /** A more humane interface for writing HTTP messages. */
@@ -75,7 +72,7 @@ final class Http2FrameEncoder(
       Http2FrameSerializer.mkHeaderFrame(streamId, priority, endHeaders = true, endStream, padding = 0, rawHeaders)
     } else {
       // need to fragment
-      val acc = new VectorBuilder[ByteBuffer]
+      val acc = new ArrayBuffer[ByteBuffer]
 
       val headersBuf = BufferTools.takeSlice(rawHeaders, limit - headersPrioritySize)
       acc ++= Http2FrameSerializer.mkHeaderFrame(streamId, priority, endHeaders = false, endStream, padding = 0, headersBuf)

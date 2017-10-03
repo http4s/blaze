@@ -14,7 +14,7 @@ class Http2FrameEncoderSpec extends Specification with Mockito with Http2SpecToo
   def ReturnTag(id: Int): Error = Error(Http2Exception.errorGenerator(id.toLong + 25l).goaway())
 
   "Http2FrameEncoder" >> {
-    "not fragments data frames if they fit" >> {
+    "not fragment data frames if they fit into a single frame" >> {
       val tools = new Http2MockTools(true)
       val listener = mockListener()
       val decoder = new Http2FrameDecoder(tools.peerSettings, listener)
@@ -62,7 +62,7 @@ class Http2FrameEncoderSpec extends Specification with Mockito with Http2SpecToo
       decoder.decodeBuffer(data2) must_== ReturnTag(4)
     }
 
-    "not fragment headers if they fit into one frame" >> {
+    "not fragment headers if they fit into a single frame" >> {
       val tools = new Http2MockTools(true) {
         override lazy val headerEncoder: HeaderEncoder = new HeaderEncoder(100) {
           override def encodeHeaders(hs: Seq[(String, String)]): ByteBuffer = zeroBuffer(15)
@@ -107,7 +107,7 @@ class Http2FrameEncoderSpec extends Specification with Mockito with Http2SpecToo
       decoder.decodeBuffer(data) must_== ReturnTag(2)
     }
 
-    "fragment headers considers priority info size" >> {
+    "fragmenting HEADERS frames considers priority info size" >> {
       val tools = new Http2MockTools(true) {
         override lazy val headerEncoder: HeaderEncoder = new HeaderEncoder(100) {
           override def encodeHeaders(hs: Seq[(String, String)]): ByteBuffer = zeroBuffer(10)
