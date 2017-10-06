@@ -6,7 +6,7 @@ import java.util.concurrent.atomic.AtomicInteger
 
 import org.http4s.blaze.channel.nio1.NIO1SocketServerGroup
 import org.http4s.blaze.channel.nio2.NIO2SocketServerGroup
-import org.http4s.blaze.pipeline.{Command, TailStage}
+import org.http4s.blaze.pipeline.{Command, LeafBuilder, TailStage}
 import org.http4s.blaze.util.Execution
 import org.specs2.mutable.Specification
 
@@ -16,14 +16,18 @@ import scala.concurrent.duration._
 
 class ChannelSpec extends Specification {
 
-  class BasicServer(f: BufferPipelineBuilder, nio2: Boolean) {
+  case class ServerPair(group: ServerChannelGroup, channel: ServerChannel)
 
-    def prepare(address: InetSocketAddress): (ServerChannelGroup, ServerChannel) = {
-      val factory = if (nio2) NIO2SocketServerGroup.fixedGroup(workerThreads = 2)
-                    else      NIO1SocketServerGroup.fixedGroup(workerThreads = 2)
+  def bind(nio2: Boolean)(f: BufferPipelineBuilder): ServerPair = {
+    val factory = if (nio2) NIO2SocketServerGroup.fixedGroup(workerThreads = 2)
+                  else      NIO1SocketServerGroup.fixedGroup(workerThreads = 2)
 
-      (factory, factory.bind(address, f).getOrElse(sys.error("Failed to initialize socket at address " + address)))
-    }
+    val channel = factory.bind(new InetSocketAddress(0), f).get // will throw if failed to bind
+    ServerPair(factory, channel)
+  }
+
+  def bindEcho(nio2: Boolean): ServerPair = {
+    bind(nio2){ _ => LeafBuilder(new EchoStage) }
   }
 
   val CommonDelay = 1000
@@ -43,7 +47,7 @@ class ChannelSpec extends Specification {
 
     title should {
       "Bind the port and then be closed" in {
-        val (group,channel) = new BasicServer(_ => new EchoStage, isNIO2).prepare(new InetSocketAddress(0))
+        val ServerPair(group,channel) = bindEcho(isNIO2)
         Thread.sleep(CommonDelay.toLong)
         channel.close()
         group.closeGroup()
@@ -53,7 +57,7 @@ class ChannelSpec extends Specification {
 
       "Execute shutdown hooks" in {
         val i = new AtomicInteger(0)
-        val (group,channel) = new BasicServer(_ => new EchoStage, isNIO2).prepare(new InetSocketAddress(0))
+        val ServerPair(group,channel) = bindEcho(isNIO2)
         channel.addShutdownHook{ () => i.incrementAndGet(); () } must_== true
         channel.close()
         group.closeGroup()
@@ -63,7 +67,7 @@ class ChannelSpec extends Specification {
 
       "Execute shutdown hooks when one throws an exception" in {
         val i = new AtomicInteger(0)
-        val (group,channel) = new BasicServer(_ => new EchoStage, isNIO2).prepare(new InetSocketAddress(0))
+        val ServerPair(group,channel) = bindEcho(isNIO2)
         channel.addShutdownHook{ () => i.incrementAndGet(); () } must_== true
         channel.addShutdownHook{ () => sys.error("Foo") }    must_== true
         channel.addShutdownHook{ () => i.incrementAndGet(); () } must_== true
@@ -77,7 +81,7 @@ class ChannelSpec extends Specification {
 
       "Execute shutdown hooks when the ServerChannelGroup is shutdown" in {
         val i = new AtomicInteger(0)
-        val (group,channel) = new BasicServer(_ => new EchoStage, isNIO2).prepare(new InetSocketAddress(0))
+        val ServerPair(group,channel) = bindEcho(isNIO2)
         channel.addShutdownHook{ () => i.incrementAndGet(); () } must_== true
         group.closeGroup()
 
@@ -87,7 +91,7 @@ class ChannelSpec extends Specification {
       }
 
       "Not register a hook on a shutdown ServerChannel" in {
-        val (group,channel) = new BasicServer(_ => new EchoStage, isNIO2).prepare(new InetSocketAddress(0))
+        val ServerPair(group,channel) = bindEcho(isNIO2)
         channel.close()
         group.closeGroup()
         channel.addShutdownHook { () => sys.error("Blam!") } must_== false
@@ -109,7 +113,7 @@ class ChannelSpec extends Specification {
 
       def writeBuffer(batch: Boolean): Unit = {
         val stage = new ZeroWritingStage(batch)
-        val (group,channel) = new BasicServer(_ => stage, isNIO2).prepare(new InetSocketAddress(0))
+        val ServerPair(group,channel) = bind(isNIO2){ _ => LeafBuilder(stage) }
         val socket = new Socket()
         socket.connect(channel.socketAddress)
 

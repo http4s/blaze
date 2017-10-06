@@ -53,7 +53,7 @@ object NIO2SocketServerGroup {
     new NIO2SocketServerGroup(bufferSize, group.orNull, channelOptions)
 }
 
-final  class NIO2SocketServerGroup private(
+final class NIO2SocketServerGroup private(
     bufferSize: Int,
     group: AsynchronousChannelGroup,
     channelOptions: ChannelOptions)
@@ -68,31 +68,34 @@ final  class NIO2SocketServerGroup private(
     if (group != null) {
       logger.info("Closing NIO2 SocketChannelServerGroup")
       group.shutdownNow()
+    } else {
+      throw new IllegalStateException(
+        "Cannot shut down the system default AsynchronousChannelGroup.")
     }
-    else throw new IllegalStateException("Cannot shut down the system default AsynchronousChannelGroup.")
   }
 
   def bind(address: InetSocketAddress, service: BufferPipelineBuilder): Try[ServerChannel] = {
     Try {
       val ch = AsynchronousServerSocketChannel.open(group).bind(address)
       val serverChannel = new NIO2ServerChannel(ch.getLocalAddress.asInstanceOf[InetSocketAddress], ch, service)
-      serverChannel.run()
+      serverChannel.listen()
       serverChannel
     }
   }
 
-private final class NIO2ServerChannel(
+  private[this] final class NIO2ServerChannel(
     val socketAddress: InetSocketAddress,
     ch: AsynchronousServerSocketChannel,
     service: BufferPipelineBuilder)
   extends ServerChannel {
 
-    override protected def closeChannel(): Unit =
+    override protected def closeChannel(): Unit = {
       if (ch.isOpen()) {
         logger.info(s"Closing NIO2 channel $socketAddress at ${new Date}")
         try ch.close()
         catch { case NonFatal(t) => logger.debug(t)("Failure during channel close") }
       }
+    }
 
     def errorClose(e: Throwable): Unit = {
       logger.error(e)("Server socket channel closed with error.")
@@ -101,25 +104,25 @@ private final class NIO2ServerChannel(
 
     def normalClose(): Unit = {
       try close()
-      catch { case NonFatal(e) => logger.error(e)("Error on NIO2ServerChannel shutdown invoked by listen loop.") }
+      catch { case NonFatal(e) =>
+        logger.error(e)("Error on NIO2ServerChannel shutdown invoked by listen loop.")
+      }
     }
 
-    def run() = listen(ch, service)
-
-    def listen(channel: AsynchronousServerSocketChannel, pipeFactory: BufferPipelineBuilder): Unit = {
-      channel.accept(null: Null, new CompletionHandler[AsynchronousSocketChannel, Null] {
+    def listen(): Unit = {
+      val handler = new CompletionHandler[AsynchronousSocketChannel, Null] {
         override def completed(ch: AsynchronousSocketChannel, attachment: Null): Unit = {
           val address = ch.getRemoteAddress().asInstanceOf[InetSocketAddress]
 
           if (!acceptConnection(address)) ch.close()
           else {
             channelOptions.applyToChannel(ch)
-            pipeFactory(new NIO2SocketConnection(ch))
+            service(new NIO2SocketConnection(ch))
               .base(new ByteBufferHead(ch, bufferSize))
               .sendInboundCommand(Connected)
           }
 
-          listen(channel, pipeFactory) // Continue the circle of life
+          listen() // Continue the circle of life
         }
 
         override def failed(exc: Throwable, attachment: Null): Unit = {
@@ -130,10 +133,13 @@ private final class NIO2ServerChannel(
             case _ =>
               logger.error(exc)(s"Error accepting connection on address $socketAddress")
               // If the server channel cannot go on, disconnect it.
-              if (!channel.isOpen()) errorClose(exc)
+              if (!ch.isOpen()) errorClose(exc)
           }
         }
-      })
+      }
+
+      try ch.accept(null, handler)
+      catch { case NonFatal(t) => handler.failed(t, null) }
     }
   }
 }

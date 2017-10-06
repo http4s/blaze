@@ -61,10 +61,19 @@ final class NIO1SocketServerGroup private(
   t.start()
 
   override def closeGroup(): Unit = {
-    logger.info("Closing NIO1SocketServerGroup")
-    isClosed = true
-    s.wakeup()
-    ()
+    val wake = synchronized {
+      if (isClosed) false
+      else {
+        logger.info("Closing NIO1SocketServerGroup")
+        isClosed = true
+        true
+      }
+    }
+
+    if (wake) {
+      s.wakeup()
+      ()
+    }
   }
 
 
