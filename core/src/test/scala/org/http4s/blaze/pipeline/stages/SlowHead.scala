@@ -1,58 +1,55 @@
 package org.http4s.blaze.pipeline
 package stages
 
-import scala.concurrent.{Promise, Future}
-import scala.util.Random
-import java.util.concurrent.atomic.AtomicBoolean
+import scala.concurrent.{Future, Promise}
 
-import scala.concurrent.ExecutionContext.Implicits.global
+final class SlowHead[O] extends HeadStage[O] {
 
+  override def name: String = "SlowHead"
 
-trait SlowHead[O] extends HeadStage[O] {
+  case class Write(value: O, completion: Promise[Unit])
 
-  def get: O
+  private[this] var pendingWrite: Option[Write] = None
+  private[this] var pendingRead: Option[Promise[O]] = None
 
-  def write(data: O): Unit
+  def takeWrite: Write = synchronized {
+    pendingWrite match {
+      case Some(write) =>
+        pendingWrite = None
+        write
+      case None =>
+        throw new IllegalStateException("Write doesn't exist!")
+    }
+  }
 
-  private val readGuard = new AtomicBoolean(false)
-  private val writeGuard = new AtomicBoolean(false)
+  def takeRead: Promise[O] = synchronized {
+    pendingRead match {
+      case Some(p) =>
+        pendingRead = None
+        p
 
-  def readRequest(size: Int): Future[O] = {
-    if (readGuard.getAndSet(true)) Future(sys.error("Read guard breached!"))
+      case None =>
+        throw new IllegalStateException("Read doesn't exist!")
+    }
+  }
+
+  def readRequest(size: Int): Future[O] = synchronized {
+    if (pendingRead.isDefined) Future.failed(
+      new IllegalStateException("Read guard breached!"))
     else {
       val p = Promise[O]
-      new Thread {
-        override def run(): Unit = {
-          val delay = Random.nextFloat()*10
-          Thread.sleep(delay.toLong)
-          if (readGuard.compareAndSet(true, false)) { p.success(get); () }
-          else { p.completeWith(Future(sys.error("Read guard breached!"))); () }
-        }
-      }.start()
-
+      pendingRead = Some(p)
       p.future
     }
   }
 
-  def writeRequest(data: O): Future[Unit] = {
-    if (writeGuard.getAndSet(true)) Future(sys.error("Write guard breached!"))
+  def writeRequest(data: O): Future[Unit] = synchronized {
+    if (pendingWrite.isDefined) Future.failed(
+      new IllegalStateException("Write guard breached!"))
     else {
-      write(data)
       val p = Promise[Unit]
-      new Thread {
-        override def run(): Unit = {
-          val delay = Random.nextFloat()*20
-          Thread.sleep(delay.toLong)
-          if (writeGuard.compareAndSet(true, false)) {
-            p.success{get; ()}
-            ()
-          }
-          else { p.completeWith(Future(sys.error("Write guard breached!"))); () }
-        }
-      }.start()
-
+      pendingWrite = Some(Write(data, p))
       p.future
     }
-
   }
 }
