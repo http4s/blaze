@@ -13,10 +13,10 @@ import scala.collection.mutable.Map
   * Concurrency is not controlled by this type; it is expected that thread safety
   * will be managed by the [[Http2ConnectionImpl]].
   */
-private abstract class SessionFrameListener[StreamState <: Http2StreamState](
+private abstract class SessionFrameListener(
     mySettings: Http2Settings,
     headerDecoder: HeaderDecoder,
-    activeStreams: Map[Int, StreamState],
+    streamManager: StreamManager[Http2StreamState],
     sessionFlowControl: SessionFlowControl,
     idManager: StreamIdManager)
   extends HeaderAggregatingFrameListener(mySettings, headerDecoder) {
@@ -29,7 +29,7 @@ private abstract class SessionFrameListener[StreamState <: Http2StreamState](
     *
     * @param streamId streamId associated with the new stream
     */
-  protected def newInboundStream(streamId: Int): Option[StreamState]
+  protected def newInboundStream(streamId: Int): Option[Http2StreamState]
 
   /** A Ping frame has been received, either new or an ping ACK */
   override def onPingFrame(ack: Boolean, data: Array[Byte]): Http2Result
@@ -40,7 +40,7 @@ private abstract class SessionFrameListener[StreamState <: Http2StreamState](
   // Concrete methods ////////////////////////////////////////////////////////////////////
 
   override def onCompleteHeadersFrame(streamId: Int, priority: Priority, endStream: Boolean, headers: Headers): Http2Result = {
-    activeStreams.get(streamId) match {
+    streamManager.get(streamId) match {
       case Some(stream) =>
         stream.invokeInboundHeaders(priority, endStream, headers)
 
@@ -48,7 +48,7 @@ private abstract class SessionFrameListener[StreamState <: Http2StreamState](
         if (streamId == 0) {
           Error(PROTOCOL_ERROR.goaway(s"Illegal stream ID for headers frame: 0"))
         } else if (idManager.observeInboundId(streamId)) {
-          if (activeStreams.size >= mySettings.maxConcurrentStreams) {
+          if (streamManager.size >= mySettings.maxConcurrentStreams) {
             // 5.1.2 Stream Concurrency
             //
             // Endpoints MUST NOT exceed the limit set by their peer.  An endpoint
@@ -92,7 +92,7 @@ private abstract class SessionFrameListener[StreamState <: Http2StreamState](
   }
 
   override def onDataFrame(streamId: Int, isLast: Boolean, data: ByteBuffer, flow: Int): Http2Result = {
-    activeStreams.get(streamId) match {
+    streamManager.get(streamId) match {
       case Some(stream) =>
         // the stream will deal with updating the flow windows
         stream.invokeInboundData(isLast, data, flow)
@@ -130,9 +130,7 @@ private abstract class SessionFrameListener[StreamState <: Http2StreamState](
       // We remove it from the active streams first so that we don't send our own RST_STREAM
       // frame as a response. https://tools.ietf.org/html/rfc7540#section-5.4.2
       val ex = Http2Exception.errorGenerator(code).rst(streamId)
-      activeStreams
-        .remove(streamId)
-        .foreach(_.closeWithError(Some(ex)))
+      streamManager.closeStream(streamId, Some(ex))
 
       // We *must not* send a Http2StreamException or else it will be written
       // to the peer potentially resulting a cycle of RST frames.
@@ -151,33 +149,11 @@ private abstract class SessionFrameListener[StreamState <: Http2StreamState](
         val err = FLOW_CONTROL_ERROR.rst(streamId, s"Session WINDOW_UPDATE of invalid size: $sizeIncrement")
         // We don't remove the stream: it is still 'active' and `closeWithError` will trigger sending
         // the RST_STREAM and removing the exception from the active streams collection
-        activeStreams.get(streamId).foreach(_.closeWithError(Some(err)))
+        streamManager.closeStream(streamId, Some(err))
         Error(err)
       }
-    } else if (streamId == 0) {
-      val result = sessionFlowControl.sessionOutboundAcked(sizeIncrement)
-      logger.debug(s"Session flow update: $sizeIncrement. Result: $result")
-      if (result.success) {
-        // TODO: do we need to wake all the open streams in every case? Maybe just when we go from 0 to > 0?
-        activeStreams.values.foreach(_.outboundFlowWindowChanged())
-      }
-      result
     } else {
-      activeStreams.get(streamId) match {
-        case None =>
-          logger.debug(s"Stream WINDOW_UPDATE($sizeIncrement) for closed stream $streamId")
-          Continue // nop
-
-        case Some(stream) =>
-          val result = stream.flowWindow.streamOutboundAcked(sizeIncrement)
-          logger.debug(s"Stream(${stream.streamId}) WINDOW_UPDATE($sizeIncrement). Result: $result")
-
-          if (result.success) {
-            stream.outboundFlowWindowChanged()
-          }
-
-          result
-      }
+      streamManager.windowUpdate(streamId, sizeIncrement)
     }
   }
 }

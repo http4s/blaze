@@ -15,8 +15,12 @@ private trait WriteInterest {
     *       the sessions serial executor.
     */
   def performStreamWrite(): Seq[ByteBuffer]
+
+  /** Called to notify the `WriteInterest` of failure */
+  def writeFailure(t: Throwable): Unit
 }
 
+// TODO: this should get its own file
 /** Represents a place for [[WriteInterest]]s to register their interested in writing data */
 private trait WriteListener {
 
@@ -26,5 +30,12 @@ private trait WriteListener {
     * @param interest the `WriteListener` with an interest in performing a write operation.
     */
   def registerWriteInterest(interest: WriteInterest): Unit
+
+  /** Remove a [[WriteInterest]] from the `WriteListener`
+    *
+    * @param interest to be removed
+    * @return true of the interest was registered and removed, false otherwise.
+    */
+  def removeInterest(interest: WriteInterest): Boolean
 }
 

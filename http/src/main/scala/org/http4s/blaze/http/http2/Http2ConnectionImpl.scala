@@ -124,10 +124,7 @@ private abstract class Http2ConnectionImpl(
   private[this] def handleDrainSession(gracePeriod: Duration): Unit = {
     val deadline = System.currentTimeMillis + gracePeriod.toMillis
     state match {
-      case Closed => () // nop already under control
-      case Draining(d) if d < deadline => ()
-
-      case _ =>
+      case Running =>
         // Start draining: send a GOAWAY and set a timer to shutdown
         val noError = Http2Exception.NO_ERROR.goaway()
         val someNoError = Some(noError)
@@ -142,6 +139,8 @@ private abstract class Http2ConnectionImpl(
         }
         Execution.scheduler.schedule(work, sessionExecutor, gracePeriod)
         ()
+
+      case _ => () // already closing/closed
     }
   }
 
@@ -173,7 +172,8 @@ private abstract class Http2ConnectionImpl(
 
   private[this] val idManager = StreamIdManager(isClient)
 
-  private[this] val activeStreams = new HashMap[Int, Http2StreamStateBase]
+//  private[this] val activeStreams = new HashMap[Int, Http2StreamStateBase]
+  private[this] val streamManager = new StreamManager[Http2StreamStateBase](sessionFlowControl)
 
   // This must be instantiated last since it has a dependency of `activeStreams` and `idManager`.
   private[this] val http2Decoder = newHttp2Decoder(new SessionFrameListenerImpl)
@@ -189,7 +189,7 @@ private abstract class Http2ConnectionImpl(
           // GOAWAY and its our responsibility to signal that the session is now closed.
           writeSuccessful()
           currentState match {
-            case Draining(_) if !awaitingWriteFlush && activeStreams.isEmpty =>
+            case Draining(_) if !awaitingWriteFlush && streamManager.isEmpty` =>
               invokeShutdownWithError(None, "writeController.finish draining")
 
             case Closed if !awaitingWriteFlush =>
@@ -205,8 +205,8 @@ private abstract class Http2ConnectionImpl(
     }
   }
 
-  private class SessionFrameListenerImpl extends SessionFrameListener[Http2StreamStateBase](
-      mySettings, headerDecoder, activeStreams, sessionFlowControl, idManager) {
+  private class SessionFrameListenerImpl extends SessionFrameListener(
+      mySettings, headerDecoder, streamManager, sessionFlowControl, idManager) {
 
     override protected def handlePushPromise(streamId: Int, promisedId: Int, headers: Headers): Http2Result = {
       // TODO: support push promises
@@ -251,16 +251,13 @@ private abstract class Http2ConnectionImpl(
       // but that's OK since we never update settings after the initial handshake.
       if (ack) Continue
       else {
-        var result: MaybeError = Continue
-
         // These two settings require some action if they change
         val initialInitialWindowSize = peerSettings.initialWindowSize
         val initialHeaderTableSize = peerSettings.headerTableSize
 
-        MutableHttp2Settings.updateSettings(peerSettings, settings) match {
-          case Some(ex) => result = Error(ex) // problem with settings
+        val result = MutableHttp2Settings.updateSettings(peerSettings, settings) match {
+          case Some(ex) => Error(ex) // problem with settings
           case None =>
-
             if (peerSettings.headerTableSize != initialHeaderTableSize) {
               http2Encoder.setMaxTableSize(peerSettings.headerTableSize)
             }
@@ -270,16 +267,7 @@ private abstract class Http2ConnectionImpl(
               // https://tools.ietf.org/html/rfc7540#section-6.9.2
               // a receiver MUST adjust the size of all stream flow-control windows that
               // it maintains by the difference between the new value and the old value.
-              activeStreams.values.forall { stream =>
-                val e = stream.flowWindow.peerSettingsInitialWindowChange(diff)
-                if (e != Continue && result == Continue) {
-                  result = e
-                  false
-                } else {
-                  stream.outboundFlowWindowChanged()
-                  true
-                }
-              }
+              streamManager.initialFlowWindowChange(diff)
             }
         }
 
@@ -344,11 +332,9 @@ private abstract class Http2ConnectionImpl(
           case Error(ex: Http2StreamException) =>
             // If the stream is still active, it will write the RST.
             // Otherwise, we need to do it here.
-            activeStreams.get(ex.stream) match {
-              case Some(stream) => stream.closeWithError(Some(ex))
-              case None =>
-                val msg = Http2FrameSerializer.mkRstStreamFrame(ex.stream, ex.code)
-                writeController.writeOutboundData(msg)
+            if (!streamManager.closeStream(ex.stream, Some(ex))) {
+              val msg = Http2FrameSerializer.mkRstStreamFrame(ex.stream, ex.code)
+              writeController.writeOutboundData(msg)
             }
 
           case Error(ex) =>
@@ -364,17 +350,9 @@ private abstract class Http2ConnectionImpl(
     if (state != Closed) {
       currentState = Closed
 
-      def closeAllSessions(ex: Option[Throwable]): Unit = {
-        val streams = activeStreams.values.toVector
-        for (stream <- streams) {
-          activeStreams.remove(stream.streamId)
-          stream.closeWithError(ex)
-        }
-      }
-
       ex match {
         case None | Some(EOF) =>
-          closeAllSessions(None)
+          streamManager.close(None)
           try sessionTerminated()  // If we're not writing any more data, we need to terminate the session
           finally {
             closedPromise.trySuccess(())
@@ -392,7 +370,7 @@ private abstract class Http2ConnectionImpl(
               Http2Exception.INTERNAL_ERROR.goaway("Unhandled internal exception")
           }
 
-          closeAllSessions(Some(ex))
+          streamManager.close(Some(ex))
           val goawayFrame = Http2FrameSerializer.mkGoAwayFrame(idManager.lastInboundStream, http2SessionError)
           // on completion of the write `sessionTerminated()` should be called
           writeController.writeOutboundData(goawayFrame)
