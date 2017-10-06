@@ -1,4 +1,4 @@
-blaze
+blaze [![Build Status](https://travis-ci.org/http4s/blaze.svg?branch=master)](https://travis-ci.org/http4s/blaze) [![Maven Central](https://maven-badges.herokuapp.com/maven-central/org.http4s/blaze-http_2.12/badge.svg)](https://maven-badges.herokuapp.com/maven-central/org.http4s/blaze-http_2.12)
 =====
 
 blaze is a Scala library for building asynchronous pipelines, with a focus on network IO. Its main goal is
