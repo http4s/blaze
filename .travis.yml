@@ -29,10 +29,10 @@ jobs:
   include:
     - &publish
       stage: Publish
-      scala: 2.12.2-bin-typelevel-4
+      scala: 2.12.3
       script: ./travis-scripts/deploy.sh
     - <<: *publish
-      scala: 2.11.11-bin-typelevel-4
+      scala: 2.11.11
       script: ./travis-scripts/deploy.sh
     - <<: *publish
       scala: 2.10.6
