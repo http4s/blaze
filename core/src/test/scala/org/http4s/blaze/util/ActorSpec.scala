@@ -51,8 +51,9 @@ class ActorSpec extends Specification {
         })
       }
 
-      spin(flag.get != null || acc.get == senders*messages)
-      acc.get
+      spin(flag.get != null || acc.get == senders * messages)
+      if (flag.get != null) throw flag.get
+      else acc.get
     }
 
     "Handle all messages" in {
