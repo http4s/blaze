@@ -9,7 +9,7 @@ jdk:
   - oraclejdk8
 env:
   global:
-    secure: irOi2r3fey1ecrQOgaTzUredRTY7vafdcBc+nY6eJRtwN/U3qnmgbbXlmj9QIa2mLmWPpumv1nQjHcNS5XMp+Vluu6y1HAv4wPiOs4FCzqNav4yBWt6LFGRmXV/yatgj4Gzm1sFqmJRg80RfNdc5kuvmxpyOnCJAPPSfh6pBH3k=
+    secure: GFb3iprmlEb7iy5kA2vCdEMgxMOrWrSPnzLMoU9bCase/5UvNXp0quHzwDlLO9oqj2x+VRBRgJNngYyGB5HU0sRjlvgd2FXAwb5xn3LvGHHJB+j0oVxaYO2DuMeRG9MWuds+IN9EPbmbv36lFHc5NzZZG2ZI9v5+wAJjnCy8QOQ=
 
 before_script: sudo chmod +x /usr/local/bin/sbt # Temporary Fix For https://github.com/travis-ci/travis-ci/issues/7703
 script: sbt ++$TRAVIS_SCALA_VERSION test
