@@ -11,7 +11,7 @@ elif [ $TRAVIS_BRANCH != "master" ]; then
 
 else
    sudo chmod +x /usr/local/bin/sbt # Temporary Fix For https://github.com/travis-ci/travis-ci/issues/7703
-   sbt ++$TRAVIS_SCALA_VERSION 'release with-defaults'
+   sbt ++$TRAVIS_SCALA_VERSION publish
 
 fi
 
