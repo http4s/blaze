@@ -1,18 +1,14 @@
 package org.http4s.blaze.util
 
-import java.util.concurrent.atomic.{ AtomicReference, AtomicInteger }
+import java.util.concurrent.{CountDownLatch, TimeUnit}
+import java.util.concurrent.atomic.{AtomicInteger, AtomicReference}
 
 import scala.concurrent.ExecutionContext
 import scala.concurrent.ExecutionContext.global
 import scala.concurrent.duration._
-
 import org.specs2.mutable.Specification
 
 class ActorSpec extends Specification {
-
-  val spinTime = 5.seconds
-
-  def spin(finished: => Boolean) = TimingTools.spin(spinTime)(finished)
 
   case class E(msg: String) extends Exception(msg)
 
@@ -37,94 +33,107 @@ class ActorSpec extends Specification {
 
   "Actor under load" should {
 
-    def load(senders: Int, messages: Int): Int = {
+    def load(senders: Int, messages: Int): Unit = {
       val flag = new AtomicReference[Throwable]()
-      val acc = new AtomicInteger(0)
+      val latch = new CountDownLatch(senders * messages)
 
-      val a = actor(t => flag.set(t), global)
+      val a = actor(t => {
+        flag.set(t)
+        latch.countDown()
+      }, global)
 
       for(i <- 0 until senders) {
         global.execute(new Runnable {
           override def run(): Unit = for (i <- 0 until messages) {
-            a ! Continuation{ _ => acc.incrementAndGet() }
+            a ! Continuation { _ => latch.countDown() }
           }
         })
       }
 
-      spin(flag.get != null || acc.get == senders * messages)
-      if (flag.get != null) throw flag.get
-      else acc.get
+      latch.await(15, TimeUnit.SECONDS)  must beTrue
+      if (flag.get != null) {
+        throw flag.get
+      }
     }
 
     "Handle all messages" in {
-      load(1, 10000) must_== 10000
-      load(10, 1000) must_== 10000
-      load(100, 100) must_== 10000
-      load(1000, 10) must_== 10000
-      load(10000, 1) must_== 10000
+      load(1, 10000)
+      load(10, 1000)
+      load(100, 100)
+      load(1000, 10)
+      load(10000, 1)
+
+      ok // if we get here, everything worked
     }
 
     "Handle messages in order" in {
-      val i = new AtomicInteger(0)
-      val ii = new AtomicInteger(0)
+      val size = 100
+      var thisIteration = -1
+      var outOfOrder = false
+      val latch = new CountDownLatch(size)
       val a = actor(_ => ???, global)
-      for (_ <- 0 until 100) a ! Continuation{ _ => Thread.sleep(1); i.incrementAndGet() }
-      val f = a ! Continuation(_ => ii.set(i.get()))
+      for (i <- 0 until size) a ! Continuation { _ =>
+        // sleep a little to allow things to get out of order they are going to
+        Thread.sleep(1)
 
-      spin(ii.get == 100)
-      ii.get must_== 100
+        if (thisIteration != i - 1) {
+          outOfOrder = true
+        } else {
+          thisIteration += 1
+        }
+
+        latch.countDown()
+      }
+
+      latch.await(10, TimeUnit.SECONDS) must beTrue
+      outOfOrder must beFalse
     }
 
-    "Not stack overflow dewling actors with a trampolining ec" in {
-      val i = new AtomicInteger(100000)
-      case class Bounce(i: Int)
+    "Not stack overflow dueling actors with a trampolining ec" in {
+      val latch = new CountDownLatch(1)
       implicit val ec = Execution.trampoline
 
-      lazy val a1: Actor[Bounce] = new Actor[Bounce](ec) {
-        override protected def act(message: Bounce): Unit = message match {
-          case Bounce(0) => // NOOP
-          case Bounce(_) => a2 ! Bounce(i.decrementAndGet)
+      lazy val a1: Actor[Int] = new Actor[Int](ec) {
+        override protected def act(i: Int): Unit = {
+          if (i == 0) latch.countDown()
+          else  a2 ! (i - 1)
         }
       }
 
-      lazy val a2 = new Actor[Bounce](ec) {
-        override protected def act(message: Bounce): Unit = message match {
-          case Bounce(0) => // NOOP
-          case Bounce(_) => a1 ! Bounce(i.decrementAndGet)
+      lazy val a2: Actor[Int] = new Actor[Int](ec) {
+        override protected def act(i: Int): Unit = {
+          if (i == 0) latch.countDown()
+          else  a2 ! (i - 1)
         }
       }
 
-      a1 ! Bounce(1)    // start
-      spin(i.get == 0)
-      i.get must_== 0
+      a1 ! 100000    // start
+      latch.await(15, TimeUnit.SECONDS) must beTrue
     }
   }
 
   "Actor tell (`!`) pattern" should {
     "Not give exceptions in normal behavior" in {
-      val flag = new AtomicInteger(0)
+      val latch = new CountDownLatch(1)
 
-      actor(_ => flag.set(-1), global) ! Continuation(_ => flag.set(1)) must_== (())
-      spin(flag.get() == 1)
-
-      flag.get must_== 1
+      actor(_ => ???, global) ! Continuation(_ => latch.countDown())
+      latch.await(10, TimeUnit.SECONDS)  must beTrue
     }
 
     "Deal with exceptions properly" in {
-      val flag = new AtomicInteger(0)
-      actor(_ => flag.set(1), global) ! OptMsg(Some(-1))
+      val latch = new CountDownLatch(1)
+      actor(_ => latch.countDown(), global) ! OptMsg(Some(-1))
 
-      spin(flag.get == 1)
-      flag.get must_== 1
+      latch.await(10, TimeUnit.SECONDS) must beTrue
     }
 
     "Deal with exceptions in the exception handling code" in {
-      val i = new AtomicInteger(0)
+      val latch = new CountDownLatch(1)
       val a = actor(_ => sys.error("error"), global) // this will fail the onError
       a ! OptMsg(Some(-1))  // fail the evaluation
-      val f = a ! Continuation(_ => i.set(1))  // If all is ok, the actor will continue
-      spin(i.get == 1)
-      i.get must_== 1
+      a ! Continuation(_ => latch.countDown())  // If all is ok, the actor will continue
+
+      latch.await(10, TimeUnit.SECONDS) must beTrue
     }
   }
 }

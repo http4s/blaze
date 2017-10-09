@@ -41,58 +41,57 @@ class TickWheelExecutorSpec extends Specification {
     }
 
     "Execute a simple task with a short delay" in {
-      val i = new AtomicInteger(0)
+      val l = new CountDownLatch(1)
       ec.schedule(new Runnable {
-        def run(): Unit = { i.set(1) }
+        def run(): Unit = { l.countDown() }
       }, 200.millis)
-      TimingTools.spin(5.seconds)(i.get == 1)
-      i.get() should_== 1
+
+      l.await(10, TimeUnit.SECONDS) must beTrue
+      ok
     }
 
     "Execute a simple task with a multi clock revolution delay" in {
       val ec = new TickWheelExecutor(3, 2.seconds)
-      val i = new AtomicInteger(0)
+      val latch = new CountDownLatch(1)
       ec.schedule(new Runnable {
-        def run(): Unit = { i.set(1) }
+        def run(): Unit = { latch.countDown() }
       }, 7.seconds)
 
-      TimingTools.spin(5.seconds)(false)
-      i.get should_== 0
+      Thread.sleep(4000) // Shouldn't be done yet
+      latch.getCount must_== 1
 
-      TimingTools.spin(10.seconds)(i.get == 1)
-      i.get should_== 1
-
+      latch.await(10, TimeUnit.SECONDS) must beTrue
+      ok
     }
 
     "Execute many delayed tasks" in {
       val ec = new TickWheelExecutor(3, 3.millis)
-      val i = new AtomicInteger(0)
+      val latch = new CountDownLatch(1000)
 
       0 until 1000 foreach { j =>
         ec.schedule(new Runnable {
-          def run(): Unit = { i.incrementAndGet(); () }
+          def run(): Unit = { latch.countDown() }
         }, j.millis)
       }
 
-      TimingTools.spin(10.seconds)(i.get == 1000)
-      i.get() should_== 1000
-
+      latch.await(10, TimeUnit.SECONDS) must beTrue
+      ok
     }
 
     "Prune many tasks" in {
       val ec = new TickWheelExecutor(3, 10.millis)
-      val i = new AtomicInteger(0)
+      val latch = new CountDownLatch(500)
 
       val cancels = 0 until 1000 map { j =>
         val c = ec.schedule(new Runnable {
-          def run(): Unit = { i.incrementAndGet(); () }
+          def run(): Unit = { latch.countDown() }
         }, (j+500).millis)
         c
       }
       cancels.zipWithIndex.foreach{ case (r, i) => if (i % 2 == 0) r.cancel() }
 
-      TimingTools.spin(10.seconds)(i.get == 500)
-      i.get() should_== 500
+      latch.await(10, TimeUnit.SECONDS) must beTrue
+      ok
     }
 
     "Gracefully handle exceptions" in {

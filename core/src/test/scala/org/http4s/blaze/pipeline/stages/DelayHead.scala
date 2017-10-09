@@ -1,14 +1,16 @@
 package org.http4s.blaze.pipeline.stages
 
-import java.util.concurrent.TimeUnit
+import java.util.concurrent.{ScheduledThreadPoolExecutor, TimeUnit}
 
 import scala.concurrent.duration.Duration
 import org.http4s.blaze.pipeline.{Command, HeadStage}
-import scala.concurrent.{Promise, Future}
-import org.http4s.blaze.util.TimingTools
+
+import scala.concurrent.{Future, Promise}
+
 import scala.collection.mutable
 
 abstract class DelayHead[I](delay: Duration) extends HeadStage[I] {
+  import DelayHead.highresTimer
 
   def next(): I
 
@@ -35,7 +37,7 @@ abstract class DelayHead[I](delay: Duration) extends HeadStage[I] {
 
     rememberPromise(p)
 
-    TimingTools.highres.schedule(new Runnable {
+    highresTimer.schedule(new Runnable {
       def run(): Unit = {
         p.trySuccess(next())
         unqueue(p)
@@ -48,7 +50,7 @@ abstract class DelayHead[I](delay: Duration) extends HeadStage[I] {
 
   override def writeRequest(data: I): Future[Unit] = {
     val p = Promise[Unit]
-    TimingTools.highres.schedule(new Runnable {
+    highresTimer.schedule(new Runnable {
       def run(): Unit = {
         p.trySuccess(())
         unqueue(p)
@@ -67,4 +69,8 @@ abstract class DelayHead[I](delay: Duration) extends HeadStage[I] {
     }
     super.stageShutdown()
   }
+}
+
+private object DelayHead {
+  private val highresTimer = new ScheduledThreadPoolExecutor(1)
 }
