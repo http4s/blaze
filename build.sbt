@@ -9,6 +9,16 @@ lazy val blaze = project
 lazy val core = Project("blaze-core",
   file("core"),
   settings = publishing ++ mimaSettings ++ dependencies)
+  .enablePlugins(BuildInfoPlugin)
+  .settings(
+    buildInfoPackage := "org.http4s.blaze",
+    buildInfoKeys := Seq[BuildInfoKey](
+      version,
+      scalaVersion,
+      git.gitHeadCommit
+    ),
+    buildInfoOptions += BuildInfoOption.BuildTime
+  )
 
 lazy val http = Project("blaze-http",
   file("http"),
