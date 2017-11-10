@@ -11,8 +11,6 @@ lazy val commonSettings = Seq(
   //  as discussed in http://www.scala-archive.org/Scaladoc-2-11-quot-throws-tag-quot-cannot-find-any-member-to-link-td4641850.html
 )
 
-
-
 /* Projects */
 lazy val blaze = project.in(file("."))
     .enablePlugins(DisablePublishingPlugin)
@@ -20,6 +18,7 @@ lazy val blaze = project.in(file("."))
     .aggregate(core, http, examples)
 
 lazy val core = Project("blaze-core", file("core"))
+  .enablePlugins(BuildInfoPlugin)
   .settings(commonSettings)
   .settings(
     libraryDependencies ++= Seq(log4s),
@@ -27,7 +26,14 @@ lazy val core = Project("blaze-core", file("core"))
       specs2,
       specs2Mock,
       logbackClassic
-    ).map(_ % Test)
+    ).map(_ % Test),
+    buildInfoPackage := "org.http4s.blaze",
+    buildInfoKeys := Seq[BuildInfoKey](
+      version,
+      scalaVersion,
+      git.gitHeadCommit
+    ),
+    buildInfoOptions += BuildInfoOption.BuildTime
   )
 
 lazy val http = Project("blaze-http", file("http"))
