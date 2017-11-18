@@ -15,11 +15,11 @@ class Http2FrameEncoderSpec extends Specification with Mockito with Http2SpecToo
 
   "Http2FrameEncoder" >> {
     "not fragment data frames if they fit into a single frame" >> {
-      val tools = new Http2MockTools(true)
+      val tools = new MockTools(true)
       val listener = mockListener()
-      val decoder = new Http2FrameDecoder(tools.peerSettings, listener)
+      val decoder = new Http2FrameDecoder(tools.remoteSettings, listener)
 
-      tools.peerSettings.maxFrameSize = 15 // technically an illegal size...
+      tools.remoteSettings.maxFrameSize = 15 // technically an illegal size...
 
       // Frame 1 `endStream = true`
       val data1 = BufferTools.joinBuffers(tools.frameEncoder.dataFrame(1, true, zeroBuffer(15)))
@@ -33,11 +33,11 @@ class Http2FrameEncoderSpec extends Specification with Mockito with Http2SpecToo
     }
 
     "fragments data frames if they exceed the mySettings.maxFrameSize" >> {
-      val tools = new Http2MockTools(true)
+      val tools = new MockTools(true)
       val listener = mockListener()
-      val decoder = new Http2FrameDecoder(tools.peerSettings, listener)
+      val decoder = new Http2FrameDecoder(tools.remoteSettings, listener)
 
-      tools.peerSettings.maxFrameSize = 10 // technically an illegal size...
+      tools.remoteSettings.maxFrameSize = 10 // technically an illegal size...
 
       // `endStream = true`
       val data1 = BufferTools.joinBuffers(tools.frameEncoder.dataFrame(1, true, zeroBuffer(15)))
@@ -63,15 +63,15 @@ class Http2FrameEncoderSpec extends Specification with Mockito with Http2SpecToo
     }
 
     "not fragment headers if they fit into a single frame" >> {
-      val tools = new Http2MockTools(true) {
+      val tools = new MockTools(true) {
         override lazy val headerEncoder: HeaderEncoder = new HeaderEncoder(100) {
           override def encodeHeaders(hs: Seq[(String, String)]): ByteBuffer = zeroBuffer(15)
         }
       }
       val listener = mockListener()
-      val decoder = new Http2FrameDecoder(tools.peerSettings, listener)
+      val decoder = new Http2FrameDecoder(tools.remoteSettings, listener)
 
-      tools.peerSettings.maxFrameSize = 15 // technically an illegal size...
+      tools.remoteSettings.maxFrameSize = 15 // technically an illegal size...
       // `endStream = true`
       val data1 = BufferTools.joinBuffers(tools.frameEncoder.headerFrame(1, Priority.NoPriority, true, Nil))
 
@@ -86,15 +86,15 @@ class Http2FrameEncoderSpec extends Specification with Mockito with Http2SpecToo
     }
 
     "fragment headers if they don't fit into one frame" >> {
-      val tools = new Http2MockTools(true) {
+      val tools = new MockTools(true) {
         override lazy val headerEncoder: HeaderEncoder = new HeaderEncoder(100) {
           override def encodeHeaders(hs: Seq[(String, String)]): ByteBuffer = zeroBuffer(15)
         }
       }
       val listener = mockListener()
-      val decoder = new Http2FrameDecoder(tools.peerSettings, listener)
+      val decoder = new Http2FrameDecoder(tools.remoteSettings, listener)
 
-      tools.peerSettings.maxFrameSize = 10 // technically an illegal size...
+      tools.remoteSettings.maxFrameSize = 10 // technically an illegal size...
       val data = BufferTools.joinBuffers(tools.frameEncoder.headerFrame(1, Priority.NoPriority, true, Nil))
 
       listener.inHeaderSequence returns false
@@ -108,15 +108,15 @@ class Http2FrameEncoderSpec extends Specification with Mockito with Http2SpecToo
     }
 
     "fragmenting HEADERS frames considers priority info size" >> {
-      val tools = new Http2MockTools(true) {
+      val tools = new MockTools(true) {
         override lazy val headerEncoder: HeaderEncoder = new HeaderEncoder(100) {
           override def encodeHeaders(hs: Seq[(String, String)]): ByteBuffer = zeroBuffer(10)
         }
       }
       val listener = mockListener()
-      val decoder = new Http2FrameDecoder(tools.peerSettings, listener)
+      val decoder = new Http2FrameDecoder(tools.remoteSettings, listener)
 
-      tools.peerSettings.maxFrameSize = 10 // technically an illegal size...
+      tools.remoteSettings.maxFrameSize = 10 // technically an illegal size...
       val p = Priority.Dependent(2, true, 12)
       val data = BufferTools.joinBuffers(tools.frameEncoder.headerFrame(1, p, true, Nil))
 

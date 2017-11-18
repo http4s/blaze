@@ -6,11 +6,11 @@ import scala.collection.mutable.ArrayBuffer
 
 /** A more humane interface for writing HTTP messages. */
 final class Http2FrameEncoder(
-    peerSettings: Http2Settings,
-    headerEncoder: HeaderEncoder) {
+   remoteSettings: Http2Settings,
+   headerEncoder: HeaderEncoder) {
 
   // Just a shortcut
-  private[this] def maxFrameSize: Int = peerSettings.maxFrameSize
+  private[this] def maxFrameSize: Int = remoteSettings.maxFrameSize
 
   /** Set the max table size of the header encoder */
   def setMaxTableSize(size: Int): Unit =
@@ -31,6 +31,10 @@ final class Http2FrameEncoder(
   /** Generate a ping ack frame with the specified data */
   def pingAck(data: Array[Byte]): ByteBuffer =
     Http2FrameSerializer.mkPingFrame(true, data)
+
+  /** Generate a RST frame with the specified stream id and error code */
+  def rstFrame(streamId: Int, errorCode: Long): ByteBuffer =
+    Http2FrameSerializer.mkRstStreamFrame(streamId, errorCode)
 
   /** Generate stream data frame(s) for the specified data
     *
