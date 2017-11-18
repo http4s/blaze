@@ -61,6 +61,7 @@ lazy val examples = Project("blaze-examples",file("examples"))
     // necessary to add ALPN classes to boot classpath
     fork := true,
     // Adds ALPN to the boot classpath for Http2 support
+    libraryDependencies += alpn_boot,
     javaOptions in run ++= addAlpnPath((managedClasspath in Runtime).value)
 
   ).dependsOn(http)
@@ -68,11 +69,11 @@ lazy val examples = Project("blaze-examples",file("examples"))
 
 /* Helper Functions */
 
-def addAlpnPath(attList : Keys.Classpath): Seq[String] = {
+def addAlpnPath(attList: Keys.Classpath): Seq[String] = {
   for {
     file <- attList.map(_.data)
     path = file.getAbsolutePath if path.contains("jetty.alpn")
-  } yield { println(s"Alpn patth: $path"); "-Xbootclasspath/p:" + path}
+  } yield { println(s"Alpn path: $path"); "-Xbootclasspath/p:" + path}
 }
 
 addCommandAlias("validate", ";test ;mimaReportBinaryIssues")

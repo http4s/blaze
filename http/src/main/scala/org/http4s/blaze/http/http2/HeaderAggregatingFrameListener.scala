@@ -18,7 +18,7 @@ import Http2Exception.PROTOCOL_ERROR
   * @note This class is not 'thread safe' and should be treated accordingly.
   */
 private[http2] abstract class HeaderAggregatingFrameListener(
-    inboundSettings: Http2Settings,
+    localSettings: Http2Settings,
     headerDecoder: HeaderDecoder)
   extends Http2FrameListener {
 
@@ -84,7 +84,7 @@ private[http2] abstract class HeaderAggregatingFrameListener(
       Error(PROTOCOL_ERROR.goaway(
         s"Received HEADERS frame while in in headers sequence. Stream id " +
           Http2FrameDecoder.hexStr(streamId)))
-    } else if (buffer.remaining > inboundSettings.maxHeaderListSize) {
+    } else if (buffer.remaining > localSettings.maxHeaderListSize) {
       headerSizeError(buffer.remaining, streamId)
     } else if (endHeaders) {
       val r = headerDecoder.decode(buffer, streamId, true)
@@ -106,7 +106,7 @@ private[http2] abstract class HeaderAggregatingFrameListener(
     buffer: ByteBuffer
   ): Http2Result = {
 
-    if (inboundSettings.maxHeaderListSize < buffer.remaining) {
+    if (localSettings.maxHeaderListSize < buffer.remaining) {
       headerSizeError(buffer.remaining, streamId)
     } else if (endHeaders) {
       val r = headerDecoder.decode(buffer, streamId, true)
@@ -132,7 +132,7 @@ private[http2] abstract class HeaderAggregatingFrameListener(
       Error(PROTOCOL_ERROR.goaway(msg))
     } else {
       val totalSize = buffer.remaining + hInfo.buffer.remaining
-      if (inboundSettings.maxHeaderListSize < totalSize) {
+      if (localSettings.maxHeaderListSize < totalSize) {
         headerSizeError(totalSize, streamId)
       } else {
         val newBuffer = BufferTools.concatBuffers(hInfo.buffer, buffer)
@@ -160,7 +160,7 @@ private[http2] abstract class HeaderAggregatingFrameListener(
 
   private[this] def headerSizeError(size: Int, streamId: Int): Error = {
     val msg = s"Stream(${Http2FrameDecoder.hexStr(streamId)}) sent too large of " +
-      s"a header block. Received: $size. Limit: ${inboundSettings.maxHeaderListSize}"
+      s"a header block. Received: $size. Limit: ${localSettings.maxHeaderListSize}"
     Error(PROTOCOL_ERROR.goaway(msg))
   }
 }

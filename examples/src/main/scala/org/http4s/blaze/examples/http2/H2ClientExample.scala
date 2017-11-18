@@ -3,21 +3,19 @@ package org.http4s.blaze.examples.http2
 import java.io.{InputStream, InputStreamReader}
 import java.nio.ByteBuffer
 import java.nio.charset.StandardCharsets
-import java.util.zip.GZIPInputStream
+import java.util.zip.InflaterInputStream
 
 import org.http4s.blaze.http.HttpClient
 import org.http4s.blaze.http.http2.client.Http2Client
-import org.http4s.blaze.util.Execution
 
 import scala.annotation.tailrec
 import scala.concurrent.{Await, Future}
-//import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration._
 
 
 abstract class H2ClientExample(count: Int, timeout: Duration) {
 
-  protected implicit val ec = Execution.trampoline
+  protected implicit val ec = scala.concurrent.ExecutionContext.global
 
   lazy val h2Clients: Array[HttpClient] = Array.tabulate(3){_ => Http2Client.newH2Client() }
 
@@ -28,7 +26,7 @@ abstract class H2ClientExample(count: Int, timeout: Duration) {
         else -1
       }
     }
-    val reader = new InputStreamReader(new GZIPInputStream(is))
+    val reader = new InputStreamReader(new InflaterInputStream(is))
 
     val acc = new StringBuilder
 
@@ -59,7 +57,8 @@ abstract class H2ClientExample(count: Int, timeout: Duration) {
     Http2Client.defaultH2Client.GET("https://twitter.com/") { resp =>
 //      println(s"Response: $resp")
       resp.body.accumulate().map { bytes =>
-        println(s"Finished response $tag of size ${bytes.remaining()}")
+
+        println(s"Finished response $tag of size ${bytes.remaining()}: ${resp.headers}")
         gunzipString(bytes)
       }
     }

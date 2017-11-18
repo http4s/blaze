@@ -23,6 +23,7 @@ object Command {
     * shutdown. Any following reads or writes will result in an exception, [[EOF]],
     * a general Exception signaling the stage is not connected, or otherwise.
     */
+  // TODO: can we get rid of this?
   case object Disconnected extends InboundCommand
 
   /** Signals the the stages a desire to flush the pipeline. This is just a suggestion

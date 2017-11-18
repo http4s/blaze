@@ -5,14 +5,10 @@ import org.http4s.blaze.http.http2.Http2Exception.{FLOW_CONTROL_ERROR, PROTOCOL_
 import org.log4s.getLogger
 
 
-/** Flow control representation of a Http2 Session
-  *
-  * @param localSettings HTTP2 settings to be used for creating new stream inbound windows
-  * @param peerSettings HTTP2 settings to be used for creating new stream outbound windows
-  */
-private abstract class SessionFlowControlImpl(
-  localSettings: Http2Settings,
-  peerSettings: Http2Settings
+/** Flow control representation of a Http2 Session */
+private class SessionFlowControlImpl(
+  flowStrategy: FlowStrategy,
+  session: SessionCore
 ) extends SessionFlowControl {
 
   private[this] val logger = getLogger
@@ -21,18 +17,44 @@ private abstract class SessionFlowControlImpl(
   private[this] var _sessionOutboundWindow: Int = DefaultSettings.INITIAL_WINDOW_SIZE
   private[this] var _sessionUnconsumedInbound: Int = 0
 
-  /** Called when bytes have been consumed that are not associated with a live stream id.
-    *
-    * @param consumed the number of bytes consumed.
-    */
-  protected def onSessonBytesConsumed(consumed: Int): Unit
+  // exposed for testing
+  protected def onSessonBytesConsumed(consumed: Int): Unit = {
+    val sessionUpdate = flowStrategy.checkSession(this)
+    if (sessionUpdate > 0) {
+      sessionInboundAcked(sessionUpdate)
+      sendSessionWindowUpdate(sessionUpdate)
+    }
+  }
+
+  // Exposed for testing
+  protected def sendSessionWindowUpdate(updateSize: Int): Unit = {
+    val frame = session.http2Encoder.sessionWindowUpdate(updateSize)
+    session.writeController.write(frame)
+  }
 
   /** Called when bytes have been consumed from a live stream
     *
     * @param stream stream associated with the consumed bytes
     * @param consumed
     */
-  protected def onStreamBytesConsumed(stream: StreamFlowWindow, consumed: Int): Unit
+  protected def onStreamBytesConsumed(stream: StreamFlowWindow, consumed: Int): Unit = {
+    val update = flowStrategy.checkStream(this, stream)
+    if (update.session > 0) {
+      sessionInboundAcked(update.session)
+      session.writeController.write(session.http2Encoder.sessionWindowUpdate(update.session))
+    }
+
+    if (update.stream > 0) {
+      stream.streamInboundAcked(update.stream)
+      session.writeController.write(session.http2Encoder.streamWindowUpdate(stream.streamId, update.stream))
+    }
+  }
+
+  // Exposed for testing
+  protected def sendStreamWindowUpdate(stream: Int, updateSize: Int): Unit = {
+    val frame = session.http2Encoder.streamWindowUpdate(stream, updateSize)
+    session.writeController.write(frame)
+  }
 
   // Concrete methods /////////////////////////////////////////////////////////////
 
@@ -119,8 +141,8 @@ private abstract class SessionFlowControlImpl(
   private[this] final class StreamFlowWindowImpl(val streamId: Int)
     extends StreamFlowWindow {
 
-    private[this] var _streamInboundWindow: Int = localSettings.initialWindowSize
-    private[this] var _streamOutboundWindow: Int = peerSettings.initialWindowSize
+    private[this] var _streamInboundWindow: Int = session.localSettings.initialWindowSize
+    private[this] var _streamOutboundWindow: Int = session.remoteSettings.initialWindowSize
     private[this] var _streamUnconsumedInbound: Int = 0
 
     override def sessionFlowControl: SessionFlowControl = SessionFlowControlImpl.this

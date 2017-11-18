@@ -5,7 +5,7 @@ import java.nio.ByteBuffer
 import org.http4s.blaze.http.http2._
 import org.http4s.blaze.http.http2.Http2Settings.Setting
 import org.http4s.blaze.http.http2.SettingsDecoder.SettingsFrame
-import org.http4s.blaze.pipeline.stages.OneMessageStage
+import org.http4s.blaze.pipeline.stages.{BasicTail, OneMessageStage}
 import org.http4s.blaze.pipeline.{Command, LeafBuilder, TailStage}
 import org.http4s.blaze.util.{BufferTools, Execution}
 
@@ -46,27 +46,25 @@ private[http] class Http2TlsClientHandshaker(
   override protected def handshakeComplete(
       peerSettings: MutableHttp2Settings,
       data: ByteBuffer): Future[Http2ClientConnection] = {
-    val http2Encoder = new Http2FrameEncoder(peerSettings, new HeaderEncoder(peerSettings.headerTableSize))
+
+    val tail = new BasicTail[ByteBuffer]("http2cClientTail")
     val h2ClientStage =
       new Http2ClientConnectionImpl(
+        tail,
         mySettings,
         peerSettings,
-        http2Encoder,
-        new HeaderDecoder(
-          mySettings.maxHeaderListSize,
-          /*discard overflow headers*/ true,
-          mySettings.headerTableSize),
         flowStrategy,
         executor
       )
 
-    var newTail = LeafBuilder(h2ClientStage)
+    var newTail = LeafBuilder(tail)
 
     if (data.hasRemaining) {
       newTail = newTail.prepend(new OneMessageStage[ByteBuffer](data))
     }
 
     this.replaceTail(newTail, true)
+    h2ClientStage.startSession()
 
     Future.successful(h2ClientStage)
   }

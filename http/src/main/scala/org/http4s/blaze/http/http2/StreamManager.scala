@@ -1,14 +1,20 @@
 package org.http4s.blaze.http.http2
 
+import org.http4s.blaze.http._
+
 import scala.collection.mutable.HashMap
+import scala.concurrent.{Future, Promise}
 
-class StreamManager[+StreamState <: Http2StreamState](
-                                                    sessionFlowControl: SessionFlowControl
-                                                    ) {
-
+private abstract class StreamManager(
+  session: SessionCore,
+  val idManager: StreamIdManager
+) {
   private[this] val logger = org.log4s.getLogger
-  private[this] val streams = new HashMap[Int, StreamState]
+  private[this] val streams = new HashMap[Int, Http2StreamState]
 
+  private[this] var drainingP: Option[Promise[Unit]] = None
+
+  // TODO: we use this to determine status, and that isn't thread safe
   def size: Int = streams.size
 
   def isEmpty: Boolean = streams.isEmpty
@@ -31,14 +37,52 @@ class StreamManager[+StreamState <: Http2StreamState](
     result
   }
 
-  def get(id: Int): Option[StreamState] =
+  final def get(id: Int): Option[Http2StreamState] =
     streams.get(id)
 
-  def close(cause: Option[Throwable]): Unit = {
+  final def close(cause: Option[Throwable]): Unit = {
+    // Need to set the closed state
+    drainingP match {
+      case Some(p) =>
+        p.trySuccess(())
+
+      case None =>
+        val p = Promise[Unit]
+        p.trySuccess(())
+        drainingP = Some(p)
+    }
+
     val ss = streams.values.toVector
     for (stream <- ss) {
       streams.remove(stream.streamId)
       stream.closeWithError(cause)
+    }
+  }
+
+  /** Optionally create and initialize a new inbound stream
+    *
+    * `None` signals that the stream is to be refused with a RST(REFUSED_STREAM) reply.
+    *
+    * @param streamId streamId associated with the new stream
+    */
+  final def newInboundStream(streamId: Int): Option[Http2StreamState] = {
+    if (drainingP.isDefined) None
+    else mkInboundStream(streamId)
+  }
+
+  // TODO: should we make this `registerInboundStream` for symmetry?
+  /** Optionally create a new inbound stream */
+  protected def mkInboundStream(streamId: Int): Option[Http2StreamState]
+
+  final def registerOutboundStream(state: Http2StreamState): Option[Int] = {
+    if (drainingP.isDefined) None
+    else {
+      val id = idManager.takeOutboundId()
+      id match {
+        case Some(streamId) => assert(streams.put(streamId, state).isEmpty)
+        case None => ()
+      }
+      id
     }
   }
 
@@ -49,12 +93,61 @@ class StreamManager[+StreamState <: Http2StreamState](
     * @return true if the stream existed and was closed, false otherwise
     */
   def closeStream(id: Int, cause: Option[Throwable]): Boolean = {
-    ???
+    logger.debug(s"Closing stream ($id): $cause")
+    streams.remove(id) match {
+      case Some(stream) =>
+        // It is the streams job to call `streamFinished`
+        stream.closeWithError(cause)
+        true
+
+      case None =>
+        false
+    }
   }
 
-  def windowUpdate(streamId: Int, sizeIncrement: Int): MaybeError = {
+  /** Called by a Http2StreamState to signal that it is finished.
+    *
+    * @param stream
+    * @param cause
+    */
+  final def streamFinished(stream: Http2StreamState, cause: Option[Http2Exception]): Unit = {
+    val streamId = stream.streamId
+    val wasInMap = streams.remove(streamId).isDefined
+
+    cause match {
+      case Some(ex: Http2StreamException) if wasInMap =>
+        logger.debug(ex)(s"Sending stream ($streamId) RST")
+        val frame = session.http2Encoder.rstFrame(streamId, ex.code)
+        session.writeController.write(frame)
+
+      case Some(ex: Http2StreamException) =>
+        logger.debug(ex)(s"Stream($streamId) closed with RST, not sending reply")
+
+      case Some(ex: Http2SessionException) =>
+        logger.info(s"Stream($streamId) finished with session exception")
+        session.invokeShutdownWithError(cause, "streamFinished")
+
+      case None => // nop
+    }
+
+    // See if we've drained all the streams
+    drainingP match {
+      case Some(p) if streams.isEmpty => p.trySuccess(())
+      case _ => () // nop
+    }
+  }
+
+  /** Handle a valid and complete PUSH_PROMISE frame */
+  final def handlePushPromise(streamId: Int, promisedId: Int, headers: Headers): Http2Result = {
+    // TODO: support push promises
+    val frame =session.http2Encoder.rstFrame(promisedId, Http2Exception.REFUSED_STREAM.code)
+    session.writeController.write(frame)
+    Continue
+  }
+
+  final def windowUpdate(streamId: Int, sizeIncrement: Int): MaybeError = {
     if (streamId == 0) {
-      val result = sessionFlowControl.sessionOutboundAcked(sizeIncrement)
+      val result = session.sessionFlowControl.sessionOutboundAcked(sizeIncrement)
       logger.debug(s"Session flow update: $sizeIncrement. Result: $result")
       if (result.success) {
         // TODO: do we need to wake all the open streams in every case? Maybe just when we go from 0 to > 0?
@@ -77,6 +170,33 @@ class StreamManager[+StreamState <: Http2StreamState](
 
           result
       }
+    }
+  }
+
+  final def goaway(lastHandledOutboundStream: Int, message: String): Future[Unit] = {
+    drainingP match {
+      case Some(p) =>
+        logger.debug(s"Received a second GOAWAY($lastHandledOutboundStream, $message")
+        // TODO: should we consider the connection borked?
+        p.future
+
+      case None =>
+        logger.debug(s"StreamManager.goaway($lastHandledOutboundStream, $message)")
+        val unhandledStreams = streams.filterKeys { id =>
+          lastHandledOutboundStream < id && idManager.isOutboundId(id)
+        }
+
+        unhandledStreams.foreach { case (id, stream) =>
+          // We remove the stream first so that we don't send a RST back to
+          // the peer, since they have discarded the stream anyway.
+          streams.remove(id)
+          val ex = Http2Exception.REFUSED_STREAM.rst(id, message)
+          stream.closeWithError(Some(ex))
+        }
+
+        val p = Promise[Unit]
+        drainingP = Some(p)
+        p.future
     }
   }
 }

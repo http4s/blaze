@@ -47,6 +47,16 @@ abstract class PriorKnowledgeHandshaker[T](mySettings: ImmutableHttp2Settings) e
 
       // still need more data
       case size if acc.remaining() < size =>
+        logger.debug {
+          val b = acc.duplicate()
+          val sb = new StringBuilder
+          while (b.hasRemaining) {
+            sb.append(b.get.toChar)
+          }
+
+          s"Insufficient data: ${sb.result()}"
+        }
+
         channelRead().flatMap { buff =>
           receiveSettings(BufferTools.concatBuffers(acc, buff))
         }

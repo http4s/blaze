@@ -12,9 +12,7 @@ import org.http4s.blaze.util.BufferTools
 import scala.concurrent.{ExecutionContext, Future, Promise}
 
 private abstract class Http2StreamState(
-    writeListener: WriteListener,
-    http2FrameEncoder: Http2FrameEncoder,
-    sessionExecutor: ExecutionContext)
+    session: SessionCore)
   extends HeadStage[StreamMessage] with WriteInterest {
 
   // Can potentially be lazy, such as in an outbound stream
@@ -23,12 +21,13 @@ private abstract class Http2StreamState(
   // Can potentially be lazy, such as in an outbound stream
   def flowWindow: StreamFlowWindow
 
-  /** Deals with stream related errors */
-  protected def onStreamFinished(ex: Option[Http2Exception]): Unit
-
-  protected def maxFrameSize: Int
-
   override def name: String = s"Http2Stream($streamId)"
+
+
+  /** Called to notify the `WriteInterest` of failure */
+  override def writeFailure(t: Throwable): Unit = {
+    session.invokeShutdownWithError(Some(t), "Http2StreamState.writeFailure")
+  }
 
   // State associated with the streams inbound data flow
   private[this] val pendingInboundMessages = new util.ArrayDeque[StreamMessage]
@@ -58,7 +57,7 @@ private abstract class Http2StreamState(
   override def readRequest(size: Int): Future[StreamMessage] = {
     val p = Promise[StreamMessage]
 
-    sessionExecutor.execute(new Runnable {
+    session.serialExecutor.execute(new Runnable {
       def run(): Unit = {
         if (pendingRead != null) {
           // TODO: should fail the stream, send RST, etc.
@@ -90,7 +89,7 @@ private abstract class Http2StreamState(
     val p = Promise[Unit]
 
     // Move the work into the session executor
-    sessionExecutor.execute(new Runnable {
+    session.serialExecutor.execute(new Runnable {
       override def run(): Unit = invokeStreamWrite(msg, p)
     })
 
@@ -118,7 +117,7 @@ private abstract class Http2StreamState(
 
       // If this is a flow controlled frame and we can't write any bytes, don't register an interest
       if (msg.flowBytes == 0 || flowWindow.outboundWindowAvailable) {
-        writeListener.registerWriteInterest(this)
+        session.writeController.registerWriteInterest(this)
       }
     }
   }
@@ -129,7 +128,7 @@ private abstract class Http2StreamState(
   def outboundFlowWindowChanged(): Unit = {
     // TODO: we may already be registered. Maybe keep track of that state? Maybe also want to unregister.
     if (writePromise != null && flowWindow.outboundWindowAvailable) {
-      writeListener.registerWriteInterest(this)
+      session.writeController.registerWriteInterest(this)
     }
   }
 
@@ -143,21 +142,21 @@ private abstract class Http2StreamState(
 
     pendingOutboundFrame match {
       case HeadersFrame(priority, endStream, hs) =>
-        val data = http2FrameEncoder.headerFrame(streamId, priority, endStream, hs)
+        val data = session.http2Encoder.headerFrame(streamId, priority, endStream, hs)
         writePromise.trySuccess(())
         pendingOutboundFrame = null
         writePromise = null
         data
 
       case DataFrame(endStream, data) =>
-        val requested = math.min(maxFrameSize, data.remaining)
+        val requested = math.min(session.remoteSettings.maxFrameSize, data.remaining)
         val allowedBytes = flowWindow.outboundRequest(requested)
 
         logger.debug(s"Allowed: $allowedBytes, data: $pendingOutboundFrame")
 
         if (allowedBytes == pendingOutboundFrame.flowBytes) {
           // Writing the whole message
-          val buffers = http2FrameEncoder.dataFrame(streamId, endStream, data)
+          val buffers = session.http2Encoder.dataFrame(streamId, endStream, data)
           pendingOutboundFrame = null
           writePromise.trySuccess(())
           writePromise = null
@@ -169,11 +168,11 @@ private abstract class Http2StreamState(
         } else {
           // We take a chunk, and then reregister ourselves with the listener
           val slice = BufferTools.takeSlice(data, allowedBytes)
-          val buffers = http2FrameEncoder.dataFrame(streamId, endStream = false, slice)
+          val buffers = session.http2Encoder.dataFrame(streamId, endStream = false, slice)
 
           if (flowWindow.streamOutboundWindow > 0) {
             // We were not limited by the flow window so signal interest in another write cycle.
-            writeListener.registerWriteInterest(this)
+            session.writeController.registerWriteInterest(this)
           }
 
           buffers
@@ -182,7 +181,7 @@ private abstract class Http2StreamState(
   }
 
   override def outboundCommand(cmd: OutboundCommand): Unit =
-    sessionExecutor.execute(new Runnable {
+    session.serialExecutor.execute(new Runnable {
       def run(): Unit = cmd match {
         case Command.Flush | Command.Connect =>
           () // nop
@@ -249,7 +248,7 @@ private abstract class Http2StreamState(
 
   //////////////////////////////////////////////////////////////////////
 
-  // Shuts down the stream and calls `onStreamFinished` with any potential errors.
+  // Shuts down the stream and calls `StreamManager.streamFinished` with any potential errors.
   // WARNING: this must be called from within the session executor.
   def closeWithError(t: Option[Throwable]): Unit = {
     if (!streamIsClosed) {
@@ -270,7 +269,7 @@ private abstract class Http2StreamState(
           Some(INTERNAL_ERROR.rst(streamId, "Unhandled error in stream pipeline"))
       }
 
-      onStreamFinished(http2Ex)
+      session.streamManager.streamFinished(this, http2Ex)
     }
   }
 

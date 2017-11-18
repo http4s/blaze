@@ -59,7 +59,7 @@ object Http2Connection {
   /** The `Draining` state represents a session that is no longer accepting new
     * streams and is in the process of draining existing connection.
     */
-  case class Draining(deadline: Long) extends Closing
+  case object Draining extends Closing
 
   /** The `Closed` state represents a session that is completely shutdown. */
   case object Closed extends Closing

@@ -31,11 +31,11 @@ private trait WriteListener {
     */
   def registerWriteInterest(interest: WriteInterest): Unit
 
-  /** Remove a [[WriteInterest]] from the `WriteListener`
-    *
-    * @param interest to be removed
-    * @return true of the interest was registered and removed, false otherwise.
-    */
-  def removeInterest(interest: WriteInterest): Boolean
+//  /** Remove a [[WriteInterest]] from the `WriteListener`
+//    *
+//    * @param interest to be removed
+//    * @return true of the interest was registered and removed, false otherwise.
+//    */
+//  def removeInterest(interest: WriteInterest): Boolean
 }
 

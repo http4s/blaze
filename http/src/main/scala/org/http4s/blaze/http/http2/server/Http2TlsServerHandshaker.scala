@@ -5,7 +5,7 @@ import java.nio.charset.StandardCharsets
 
 import org.http4s.blaze.http.http2.SettingsDecoder.SettingsFrame
 import org.http4s.blaze.http.http2._
-import org.http4s.blaze.pipeline.stages.OneMessageStage
+import org.http4s.blaze.pipeline.stages.{BasicTail, OneMessageStage}
 import org.http4s.blaze.pipeline.{Command, LeafBuilder, TailStage}
 import org.http4s.blaze.util.{BufferTools, Execution, StageTools}
 
@@ -45,8 +45,10 @@ private[http] class Http2TlsServerHandshaker(
   // Setup the pipeline with a new Http2ClientStage and start it up, then return it.
   private def installHttp2ServerStage(peerSettings: MutableHttp2Settings, remainder: ByteBuffer): Unit = {
     logger.debug(s"Installing pipeline with settings: $peerSettings")
-    val stage = Http2ServerConnectionImpl.default(mySettings, peerSettings, nodeBuilder)
-    var newTail = LeafBuilder(stage)
+    val tail = new BasicTail[ByteBuffer]("http2ServerTail")
+
+    val stage = Http2ServerConnectionImpl.default(tail, mySettings, peerSettings, nodeBuilder)
+    var newTail = LeafBuilder(tail)
     if (remainder.hasRemaining) {
       // We may have some extra data that we need to inject into the pipeline
       newTail = newTail.prepend(new OneMessageStage[ByteBuffer](remainder))

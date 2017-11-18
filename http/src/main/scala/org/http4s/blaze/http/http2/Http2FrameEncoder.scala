@@ -32,6 +32,10 @@ final class Http2FrameEncoder(
   def pingAck(data: Array[Byte]): ByteBuffer =
     Http2FrameSerializer.mkPingFrame(true, data)
 
+  /** Generate a RST frame with the specified stream id and error code */
+  def rstFrame(streamId: Int, errorCode: Long): ByteBuffer =
+    Http2FrameSerializer.mkRstStreamFrame(streamId, errorCode)
+
   /** Generate stream data frame(s) for the specified data
     *
     * If the data exceeds the peers MAX_FRAME_SIZE setting, it is fragmented
