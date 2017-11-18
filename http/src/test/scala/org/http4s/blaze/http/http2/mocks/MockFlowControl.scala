@@ -5,11 +5,11 @@ import org.http4s.blaze.http.http2.{WriteInterest, _}
 import scala.collection.mutable.ListBuffer
 
 private class MockFlowControl(
-                               flowStrategy: FlowStrategy,
-                               mySettings: Http2Settings,
-                               peerSettings: Http2Settings
-                             ) extends SessionFlowControlImpl(
-  flowStrategy, MockFlowControl.synthCore(mySettings, peerSettings)) {
+   flowStrategy: FlowStrategy,
+   localSettings: Http2Settings,
+   remoteSettings: Http2Settings
+  ) extends SessionFlowControlImpl(
+  flowStrategy, MockFlowControl.synthCore(localSettings, remoteSettings)) {
   sealed trait Operation
   case class SessionConsumed(bytes: Int) extends Operation
   case class StreamConsumed(stream: StreamFlowWindow, consumed: Int) extends Operation
