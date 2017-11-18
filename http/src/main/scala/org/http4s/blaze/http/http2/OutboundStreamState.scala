@@ -5,7 +5,7 @@ import org.http4s.blaze.http.http2.Http2Connection.Closing
 import scala.concurrent.Promise
 
 // TODO: this should be generalized to the server as well
-private class OutboundStreamState(session: SessionCore) extends Http2StreamState(session) {
+private class OutboundStreamState(session: SessionCore) extends StreamState(session) {
   private[this] var lazyStreamId: Int = -1
   private[this] var lazyFlowWindow: StreamFlowWindow = null
 

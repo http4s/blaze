@@ -10,7 +10,7 @@ private final class StreamManager(
   val idManager: StreamIdManager
 ) {
   private[this] val logger = org.log4s.getLogger
-  private[this] val streams = new HashMap[Int, Http2StreamState]
+  private[this] val streams = new HashMap[Int, StreamState]
 
   private[this] var drainingP: Option[Promise[Unit]] = None
 
@@ -37,7 +37,7 @@ private final class StreamManager(
     result
   }
 
-  final def get(id: Int): Option[Http2StreamState] =
+  final def get(id: Int): Option[StreamState] =
     streams.get(id)
 
   final def close(cause: Option[Throwable]): Unit = {
@@ -100,12 +100,12 @@ private final class StreamManager(
     }
   }
 
-  /** Called by a Http2StreamState to signal that it is finished.
+  /** Called by a [[StreamState]] to signal that it is finished.
     *
     * @param stream
     * @param cause
     */
-  final def streamFinished(stream: Http2StreamState, cause: Option[Http2Exception]): Unit = {
+  final def streamFinished(stream: StreamState, cause: Option[Http2Exception]): Unit = {
     val streamId = stream.streamId
     val wasInMap = streams.remove(streamId).isDefined
 

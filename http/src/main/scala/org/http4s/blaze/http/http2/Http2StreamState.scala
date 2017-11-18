@@ -11,7 +11,7 @@ import org.http4s.blaze.util.BufferTools
 
 import scala.concurrent.{ExecutionContext, Future, Promise}
 
-private abstract class Http2StreamState(session: SessionCore)
+private abstract class StreamState(session: SessionCore)
   extends HeadStage[StreamMessage] with WriteInterest {
 
   def streamId: Int
@@ -25,7 +25,7 @@ private abstract class Http2StreamState(session: SessionCore)
 
   /** Called to notify the `WriteInterest` of failure */
   override def writeFailure(t: Throwable): Unit = {
-    session.invokeShutdownWithError(Some(t), "Http2StreamState.writeFailure")
+    session.invokeShutdownWithError(Some(t), "StreamState.writeFailure")
   }
 
   // State associated with the streams inbound data flow

@@ -5,4 +5,4 @@ private final class InboundStreamState(
   session: SessionCore,
   val streamId: Int,
   val flowWindow: StreamFlowWindow
-) extends Http2StreamState(session)
+) extends StreamState(session)
