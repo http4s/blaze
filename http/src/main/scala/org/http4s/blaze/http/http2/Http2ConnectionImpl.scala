@@ -4,7 +4,7 @@ import java.nio.ByteBuffer
 
 import org.http4s.blaze.http.http2.Http2Connection._
 import org.http4s.blaze.pipeline.Command.EOF
-import org.http4s.blaze.pipeline.TailStage
+import org.http4s.blaze.pipeline.{LeafBuilder, TailStage}
 import org.http4s.blaze.util.{BufferTools, Execution, SerialExecutionContext}
 
 import scala.annotation.tailrec
@@ -14,10 +14,12 @@ import scala.util.{Failure, Success}
 
 /** Representation of the http2 session. */
 private abstract class Http2ConnectionImpl(
+    isClient: Boolean,
     tailStage: TailStage[ByteBuffer],
     localSettings: Http2Settings, // The settings of this side
     remoteSettings: MutableHttp2Settings, // The peers settings. These can change during the session.
     flowStrategy: FlowStrategy,
+    inboundStreamBuilder: Int => Option[LeafBuilder[StreamMessage]],
     parentExecutor: ExecutionContext)
   extends Http2Connection {
 
@@ -45,7 +47,7 @@ private abstract class Http2ConnectionImpl(
     )
 
     private[this] val headerEncoder: HeaderEncoder = new HeaderEncoder(remoteSettings.maxHeaderListSize)
-    private[this] val frameListener = new SessionFrameListener(headerDecoder, this)
+    private[this] val frameListener = new SessionFrameListener(this, headerDecoder)
 
     override val http2Decoder = new Http2FrameDecoder(localSettings, frameListener)
     override val http2Encoder = new Http2FrameEncoder(remoteSettings, headerEncoder)
@@ -54,7 +56,14 @@ private abstract class Http2ConnectionImpl(
     override val pingManager: PingManager = new PingManager(this)
     override val sessionFlowControl: SessionFlowControl = new SessionFlowControlImpl(flowStrategy, this)
 
-    override val streamManager: StreamManager = newStreamManager(this)
+    override val streamManager: StreamManager = new StreamManager(this, StreamIdManager(isClient))
+
+
+    override def state: ConnectionState = Http2ConnectionImpl.this.state
+
+
+    override def newInboundStream(streamId: Int): Option[LeafBuilder[StreamMessage]] =
+      inboundStreamBuilder(streamId)
 
     // Must be called from within the session executor.
     // If an error is provided, a GO_AWAY is written and we wait for the writeController to
@@ -127,8 +136,6 @@ private abstract class Http2ConnectionImpl(
     case _: Closing => true
     case _ => false
   }
-
-  protected def newStreamManager(session: SessionCore): StreamManager
 
   /** `Future` which is satisfied when the session is terminated */
   def onClose: Future[Unit] = closedPromise.future

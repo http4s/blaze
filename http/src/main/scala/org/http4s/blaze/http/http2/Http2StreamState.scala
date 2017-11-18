@@ -11,18 +11,17 @@ import org.http4s.blaze.util.BufferTools
 
 import scala.concurrent.{ExecutionContext, Future, Promise}
 
-private abstract class Http2StreamState(
-    session: SessionCore)
+private abstract class Http2StreamState(session: SessionCore)
   extends HeadStage[StreamMessage] with WriteInterest {
 
-  // Can potentially be lazy, such as in an outbound stream
   def streamId: Int
 
-  // Can potentially be lazy, such as in an outbound stream
   def flowWindow: StreamFlowWindow
 
-  override def name: String = s"Http2Stream($streamId)"
-
+  override def name: String = {
+    val id = try streamId catch { case _: IllegalStateException => "uninitialized" }
+    s"Http2Stream($id)"
+  }
 
   /** Called to notify the `WriteInterest` of failure */
   override def writeFailure(t: Throwable): Unit = {

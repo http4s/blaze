@@ -14,7 +14,7 @@ import scala.util.Failure
 
 private[http] class Http2TlsServerHandshaker(
     mySettings: ImmutableHttp2Settings,
-    nodeBuilder: Int => LeafBuilder[StreamMessage])
+    nodeBuilder: Int => Option[LeafBuilder[StreamMessage]])
   extends PriorKnowledgeHandshaker[Unit](mySettings) {
 
   override protected def stageStartup(): Unit = synchronized {

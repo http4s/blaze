@@ -1,5 +1,8 @@
 package org.http4s.blaze.http.http2
 
+import org.http4s.blaze.http.http2.Http2Connection.ConnectionState
+import org.http4s.blaze.pipeline.LeafBuilder
+
 import scala.concurrent.ExecutionContext
 import scala.concurrent.duration.Duration
 
@@ -30,9 +33,13 @@ private trait SessionCore {
 
   // Behaviors
 
+  def newInboundStream(streamId: Int): Option[LeafBuilder[StreamMessage]]
+
   def invokeShutdownWithError(ex: Option[Throwable], phase: String): Unit
 
   def invokeGoaway(lastHandledStream: Int, message: String): Unit
 
   def invokeDrain(gracePeriod: Duration): Unit
+
+  def state: ConnectionState
 }

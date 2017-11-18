@@ -16,13 +16,13 @@ private object Http2ServerConnectionImpl {
     tailStage: BasicTail[ByteBuffer],
     mySettings: ImmutableHttp2Settings,
     peerSettings: MutableHttp2Settings,
-    nodeBuilder: Int => LeafBuilder[StreamMessage]): Http2ServerConnectionImpl = {
+    inboundStreamBuilder: Int => Option[LeafBuilder[StreamMessage]]): Http2ServerConnectionImpl = {
     val flowStrategy = new DefaultFlowStrategy(mySettings)
     val ec = Execution.trampoline
 
     new Http2ServerConnectionImpl(
       tailStage,
-      nodeBuilder,
+      inboundStreamBuilder,
       mySettings,
       peerSettings,
       flowStrategy,
@@ -33,20 +33,20 @@ private object Http2ServerConnectionImpl {
 
 private final class Http2ServerConnectionImpl(
     tailStage: BasicTail[ByteBuffer],
-    nodeBuilder: Int => LeafBuilder[StreamMessage],
-    mySettings: ImmutableHttp2Settings, // the settings of this side
-    peerSettings: MutableHttp2Settings,
+    inboundStreamBuilder: Int => Option[LeafBuilder[StreamMessage]],
+    localSettings: ImmutableHttp2Settings, // the settings of this side
+    remoteSettings: MutableHttp2Settings,
     flowStrategy: FlowStrategy,
-    executor: ExecutionContext)
+    parentExecutor: ExecutionContext)
   extends Http2ConnectionImpl(
-    tailStage,
-    mySettings,
-    peerSettings,  // peer settings
-    flowStrategy: FlowStrategy,
-    executor: ExecutionContext) {
+    isClient = false,
+    tailStage = tailStage,
+    localSettings = localSettings,
+    remoteSettings = remoteSettings,  // peer settings
+    flowStrategy = flowStrategy,
+    inboundStreamBuilder = inboundStreamBuilder,
+    parentExecutor = parentExecutor) {
 
   // Boom. It begins.
   tailStage.started.foreach(_ => startSession())(Execution.directec)
-
-  override protected def newStreamManager(session: SessionCore): StreamManager = ???
 }

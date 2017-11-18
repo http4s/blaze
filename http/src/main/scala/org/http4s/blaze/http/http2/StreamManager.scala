@@ -5,7 +5,7 @@ import org.http4s.blaze.http._
 import scala.collection.mutable.HashMap
 import scala.concurrent.{Future, Promise}
 
-private abstract class StreamManager(
+private final class StreamManager(
   session: SessionCore,
   val idManager: StreamIdManager
 ) {
@@ -59,22 +59,17 @@ private abstract class StreamManager(
     }
   }
 
-  /** Optionally create and initialize a new inbound stream
-    *
-    * `None` signals that the stream is to be refused with a RST(REFUSED_STREAM) reply.
-    *
-    * @param streamId streamId associated with the new stream
-    */
-  final def newInboundStream(streamId: Int): Option[Http2StreamState] = {
-    if (drainingP.isDefined) None
-    else mkInboundStream(streamId)
+  def registerInboundStream(state: InboundStreamState): Boolean = {
+    if (drainingP.isDefined) false
+    else if (!idManager.observeInboundId(state.streamId)) false
+    else {
+      // if we haven't observed the stream yet, we know that its not in the map
+      assert(streams.put(state.streamId, state).isEmpty)
+      true
+    }
   }
 
-  // TODO: should we make this `registerInboundStream` for symmetry?
-  /** Optionally create a new inbound stream */
-  protected def mkInboundStream(streamId: Int): Option[Http2StreamState]
-
-  final def registerOutboundStream(state: Http2StreamState): Option[Int] = {
+  def registerOutboundStream(state: OutboundStreamState): Option[Int] = {
     if (drainingP.isDefined) None
     else {
       val id = idManager.takeOutboundId()

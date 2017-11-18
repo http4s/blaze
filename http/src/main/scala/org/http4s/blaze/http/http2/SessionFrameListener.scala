@@ -6,7 +6,7 @@ import java.nio.charset.StandardCharsets
 import org.http4s.blaze.http._
 import org.http4s.blaze.http.http2.Http2Exception._
 import org.http4s.blaze.http.http2.Http2Settings.Setting
-
+import org.http4s.blaze.pipeline.Command
 import org.log4s.getLogger
 
 import scala.concurrent.duration.Duration
@@ -17,8 +17,8 @@ import scala.concurrent.duration.Duration
   * will be managed by the [[Http2ConnectionImpl]].
   */
 private class SessionFrameListener(
-    headerDecoder: HeaderDecoder,
-    session: SessionCore)
+    session: SessionCore,
+    headerDecoder: HeaderDecoder)
   extends HeaderAggregatingFrameListener(session.localSettings, headerDecoder) {
 
   private[this] val logger = getLogger
@@ -38,6 +38,7 @@ private class SessionFrameListener(
         if (streamId == 0) {
           Error(PROTOCOL_ERROR.goaway(s"Illegal stream ID for headers frame: 0"))
         } else if (idManager.observeInboundId(streamId)) {
+          // Looks like it was a valid idle inbound stream id so try to start a new stream
           if (streamManager.size >= session.localSettings.maxConcurrentStreams) {
             // 5.1.2 Stream Concurrency
             //
@@ -48,12 +49,23 @@ private class SessionFrameListener(
             // of error code determines whether the endpoint wishes to enable
             // automatic retry (see Section 8.1.4) for details).
             Error(REFUSED_STREAM.rst(streamId))
-          }
-          else {
-            streamManager.newInboundStream(streamId) match {
-              case Some(head) => head.invokeInboundHeaders(priority, endStream, headers)
-              case None =>  // stream rejected
-                Error(REFUSED_STREAM.rst(streamId))
+          } else {
+            val streamFlowWindow = session.sessionFlowControl.newStreamFlowWindow(streamId)
+            val streamState = new InboundStreamState(session, streamId, streamFlowWindow)
+            // TODO: A stream could be refused because the session is draining which
+            // doesn't necessarily need to be acknowledged
+            if (!streamManager.registerInboundStream(streamState)) Error(REFUSED_STREAM.rst(streamId))
+            else session.newInboundStream(streamId) match {
+              case Some(leafBuilder) =>
+                leafBuilder.base(streamState)
+                streamState.sendInboundCommand(Command.Connected)
+                streamState.invokeInboundHeaders(priority, endStream, headers)
+
+              case None =>
+                // the closeWithError call will remove it from the stream manager
+                // and send the appropriate error to the peer
+                streamState.closeWithError(Some(REFUSED_STREAM.rst(streamId)))
+                Continue
             }
           }
         } else if (idManager.isIdleOutboundId(streamId)) {
