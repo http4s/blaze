@@ -10,7 +10,7 @@ import org.http4s.blaze.util.BufferTools
 
 /* The job of the Http2FrameDecoder is to slice the ByteBuffers. It does
    not attempt to decode headers or perform any size limiting operations */
-class Http2FrameDecoder(mySettings: Http2Settings, listener: Http2FrameListener) {
+class Http2FrameDecoder(localSettings: Http2Settings, listener: Http2FrameListener) {
   import bits._
   import Http2FrameDecoder._
 
@@ -29,7 +29,7 @@ class Http2FrameDecoder(mySettings: Http2Settings, listener: Http2FrameListener)
 
     // This concludes the 9 byte header. The rest is payload
 
-    if (mySettings.maxFrameSize < len) {
+    if (localSettings.maxFrameSize < len) {
       Error(FRAME_SIZE_ERROR.goaway(s"HTTP2 packet is too large to handle. Stream: $streamId"))
     } else if (frameType != FrameTypes.CONTINUATION && listener.inHeaderSequence) {
     // We are in the middle of some header frames which is a no-go

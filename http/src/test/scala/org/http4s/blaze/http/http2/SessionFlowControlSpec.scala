@@ -5,8 +5,8 @@ import org.specs2.mutable.Specification
 
 class SessionFlowControlSpec extends Specification {
 
-  private class TestSessionFlowControl(inbound: Http2Settings, outbound: Http2Settings)
-    extends SessionFlowControlImpl(inbound, outbound) {
+  private class TestSessionFlowControl(session: SessionCore)
+    extends SessionFlowControlImpl(session, null) {
     var sessionConsumed: Int = 0
 
     var streamThatConsumed: StreamFlowWindow = null
@@ -27,8 +27,12 @@ class SessionFlowControlSpec extends Specification {
     flowControl(settings, settings)
   }
 
-  private def flowControl(inbound: Http2Settings, outbound: Http2Settings): TestSessionFlowControl = {
-    new TestSessionFlowControl(inbound, outbound)
+  private def flowControl(local: Http2Settings, remote: Http2Settings): TestSessionFlowControl = {
+    val core = new MockTools(true /* doesn't matter */) {
+      override lazy val remoteSettings: MutableHttp2Settings = MutableHttp2Settings(remote)
+      override lazy val localSettings: Http2Settings = local
+    }
+    new TestSessionFlowControl(core)
   }
 
   "SessionFlowControl session inbound window" should {
