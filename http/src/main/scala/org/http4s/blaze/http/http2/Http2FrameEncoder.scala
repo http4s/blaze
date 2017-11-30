@@ -6,11 +6,11 @@ import scala.collection.mutable.ArrayBuffer
 
 /** A more humane interface for writing HTTP messages. */
 final class Http2FrameEncoder(
-    peerSettings: Http2Settings,
-    headerEncoder: HeaderEncoder) {
+   remoteSettings: Http2Settings,
+   headerEncoder: HeaderEncoder) {
 
   // Just a shortcut
-  private[this] def maxFrameSize: Int = peerSettings.maxFrameSize
+  private[this] def maxFrameSize: Int = remoteSettings.maxFrameSize
 
   /** Set the max table size of the header encoder */
   def setMaxTableSize(size: Int): Unit =

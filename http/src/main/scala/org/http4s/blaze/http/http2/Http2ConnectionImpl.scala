@@ -54,7 +54,7 @@ private abstract class Http2ConnectionImpl(
     override val writeController = new WriteController(this, 64*1024, tailStage)
 
     override val pingManager: PingManager = new PingManager(this)
-    override val sessionFlowControl: SessionFlowControl = new SessionFlowControlImpl(flowStrategy, this)
+    override val sessionFlowControl: SessionFlowControl = new SessionFlowControlImpl(this, flowStrategy)
 
     override val streamManager: StreamManager = new StreamManager(this, StreamIdManager(isClient))
 

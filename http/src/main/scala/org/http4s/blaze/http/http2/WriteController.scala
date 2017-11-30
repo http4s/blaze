@@ -7,7 +7,7 @@ import org.http4s.blaze.pipeline.TailStage
 import org.log4s.getLogger
 
 import scala.collection.mutable.ArrayBuffer
-import scala.concurrent.{ExecutionContext, Future, Promise}
+import scala.concurrent.{Future, Promise}
 import scala.util.{Failure, Success}
 import scala.util.control.NonFatal
 

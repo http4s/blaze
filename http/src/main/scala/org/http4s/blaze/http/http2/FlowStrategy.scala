@@ -20,24 +20,32 @@ trait FlowStrategy {
     *
     * @note This must not mutate the [[SessionFlowControl]] or the [[StreamFlowWindow]] in any way.
     *
-    * @param session the session [[SessionFlowControl]]
     * @param stream the stream [[StreamFlowWindow]]
     * @return the number of bytes to update the session and stream flow window with.
     */
-  def checkStream(session: SessionFlowControl, stream: StreamFlowWindow): Increment
+  def checkStream(stream: StreamFlowWindow): Increment
 }
 
 object FlowStrategy {
-  final class Increment private[FlowStrategy](val session: Int, val stream: Int) {
-    override def toString: String = s"Increment($session, $stream)"
-  }
 
-  val Empty = new Increment(0, 0) // Cached version for avoiding allocations
+  // Make the object private to restrict construction of
+  // `Increment`s to the `makeIncrement` method
+  private object Increment {
+    private[this] val Empty = new Increment(0, 0)
 
-  object Increment {
-    def apply(session: Int, stream: Int): Increment = {
+    def make(session: Int, stream: Int): Increment = {
       if (session == 0 && stream == 0) Empty
       else new Increment(session, stream)
     }
   }
+
+  /** Representation of the flow window increments to send to the remote peer */
+  final case class Increment private(session: Int, stream: Int)
+
+  // Cached version for avoiding allocations in the common case
+
+
+  /** Construct an `Increment`, using a cached version if possible */
+  def increment(session: Int, stream: Int): Increment =
+    Increment.make(session, stream)
 }
