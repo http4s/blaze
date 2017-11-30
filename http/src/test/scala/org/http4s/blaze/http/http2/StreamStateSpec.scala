@@ -1,15 +1,16 @@
 package org.http4s.blaze.http.http2
 
+import org.http4s.blaze.http.http2.mocks.{MockTools, MockStreamState}
 import org.http4s.blaze.pipeline.Command.Disconnect
-import org.http4s.blaze.pipeline.{Command, LeafBuilder, TailStage}
+import org.http4s.blaze.pipeline.{Command, HeadStage, LeafBuilder, TailStage}
 import org.http4s.blaze.util.BufferTools
 import org.specs2.mutable.Specification
 
-class Http2StreamStateSpec extends Specification with Http2SpecTools {
+class StreamStateSpec extends Specification with Http2SpecTools {
 
-  private def newTools: Http2MockTools = new Http2MockTools(true)
+  private def newTools: MockTools = new MockTools(true)
 
-  private def makePipeline(head: Http2StreamState): TailStage[StreamMessage] = {
+  private def makePipeline(head: HeadStage[StreamMessage]): TailStage[StreamMessage] = {
     val t = new TailStage[StreamMessage] {
       override def name: String = "MockTail"
     }
@@ -21,7 +22,7 @@ class Http2StreamStateSpec extends Specification with Http2SpecTools {
     "inboundData" >> {
       "queue multiple frames" >> {
         val tools = newTools
-        val stage = new MockHttp2StreamState(1, tools)
+        val stage = new MockStreamState(tools, 1)
         val tail = makePipeline(stage)
 
         stage.invokeInboundHeaders(Priority.NoPriority, false /* EOS */, Nil) must_== Continue
@@ -35,39 +36,39 @@ class Http2StreamStateSpec extends Specification with Http2SpecTools {
 
       "Flow window overflow" >> {
         val tools = newTools
-        val stage = new MockHttp2StreamState(1, tools)
+        val stage = new MockStreamState(tools, 1)
         stage.flowWindow.inboundObserved(stage.flowWindow.streamInboundWindow) // both depleted
         stage.flowWindow.streamInboundWindow must_== 0
-        tools.flowControl.sessionInboundWindow must_== 0
+        tools.sessionFlowControl.sessionInboundWindow must_== 0
         stage.invokeInboundData(false, BufferTools.emptyBuffer, 10) must beLike(connectionError(Http2Exception.FLOW_CONTROL_ERROR))
 
         // windows shouldn't have changed
         stage.flowWindow.streamInboundWindow must_== 0
-        tools.flowControl.sessionInboundWindow must_== 0
+        tools.sessionFlowControl.sessionInboundWindow must_== 0
 
-        tools.flowControl.sessionInboundAcked(10) // only stream depleted
+        tools.sessionFlowControl.sessionInboundAcked(10) // only stream depleted
         stage.flowWindow.streamInboundWindow must_== 0
-        tools.flowControl.sessionInboundWindow must_== 10
+        tools.sessionFlowControl.sessionInboundWindow must_== 10
         stage.invokeInboundData(false, BufferTools.emptyBuffer, 10) must beLike(connectionError(Http2Exception.FLOW_CONTROL_ERROR))
 
         stage.flowWindow.streamInboundAcked(20) // only session depleted
         stage.flowWindow.inboundObserved(10) must beTrue
         stage.flowWindow.streamInboundWindow must_== 10
-        tools.flowControl.sessionInboundWindow must_== 0
+        tools.sessionFlowControl.sessionInboundWindow must_== 0
         stage.invokeInboundData(false, BufferTools.emptyBuffer, 10) must beLike(connectionError(Http2Exception.FLOW_CONTROL_ERROR))
 
-        tools.flowControl.sessionInboundAcked(10) // both have 10 bytes available
+        tools.sessionFlowControl.sessionInboundAcked(10) // both have 10 bytes available
         stage.flowWindow.streamInboundWindow must_== 10
-        tools.flowControl.sessionInboundWindow must_== 10
+        tools.sessionFlowControl.sessionInboundWindow must_== 10
         stage.invokeInboundData(false, BufferTools.emptyBuffer, 10) must_== Continue
 
         stage.flowWindow.streamInboundWindow must_== 0
-        tools.flowControl.sessionInboundWindow must_== 0
+        tools.sessionFlowControl.sessionInboundWindow must_== 0
       }
 
       "HEADERS frame after EOS is a connection PROTOCOL_ERROR" >> {
         val tools = newTools
-        val stage = new MockHttp2StreamState(1, tools)
+        val stage = new MockStreamState(tools, 1)
 
         stage.invokeInboundHeaders(Priority.NoPriority, true, Nil) must_== Continue
         stage.invokeInboundHeaders(Priority.NoPriority, false, Nil) must beLike(connectionError(Http2Exception.STREAM_CLOSED))
@@ -75,7 +76,7 @@ class Http2StreamStateSpec extends Specification with Http2SpecTools {
 
       "DATA frame after EOS is a connection PROTOCOL_ERROR" >> {
         val tools = newTools
-        val stage = new MockHttp2StreamState(1, tools)
+        val stage = new MockStreamState(tools, 1)
 
         stage.invokeInboundHeaders(Priority.NoPriority, true, Nil) must_== Continue
         stage.invokeInboundData(false, BufferTools.emptyBuffer, 0) must beLike(connectionError(Http2Exception.STREAM_CLOSED))
@@ -83,7 +84,7 @@ class Http2StreamStateSpec extends Specification with Http2SpecTools {
 
       "consume inbound bytes" >> {
         val tools = newTools
-        val stage = new MockHttp2StreamState(1, tools)
+        val stage = new MockStreamState(tools, 1)
         val tail = makePipeline(stage)
 
         val initialInbound = stage.flowWindow.streamInboundWindow
@@ -91,28 +92,28 @@ class Http2StreamStateSpec extends Specification with Http2SpecTools {
         // unconsumed bytes should be 0 since no data consisted of the flow bytes
         stage.invokeInboundData(false, BufferTools.emptyBuffer, 10) must_== Continue
         stage.flowWindow.streamUnconsumedBytes must_== 0
-        tools.flowControl.sessionUnconsumedBytes must_== 0
+        tools.sessionFlowControl.sessionUnconsumedBytes must_== 0
         stage.flowWindow.streamInboundWindow must_== initialInbound - 10
 
         stage.invokeInboundData(false, zeroBuffer(10), 10) must_== Continue
         stage.flowWindow.streamUnconsumedBytes must_== 10
-        tools.flowControl.sessionUnconsumedBytes must_== 10
+        tools.sessionFlowControl.sessionUnconsumedBytes must_== 10
         stage.flowWindow.streamInboundWindow must_== initialInbound - 20
 
         // We read the first buffer
         await(tail.channelRead(1)) must_== DataFrame(false, BufferTools.emptyBuffer)
         stage.flowWindow.streamUnconsumedBytes must_== 10
-        tools.flowControl.sessionUnconsumedBytes must_== 10
+        tools.sessionFlowControl.sessionUnconsumedBytes must_== 10
 
         // and now the second buffer
         await(tail.channelRead(1)) must_== DataFrame(false, zeroBuffer(10))
         stage.flowWindow.streamUnconsumedBytes must_== 0
-        tools.flowControl.sessionUnconsumedBytes must_== 0
+        tools.sessionFlowControl.sessionUnconsumedBytes must_== 0
       }
 
       "channelRead on receivedEndStream" >> {
         val tools = newTools
-        val stage = new MockHttp2StreamState(1, tools)
+        val stage = new MockStreamState(tools, 1)
         val tail = makePipeline(stage)
 
 
@@ -125,7 +126,7 @@ class Http2StreamStateSpec extends Specification with Http2SpecTools {
 
       "channelRead on stream closed event" >> {
         val tools = newTools
-        val stage = new MockHttp2StreamState(1, tools)
+        val stage = new MockStreamState(tools, 1)
         val tail = makePipeline(stage)
         tail.sendOutboundCommand(Disconnect)
 
@@ -137,77 +138,77 @@ class Http2StreamStateSpec extends Specification with Http2SpecTools {
     "outbound data" >> {
       "register interests on HeadersFrame" >> {
         val tools = newTools
-        val stage = new MockHttp2StreamState(1, tools)
+        val stage = new MockStreamState(tools, 1)
 
         val f = stage.writeRequest(HeadersFrame(Priority.NoPriority, true, Nil))
-        tools.writeListener.observedInterests.result must_== stage::Nil
+        tools.writeController.observedInterests.result must_== stage::Nil
       }
 
       "register interests on HeadersFrame with depleted stream flow window" >> {
         val tools = newTools
-        tools.flowControl.sessionOutboundAcked(100)
-        val stage = new MockHttp2StreamState(1, tools)
+        tools.sessionFlowControl.sessionOutboundAcked(100)
+        val stage = new MockStreamState(tools, 1)
         stage.flowWindow.outboundRequest(stage.flowWindow.streamOutboundWindow)
-        tools.flowControl.sessionOutboundWindow must_== 100
+        tools.sessionFlowControl.sessionOutboundWindow must_== 100
         stage.flowWindow.streamOutboundWindow must_== 0
 
         val f = stage.writeRequest(HeadersFrame(Priority.NoPriority, true, Nil))
-        tools.writeListener.observedInterests.result must_== stage::Nil
+        tools.writeController.observedInterests.result must_== stage::Nil
       }
 
       "register interests on HeadersFrame with depleted session flow window" >> {
         val tools = newTools
-        val stage = new MockHttp2StreamState(1, tools)
+        val stage = new MockStreamState(tools, 1)
         stage.flowWindow.outboundRequest(stage.flowWindow.streamOutboundWindow)
         stage.flowWindow.streamOutboundAcked(100)
-        tools.flowControl.sessionOutboundWindow must_== 0
+        tools.sessionFlowControl.sessionOutboundWindow must_== 0
         stage.flowWindow.streamOutboundWindow must_== 100
 
         val f = stage.writeRequest(HeadersFrame(Priority.NoPriority, true, Nil))
-        tools.writeListener.observedInterests.result must_== stage::Nil
+        tools.writeController.observedInterests.result must_== stage::Nil
       }
 
       "register interests on DataFrame with sufficient flow" >> {
         val tools = newTools
-        val stage = new MockHttp2StreamState(1, tools)
+        val stage = new MockStreamState(tools, 1)
 
         val f = stage.writeRequest(DataFrame(true, BufferTools.emptyBuffer))
-        tools.writeListener.observedInterests.result must_== stage::Nil
+        tools.writeController.observedInterests.result must_== stage::Nil
       }
 
       "register interests on zero byte DataFrame with depleted flow windows" >> {
         val tools = newTools
-        val stage = new MockHttp2StreamState(1, tools)
+        val stage = new MockStreamState(tools, 1)
         stage.flowWindow.outboundRequest(stage.flowWindow.streamOutboundWindow)
-        tools.flowControl.sessionOutboundWindow must_== 0
+        tools.sessionFlowControl.sessionOutboundWindow must_== 0
         stage.flowWindow.streamOutboundWindow must_== 0
 
         val f = stage.writeRequest(DataFrame(true, BufferTools.emptyBuffer))
-        tools.writeListener.observedInterests.result must_== stage::Nil
+        tools.writeController.observedInterests.result must_== stage::Nil
       }
 
       "not register interests on DataFrame with depleted stream flow window" >> {
         val tools = newTools
-        val stage = new MockHttp2StreamState(1, tools)
-        tools.flowControl.sessionOutboundAcked(10)
+        val stage = new MockStreamState(tools, 1)
+        tools.sessionFlowControl.sessionOutboundAcked(10)
         stage.flowWindow.outboundRequest(stage.flowWindow.streamOutboundWindow)
-        tools.flowControl.sessionOutboundWindow must_== 10
+        tools.sessionFlowControl.sessionOutboundWindow must_== 10
         stage.flowWindow.streamOutboundWindow must_== 0
 
         val f = stage.writeRequest(DataFrame(true, zeroBuffer(10)))
-        tools.writeListener.observedInterests.result must_== Nil
+        tools.writeController.observedInterests.result must_== Nil
       }
 
       "not register interests on DataFrame with depleted session flow window" >> {
         val tools = newTools
-        val stage = new MockHttp2StreamState(1, tools)
+        val stage = new MockStreamState(tools, 1)
         stage.flowWindow.outboundRequest(stage.flowWindow.streamOutboundWindow)
         stage.flowWindow.streamOutboundAcked(10)
-        tools.flowControl.sessionOutboundWindow must_== 0
+        tools.sessionFlowControl.sessionOutboundWindow must_== 0
         stage.flowWindow.streamOutboundWindow must_== 10
 
         val f = stage.writeRequest(DataFrame(true, zeroBuffer(10)))
-        tools.writeListener.observedInterests.result must_== Nil
+        tools.writeController.observedInterests.result must_== Nil
       }
     }
 
@@ -215,7 +216,7 @@ class Http2StreamStateSpec extends Specification with Http2SpecTools {
       "Receive EOS" >> {
         "on first HEADERS" >> {
           val tools = newTools
-          val stage = new MockHttp2StreamState(1, tools)
+          val stage = new MockStreamState(tools, 1)
           val tail = makePipeline(stage)
 
           stage.invokeInboundHeaders(Priority.NoPriority, true /* EOS */, Nil) must_== Continue
@@ -227,7 +228,7 @@ class Http2StreamStateSpec extends Specification with Http2SpecTools {
 
         "on first DATA" >> {
           val tools = newTools
-          val stage = new MockHttp2StreamState(1, tools)
+          val stage = new MockStreamState(tools, 1)
           val tail = makePipeline(stage)
 
           stage.invokeInboundData(true, BufferTools.emptyBuffer, 0) must_== Continue
@@ -239,7 +240,7 @@ class Http2StreamStateSpec extends Specification with Http2SpecTools {
 
         "on second frame (DATA)" >> {
           val tools = newTools
-          val stage = new MockHttp2StreamState(1, tools)
+          val stage = new MockStreamState(tools, 1)
           val tail = makePipeline(stage)
 
           stage.invokeInboundHeaders(Priority.NoPriority, false /* EOS */, Nil) must_== Continue
@@ -255,7 +256,7 @@ class Http2StreamStateSpec extends Specification with Http2SpecTools {
       "send EOS" >> {
         "raise an IllegalStateException for writes after EOS received" >> {
           val tools = newTools
-          val stage = new MockHttp2StreamState(1, tools)
+          val stage = new MockStreamState(tools, 1)
           val tail = makePipeline(stage)
 
           val w1 = tail.channelWrite(DataFrame(true, BufferTools.emptyBuffer))
@@ -269,7 +270,7 @@ class Http2StreamStateSpec extends Specification with Http2SpecTools {
 
       "send RST_STREAM if disconnected in open state" >> {
         val tools = newTools
-        val stage = new MockHttp2StreamState(1, tools)
+        val stage = new MockStreamState(tools, 1)
         val tail = makePipeline(stage)
         tail.sendOutboundCommand(Command.Disconnect)
 
@@ -280,7 +281,7 @@ class Http2StreamStateSpec extends Specification with Http2SpecTools {
 
       "send RST_STREAM if disconnected in half closed (remote) state on Disconnect command" >> {
         val tools = newTools
-        val stage = new MockHttp2StreamState(1, tools)
+        val stage = new MockStreamState(tools, 1)
         val tail = makePipeline(stage)
         stage.invokeInboundHeaders(Priority.NoPriority, true, Nil) must_== Continue
         tail.sendOutboundCommand(Command.Disconnect)
@@ -292,7 +293,7 @@ class Http2StreamStateSpec extends Specification with Http2SpecTools {
 
       "send RST_STREAM if disconnected in half closed (local) state on Disconnect command" >> {
         val tools = newTools
-        val stage = new MockHttp2StreamState(1, tools)
+        val stage = new MockStreamState(tools, 1)
         val tail = makePipeline(stage)
         tail.channelWrite(HeadersFrame(Priority.NoPriority, true, Nil))
         stage.performStreamWrite().isEmpty must beFalse // actually wrote the data
@@ -305,7 +306,7 @@ class Http2StreamStateSpec extends Specification with Http2SpecTools {
 
       "NOT send RST_STREAM if disconnected in closed state on Disconnect command" >> {
         val tools = newTools
-        val stage = new MockHttp2StreamState(1, tools)
+        val stage = new MockStreamState(tools, 1)
         val tail = makePipeline(stage)
 
         stage.invokeInboundHeaders(Priority.NoPriority, true, Nil) must_== Continue
@@ -319,7 +320,7 @@ class Http2StreamStateSpec extends Specification with Http2SpecTools {
 
       "forward Http2Exceptions send as Error commands by pipeline" >> {
         val tools = newTools
-        val stage = new MockHttp2StreamState(1, tools)
+        val stage = new MockStreamState(tools, 1)
         val tail = makePipeline(stage)
 
         tail.sendOutboundCommand(Command.Error(Http2Exception.CANCEL.rst(-1)))
@@ -334,7 +335,7 @@ class Http2StreamStateSpec extends Specification with Http2SpecTools {
       "only call `onStreamFinished` once even with multiple close events" >> {
         val tools = newTools
         var onStreamFinishedCount = 0
-        val stage = new MockHttp2StreamState(1, tools) {
+        val stage = new MockStreamState(tools, 1) {
           override protected def onStreamFinished(ex: Option[Http2Exception]): Unit = {
             onStreamFinishedCount += 1
             super.onStreamFinished(ex)

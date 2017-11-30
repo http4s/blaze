@@ -9,7 +9,7 @@ import org.http4s.blaze.pipeline.Command.{EOF, OutboundCommand}
 import org.http4s.blaze.pipeline.HeadStage
 import org.http4s.blaze.util.BufferTools
 
-import scala.concurrent.{ExecutionContext, Future, Promise}
+import scala.concurrent.{Future, Promise}
 
 private abstract class StreamState(session: SessionCore)
   extends HeadStage[StreamMessage] with WriteInterest {
