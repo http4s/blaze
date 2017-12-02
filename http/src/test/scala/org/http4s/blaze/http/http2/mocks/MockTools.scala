@@ -12,8 +12,6 @@ private[http2] class MockTools(isClient: Boolean) extends SessionCore {
 
   def flowStrategy: FlowStrategy = new DefaultFlowStrategy(localSettings)
 
-  lazy val writeListener: MockWriteListener = new MockWriteListener
-
   lazy val frameListener: MockHeaderAggregatingFrameListener = new MockHeaderAggregatingFrameListener
 
   override val localSettings: MutableHttp2Settings = MutableHttp2Settings.default()
@@ -36,9 +34,9 @@ private[http2] class MockTools(isClient: Boolean) extends SessionCore {
   override lazy val http2Decoder: Http2FrameDecoder =
     new Http2FrameDecoder(localSettings, frameListener)
 
-  override val writeController: MockWriteListener = new MockWriteListener
+  override val writeController: MockWriteController = new MockWriteController
 
-  override def pingManager: PingManager = ???
+  override lazy val pingManager: PingManager = new PingManager(this)
 
   override def streamManager: StreamManager = ???
 

@@ -51,7 +51,7 @@ private abstract class Http2ConnectionImpl(
 
     override val http2Decoder = new Http2FrameDecoder(localSettings, frameListener)
     override val http2Encoder = new Http2FrameEncoder(remoteSettings, headerEncoder)
-    override val writeController = new WriteController(this, 64*1024, tailStage)
+    override val writeController = new WriteControllerImpl(this, 64*1024, tailStage)
 
     override val pingManager: PingManager = new PingManager(this)
     override val sessionFlowControl: SessionFlowControl = new SessionFlowControlImpl(this, flowStrategy)
