@@ -18,7 +18,7 @@ class Http2StageToolsSpec extends Specification {
       Http2StageTools.validHeaderName(":method") must_== false
     }
 
-    "Fail a header with a capitol letter" in {
+    "Fail a header with a capital letter" in {
       Http2StageTools.validHeaderName("Date") must_== false
     }
 

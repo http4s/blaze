@@ -3,8 +3,7 @@ package org.http4s.blaze.http.http2
 private object StreamIdManager {
 
   /** Create a new [[StreamIdManager]] */
-  def apply(isClient: Boolean): StreamIdManager
-    = create(isClient, 0)
+  def apply(isClient: Boolean): StreamIdManager= create(isClient, 0)
 
   // Exposed internally for testing overflow behavior
   private[http2] def create(isClient: Boolean, startingId: Int): StreamIdManager = {
