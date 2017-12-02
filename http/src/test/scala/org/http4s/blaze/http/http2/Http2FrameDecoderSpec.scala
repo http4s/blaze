@@ -5,6 +5,7 @@ import java.nio.ByteBuffer
 import org.http4s.blaze.http.http2.Http2Settings.Setting
 import org.http4s.blaze.http.http2.Priority.Dependent
 import org.http4s.blaze.http.http2.bits.Flags
+import org.http4s.blaze.http.http2.mocks.MockFrameListener
 import org.specs2.mutable.Specification
 
 class Http2FrameDecoderSpec extends Specification {

@@ -1,6 +1,7 @@
 package org.http4s.blaze.http.http2
 
 import org.http4s.blaze.http.http2.Http2Settings.DefaultSettings
+import org.http4s.blaze.http.http2.mocks.MockTools
 import org.specs2.mutable.Specification
 
 class SessionFlowControlSpec extends Specification {
@@ -30,7 +31,7 @@ class SessionFlowControlSpec extends Specification {
   private def flowControl(local: Http2Settings, remote: Http2Settings): TestSessionFlowControl = {
     val core = new MockTools(true /* doesn't matter */) {
       override lazy val remoteSettings: MutableHttp2Settings = MutableHttp2Settings(remote)
-      override lazy val localSettings: Http2Settings = local
+      override lazy val localSettings: MutableHttp2Settings = MutableHttp2Settings(local)
     }
     new TestSessionFlowControl(core)
   }

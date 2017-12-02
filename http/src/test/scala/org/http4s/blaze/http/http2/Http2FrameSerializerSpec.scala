@@ -5,6 +5,7 @@ import java.util
 
 import org.http4s.blaze.http.http2.Http2Settings.Setting
 import org.http4s.blaze.http.http2.bits.Masks
+import org.http4s.blaze.http.http2.mocks.{MockFrameListener, MockHeaderAggregatingFrameListener}
 import org.http4s.blaze.util.BufferTools._
 import org.scalacheck.{Arbitrary, Gen}
 import org.specs2.mutable.Specification
