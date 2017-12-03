@@ -33,18 +33,14 @@ private class PingManager(session: SessionCore) {
         } else {
           val ex = new Exception("Socket closed")
           state = Closed(ex)
-          logger.debug(ex)(s"Failed to initiate PING at $time")
           Future.failed(ex)
         }
 
       case Pinging(_, _) =>
-        val msg = "Ping already in progress"
-        val ex = new IllegalStateException(msg)
-        logger.warn(ex)(msg)
+        val ex = new IllegalStateException("Ping already in progress")
         Future.failed(ex)
 
       case Closed(ex) =>
-        logger.debug(ex)(s"PING in closed state at $time")
         Future.failed(ex)
     }
   }
