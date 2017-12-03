@@ -16,7 +16,7 @@ private trait SessionCore {
 
   def localSettings: Http2Settings // The settings of this side
 
-  def remoteSettings: MutableHttp2Settings // The peers settings.
+  def remoteSettings: MutableHttp2Settings // The peer's settings.
 
   def sessionFlowControl: SessionFlowControl
 

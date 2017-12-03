@@ -1,6 +1,7 @@
 package org.http4s.blaze.http.http2
 
 import java.nio.ByteBuffer
+import java.util.concurrent.TimeUnit
 
 import org.log4s.getLogger
 
@@ -32,18 +33,14 @@ private class PingManager(session: SessionCore) {
         } else {
           val ex = new Exception("Socket closed")
           state = Closed(ex)
-          logger.debug(ex)(s"Failed to initiate PING at $time")
           Future.failed(ex)
         }
 
       case Pinging(_, _) =>
-        val msg = "Ping already in progress"
-        val ex = new IllegalStateException(msg)
-        logger.warn(ex)(msg)
+        val ex = new IllegalStateException("Ping already in progress")
         Future.failed(ex)
 
       case Closed(ex) =>
-        logger.debug(ex)(s"PING in closed state at $time")
         Future.failed(ex)
     }
   }
@@ -60,7 +57,8 @@ private class PingManager(session: SessionCore) {
           continuation.tryFailure(ex)
           ()
         } else {
-          val duration = Duration.fromNanos((System.currentTimeMillis - sent) * 1000000)
+          val duration = Duration.create(
+            math.max(0, System.currentTimeMillis - sent), TimeUnit.MILLISECONDS)
           logger.debug(s"Ping duration: $duration")
           continuation.trySuccess(duration)
           ()
