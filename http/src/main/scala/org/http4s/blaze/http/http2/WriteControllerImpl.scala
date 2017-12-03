@@ -13,9 +13,9 @@ import scala.util.control.NonFatal
 
 /** Gracefully coordinate writes
   *
-  * The `WriteController`s job is to direct outbound data in both a fair, efficient, and
-  * thread safe manner. All calls to the `WriteController` are expected to come from within
-  * the session executor.
+  * The `WriteController`s job is to direct outbound data in a fair, efficient, and
+  * thread safe manner. All calls to the `WriteController` are expected to come from
+  * within the session executor.
   *
   * @param highWaterMark number of bytes that will trigger a flush.
   */
@@ -133,10 +133,10 @@ private final class WriteControllerImpl(
 
           case Closing(p) =>
             state = Closed
-            p.trySuccess(())
+            p.success(())
 
           case Closed =>
-            () // shouldn't get here
+            throw new IllegalStateException("Shouldn't get here")
         }
 
       case Failure(t) =>

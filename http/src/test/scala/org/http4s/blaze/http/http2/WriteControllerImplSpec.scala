@@ -11,9 +11,9 @@ import scala.concurrent.{Future, Promise}
 
 class WriteControllerImplSpec extends Specification {
 
-  private def mockData(start: Int): ByteBuffer =
+  private def mockData(i: Int): ByteBuffer =
     ByteBuffer.wrap {
-    (0 until (start + 1)).map(_.toByte).toArray
+    (0 until (i + 1)).map(_.toByte).toArray
   }
 
   private class MockInterest extends WriteInterest {
