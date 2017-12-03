@@ -1,6 +1,7 @@
 package org.http4s.blaze.http.http2
 
 import java.nio.ByteBuffer
+import java.util.concurrent.TimeUnit
 
 import org.log4s.getLogger
 
@@ -60,7 +61,8 @@ private class PingManager(session: SessionCore) {
           continuation.tryFailure(ex)
           ()
         } else {
-          val duration = Duration.fromNanos((System.currentTimeMillis - sent) * 1000000)
+          val duration = Duration.create(
+            math.max(0, System.currentTimeMillis - sent), TimeUnit.MILLISECONDS)
           logger.debug(s"Ping duration: $duration")
           continuation.trySuccess(duration)
           ()
