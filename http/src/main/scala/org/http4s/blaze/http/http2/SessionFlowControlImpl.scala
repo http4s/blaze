@@ -30,6 +30,7 @@ private class SessionFlowControlImpl(
   protected def sendSessionWindowUpdate(updateSize: Int): Unit = {
     val frame = session.http2Encoder.sessionWindowUpdate(updateSize)
     session.writeController.write(frame)
+    ()
   }
 
   /** Called when bytes have been consumed from a live stream
@@ -47,6 +48,7 @@ private class SessionFlowControlImpl(
     if (0 < update.stream) {
       stream.streamInboundAcked(update.stream)
       session.writeController.write(session.http2Encoder.streamWindowUpdate(stream.streamId, update.stream))
+      ()
     }
   }
 
@@ -54,6 +56,7 @@ private class SessionFlowControlImpl(
   protected def sendStreamWindowUpdate(stream: Int, updateSize: Int): Unit = {
     val frame = session.http2Encoder.streamWindowUpdate(stream, updateSize)
     session.writeController.write(frame)
+    ()
   }
 
   // Concrete methods /////////////////////////////////////////////////////////////

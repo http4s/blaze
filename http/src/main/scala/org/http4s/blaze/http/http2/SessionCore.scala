@@ -12,12 +12,11 @@ import scala.concurrent.duration.Duration
   */
 private trait SessionCore {
   // Fields
-
   def serialExecutor: ExecutionContext
 
   def localSettings: Http2Settings // The settings of this side
 
-  def remoteSettings: Http2Settings // The peers settings.
+  def remoteSettings: MutableHttp2Settings // The peer's settings.
 
   def sessionFlowControl: SessionFlowControl
 
@@ -32,7 +31,6 @@ private trait SessionCore {
   def pingManager: PingManager
 
   // Behaviors
-
   def newInboundStream(streamId: Int): Option[LeafBuilder[StreamMessage]]
 
   def invokeShutdownWithError(ex: Option[Throwable], phase: String): Unit

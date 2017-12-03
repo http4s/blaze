@@ -2,6 +2,7 @@ package org.http4s.blaze.http.http2
 
 import java.nio.ByteBuffer
 
+import org.http4s.blaze.http.http2.mocks.MockTools
 import org.http4s.blaze.util.BufferTools
 import org.specs2.mock.Mockito
 import org.specs2.mutable.Specification
