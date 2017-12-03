@@ -11,15 +11,22 @@ private trait WriteController {
     * possible to write data to the outbound channel.
     *
     * @param interest the `WriteListener` with an interest in performing a write operation.
+    * @return true if registration successful, false otherwise
     */
-  def registerWriteInterest(interest: WriteInterest): Unit
+  def registerWriteInterest(interest: WriteInterest): Boolean
 
   /** Drain any existing messages with the future resolving on completion */
   def close(): Future[Unit]
 
-  /** Queue multiple buffers for writing */
-  def write(data: Seq[ByteBuffer]): Unit
+  /** Queue multiple buffers for writing
+    *
+    * @return true if the data was scheduled for writing, false otherwise.
+    */
+  def write(data: Seq[ByteBuffer]): Boolean
 
-  /** Queue a buffer for writing */
-  def write(data: ByteBuffer): Unit
+  /** Queue a buffer for writing
+    *
+    * @return true if the data was scheduled for writing, false otherwise.
+    */
+  def write(data: ByteBuffer): Boolean
 }

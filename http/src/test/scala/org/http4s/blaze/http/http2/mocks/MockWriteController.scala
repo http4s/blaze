@@ -2,7 +2,7 @@ package org.http4s.blaze.http.http2.mocks
 
 import java.nio.ByteBuffer
 
-import org.http4s.blaze.http.http2.{WriteController, WriteInterest, WriteListener}
+import org.http4s.blaze.http.http2.{WriteController, WriteInterest}
 
 import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
@@ -13,9 +13,9 @@ private[http2] class MockWriteController extends WriteController {
   val observedInterests = new ListBuffer[WriteInterest]
   val observedWrites = mutable.Queue.empty[ByteBuffer]
 
-  override def registerWriteInterest(interest: WriteInterest): Unit = {
+  override def registerWriteInterest(interest: WriteInterest): Boolean = {
     observedInterests += interest
-    ()
+    true
   }
 
   /** Drain any existing messages with the future resolving on completion */
@@ -25,13 +25,12 @@ private[http2] class MockWriteController extends WriteController {
   }
 
   /** Queue multiple buffers for writing */
-  override def write(data: Seq[ByteBuffer]): Unit = {
+  override def write(data: Seq[ByteBuffer]): Boolean = {
     observedWrites ++= data
-    ()
+    true
   }
 
   /** Queue a buffer for writing */
-  override def write(data: ByteBuffer): Unit =
-    observedWrites += data
-  ()
+  final override def write(data: ByteBuffer): Boolean =
+    write(data::Nil)
 }

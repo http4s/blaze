@@ -14,9 +14,9 @@ private[http2] class MockTools(isClient: Boolean) extends SessionCore {
 
   lazy val frameListener: MockHeaderAggregatingFrameListener = new MockHeaderAggregatingFrameListener
 
-  override val localSettings: MutableHttp2Settings = MutableHttp2Settings.default()
+  override lazy val localSettings: MutableHttp2Settings = MutableHttp2Settings.default()
 
-  override val remoteSettings: MutableHttp2Settings = MutableHttp2Settings.default()
+  override lazy val remoteSettings: MutableHttp2Settings = MutableHttp2Settings.default()
 
   lazy val headerEncoder: HeaderEncoder = new HeaderEncoder(remoteSettings.headerTableSize)
 
