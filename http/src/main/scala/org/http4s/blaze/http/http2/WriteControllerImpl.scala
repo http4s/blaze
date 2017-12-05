@@ -13,7 +13,7 @@ import scala.util.control.NonFatal
 
 /** Gracefully coordinate writes
   *
-  * The `WriteController`s job is to direct outbound data in a fair, efficient, and
+  * The `WriteController`'s job is to direct outbound data in a fair, efficient, and
   * thread safe manner. All calls to the `WriteController` are expected to come from
   * within the session executor.
   *
@@ -28,7 +28,7 @@ private final class WriteControllerImpl(
 
   private[this] val logger = getLogger
   // TODO: if we implement priorities, we should prioritize writes as well.
-  private[this] val interestedStreams = new java.util.ArrayDeque[WriteInterest]
+  private[this] val interestedStreams = new util.ArrayDeque[WriteInterest]
   private[this] val pendingWrites = new util.ArrayDeque[Seq[ByteBuffer]]
 
   private[this] var state: State = Idle
