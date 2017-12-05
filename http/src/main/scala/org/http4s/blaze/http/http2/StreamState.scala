@@ -23,10 +23,11 @@ private abstract class StreamState(session: SessionCore)
     s"Http2Stream($id)"
   }
 
-  /** Called to notify the `WriteInterest` of failure */
-  override def writeFailure(t: Throwable): Unit = {
-    session.invokeShutdownWithError(Some(t), "StreamState.writeFailure")
-  }
+  // TODO: how do we release resources from the StreamState? Maybe we already do via shutdown logic?
+//  /** Called to notify the `WriteInterest` of failure */
+//  override def writeFailure(t: Throwable): Unit = {
+//    session.invokeShutdownWithError(Some(t), "StreamState.writeFailure")
+//  }
 
   // State associated with the streams inbound data flow
   private[this] val pendingInboundMessages = new util.ArrayDeque[StreamMessage]

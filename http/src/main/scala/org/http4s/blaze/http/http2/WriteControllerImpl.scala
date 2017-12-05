@@ -13,9 +13,9 @@ import scala.util.control.NonFatal
 
 /** Gracefully coordinate writes
   *
-  * The `WriteController`s job is to direct outbound data in both a fair, efficient, and
-  * thread safe manner. All calls to the `WriteController` are expected to come from within
-  * the session executor.
+  * The `WriteController`'s job is to direct outbound data in a fair, efficient, and
+  * thread safe manner. All calls to the `WriteController` are expected to come from
+  * within the session executor.
   *
   * @param highWaterMark number of bytes that will trigger a flush.
   */
@@ -28,13 +28,17 @@ private final class WriteControllerImpl(
 
   private[this] val logger = getLogger
   // TODO: if we implement priorities, we should prioritize writes as well.
-  private[this] val interestedStreams = new java.util.ArrayDeque[WriteInterest]
+  private[this] val interestedStreams = new util.ArrayDeque[WriteInterest]
   private[this] val pendingWrites = new util.ArrayDeque[Seq[ByteBuffer]]
 
   private[this] var state: State = Idle
 
   def close(): Future[Unit] = state match {
-    case Idle | Flushing =>
+    case Idle =>
+      state = Closed
+      Future.successful(())
+
+    case Flushing =>
       val p = Promise[Unit]
       state = Closing(p)
       p.future
@@ -48,28 +52,24 @@ private final class WriteControllerImpl(
 
   private[this] def pendingInterests: Boolean = !pendingWrites.isEmpty || !interestedStreams.isEmpty
 
-  /** Queue data for the wire
-    *
-    * The data may be stored in a buffer if a write is currently in progress.
-    */
-  final def write(data: Seq[ByteBuffer]): Unit = state match {
+  def write(data: Seq[ByteBuffer]): Boolean = state match {
     case Idle | Flushing | Closing(_) =>
-      pendingWrites.push(data)
+      pendingWrites.addLast(data)
       maybeWrite()
+      true
 
-    case Closed => () // TODO: what here?
+    case Closed =>
+      false
   }
 
-  /** Queue data for the wire
-    *
-    * The data may be stored in a buffer if a write is currently in progress.
-    */
-  final def write(data: ByteBuffer): Unit = write(data::Nil)
+  def write(data: ByteBuffer): Boolean = write(data::Nil)
 
-  /** Register a listener to be invoked when the pipeline is ready to perform write operations */
-  final def registerWriteInterest(stream: WriteInterest): Unit = {
-    interestedStreams.add(stream)
-    maybeWrite()
+  def registerWriteInterest(interest: WriteInterest): Boolean = state match {
+    case Closed => false
+    case _ =>
+      interestedStreams.add(interest)
+      maybeWrite()
+      true
   }
 
   private[this] def maybeWrite(): Unit = {
@@ -133,10 +133,10 @@ private final class WriteControllerImpl(
 
           case Closing(p) =>
             state = Closed
-            p.trySuccess(())
+            p.success(())
 
           case Closed =>
-            () // shouldn't get here
+            throw new IllegalStateException("Shouldn't get here")
         }
 
       case Failure(t) =>

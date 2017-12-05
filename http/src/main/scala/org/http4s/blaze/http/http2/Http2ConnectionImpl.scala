@@ -1,12 +1,10 @@
 package org.http4s.blaze.http.http2
 
 import java.nio.ByteBuffer
-
 import org.http4s.blaze.http.http2.Http2Connection._
 import org.http4s.blaze.pipeline.Command.EOF
-import org.http4s.blaze.pipeline.{LeafBuilder, TailStage}
+import org.http4s.blaze.pipeline.{Command, LeafBuilder, TailStage}
 import org.http4s.blaze.util.{BufferTools, Execution, SerialExecutionContext}
-
 import scala.annotation.tailrec
 import scala.concurrent.duration.Duration
 import scala.concurrent.{ExecutionContext, Future, Promise}
@@ -62,8 +60,11 @@ private abstract class Http2ConnectionImpl(
     override def state: ConnectionState = Http2ConnectionImpl.this.state
 
 
-    override def newInboundStream(streamId: Int): Option[LeafBuilder[StreamMessage]] =
+    override def newInboundStream(streamId: Int): Option[LeafBuilder[StreamMessage]] = {
+      // TODO: check the state
       inboundStreamBuilder(streamId)
+    }
+
 
     // Must be called from within the session executor.
     // If an error is provided, a GO_AWAY is written and we wait for the writeController to
@@ -88,11 +89,14 @@ private abstract class Http2ConnectionImpl(
                 Http2Exception.INTERNAL_ERROR.goaway("Unhandled internal exception")
             }
 
-            streamManager.close(Some(ex))
+            streamManager.close(Some(ex)) // Fail hard
             val goawayFrame = Http2FrameSerializer.mkGoAwayFrame(
               streamManager.idManager.lastInboundStream, http2SessionError)
-            // on completion of the write `sessionTerminated()` should be called
+            // TODO: maybe we should clear the `WriteController` before writing?
             writeController.write(goawayFrame)
+            writeController.close().onComplete { _ =>
+              tailStage.sendOutboundCommand(Command.Disconnect)
+            }(serialExecutor)
         }
       }
     }
@@ -156,7 +160,7 @@ private abstract class Http2ConnectionImpl(
   override def ping: Future[Duration] = {
     val p = Promise[Duration]
     Core.serialExecutor.execute(new Runnable { def run(): Unit =
-      Core.pingManager.ping(p) })
+      p.completeWith(Core.pingManager.ping()) })
     p.future
   }
 
