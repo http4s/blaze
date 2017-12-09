@@ -1,6 +1,6 @@
 package org.http4s.blaze.http.http2.mocks
 
-import org.http4s.blaze.http.http2.Http2Connection.ConnectionState
+import org.http4s.blaze.http.http2.Http2Connection.{ConnectionState, Running}
 import org.http4s.blaze.http.http2._
 import org.http4s.blaze.pipeline.LeafBuilder
 import org.http4s.blaze.util.Execution
@@ -38,12 +38,12 @@ private[http2] class MockTools(isClient: Boolean) extends SessionCore {
 
   override lazy val pingManager: PingManager = new PingManager(this)
 
-  override def streamManager: StreamManager = ???
+  override lazy val streamManager: MockStreamManager = new MockStreamManager
 
   // Behaviors
   override def newInboundStream(streamId: Int): Option[LeafBuilder[StreamMessage]] = ???
 
-  override def state: ConnectionState = ???
+  override def state: ConnectionState = Running
 
   override def invokeDrain(gracePeriod: Duration): Unit = ???
 

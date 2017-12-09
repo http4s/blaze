@@ -47,14 +47,17 @@ trait Http2ClientConnection extends Http2Connection with Http2ClientSession {
 }
 
 object Http2Connection {
-  sealed trait ConnectionState
+  sealed abstract class ConnectionState {
+    final def closing: Boolean = !running
+    final def running: Boolean = this == Running
+  }
 
   /** The `Running` state represents a session that is active and able to accept
     * new streams.
     */
   case object Running extends ConnectionState
 
-  sealed trait Closing extends ConnectionState
+  sealed abstract class Closing extends ConnectionState
 
   /** The `Draining` state represents a session that is no longer accepting new
     * streams and is in the process of draining existing connection.
