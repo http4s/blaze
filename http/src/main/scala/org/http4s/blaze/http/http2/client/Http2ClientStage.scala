@@ -85,11 +85,13 @@ private class Http2ClientStage(request: HttpRequest, executor: ExecutionContext)
   private def readResponseHeaders(): Unit = channelRead().onComplete {
     case Success(HeadersFrame(_, eos, hs)) =>
       val body = if (eos) BodyReader.EmptyBodyReader else responseBody()
+      // TODO: we need to make sure this wasn't a 1xx response
       _result.tryComplete(collectResponseFromHeaders(body, hs))
 
     case Success(other) =>
-      // should never happen based on the implementation of the `Http2ClientSessionImpl`
-      // which will generate a protocol error if an idle stream receives a data frame
+      // The first frame must be a HEADERS frame, either of an informational
+      // response or the message prelude
+      // https://tools.ietf.org/html/rfc7540#section-8.1
       val ex = new IllegalStateException(s"HTTP2 response started with message other than headers: $other")
       shutdownWithError(ex, "readResponseHeaders")
 

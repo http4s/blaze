@@ -44,7 +44,8 @@ class Http2ServerStage(streamId: Int,
         else getBodyReader(hs)
 
       case Success(frame) =>
-        val e = PROTOCOL_ERROR.goaway(s"Stream $streamId received invalid frame: $frame")
+        val e = PROTOCOL_ERROR.goaway(
+          s"Stream $streamId received invalid frame: ${frame.getClass.getSimpleName}")
         shutdownWithCommand(Cmd.Error(e))
 
         // TODO: what about a 408 response for a timeout?
