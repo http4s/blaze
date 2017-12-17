@@ -5,7 +5,7 @@ import org.http4s.blaze.http._
 import scala.collection.mutable.HashMap
 import scala.concurrent.{Future, Promise}
 
-private final class StreamManager(
+private class StreamManager(
   session: SessionCore,
   val idManager: StreamIdManager
 ) {

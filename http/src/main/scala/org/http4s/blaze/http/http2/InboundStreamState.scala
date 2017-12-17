@@ -5,4 +5,6 @@ private final class InboundStreamState(
   session: SessionCore,
   val streamId: Int,
   val flowWindow: StreamFlowWindow
-) extends StreamState(session)
+) extends StreamState(session) {
+  override def name: String = s"InboundStreamState($streamId)"
+}

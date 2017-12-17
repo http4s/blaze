@@ -11,23 +11,24 @@ import org.http4s.blaze.util.BufferTools
 
 import scala.concurrent.{Future, Promise}
 
+/** Virtual pipeline head for representing HTTP/2 streams
+  *
+  * It provides the junction for de-multiplexing stream messages
+  * into an individual stream. It handles commands and errors for the
+  * stream and manages the lifetime in the parent session accordingly.
+  *
+  * @note While `StreamState` does enforce the end-stream semantics
+  *       defined by HTTP/2, it doesn't attempt to enforce the semantics
+  *       of the HTTP dispatch, specifically it doesn't enforce that
+  *       HEADERS come before DATA, etc, and that duty belongs to the
+  *       streams dispatcher.
+  */
 private abstract class StreamState(session: SessionCore)
   extends HeadStage[StreamMessage] with WriteInterest {
 
   def streamId: Int
 
   def flowWindow: StreamFlowWindow
-
-  override def name: String = {
-    val id = try streamId catch { case _: IllegalStateException => "uninitialized" }
-    s"Http2Stream($id)"
-  }
-
-  // TODO: how do we release resources from the StreamState? Maybe we already do via shutdown logic?
-//  /** Called to notify the `WriteInterest` of failure */
-//  override def writeFailure(t: Throwable): Unit = {
-//    session.invokeShutdownWithError(Some(t), "StreamState.writeFailure")
-//  }
 
   // State associated with the streams inbound data flow
   private[this] val pendingInboundMessages = new util.ArrayDeque[StreamMessage]
@@ -36,6 +37,14 @@ private abstract class StreamState(session: SessionCore)
   // State associated with the streams outbound data flow
   private[this] var writePromise: Promise[Unit] = null
   private[this] var pendingOutboundFrame: StreamMessage = null
+  private[this] var interestRegistered = false
+
+  // Guards against registering itself multiple times with the write controller
+  private[this] def doRegisterWriteInterest(): Unit =
+    if (!interestRegistered) {
+      interestRegistered = true
+      assert(session.writeController.registerWriteInterest(this))
+    }
 
 
   // Determines if we can receive and send messages
@@ -51,43 +60,42 @@ private abstract class StreamState(session: SessionCore)
   // peer can no longer send frames other than WINDOW_UPDATE, PRIORITY, and RST_STREAM
   private[this] var receivedEndStream: Boolean = false
 
-  // Marks whether  we've received the message prelude
-  private[this] var receivedPreludeHeaders: Boolean = false
-
   override def readRequest(size: Int): Future[StreamMessage] = {
     val p = Promise[StreamMessage]
-
+    // Move the work into the session executor
     session.serialExecutor.execute(new Runnable {
-      def run(): Unit = {
-        if (pendingRead != null) {
-          // TODO: should fail the stream, send RST, etc.
-          p.failure(new IllegalStateException())
-          ()
-        } else if (streamIsClosed) {
-          p.tryFailure(EOF)
-          ()
-        } else pendingInboundMessages.poll() match {
-          case null if receivedEndStream =>
-            p.tryFailure(EOF)
-            ()
-
-          case null =>
-            pendingRead = p
-            ()
-          case msg =>
-            flowWindow.inboundConsumed(msg.flowBytes)
-            p.trySuccess(msg)
-            ()
-        }
-      }
+      override def run(): Unit = invokeStreamRead(size, p)
     })
 
     p.future
   }
 
+  private[this] def invokeStreamRead(size: Int, p: Promise[StreamMessage]): Unit = {
+    if (pendingRead != null) {
+      closeWithError(Some(INTERNAL_ERROR.rst(streamId)))
+      p.failure(new IllegalStateException(
+        s"Already have an outstanding read on a stream ($streamId)"))
+      ()
+    } else if (streamIsClosed) {
+      p.failure(EOF)
+      ()
+    } else pendingInboundMessages.poll() match {
+      case null if receivedEndStream =>
+        p.failure(EOF)
+        ()
+
+      case null =>
+        pendingRead = p
+        ()
+      case msg =>
+        flowWindow.inboundConsumed(msg.flowBytes)
+        p.success(msg)
+        ()
+    }
+  }
+
   override def writeRequest(msg: StreamMessage): Future[Unit] = {
     val p = Promise[Unit]
-
     // Move the work into the session executor
     session.serialExecutor.execute(new Runnable {
       override def run(): Unit = invokeStreamWrite(msg, p)
@@ -98,17 +106,16 @@ private abstract class StreamState(session: SessionCore)
 
   // Invoke methods are intended to only be called from within the context of the session
   protected def invokeStreamWrite(msg: StreamMessage, p: Promise[Unit]): Unit = {
-    if (sentEndStream) {
-      p.tryFailure(new IllegalStateException(s"Stream($streamId) already closed"))
-      ()
-    } else if (writePromise != null) {
+    if (writePromise != null) {
       closeWithError(Some(INTERNAL_ERROR.rst(streamId)))
-      p.tryFailure(new IllegalStateException(s"Already a pending write on this stream($streamId)"))
+      p.failure(new IllegalStateException(s"Already a pending write on this stream ($streamId)"))
       ()
-    }
-    else if (streamIsClosed) {
+    } else if (sentEndStream) {
+      p.failure(new IllegalStateException(s"Stream($streamId) already closed"))
+      ()
+    } else if (streamIsClosed) {
       sentEndStream = msg.endStream
-      p.tryFailure(EOF)
+      p.failure(EOF)
       ()
     } else {
       sentEndStream = msg.endStream
@@ -117,7 +124,7 @@ private abstract class StreamState(session: SessionCore)
 
       // If this is a flow controlled frame and we can't write any bytes, don't register an interest
       if (msg.flowBytes == 0 || flowWindow.outboundWindowAvailable) {
-        session.writeController.registerWriteInterest(this)
+        doRegisterWriteInterest()
       }
     }
   }
@@ -128,24 +135,26 @@ private abstract class StreamState(session: SessionCore)
   def outboundFlowWindowChanged(): Unit = {
     // TODO: we may already be registered. Maybe keep track of that state? Maybe also want to unregister.
     if (writePromise != null && flowWindow.outboundWindowAvailable) {
-      session.writeController.registerWriteInterest(this)
+      doRegisterWriteInterest()
     }
   }
 
-  /** Must be called by the [[WriteController]] from within the session executor
-    *
-    * @return number of flow bytes written
-    */
+  /** Must be called by the [[WriteController]] from within the session executor */
   def performStreamWrite(): Seq[ByteBuffer] = {
-    // Nothing waiting to go out, so return fast
-    if (writePromise == null) return Nil
+    interestRegistered = false
 
-    pendingOutboundFrame match {
+    // Nothing waiting to go out, so return fast
+    if (writePromise == null) Nil
+    else pendingOutboundFrame match {
       case HeadersFrame(priority, endStream, hs) =>
         val data = session.http2Encoder.headerFrame(streamId, priority, endStream, hs)
-        writePromise.trySuccess(())
-        pendingOutboundFrame = null
+        // We consume the whole thing so we now clear out the write channel
+        val p = writePromise
         writePromise = null
+        pendingOutboundFrame = null
+        // TODO: in some ways, this is not accurate since we haven't actually written anything,
+        //       just offered it to the `WriteController`.
+        p.success(())
         data
 
       case DataFrame(endStream, data) =>
@@ -157,22 +166,26 @@ private abstract class StreamState(session: SessionCore)
         if (allowedBytes == pendingOutboundFrame.flowBytes) {
           // Writing the whole message
           val buffers = session.http2Encoder.dataFrame(streamId, endStream, data)
-          pendingOutboundFrame = null
-          writePromise.trySuccess(())
+          val p = writePromise
           writePromise = null
+          pendingOutboundFrame = null
+          p.success(())
           buffers
         } else if (allowedBytes == 0) {
           // Can't make progress, must wait for flow update to proceed.
           // Note: this case must be second since a DataFrame with 0 bytes can be used to signal EOS
           Nil
         } else {
-          // We take a chunk, and then reregister ourselves with the listener
+          // Can't send all the data right now so we take a chunk, and then again register
+          // ourselves with the listener
           val slice = BufferTools.takeSlice(data, allowedBytes)
           val buffers = session.http2Encoder.dataFrame(streamId, endStream = false, slice)
 
           if (flowWindow.streamOutboundWindow > 0) {
             // We were not limited by the flow window so signal interest in another write cycle.
-            session.writeController.registerWriteInterest(this)
+            // Note: this won't trigger recursion since the WriteController must not be idle to
+            // call the `performStreamWrite` call.
+            doRegisterWriteInterest()
           }
 
           buffers
@@ -202,22 +215,23 @@ private abstract class StreamState(session: SessionCore)
   ///////////////////// Inbound messages ///////////////////////////////
 
   final def invokeInboundData(endStream: Boolean, data: ByteBuffer, flowBytes: Int): MaybeError = {
-    // https://tools.ietf.org/html/rfc7540#section-5.1 section 'closed'
     if (receivedEndStream) {
-      closeWithError(None) // the GOAWAY will be sent by the `Http2FrameListener`
-      Error(STREAM_CLOSED.goaway(s"Stream($streamId received DATA frame after EOS"))
+      // https://tools.ietf.org/html/rfc7540#section-5.1 section 'half-closed'
+      Error(STREAM_CLOSED.rst(streamId, s"Stream($streamId) received DATA frame after EOS"))
     } else if (streamIsClosed) {
       // Shouldn't get here: should have been removed from active streams
-      Error(STREAM_CLOSED.rst(streamId))
+      Error(STREAM_CLOSED.goaway(s"Stream($streamId) received DATA after stream was closed"))
     } else if (flowWindow.inboundObserved(flowBytes)) {
       receivedEndStream = endStream
       val consumed = if (queueMessage(DataFrame(endStream, data))) flowBytes else flowBytes - data.remaining()
+      println(s"Accepting data! Bytes consume: $consumed")
       flowWindow.inboundConsumed(consumed)
       Continue
     }
     else {
       // Inbound flow window violated. Technically, if it was a stream overflow,
-      // this could be a stream error, but we are strict and just kill the session.
+      // this could be a stream error, but we don't distinguish which window was
+      // violated and the peer is misbehaving, so we just kill the session.
       Error(FLOW_CONTROL_ERROR.goaway(s"stream($streamId) flow control error"))
     }
   }
@@ -225,22 +239,15 @@ private abstract class StreamState(session: SessionCore)
   // Must be called with a complete headers block, either the prelude or trailers
   final def invokeInboundHeaders(priority: Priority, endStream: Boolean, headers: Seq[(String,String)]): MaybeError = {
     if (receivedEndStream) {
-      // https://tools.ietf.org/html/rfc7540#section-5.1 section 'closed'
-      closeWithError(None) // the GOAWAY will be sent by the `Http2FrameListener`
-      Error(STREAM_CLOSED.goaway(s"Stream($streamId received DATA frame after EOS"))
-    } else if (receivedPreludeHeaders && !endStream) {
-      // https://tools.ietf.org/html/rfc7540#section-8.1
-      // This must be trailers, and there should only be one complete trailers block
-      // so if the end-stream flag isn't set, we have a problem.
-      val msg = s"(stream $streamId): Received a trailers frame that " +
-        "didn't include the END_STREAM flag."
-      Error(PROTOCOL_ERROR.rst(streamId, msg))
+      // https://tools.ietf.org/html/rfc7540#section-5.1 section 'half-closed'
+      Error(STREAM_CLOSED.rst(streamId, s"Stream($streamId received HEADERS frame after EOS"))
     } else if (streamIsClosed) {
       // Shouldn't get here: should have been removed from active streams
-      Error(STREAM_CLOSED.rst(streamId))
+      Error(STREAM_CLOSED.goaway(s"Stream($streamId) received HEADERS after stream was closed"))
     } else {
-      receivedPreludeHeaders = true // these are either prelude or trailers, either way received prelude.
-      receivedEndStream = endStream
+      if (endStream) {
+        receivedEndStream = true
+      }
       queueMessage(HeadersFrame(priority, endStream, headers))
       Continue
     }
@@ -269,6 +276,7 @@ private abstract class StreamState(session: SessionCore)
           Some(INTERNAL_ERROR.rst(streamId, "Unhandled error in stream pipeline"))
       }
 
+      // Remove ourselves from the streamManager
       session.streamManager.streamFinished(this, http2Ex)
     }
   }
@@ -280,7 +288,7 @@ private abstract class StreamState(session: SessionCore)
       pendingInboundMessages.offer(msg)
       false
     } else {
-      pendingRead.trySuccess(msg)
+      pendingRead.success(msg)
       pendingRead = null
       true
     }
@@ -298,16 +306,16 @@ private abstract class StreamState(session: SessionCore)
     } else {
       val p = pendingRead
       pendingRead = null
-      p.tryFailure(ex)
+      p.failure(ex)
       ()
     }
 
     // clear the write channel
     if (writePromise != null) {
-      pendingOutboundFrame = null
       val p = writePromise
       writePromise = null
-      p.tryFailure(ex)
+      pendingOutboundFrame = null
+      p.failure(ex)
       ()
     }
   }
