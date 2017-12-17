@@ -4,6 +4,7 @@ import org.http4s.blaze.http.http2.Http2Connection.{Closed, ConnectionState, Run
 import org.http4s.blaze.http.http2.mocks.{MockStreamManager, MockTools}
 import org.specs2.mutable.Specification
 
+import scala.concurrent.duration.Duration
 import scala.util.Failure
 
 class OutboundStreamStateSpec extends Specification {
@@ -39,6 +40,7 @@ class OutboundStreamStateSpec extends Specification {
       import ctx._
 
       val f = streamState.writeRequest(HeadersFrame(Priority.NoPriority, true, Seq.empty))
+      tools.drainGracePeriod must_== Some(Duration.Inf)
       tools.streamManager.registeredOutboundStreams must beEmpty
       f.value must beLike {
         case Some(Failure(ex: Http2StreamException)) => ex.code must_== Http2Exception.REFUSED_STREAM.code

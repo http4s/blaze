@@ -1,6 +1,7 @@
 package org.http4s.blaze.http.http2
 
 import scala.concurrent.Promise
+import scala.concurrent.duration.Duration
 
 /** Representation of outbound streams
   *
@@ -14,7 +15,7 @@ private final class OutboundStreamState(session: SessionCore) extends StreamStat
   private[this] var lazyFlowWindow: StreamFlowWindow = null
 
   private[this] def initialized: Boolean = lazyStreamId != -1
-  private[this] def uninitializedException: Nothing = {
+  private[this] def uninitializedException(): Nothing = {
     throw new IllegalStateException("Stream uninitialized")
   }
 
@@ -25,12 +26,12 @@ private final class OutboundStreamState(session: SessionCore) extends StreamStat
 
   override def streamId: Int = {
     if (initialized) lazyStreamId
-    else uninitializedException
+    else uninitializedException()
   }
 
   override def flowWindow: StreamFlowWindow = {
     if (initialized) lazyFlowWindow
-    else uninitializedException
+    else uninitializedException()
   }
 
   // We need to establish whether the stream has been initialized yet and try to acquire a new ID if not
@@ -44,15 +45,16 @@ private final class OutboundStreamState(session: SessionCore) extends StreamStat
       ()
     } else {
       session.streamManager.registerOutboundStream(this) match {
-        case Some(streamId) =>
+        case Some(freshId) =>
           // Note: it is assumed that these will both be initialized or neither are initialized
-          lazyFlowWindow = session.sessionFlowControl.newStreamFlowWindow(streamId)
-          lazyStreamId = streamId
-          logger.debug(s"Created new OutboundStream with id $streamId. ${session.streamManager.size} streams.")
+          lazyFlowWindow = session.sessionFlowControl.newStreamFlowWindow(freshId)
+          lazyStreamId = freshId
+          logger.debug(s"Created new OutboundStream with id $freshId. ${session.streamManager.size} streams.")
           super.invokeStreamWrite(msg, p)
 
         case None =>
-          // TODO: Out of stream IDs. We need to switch to draining
+          // Out of stream IDs so we make sure the session is starting to drain
+          session.invokeDrain(Duration.Inf)
           val ex = Http2Exception.REFUSED_STREAM.rst(0, "Session is out of outbound stream IDs")
           p.failure(ex)
           ()

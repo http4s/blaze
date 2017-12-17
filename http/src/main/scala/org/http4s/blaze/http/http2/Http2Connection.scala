@@ -47,7 +47,7 @@ trait Http2ClientConnection extends Http2Connection with Http2ClientSession {
 }
 
 object Http2Connection {
-  sealed abstract class ConnectionState {
+  sealed abstract class ConnectionState extends Product with Serializable {
     final def closing: Boolean = !running
     final def running: Boolean = this == Running
   }

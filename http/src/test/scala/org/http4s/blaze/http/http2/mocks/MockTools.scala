@@ -45,7 +45,11 @@ private[http2] class MockTools(isClient: Boolean) extends SessionCore {
 
   override def state: ConnectionState = Running
 
-  override def invokeDrain(gracePeriod: Duration): Unit = ???
+  var drainGracePeriod: Option[Duration] = None
+
+  override def invokeDrain(gracePeriod: Duration): Unit = {
+    drainGracePeriod = Some(gracePeriod)
+  }
 
   override def invokeGoaway(lastHandledStream: Int, message: String): Unit = ???
 
