@@ -7,7 +7,7 @@ import org.specs2.mutable.Specification
 import scala.concurrent.duration.Duration
 import scala.util.Failure
 
-class OutboundStreamStateSpec extends Specification {
+class OutboundStreamStateImplSpec extends Specification {
 
   private class Ctx(acceptStream: Boolean, connectionState: ConnectionState) {
     val streamId = 1
@@ -21,7 +21,7 @@ class OutboundStreamStateSpec extends Specification {
 
       override def state: ConnectionState = connectionState
     }
-    val streamState = new OutboundStreamState(session = tools)
+    val streamState = new OutboundStreamStateImpl(session = tools)
   }
 
   "OutboundStreamState" should {

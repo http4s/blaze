@@ -1,7 +1,6 @@
 package org.http4s.blaze.http.http2.mocks
 
 import org.http4s.blaze.http.Headers
-import org.http4s.blaze.http.http2.mocks.MockStreamManager.FinishedStream
 import org.http4s.blaze.http.http2.{Http2Result, InboundStreamState, MaybeError, _}
 
 import scala.collection.mutable
@@ -10,13 +9,13 @@ import scala.concurrent.Future
 private[http2] class MockStreamManager extends StreamManager {
   override def size: Int = 0
 
-  val finishedStreams = new mutable.Queue[FinishedStream]
+  val finishedStreams = new mutable.Queue[StreamState]
 
   val registeredOutboundStreams = new mutable.Queue[OutboundStreamState]
 
-  override def streamFinished(stream: StreamState, cause: Option[Http2Exception]): Unit = {
-    finishedStreams += FinishedStream(stream, cause)
-    ()
+  override def streamClosed(stream: StreamState): Boolean = {
+    finishedStreams += stream
+    true
   }
 
 
@@ -39,14 +38,10 @@ private[http2] class MockStreamManager extends StreamManager {
 
   override def goaway(lastHandledOutboundStream: Int, message: String): Future[Unit] = ???
 
-
-  override def closeStream(id: Int, cause: Option[Throwable]): Boolean = ???
+  override def rstStream(cause: Http2StreamException): Boolean = ???
 
   override def close(cause: Option[Throwable]): Unit = ???
 
   override def isEmpty: Boolean = ???
 }
 
-private[http2] object MockStreamManager {
-  case class FinishedStream(stream: StreamState, cause: Option[Http2Exception])
-}

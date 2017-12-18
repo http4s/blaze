@@ -15,32 +15,35 @@ private final class StreamManagerImpl(
   private[this] var drainingP: Option[Promise[Unit]] = None
 
   // TODO: we use this to determine status, and that isn't thread safe
-  def size: Int = streams.size
+  override def size: Int = streams.size
 
-  def isEmpty: Boolean = streams.isEmpty
+  override def isEmpty: Boolean = streams.isEmpty
 
   // https://tools.ietf.org/html/rfc7540#section-6.9.2
   // a receiver MUST adjust the size of all stream flow-control windows that
   // it maintains by the difference between the new value and the old value.
-  def initialFlowWindowChange(diff: Int): MaybeError = {
+  override def initialFlowWindowChange(diff: Int): MaybeError = {
     var result: MaybeError = Continue
-    streams.values.forall { stream =>
-      val e = stream.flowWindow.peerSettingsInitialWindowChange(diff)
-      if (e != Continue && result == Continue) {
-        result = e
-        false
-      } else {
-        stream.outboundFlowWindowChanged()
-        true
+    val it = streams.valuesIterator
+    while (it.hasNext && result == Continue) {
+      val stream = it.next()
+      stream.flowWindow.peerSettingsInitialWindowChange(diff) match {
+        case Continue =>
+          stream.outboundFlowWindowChanged()
+
+        case Error(ex) =>
+          // We shouldn't get stream exceptions here, only a
+          // GO_AWAY of type FLOW_CONTROL_ERROR
+          result = Error(ex.toSessionException())
       }
     }
     result
   }
 
-  def get(id: Int): Option[StreamState] =
+  override def get(id: Int): Option[StreamState] =
     streams.get(id)
 
-  def close(cause: Option[Throwable]): Unit = {
+  override def close(cause: Option[Throwable]): Unit = {
     // Need to set the closed state
     drainingP match {
       case Some(p) =>
@@ -59,7 +62,7 @@ private final class StreamManagerImpl(
     }
   }
 
-  def registerInboundStream(state: InboundStreamState): Boolean = {
+  override def registerInboundStream(state: InboundStreamState): Boolean = {
     if (drainingP.isDefined) false
     else if (!idManager.observeInboundId(state.streamId)) false
     else {
@@ -69,7 +72,7 @@ private final class StreamManagerImpl(
     }
   }
 
-  def registerOutboundStream(state: OutboundStreamState): Option[Int] = {
+  override def registerOutboundStream(state: OutboundStreamState): Option[Int] = {
     if (drainingP.isDefined) None
     else {
       val id = idManager.takeOutboundId()
@@ -81,18 +84,14 @@ private final class StreamManagerImpl(
     }
   }
 
-  /** Close the specified stream
-    *
-    * @param id stream-id
-    * @param cause reason for closing the stream
-    * @return true if the stream existed and was closed, false otherwise
-    */
-  def closeStream(id: Int, cause: Option[Throwable]): Boolean = {
-    logger.debug(s"Closing stream ($id): $cause")
-    streams.remove(id) match {
-      case Some(stream) =>
-        // It is the streams job to call `streamFinished`
-        stream.closeWithError(cause)
+  override def rstStream(cause: Http2StreamException): Boolean = {
+    // We remove the stream from the collection first since the `StreamState` will
+    // then invoke `streamClosed` and use it's return value as the predicate for
+    // sending a RST, which it shouldn't do since it was closed via an RST.
+    // https://tools.ietf.org/html/rfc7540#section-5.4.2
+    streams.remove(cause.stream) match {
+      case Some(streamState) =>
+        streamState.closeWithError(Some(cause))
         true
 
       case None =>
@@ -100,47 +99,28 @@ private final class StreamManagerImpl(
     }
   }
 
-  /** Called by a [[StreamState]] to signal that it is finished.
-    *
-    * @param stream
-    * @param cause
-    */
-  def streamFinished(stream: StreamState, cause: Option[Http2Exception]): Unit = {
-    val streamId = stream.streamId
-    val wasInMap = streams.remove(streamId).isDefined
-
-    cause match {
-      case Some(ex: Http2StreamException) if wasInMap =>
-        logger.debug(ex)(s"Sending stream ($streamId) RST")
-        val frame = session.http2Encoder.rstFrame(streamId, ex.code)
-        session.writeController.write(frame)
-
-      case Some(ex: Http2StreamException) =>
-        logger.debug(ex)(s"Stream($streamId) closed with RST, not sending reply")
-
-      case Some(ex: Http2SessionException) =>
-        logger.info(s"Stream($streamId) finished with session exception")
-        session.invokeShutdownWithError(cause, "streamFinished")
-
-      case None => // nop
-    }
+  override def streamClosed(streamState: StreamState): Boolean = {
+    val result = streams.remove(streamState.streamId).isDefined
 
     // See if we've drained all the streams
     drainingP match {
-      case Some(p) if streams.isEmpty => p.trySuccess(())
+      case Some(p) if streams.isEmpty =>
+        p.trySuccess(())
+        ()
       case _ => () // nop
     }
+
+    result
   }
 
-  /** Handle a valid and complete PUSH_PROMISE frame */
-  def handlePushPromise(streamId: Int, promisedId: Int, headers: Headers): Http2Result = {
+  override def handlePushPromise(streamId: Int, promisedId: Int, headers: Headers): Http2Result = {
     // TODO: support push promises
     val frame =session.http2Encoder.rstFrame(promisedId, Http2Exception.REFUSED_STREAM.code)
     session.writeController.write(frame)
     Continue
   }
 
-  def flowWindowUpdate(streamId: Int, sizeIncrement: Int): MaybeError = {
+  override def flowWindowUpdate(streamId: Int, sizeIncrement: Int): MaybeError = {
     if (streamId == 0) {
       val result = session.sessionFlowControl.sessionOutboundAcked(sizeIncrement)
       logger.debug(s"Session flow update: $sizeIncrement. Result: $result")
@@ -168,7 +148,7 @@ private final class StreamManagerImpl(
     }
   }
 
-  def goaway(lastHandledOutboundStream: Int, message: String): Future[Unit] = {
+  override def goaway(lastHandledOutboundStream: Int, message: String): Future[Unit] = {
     drainingP match {
       case Some(p) =>
         logger.debug(s"Received a second GOAWAY($lastHandledOutboundStream, $message")

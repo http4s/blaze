@@ -1,6 +1,5 @@
 package org.http4s.blaze.http.http2
 
-import org.http4s.blaze.http.http2.mocks.MockStreamManager.FinishedStream
 import org.http4s.blaze.http.http2.mocks.MockTools
 import org.http4s.blaze.pipeline.Command
 import org.http4s.blaze.util.BufferTools
@@ -8,13 +7,13 @@ import org.specs2.mutable.Specification
 
 import scala.util.{Failure, Success}
 
-class StreamStateSpec extends Specification {
+class StreamStateImplSpec extends Specification {
 
   private class Ctx {
     val streamId = 1
     lazy val tools = new MockTools(false)
 
-    val streamState = new InboundStreamState(
+    val streamState = new InboundStreamStateImpl(
       session = tools,
       streamId = streamId,
       flowWindow = tools.sessionFlowControl.newStreamFlowWindow(streamId))
@@ -54,6 +53,8 @@ class StreamStateSpec extends Specification {
       f1.isCompleted must beFalse
       tools.writeController.observedInterests.result must_== streamState::Nil
 
+      val currentSize = tools.writeController.observedWrites.length
+
       val f2 = streamState.writeRequest(DataFrame(true, BufferTools.emptyBuffer))
 
       foreach(Seq(f1, f2)) { f =>
@@ -63,11 +64,14 @@ class StreamStateSpec extends Specification {
         }
       }
 
-      val FinishedStream(stream, cause) = tools.streamManager.finishedStreams.dequeue()
-      stream must_== streamState
-      cause must beSome like {
-        case Some(_: Http2StreamException) => ok
-      }
+
+      tools.streamManager.finishedStreams.dequeue() must_== streamState
+      // Should have written a RST frame
+      tools.writeController.observedWrites.length must_== currentSize + 1
+//
+//      cause must beSome like {
+//        case Some(_: Http2StreamException) => ok
+//      }
     }
 
     "not allow multiple outstanding reads" in {
@@ -86,11 +90,9 @@ class StreamStateSpec extends Specification {
         }
       }
 
-      val FinishedStream(stream, cause) = tools.streamManager.finishedStreams.dequeue()
-      stream must_== streamState
-      cause must beSome like {
-        case Some(_: Http2StreamException) => ok
-      }
+      tools.streamManager.finishedStreams.dequeue() must_== streamState
+      // Should have written a RST frame
+      tools.writeController.observedWrites.isEmpty must beFalse
     }
 
     "Close down when receiving Disconnect Command with RST if stream not finished" in {
@@ -99,11 +101,9 @@ class StreamStateSpec extends Specification {
 
       streamState.outboundCommand(Command.Disconnect)
 
-      val FinishedStream(stream, cause) = tools.streamManager.finishedStreams.dequeue()
-      stream must_== streamState
-      cause must beLike {
-        case Some(ex: Http2StreamException) => ex.code must_== Http2Exception.CANCEL.code
-      }
+      tools.streamManager.finishedStreams.dequeue() must_== streamState
+      // Should have written a RST frame
+      tools.writeController.observedWrites.isEmpty must beFalse
     }
 
     "Close down when receiving Disconnect Command without RST if stream is finished" in {
@@ -114,9 +114,9 @@ class StreamStateSpec extends Specification {
       streamState.writeRequest(HeadersFrame(Priority.NoPriority, true, Seq.empty)) // local closed
       streamState.outboundCommand(Command.Disconnect)
 
-      val FinishedStream(stream, cause) = tools.streamManager.finishedStreams.dequeue()
-      stream must_== streamState
-      cause must beNone
+      tools.streamManager.finishedStreams.dequeue() must_== streamState
+      // Should *NOT* have written a RST frame
+      tools.writeController.observedWrites.isEmpty must beTrue
     }
 
     "Close down when receiving Error Command" in {
@@ -124,13 +124,11 @@ class StreamStateSpec extends Specification {
       import ctx._
 
       val ex = new Exception("boom")
+      tools.writeController.observedWrites.isEmpty must beTrue
       streamState.outboundCommand(Command.Error(ex))
-      val FinishedStream(stream, cause) = tools.streamManager.finishedStreams.dequeue()
-
-      stream must_== streamState
-      cause must beLike {
-        case Some(ex: Http2StreamException) => ex.code must_== Http2Exception.INTERNAL_ERROR.code
-      }
+      tools.streamManager.finishedStreams.dequeue() must_== streamState
+      // Should have written a RST frame
+      tools.writeController.observedWrites.isEmpty must beFalse
     }
 
     "signal that flow bytes have been consumed to the flow control on complete pending read" in {

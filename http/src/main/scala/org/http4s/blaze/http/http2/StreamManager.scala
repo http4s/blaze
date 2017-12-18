@@ -23,9 +23,9 @@ private trait StreamManager {
 
   /** Update the flow windows of open streams due to a change of the initial flow window
     *
-    * https://tools.ietf.org/html/rfc7540#section-6.9.2
-    * a receiver MUST adjust the size of all stream flow-control windows that
+    * A receiver MUST adjust the size of all stream flow-control windows that
     * it maintains by the difference between the new value and the old value.
+    * https://tools.ietf.org/html/rfc7540#section-6.9.2
     *
     * @param delta difference between the new initial window and the previous initial window
     */
@@ -33,9 +33,6 @@ private trait StreamManager {
 
   /** Get the stream associated with the specified stream ID */
   def get(streamId: Int): Option[StreamState]
-
-  /** Close the `StreamManager` and all the associated streams */
-  def close(cause: Option[Throwable]): Unit
 
   /** Register an `InboundStreamState` with the set of active streams */
   def registerInboundStream(state: InboundStreamState): Boolean
@@ -47,16 +44,19 @@ private trait StreamManager {
     */
   def registerOutboundStream(state: OutboundStreamState): Option[Int]
 
-  /** Close the specified stream, notifying the remote peer if necessary
+  /** Cause the associated stream to be reset, if it exists
     *
-    * @param id stream-id
-    * @param cause reason for closing the stream
+    * @param cause the reason the stream was reset
     * @return true if the stream existed and was closed, false otherwise
     */
-  def closeStream(id: Int, cause: Option[Throwable]): Boolean
+  def rstStream(cause: Http2StreamException): Boolean
 
-  /** Called by a [[StreamState]] to signal that it is finished. */
-  def streamFinished(stream: StreamState, cause: Option[Http2Exception]): Unit
+  /** Called by a `StreamState` to remove itself from the StreamManager
+    *
+    * @param streamState the stream being closed
+    * @return true if the stream existed and was closed, false otherwise
+    */
+  def streamClosed(streamState: StreamState): Boolean
 
   /** Handle a valid and complete PUSH_PROMISE frame */
   def handlePushPromise(streamId: Int, promisedId: Int, headers: Headers): Http2Result
@@ -67,6 +67,16 @@ private trait StreamManager {
     */
   def flowWindowUpdate(streamId: Int, sizeIncrement: Int): MaybeError
 
-  /** Drain the `StreamManager` */
+  /** Close the `StreamManager` and all the associated streams immediately */
+  def close(cause: Option[Throwable]): Unit
+
+  /** Drain the `StreamManager` gracefully
+    *
+    * All outbound streams with ID's above the specified last handled ID will
+    * be reset with a REFUSED_STREAM stream error to signal that they were
+    * rejected by the remote peer.
+    *
+    * @return a `Future` that will resolve once all streams have been drained
+    */
   def goaway(lastHandledOutboundStream: Int, message: String): Future[Unit]
 }
