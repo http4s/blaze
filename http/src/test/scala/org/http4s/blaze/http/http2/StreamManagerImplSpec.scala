@@ -6,8 +6,8 @@ import org.specs2.mutable.Specification
 
 class StreamManagerImplSpec extends Specification {
   private class Ctx {
-    val tools = new MockTools(isClient = true)
-    val streamManager = new StreamManagerImpl(tools, StreamIdManager(isClient = true))
+    lazy val tools = new MockTools(isClient = true)
+    lazy val streamManager = new StreamManagerImpl(tools, StreamIdManager(isClient = true))
   }
 
   private class ISS(streamId: Int) extends MockInboundStreamState(streamId) {
@@ -35,19 +35,16 @@ class StreamManagerImplSpec extends Specification {
         override def closeWithError(t: Option[Throwable]): Unit = {
           observedError = Some(t)
         }
-
-        var initialWindowChange: Option[Int] = None
-        override val flowWindow: StreamFlowWindow = new MockStreamFlowWindow {
-          override def peerSettingsInitialWindowChange(delta: Int): MaybeError = {
-            initialWindowChange = Some(delta)
-            Continue
-          }
-        }
       }
 
       class OSS extends MockOutboundStreamState {
         var sid: Int = -1
         override def streamId: Int = sid
+
+        var observedError: Option[Option[Throwable]] = None
+        override def closeWithError(t: Option[Throwable]): Unit = {
+          observedError = Some(t)
+        }
       }
 
       "force close" in {
@@ -74,9 +71,53 @@ class StreamManagerImplSpec extends Specification {
         }
       }
 
-//      "drain via goaway" in {
-//        ko
-//      }
+      "drain via goaway" in {
+        val ctx = new Ctx
+        import ctx._
+
+        val oss2 = new OSS
+        val oss4 = new OSS
+
+        streamManager.registerOutboundStream(oss2) must beLike {
+          case Some(sid) =>
+            oss2.sid = sid
+            ok
+        }
+        streamManager.registerOutboundStream(oss4) must beLike {
+          case Some(sid) =>
+            oss4.sid = sid
+            ok
+        }
+
+        val f = streamManager.goaway(2, "bye-bye")
+        f.isCompleted must beFalse
+
+        oss2.observedError must beNone
+        oss4.observedError must beLike {
+          case Some(Some(ex: Http2StreamException)) => ex.code must_== REFUSED_STREAM.code
+        }
+
+        streamManager.streamClosed(oss2)
+        f.isCompleted must beTrue
+      }
+
+      "new streams are rejected after a goaway is issued" in {
+        val ctx = new Ctx
+        import ctx._
+
+        val oss2 = new OSS
+
+
+        streamManager.registerOutboundStream(oss2) must beLike {
+          case Some(sid) =>
+            oss2.sid = sid
+            ok
+        }
+
+        streamManager.goaway(2, "bye-bye")
+        streamManager.registerOutboundStream(new OSS) must beNone
+        streamManager.registerInboundStream(new ISS(2)) must beFalse
+      }
     }
 
     "register streams" in {
@@ -130,11 +171,6 @@ class StreamManagerImplSpec extends Specification {
 
     "flow windows" in {
       class ISSFlow(streamId: Int, settingResult: MaybeError) extends MockInboundStreamState(streamId) {
-//        var observedError: Option[Option[Throwable]] = None
-//        override def closeWithError(t: Option[Throwable]): Unit = {
-//          observedError = Some(t)
-//        }
-
         var initialWindowChange: Option[Int] = None
         override val flowWindow: StreamFlowWindow = new MockStreamFlowWindow {
           override def peerSettingsInitialWindowChange(delta: Int): MaybeError = {
@@ -202,27 +238,54 @@ class StreamManagerImplSpec extends Specification {
       }
 
       "handle successful flow window updates for the session" in {
-        val ctx = new Ctx
+        var sessionAcked: Option[Int] = None
+        val ctx = new Ctx {
+          override lazy val tools = new MockTools(true) {
+            override lazy val sessionFlowControl: SessionFlowControl = new MockSessionFlowControl {
+              override def sessionOutboundAcked(count: Int): MaybeError = {
+                sessionAcked = Some(count)
+                Continue
+              }
+            }
+          }
+
+        }
         import ctx._
 
         streamManager.flowWindowUpdate(0, 100) must_== Continue
-        tools.sessionFlowControl.observedOps
+        sessionAcked must beSome(100)
       }
 
       "handle failed flow window updates for the session" in {
-        val ctx = new Ctx
+        var sessionAcked: Option[Int] = None
+        val ctx = new Ctx {
+          override lazy val tools = new MockTools(true) {
+            override lazy val sessionFlowControl: SessionFlowControl = new MockSessionFlowControl {
+              override def sessionOutboundAcked(count: Int): MaybeError = {
+                sessionAcked = Some(count)
+                Error(FLOW_CONTROL_ERROR.goaway("boom"))
+              }
+            }
+          }
+
+        }
         import ctx._
 
         streamManager.flowWindowUpdate(0, 100) must beLike {
-          case Error(ex: Http2StreamException) => ex.code must_== FLOW_CONTROL_ERROR.code
+          case Error(ex: Http2SessionException) => ex.code must_== FLOW_CONTROL_ERROR.code
         }
+        sessionAcked must beSome(100)
       }
     }
-//
-//    "PUSH_PROMISE frames are rejected" in {
-//      ko
-//    }
 
+    "PUSH_PROMISE frames are rejected by default" in {
+      val ctx = new Ctx
+      import ctx._
+
+      streamManager.handlePushPromise(1, 2, Seq.empty) must_== Continue
+      // We should have written a RST_STREAM frame to abort the stream
+      tools.writeController.observedWrites must not(beEmpty)
+    }
   }
 
 }

@@ -1,6 +1,6 @@
 package org.http4s.blaze.http.http2
 
-import org.http4s.blaze.http.http2.mocks.MockTools
+import org.http4s.blaze.http.http2.mocks.{MockStreamFlowWindow, MockTools, ObservingSessionFlowControl}
 import org.http4s.blaze.pipeline.Command
 import org.http4s.blaze.util.BufferTools
 import org.specs2.mutable.Specification
@@ -11,7 +11,22 @@ class StreamStateImplSpec extends Specification {
 
   private class Ctx {
     val streamId = 1
-    lazy val tools = new MockTools(false)
+
+    val streamConsumed = new scala.collection.mutable.Queue[Int]
+    val sessionConsumed = new scala.collection.mutable.Queue[Int]
+
+    lazy val tools = new MockTools(false) {
+      override lazy val sessionFlowControl: SessionFlowControl =
+        new ObservingSessionFlowControl(this) {
+          override protected def onSessonBytesConsumed(consumed: Int): Unit = {
+            sessionConsumed += consumed
+            ()
+          }
+          override protected def onStreamBytesConsumed(stream: StreamFlowWindow, consumed: Int): Unit = {
+            streamConsumed += consumed
+          }
+        }
+    }
 
     val streamState = new InboundStreamStateImpl(
       session = tools,
@@ -141,15 +156,13 @@ class StreamStateImplSpec extends Specification {
 
       val f1 = streamState.readRequest(1)
       f1.isCompleted must beFalse
-      tools.sessionFlowControl.observedOps.isEmpty must beTrue
+
+      streamConsumed must beEmpty
 
       // We should count the flow bytes size, not the actual buffer size
       streamState.invokeInboundData(endStream = false, data = BufferTools.allocate(1), flowBytes = 1) must_== Continue
 
-      val ops = tools.sessionFlowControl.observedOps.result().toSet
-      ops must_== Set(
-        MockFlowControl.SessionConsumed(1),
-        MockFlowControl.StreamConsumed(streamState.flowWindow, 1))
+      streamConsumed.dequeue() must_== 1
     }
 
     "signal that flow bytes have been consumed to the flow control on complete non-pending read" in {
@@ -164,15 +177,12 @@ class StreamStateImplSpec extends Specification {
       streamState.invokeInboundData(endStream = false, data = BufferTools.allocate(1), flowBytes = 1)
 
       // Haven't consumed the data yet
-      tools.sessionFlowControl.observedOps.isEmpty must beTrue
+      streamConsumed.isEmpty must beTrue
 
       val f1 = streamState.readRequest(1)
       f1.isCompleted must beTrue
 
-      val ops = tools.sessionFlowControl.observedOps.result().toSet
-      ops must_== Set(
-        MockFlowControl.SessionConsumed(1),
-        MockFlowControl.StreamConsumed(streamState.flowWindow, 1))
+      streamConsumed.dequeue() must_== 1
     }
 
     "fail result in an session exception if the inbound stream flow window is violated by an inbound message" in {

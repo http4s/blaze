@@ -82,7 +82,10 @@ private abstract class StreamStateImpl(session: SessionCore) extends StreamState
         pendingRead = p
         ()
       case msg =>
-        flowWindow.inboundConsumed(msg.flowBytes)
+        val flowBytes = msg.flowBytes
+        if (0 < flowBytes) {
+          flowWindow.inboundConsumed(flowBytes)
+        }
         p.success(msg)
         ()
     }

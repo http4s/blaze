@@ -1,13 +1,20 @@
 package org.http4s.blaze.http.http2
 
-import org.http4s.blaze.http.http2.mocks.MockTools
+import org.http4s.blaze.http.http2.mocks.{MockTools, ObservingSessionFlowControl}
 import org.specs2.mock.Mockito
 import org.specs2.mutable.Specification
 
 class StreamFlowWindowSpec extends Specification with Mockito {
+
+  private class Tools extends MockTools(isClient = true) {
+    override lazy val sessionFlowControl: SessionFlowControl =
+      new ObservingSessionFlowControl(this)
+  }
+
   "StreamFlowWindow" >> {
     "outboundWindow gives minimum of session and stream outbound windows" >> {
-      val tools = new MockTools(true /*isClient*/)
+
+      val tools = new Tools
       val initialSessionWindow = tools.sessionFlowControl.sessionOutboundWindow
 
       initialSessionWindow must beGreaterThan(10) // sanity check
@@ -22,7 +29,7 @@ class StreamFlowWindowSpec extends Specification with Mockito {
     }
 
     "outboundWindowAvailable" >> {
-      val tools = new MockTools(true /*isClient*/)
+      val tools = new Tools
       val initialSessionWindow = tools.sessionFlowControl.sessionOutboundWindow
 
       tools.sessionFlowControl.sessionOutboundWindow must beGreaterThan(10) // sanity check

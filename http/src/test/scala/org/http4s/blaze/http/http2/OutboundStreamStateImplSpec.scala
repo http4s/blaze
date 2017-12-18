@@ -1,7 +1,7 @@
 package org.http4s.blaze.http.http2
 
 import org.http4s.blaze.http.http2.Http2Connection.{Closed, ConnectionState, Running}
-import org.http4s.blaze.http.http2.mocks.{MockStreamManager, MockTools}
+import org.http4s.blaze.http.http2.mocks.{MockStreamFlowWindow, MockStreamManager, MockTools}
 import org.specs2.mutable.Specification
 
 import scala.concurrent.duration.Duration
@@ -10,12 +10,21 @@ import scala.util.Failure
 class OutboundStreamStateImplSpec extends Specification {
 
   private class Ctx(acceptStream: Boolean, connectionState: ConnectionState) {
+
     val streamId = 1
+
     lazy val tools = new MockTools(false) {
       override lazy val streamManager: MockStreamManager = new MockStreamManager {
         override def registerOutboundStream(state: OutboundStreamState): Option[Int] = {
           if (acceptStream) super.registerOutboundStream(state)
           else None
+        }
+      }
+
+      override lazy val sessionFlowControl: SessionFlowControl = new MockSessionFlowControl {
+        override def newStreamFlowWindow(streamId: Int): StreamFlowWindow = {
+          assert(streamId == 1)
+          new MockStreamFlowWindow
         }
       }
 

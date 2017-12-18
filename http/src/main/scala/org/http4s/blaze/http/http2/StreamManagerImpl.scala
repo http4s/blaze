@@ -115,7 +115,9 @@ private final class StreamManagerImpl(
 
   override def handlePushPromise(streamId: Int, promisedId: Int, headers: Headers): Http2Result = {
     // TODO: support push promises
-    val frame =session.http2Encoder.rstFrame(promisedId, Http2Exception.REFUSED_STREAM.code)
+    // validating the stream ID's is handled by the `SessionFrameListener`
+    logger.debug(s"Rejecting pushed stream $promisedId associated with stream $streamId")
+    val frame = session.http2Encoder.rstFrame(promisedId, Http2Exception.REFUSED_STREAM.code)
     session.writeController.write(frame)
     Continue
   }
