@@ -83,10 +83,6 @@ class StreamStateImplSpec extends Specification {
       tools.streamManager.finishedStreams.dequeue() must_== streamState
       // Should have written a RST frame
       tools.writeController.observedWrites.length must_== currentSize + 1
-//
-//      cause must beSome like {
-//        case Some(_: Http2StreamException) => ok
-//      }
     }
 
     "not allow multiple outstanding reads" in {
