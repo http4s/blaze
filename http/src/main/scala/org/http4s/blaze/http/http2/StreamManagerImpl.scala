@@ -43,7 +43,13 @@ private final class StreamManagerImpl(
   override def get(id: Int): Option[StreamState] =
     streams.get(id)
 
-  override def close(cause: Option[Throwable]): Unit = {
+  override def forceClose(cause: Option[Throwable]): Unit = {
+    val ss = streams.values.toVector
+    for (stream <- ss) {
+      streams.remove(stream.streamId)
+      stream.closeWithError(cause)
+    }
+
     // Need to set the closed state
     drainingP match {
       case Some(p) =>
@@ -53,12 +59,6 @@ private final class StreamManagerImpl(
         val p = Promise[Unit]
         p.trySuccess(())
         drainingP = Some(p)
-    }
-
-    val ss = streams.values.toVector
-    for (stream <- ss) {
-      streams.remove(stream.streamId)
-      stream.closeWithError(cause)
     }
   }
 
@@ -150,11 +150,10 @@ private final class StreamManagerImpl(
     }
   }
 
-  override def goaway(lastHandledOutboundStream: Int, message: String): Future[Unit] = {
+  override def goAway(lastHandledOutboundStream: Int, message: String): Future[Unit] = {
     drainingP match {
       case Some(p) =>
         logger.debug(s"Received a second GOAWAY($lastHandledOutboundStream, $message")
-        // TODO: should we consider the connection borked?
         p.future
 
       case None =>

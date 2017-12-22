@@ -67,8 +67,12 @@ private trait StreamManager {
     */
   def flowWindowUpdate(streamId: Int, sizeIncrement: Int): MaybeError
 
-  /** Close the `StreamManager` and all the associated streams immediately */
-  def close(cause: Option[Throwable]): Unit
+  /** Close the `StreamManager` and all the associated streams immediately
+    *
+    * Close all the streams of the session now, most commonly due to an error
+    * in the session. For a controlled shutdown, use `goAway`.
+    */
+  def forceClose(cause: Option[Throwable]): Unit
 
   /** Drain the `StreamManager` gracefully
     *
@@ -78,5 +82,5 @@ private trait StreamManager {
     *
     * @return a `Future` that will resolve once all streams have been drained
     */
-  def goaway(lastHandledOutboundStream: Int, message: String): Future[Unit]
+  def goAway(lastHandledOutboundStream: Int, message: String): Future[Unit]
 }

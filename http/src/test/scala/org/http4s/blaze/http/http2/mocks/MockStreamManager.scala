@@ -36,11 +36,11 @@ private[http2] class MockStreamManager extends StreamManager {
 
   override def get(streamId: Int): Option[StreamState] = ???
 
-  override def goaway(lastHandledOutboundStream: Int, message: String): Future[Unit] = ???
+  override def goAway(lastHandledOutboundStream: Int, message: String): Future[Unit] = ???
 
   override def rstStream(cause: Http2StreamException): Boolean = ???
 
-  override def close(cause: Option[Throwable]): Unit = ???
+  override def forceClose(cause: Option[Throwable]): Unit = ???
 
   override def isEmpty: Boolean = ???
 }

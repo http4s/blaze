@@ -283,40 +283,47 @@ private abstract class StreamStateImpl(session: SessionCore) extends StreamState
   final override def closeWithError(t: Option[Throwable]): Unit = {
     if (!streamIsClosed) {
       streamIsClosed = true
+
+      // Release resources, including flow bytes pending
       clearDataChannels(t match {
         case Some(ex) => ex
         case None => EOF
       })
 
-      val http2Ex = t match {
+      // We need to translate arbitrary exceptions into a Http2Exception
+      val http2Ex: Option[Http2Exception] = t match {
         // Gotta make sure both sides agree that this stream is closed
         case None if !(sentEndStream && receivedEndStream) => Some(CANCEL.rst(streamId))
         case None => None
-        case ex@Some(_: Http2Exception) => ex
         case Some(EOF) => None
+        case Some(ex: Http2Exception) => Some(ex)
         case Some(other) =>
           logger.warn(other)(s"Unknown error in stream($streamId)")
           Some(INTERNAL_ERROR.rst(streamId, "Unhandled error in stream pipeline"))
       }
 
-      // Remove ourselves from the streamManager. If the stream didn't exist, it is
-      // because this tream was reset by the remote, and thus we shouldn't send a
-      // RST ourselves. https://tools.ietf.org/html/rfc7540#section-5.4.2
-      val sendRst = session.streamManager.streamClosed(this)
+      // Remove ourselves from the streamManager
+      val wasRegistered = session.streamManager.streamClosed(this)
 
       http2Ex match {
-        case Some(ex: Http2StreamException) if sendRst =>
+        case Some(ex: Http2StreamException) if wasRegistered =>
           logger.debug(ex)(s"Sending stream ($streamId) RST")
           val frame = session.http2Encoder.rstFrame(streamId, ex.code)
           session.writeController.write(frame)
           ()
 
+        case Some(ex: Http2StreamException) =>
+          // If the stream didn't exist, it is
+          // because this stream was reset by the remote, and thus we shouldn't send a
+          // RST ourselves. https://tools.ietf.org/html/rfc7540#section-5.4.2
+          logger.debug(ex)(s"Stream ($streamId) closed but not sending RST")
+          ()
+
         case Some(ex: Http2SessionException) =>
           logger.info(s"Stream($streamId) finished with session exception")
-          // TODO: this doens't feel like the responsibility of the StreamState
           session.invokeShutdownWithError(http2Ex, "streamFinished")
 
-        case _ => () // nop
+        case None => () // nop
       }
     }
   }

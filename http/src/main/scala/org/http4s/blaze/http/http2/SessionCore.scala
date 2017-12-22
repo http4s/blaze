@@ -30,14 +30,22 @@ private trait SessionCore {
 
   def pingManager: PingManager
 
+  // Properties
+
+  def state: ConnectionState
+
   // Behaviors
   def newInboundStream(streamId: Int): Option[LeafBuilder[StreamMessage]]
 
+  /** Shutdown the session due to unhandled exception
+    *
+    * This is an emergency shutdown, and the session is in an undefined state.
+    * @note this method must be idempotent (even for reentrant calls) as it
+    *       may be recalled by streams during the close process, etc.
+    */
   def invokeShutdownWithError(ex: Option[Throwable], phase: String): Unit
 
   def invokeGoaway(lastHandledStream: Int, message: String): Unit
 
   def invokeDrain(gracePeriod: Duration): Unit
-
-  def state: ConnectionState
 }

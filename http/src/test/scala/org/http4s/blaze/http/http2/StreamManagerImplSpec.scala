@@ -58,10 +58,10 @@ class StreamManagerImplSpec extends Specification {
         streamManager.registerInboundStream(iss4)
 
         val ex = new Exception("boom")
-        streamManager.close(Some(ex))
+        streamManager.forceClose(Some(ex))
 
         // further calls to drain should happen immediately
-        streamManager.goaway(100, "whatever").isCompleted must beTrue
+        streamManager.goAway(100, "whatever").isCompleted must beTrue
         iss2.observedError must beLike {
           case Some(Some(e)) => e must_== ex
         }
@@ -89,7 +89,7 @@ class StreamManagerImplSpec extends Specification {
             ok
         }
 
-        val f = streamManager.goaway(2, "bye-bye")
+        val f = streamManager.goAway(2, "bye-bye")
         f.isCompleted must beFalse
 
         oss2.observedError must beNone
@@ -114,7 +114,7 @@ class StreamManagerImplSpec extends Specification {
             ok
         }
 
-        streamManager.goaway(2, "bye-bye")
+        streamManager.goAway(2, "bye-bye")
         streamManager.registerOutboundStream(new OSS) must beNone
         streamManager.registerInboundStream(new ISS(2)) must beFalse
       }
