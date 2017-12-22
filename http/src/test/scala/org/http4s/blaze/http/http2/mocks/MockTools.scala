@@ -26,7 +26,7 @@ private[http2] class MockTools(isClient: Boolean) extends SessionCore {
 
   override lazy val serialExecutor: ExecutionContext = Execution.trampoline
 
-  override lazy val sessionFlowControl: MockFlowControl = new MockFlowControl(this)
+  override lazy val sessionFlowControl: SessionFlowControl = new MockSessionFlowControl
 
   override lazy val http2Encoder: Http2FrameEncoder =
     new Http2FrameEncoder(remoteSettings, headerEncoder)

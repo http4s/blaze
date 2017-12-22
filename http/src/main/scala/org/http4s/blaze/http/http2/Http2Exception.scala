@@ -5,7 +5,12 @@ import java.nio.charset.StandardCharsets.UTF_8
 import scala.collection.mutable
 import scala.util.control.NoStackTrace
 
-sealed abstract class Http2Exception(msg: String) extends Exception(msg) with NoStackTrace {
+sealed abstract class Http2Exception(msg: String)
+  extends Exception(msg)
+    with NoStackTrace
+    with Product
+    with Serializable
+{
 
   // A 32-bit unsigned Integer
   def code: Long
