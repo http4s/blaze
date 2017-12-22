@@ -54,6 +54,7 @@ private final class StreamManagerImpl(
     drainingP match {
       case Some(p) =>
         p.trySuccess(())
+        ()
 
       case None =>
         val p = Promise[Unit]
