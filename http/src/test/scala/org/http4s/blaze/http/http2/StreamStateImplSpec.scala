@@ -24,6 +24,7 @@ class StreamStateImplSpec extends Specification {
           }
           override protected def onStreamBytesConsumed(stream: StreamFlowWindow, consumed: Int): Unit = {
             streamConsumed += consumed
+            ()
           }
         }
     }

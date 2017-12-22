@@ -283,6 +283,7 @@ private abstract class StreamStateImpl(session: SessionCore) extends StreamState
           logger.debug(ex)(s"Sending stream ($streamId) RST")
           val frame = session.http2Encoder.rstFrame(streamId, ex.code)
           session.writeController.write(frame)
+          ()
 
         case Some(ex: Http2SessionException) =>
           logger.info(s"Stream($streamId) finished with session exception")
