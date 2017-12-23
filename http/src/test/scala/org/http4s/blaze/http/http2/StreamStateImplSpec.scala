@@ -1,20 +1,35 @@
 package org.http4s.blaze.http.http2
 
-import org.http4s.blaze.http.http2.mocks.MockStreamManager.FinishedStream
-import org.http4s.blaze.http.http2.mocks.{MockTools, MockFlowControl}
+import org.http4s.blaze.http.http2.mocks.{MockStreamFlowWindow, MockTools, ObservingSessionFlowControl}
 import org.http4s.blaze.pipeline.Command
 import org.http4s.blaze.util.BufferTools
 import org.specs2.mutable.Specification
 
 import scala.util.{Failure, Success}
 
-class StreamStateSpec extends Specification {
+class StreamStateImplSpec extends Specification {
 
   private class Ctx {
     val streamId = 1
-    lazy val tools = new MockTools(false)
 
-    val streamState = new InboundStreamState(
+    val streamConsumed = new scala.collection.mutable.Queue[Int]
+    val sessionConsumed = new scala.collection.mutable.Queue[Int]
+
+    lazy val tools = new MockTools(false) {
+      override lazy val sessionFlowControl: SessionFlowControl =
+        new ObservingSessionFlowControl(this) {
+          override protected def onSessonBytesConsumed(consumed: Int): Unit = {
+            sessionConsumed += consumed
+            ()
+          }
+          override protected def onStreamBytesConsumed(stream: StreamFlowWindow, consumed: Int): Unit = {
+            streamConsumed += consumed
+            ()
+          }
+        }
+    }
+
+    val streamState = new InboundStreamStateImpl(
       session = tools,
       streamId = streamId,
       flowWindow = tools.sessionFlowControl.newStreamFlowWindow(streamId))
@@ -54,6 +69,8 @@ class StreamStateSpec extends Specification {
       f1.isCompleted must beFalse
       tools.writeController.observedInterests.result must_== streamState::Nil
 
+      val currentSize = tools.writeController.observedWrites.length
+
       val f2 = streamState.writeRequest(DataFrame(true, BufferTools.emptyBuffer))
 
       foreach(Seq(f1, f2)) { f =>
@@ -63,11 +80,10 @@ class StreamStateSpec extends Specification {
         }
       }
 
-      val FinishedStream(stream, cause) = tools.streamManager.finishedStreams.dequeue()
-      stream must_== streamState
-      cause must beSome like {
-        case Some(_: Http2StreamException) => ok
-      }
+
+      tools.streamManager.finishedStreams.dequeue() must_== streamState
+      // Should have written a RST frame
+      tools.writeController.observedWrites.length must_== currentSize + 1
     }
 
     "not allow multiple outstanding reads" in {
@@ -86,11 +102,9 @@ class StreamStateSpec extends Specification {
         }
       }
 
-      val FinishedStream(stream, cause) = tools.streamManager.finishedStreams.dequeue()
-      stream must_== streamState
-      cause must beSome like {
-        case Some(_: Http2StreamException) => ok
-      }
+      tools.streamManager.finishedStreams.dequeue() must_== streamState
+      // Should have written a RST frame
+      tools.writeController.observedWrites.isEmpty must beFalse
     }
 
     "Close down when receiving Disconnect Command with RST if stream not finished" in {
@@ -99,11 +113,9 @@ class StreamStateSpec extends Specification {
 
       streamState.outboundCommand(Command.Disconnect)
 
-      val FinishedStream(stream, cause) = tools.streamManager.finishedStreams.dequeue()
-      stream must_== streamState
-      cause must beLike {
-        case Some(ex: Http2StreamException) => ex.code must_== Http2Exception.CANCEL.code
-      }
+      tools.streamManager.finishedStreams.dequeue() must_== streamState
+      // Should have written a RST frame
+      tools.writeController.observedWrites.isEmpty must beFalse
     }
 
     "Close down when receiving Disconnect Command without RST if stream is finished" in {
@@ -114,9 +126,9 @@ class StreamStateSpec extends Specification {
       streamState.writeRequest(HeadersFrame(Priority.NoPriority, true, Seq.empty)) // local closed
       streamState.outboundCommand(Command.Disconnect)
 
-      val FinishedStream(stream, cause) = tools.streamManager.finishedStreams.dequeue()
-      stream must_== streamState
-      cause must beNone
+      tools.streamManager.finishedStreams.dequeue() must_== streamState
+      // Should *NOT* have written a RST frame
+      tools.writeController.observedWrites.isEmpty must beTrue
     }
 
     "Close down when receiving Error Command" in {
@@ -124,13 +136,11 @@ class StreamStateSpec extends Specification {
       import ctx._
 
       val ex = new Exception("boom")
+      tools.writeController.observedWrites.isEmpty must beTrue
       streamState.outboundCommand(Command.Error(ex))
-      val FinishedStream(stream, cause) = tools.streamManager.finishedStreams.dequeue()
-
-      stream must_== streamState
-      cause must beLike {
-        case Some(ex: Http2StreamException) => ex.code must_== Http2Exception.INTERNAL_ERROR.code
-      }
+      tools.streamManager.finishedStreams.dequeue() must_== streamState
+      // Should have written a RST frame
+      tools.writeController.observedWrites.isEmpty must beFalse
     }
 
     "signal that flow bytes have been consumed to the flow control on complete pending read" in {
@@ -143,15 +153,13 @@ class StreamStateSpec extends Specification {
 
       val f1 = streamState.readRequest(1)
       f1.isCompleted must beFalse
-      tools.sessionFlowControl.observedOps.isEmpty must beTrue
+
+      streamConsumed must beEmpty
 
       // We should count the flow bytes size, not the actual buffer size
       streamState.invokeInboundData(endStream = false, data = BufferTools.allocate(1), flowBytes = 1) must_== Continue
 
-      val ops = tools.sessionFlowControl.observedOps.result().toSet
-      ops must_== Set(
-        MockFlowControl.SessionConsumed(1),
-        MockFlowControl.StreamConsumed(streamState.flowWindow, 1))
+      streamConsumed.dequeue() must_== 1
     }
 
     "signal that flow bytes have been consumed to the flow control on complete non-pending read" in {
@@ -166,15 +174,12 @@ class StreamStateSpec extends Specification {
       streamState.invokeInboundData(endStream = false, data = BufferTools.allocate(1), flowBytes = 1)
 
       // Haven't consumed the data yet
-      tools.sessionFlowControl.observedOps.isEmpty must beTrue
+      streamConsumed.isEmpty must beTrue
 
       val f1 = streamState.readRequest(1)
       f1.isCompleted must beTrue
 
-      val ops = tools.sessionFlowControl.observedOps.result().toSet
-      ops must_== Set(
-        MockFlowControl.SessionConsumed(1),
-        MockFlowControl.StreamConsumed(streamState.flowWindow, 1))
+      streamConsumed.dequeue() must_== 1
     }
 
     "fail result in an session exception if the inbound stream flow window is violated by an inbound message" in {

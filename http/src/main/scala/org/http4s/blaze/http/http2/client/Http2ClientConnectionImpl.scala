@@ -67,5 +67,5 @@ private class Http2ClientConnectionImpl(
     * not guaranteed to succeed.
     */
   override def newOutboundStream(): HeadStage[StreamMessage] =
-    new OutboundStreamState(Core)
+    new OutboundStreamStateImpl(Core)
 }

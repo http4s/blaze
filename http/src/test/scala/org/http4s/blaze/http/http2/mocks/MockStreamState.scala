@@ -1,19 +1,22 @@
 package org.http4s.blaze.http.http2.mocks
 
-import org.http4s.blaze.http.http2.{Http2Exception, SessionCore, StreamFlowWindow, StreamState}
+import java.nio.ByteBuffer
 
-private[http2] class MockStreamState(
-    session: SessionCore,
-    val streamId: Int) extends StreamState(session) {
+import org.http4s.blaze.http.http2._
 
-  var outboundFlowAcks: Int = 0
+import scala.concurrent.Future
 
-  var onStreamFinishedResult: Option[Option[Http2Exception]] = None
-
-  override val flowWindow: StreamFlowWindow = session.sessionFlowControl.newStreamFlowWindow(streamId)
-
+private[http2] abstract class MockStreamState extends StreamState {
+  override def closeWithError(t: Option[Throwable]): Unit = ???
+  var calledOutboundFlowWindowChanged = false
   override def outboundFlowWindowChanged(): Unit = {
-    outboundFlowAcks += 1
-    super.outboundFlowWindowChanged()
+    calledOutboundFlowWindowChanged = true
   }
+  override def performStreamWrite(): Seq[ByteBuffer] = ???
+  override def invokeInboundData(endStream: Boolean, data: ByteBuffer, flowBytes: Int): MaybeError = ???
+  override def invokeInboundHeaders(priority: Priority, endStream: Boolean, headers: Seq[(String, String)]): MaybeError = ???
+  override def flowWindow: StreamFlowWindow = ???
+  override def writeRequest(data: StreamMessage): Future[Unit] = ???
+  override def readRequest(size: Int): Future[StreamMessage] = ???
+  override def name: String = s"MockStreamState($streamId)"
 }

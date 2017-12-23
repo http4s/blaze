@@ -51,7 +51,7 @@ private class SessionFrameListener(
             Error(REFUSED_STREAM.rst(streamId))
           } else {
             val streamFlowWindow = session.sessionFlowControl.newStreamFlowWindow(streamId)
-            val streamState = new InboundStreamState(session, streamId, streamFlowWindow)
+            val streamState = new InboundStreamStateImpl(session, streamId, streamFlowWindow)
             // TODO: A stream could be refused because the session is draining which
             // doesn't necessarily need to be acknowledged
             if (!streamManager.registerInboundStream(streamState)) Error(REFUSED_STREAM.rst(streamId))
@@ -129,13 +129,8 @@ private class SessionFrameListener(
     if (idManager.isIdleId(streamId)) {
       Error(PROTOCOL_ERROR.goaway(s"RST_STREAM for idle stream id $streamId"))
     } else {
-      // We remove it from the active streams first so that we don't send our own RST_STREAM
-      // frame as a response. https://tools.ietf.org/html/rfc7540#section-5.4.2
       val ex = Http2Exception.errorGenerator(code).rst(streamId)
-      session.streamManager.closeStream(streamId, Some(ex))
-
-      // We *must not* send a Http2StreamException or else it will be written
-      // to the peer potentially resulting a cycle of RST frames.
+      session.streamManager.rstStream(ex)
       Continue
     }
   }
@@ -148,14 +143,16 @@ private class SessionFrameListener(
       if (streamId == 0) {
         Error(PROTOCOL_ERROR.goaway(s"Session WINDOW_UPDATE of invalid size: $sizeIncrement"))
       } else {
-        val err = FLOW_CONTROL_ERROR.rst(streamId, s"Session WINDOW_UPDATE of invalid size: $sizeIncrement")
-        // We don't remove the stream: it is still 'active' and `closeWithError` will trigger sending
-        // the RST_STREAM and removing the exception from the active streams collection
-        session.streamManager.closeStream(streamId, Some(err))
+        val err = FLOW_CONTROL_ERROR.rst(streamId,
+          s"Session WINDOW_UPDATE of invalid size: $sizeIncrement")
+        // The stream will send the RST_STREAM when it closes down
+        session.streamManager.get(streamId).foreach { stream =>
+          stream.closeWithError(Some(err))
+        }
         Error(err)
       }
     } else {
-      session.streamManager.windowUpdate(streamId, sizeIncrement)
+      session.streamManager.flowWindowUpdate(streamId, sizeIncrement)
     }
   }
 

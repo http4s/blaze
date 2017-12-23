@@ -54,7 +54,7 @@ private abstract class Http2ConnectionImpl(
     override val pingManager: PingManager = new PingManager(this)
     override val sessionFlowControl: SessionFlowControl = new SessionFlowControlImpl(this, flowStrategy)
 
-    override val streamManager: StreamManager = new StreamManager(this, StreamIdManager(isClient))
+    override val streamManager: StreamManager = new StreamManagerImpl(this, StreamIdManager(isClient))
 
 
     override def state: ConnectionState = Http2ConnectionImpl.this.state
@@ -75,7 +75,7 @@ private abstract class Http2ConnectionImpl(
 
         ex match {
           case None | Some(EOF) =>
-            streamManager.close(None)
+            streamManager.forceClose(None)
             closedPromise.trySuccess(())
 
           case Some(ex) =>
@@ -89,7 +89,7 @@ private abstract class Http2ConnectionImpl(
                 Http2Exception.INTERNAL_ERROR.goaway("Unhandled internal exception")
             }
 
-            streamManager.close(Some(ex)) // Fail hard
+            streamManager.forceClose(Some(ex)) // Fail hard
             val goawayFrame = Http2FrameSerializer.mkGoAwayFrame(
               streamManager.idManager.lastInboundStream, http2SessionError)
             // TODO: maybe we should clear the `WriteController` before writing?
@@ -129,7 +129,7 @@ private abstract class Http2ConnectionImpl(
       if (currentState == Running) {
         currentState = Http2Connection.Draining
         // Drain the `StreamManager` and then the `WriteController`, then close up.
-        Core.streamManager.goaway(lastHandledOutboundStream, message)
+        Core.streamManager.goAway(lastHandledOutboundStream, message)
           .flatMap { _ => writeController.close() }(serialExecutor)
           .onComplete { _ => invokeShutdownWithError(None, "invokeGoaway") }(serialExecutor)
       }
@@ -196,9 +196,13 @@ private abstract class Http2ConnectionImpl(
           case Error(ex: Http2StreamException) =>
             // If the stream is still active, it will write the RST.
             // Otherwise, we need to do it here.
-            if (!Core.streamManager.closeStream(ex.stream, Some(ex))) {
-              val msg = Http2FrameSerializer.mkRstStreamFrame(ex.stream, ex.code)
-              Core.writeController.write(msg)
+            Core.streamManager.get(ex.stream) match {
+              case Some(stream) =>
+                stream.closeWithError(Some(ex))
+
+              case None =>
+                val msg = Http2FrameSerializer.mkRstStreamFrame(ex.stream, ex.code)
+                Core.writeController.write(msg)
             }
 
           case Error(ex) =>

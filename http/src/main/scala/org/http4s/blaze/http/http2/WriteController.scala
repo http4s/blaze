@@ -4,6 +4,10 @@ import java.nio.ByteBuffer
 
 import scala.concurrent.Future
 
+// TODO: writing should be in terms of something that can be turned into a buffer
+// but can still be examined since it is currently impossible to introspect even
+// the boundaries of where one message starts and another begins.
+// This would allow us to prioritize messages (like PING responses).
 /** Generic interface used by HTTP2 types to write data */
 private trait WriteController {
 
