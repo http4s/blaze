@@ -36,7 +36,7 @@ private class SessionFlowControlImpl(
   /** Called when bytes have been consumed from a live stream
     *
     * @param stream stream associated with the consumed bytes
-    * @param consumed
+    * @param consumed number of bytes consumed
     */
   protected def onStreamBytesConsumed(stream: StreamFlowWindow, consumed: Int): Unit = {
     val update = flowStrategy.checkStream(stream)
@@ -81,8 +81,9 @@ private class SessionFlowControlImpl(
     * @return `true` if there was sufficient session flow window remaining, `false` otherwise.
     */
   final override def sessionInboundObserved(count: Int): Boolean = {
+    logger.trace(s"Observed $count inbound session bytes. $sessionWindowString")
     require(0 <= count)
-    logger.trace(s"Observed $count inbound session bytes")
+
     if (sessionInboundWindow < count) false
     else {
       _sessionInboundWindow -= count
@@ -93,15 +94,16 @@ private class SessionFlowControlImpl(
 
   /** Update the session inbound window */
   final override def sessionInboundAcked(count: Int): Unit = {
+    logger.trace(s"Acked $count inbound session bytes. $sessionWindowString")
     require(0 <= count)
-    logger.trace(s"Acked $count inbound session bytes")
+
     _sessionInboundWindow += count
   }
 
   /** Signal that inbound bytes have been consumed that are not tracked by a stream */
   final override def sessionInboundConsumed(count: Int): Unit = {
+    logger.trace(s"Consumed $count inbound session bytes. $sessionWindowString")
     require(0 <= count)
-    logger.trace(s"Consumed $count inbound session bytes")
     if (count > _sessionUnconsumedInbound) {
       val msg = s"Consumed more bytes ($count) than had been accounted for (${_sessionUnconsumedInbound})"
       throw new IllegalStateException(msg)
@@ -124,7 +126,7 @@ private class SessionFlowControlImpl(
     *       when sending flow control counted bytes outbound.
     */
   final override def sessionOutboundAcked(count: Int): MaybeError = {
-    logger.trace(s"$count outbound session bytes were ACKed")
+    logger.trace(s"$count outbound session bytes were ACKed. $sessionWindowString")
     // Updates MUST be greater than 0, otherwise its protocol error
     // https://tools.ietf.org/html/rfc7540#section-6.9
     if (count <= 0) {
@@ -138,6 +140,10 @@ private class SessionFlowControlImpl(
       Continue
     }
   }
+
+  // String representation of the session flow windows for debugging
+  private[this] def sessionWindowString: String =
+    s"Session: {inbound: $sessionInboundWindow, unconsumed: $sessionUnconsumedBytes, outbound: $sessionOutboundWindow}"
 
   ////////////////////////////////////////////////////////////////////
 
@@ -154,30 +160,28 @@ private class SessionFlowControlImpl(
 
     override def streamOutboundWindow: Int = _streamOutboundWindow
 
-    override def peerSettingsInitialWindowChange(delta: Int): MaybeError =
-      adjustOutbound(delta)
-
     override def streamOutboundAcked(count: Int): MaybeError = {
-      logger.trace(s"Stream($streamId) had $count outbound bytes ACKed")
+      logger.trace(s"Stream($streamId) had $count outbound bytes ACKed. $streamWindowString")
       // Updates MUST be greater than 0, otherwise its protocol error
       // https://tools.ietf.org/html/rfc7540#section-6.9
       if (count <= 0) {
         Error(PROTOCOL_ERROR.goaway(
           s"Invalid stream ($streamId) WINDOW_UPDATE: size <= 0."))
-      } else if (Int.MaxValue - sessionOutboundWindow < count) {
+      } else if (Int.MaxValue - streamOutboundWindow < count) {
         // A sender MUST NOT allow a flow-control window to exceed 2^31-1 octets.
         // https://tools.ietf.org/html/rfc7540#section-6.9.1
-        Error(FLOW_CONTROL_ERROR.rst(streamId, "Session flow control exceeded max window."))
+        Error(FLOW_CONTROL_ERROR.rst(streamId, "Stream flow control exceeded max window."))
       } else {
-        adjustOutbound(count)
+        _streamOutboundWindow += count
+        Continue
       }
     }
 
-    private[this] def adjustOutbound(delta: Int): MaybeError = {
-      logger.trace(s"Stream($streamId) outbound window adjusted by $delta bytes")
+    override def peerSettingsInitialWindowChange(delta: Int): MaybeError = {
+      logger.trace(s"Stream($streamId) outbound window adjusted by $delta bytes. $streamWindowString")
       // A sender MUST NOT allow a flow-control window to exceed 2^31-1 octets.
-      // https://tools.ietf.org/html/rfc7540#section-6.9.1
-      if (Int.MaxValue - sessionOutboundWindow < delta) {
+      // https://tools.ietf.org/html/rfc7540#section-6.9.2
+      if (Int.MaxValue - streamOutboundWindow < delta) {
         Error(FLOW_CONTROL_ERROR.goaway(s"Flow control exceeded max window for stream $streamId."))
       } else {
         _streamOutboundWindow += delta
@@ -192,21 +196,21 @@ private class SessionFlowControlImpl(
       _sessionOutboundWindow -= withdrawal
       _streamOutboundWindow -= withdrawal
 
-      logger.trace(s"Stream($streamId) requested $request outbound bytes, $withdrawal were granted.")
+      logger.trace(
+        s"Stream($streamId) requested $request outbound bytes, $withdrawal were granted. $streamWindowString")
       withdrawal
     }
 
     override def streamInboundWindow: Int =  _streamInboundWindow
 
     override def inboundObserved(count: Int): Boolean = {
+      logger.trace(s"Stream($streamId) observed $count inbound bytes. $streamWindowString")
       require(0 <= count)
       if (count > streamInboundWindow || count > sessionInboundWindow) {
-        logger.trace(
-          s"Stream($streamId) observed $count inbound bytes which overflowed inbound window, " +
-          s"(stream window: $streamInboundWindow, session window: $sessionInboundWindow)")
+        logger.info(
+          s"Stream($streamId) observed $count inbound bytes which overflowed inbound window. $streamWindowString")
         false
       } else {
-        logger.trace(s"Stream($streamId) observed $count inbound bytes")
         _streamUnconsumedInbound += count
         _sessionUnconsumedInbound += count
 
@@ -218,12 +222,12 @@ private class SessionFlowControlImpl(
     }
 
     override def inboundConsumed(count: Int): Unit = {
-      require(
-        0 <= count &&
-        count <= streamUnconsumedBytes &&
-        count <= sessionUnconsumedBytes)
+      logger.trace(s"Stream($streamId) consumed $count inbound bytes. $streamWindowString")
+      require(0 <= count)
+      require(count <= streamUnconsumedBytes)
+      require(count <= sessionUnconsumedBytes)
 
-      logger.trace(s"Stream($streamId) consumed $count inbound bytes")
+
 
       if (0 < count) {
         _streamUnconsumedInbound -= count
@@ -235,9 +239,16 @@ private class SessionFlowControlImpl(
     }
 
     override def streamInboundAcked(count: Int): Unit = {
+      logger.trace(s"Stream($streamId) ACKed $count bytes. $streamWindowString")
       require(0 <= count)
-      logger.trace(s"Stream($streamId) ACKed $count bytes")
+
       _streamInboundWindow += count
+    }
+
+    // String representation of the session and stream flow windows for debugging
+    private[this] def streamWindowString: String = {
+      s"$sessionWindowString, Stream($streamId): " +
+        s"{inbound: $streamInboundWindow, unconsumed: $streamUnconsumedBytes, outbound: $streamOutboundWindow}"
     }
   }
 }

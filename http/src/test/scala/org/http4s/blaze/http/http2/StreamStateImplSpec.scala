@@ -1,10 +1,9 @@
 package org.http4s.blaze.http.http2
 
-import org.http4s.blaze.http.http2.mocks.{MockStreamFlowWindow, MockTools, ObservingSessionFlowControl}
+import org.http4s.blaze.http.http2.mocks.{MockStreamManager, ObservingSessionFlowControl}
 import org.http4s.blaze.pipeline.Command
 import org.http4s.blaze.util.BufferTools
 import org.specs2.mutable.Specification
-
 import scala.util.{Failure, Success}
 
 class StreamStateImplSpec extends Specification {
@@ -15,7 +14,9 @@ class StreamStateImplSpec extends Specification {
     val streamConsumed = new scala.collection.mutable.Queue[Int]
     val sessionConsumed = new scala.collection.mutable.Queue[Int]
 
-    lazy val tools = new MockTools(false) {
+    class MockTools extends mocks.MockTools(isClient = false) {
+      override lazy val streamManager: MockStreamManager = new MockStreamManager(isClient = false)
+
       override lazy val sessionFlowControl: SessionFlowControl =
         new ObservingSessionFlowControl(this) {
           override protected def onSessonBytesConsumed(consumed: Int): Unit = {
@@ -28,6 +29,8 @@ class StreamStateImplSpec extends Specification {
           }
         }
     }
+
+    lazy val tools = new MockTools
 
     val streamState = new InboundStreamStateImpl(
       session = tools,
