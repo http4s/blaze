@@ -59,10 +59,10 @@ object Http2Exception {
     def goaway(msg: String): Http2Exception = Http2SessionException(code, name + ": " + msg)
 
     /** Create a Http2Exception with the requisite stream id */
-    def rst(stream: Int): Http2Exception = rst(stream, name)
+    def rst(stream: Int): Http2StreamException = rst(stream, name)
 
     /** Create a Http2Exception with the requisite stream id */
-    def rst(stream: Int, msg: String): Http2Exception = Http2StreamException(stream, code, msg)
+    def rst(stream: Int, msg: String): Http2StreamException = Http2StreamException(stream, code, msg)
 
     /** Extract the optional stream id and the exception message */
     def unapply(ex: Http2Exception): Option[(Option[Int], String)] = {

@@ -1,7 +1,6 @@
 package org.http4s.blaze.http.http2
 
 import org.http4s.blaze.http._
-
 import scala.concurrent.Future
 
 /** Manager of the active streams for a session
@@ -11,9 +10,6 @@ import scala.concurrent.Future
   * operations relevant to the HTTP/2 protocol.
   */
 private trait StreamManager {
-
-  /** The `StreamIdManager` owned by this `StreamManager` */
-  def idManager: StreamIdManager
 
   /** Number of active streams */
   def size: Int
@@ -34,22 +30,24 @@ private trait StreamManager {
   /** Get the stream associated with the specified stream ID */
   def get(streamId: Int): Option[StreamState]
 
-  /** Register an `InboundStreamState` with the set of active streams */
-  def registerInboundStream(state: InboundStreamState): Boolean
-
-  /** Register an `OutboundStreamState` with the set of active streams
+  /** Potentially create a new [[InboundStreamState]] for the provided stream id
     *
-    * @return the newly allocated stream id to be associated with the new
-    *         outbound stream, it it was possible to allocate one.
+    * Validates the state of the session accordingly.
     */
-  def registerOutboundStream(state: OutboundStreamState): Option[Int]
+  def newInboundStream(streamId: Int): Either[Http2Exception, InboundStreamState]
+
+  /** Creates a new OutboundStreamState which hasn't been allocated a stream id
+    *
+    * Errors are returned lazily since resources aren't acquired until the write of
+    * the streams prelude.
+    */
+  def newOutboundStream(): OutboundStreamState
 
   /** Cause the associated stream to be reset, if it exists
     *
     * @param cause the reason the stream was reset
-    * @return true if the stream existed and was closed, false otherwise
     */
-  def rstStream(cause: Http2StreamException): Boolean
+  def rstStream(cause: Http2StreamException): MaybeError
 
   /** Called by a `StreamState` to remove itself from the StreamManager
     *

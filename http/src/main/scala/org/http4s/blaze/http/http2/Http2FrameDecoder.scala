@@ -248,7 +248,7 @@ class Http2FrameDecoder(localSettings: Http2Settings, listener: Http2FrameListen
       val size = buffer.getInt() & Masks.INT31
       if (size != 0) listener.onWindowUpdateFrame(streamId, size)
       else Error {  // never less than 0 due to the mask above
-      val msg = s"WINDOW_UPDATE with invalid update size 0"
+        val msg = s"WINDOW_UPDATE with invalid update size 0"
         if (streamId == 0)
           PROTOCOL_ERROR.goaway(msg)
         else
@@ -309,6 +309,7 @@ private object Http2FrameDecoder {
     }
   }
 
+  // TODO: most everwhere else stream id's are not in hex, so make this consistent
   /** Convert an integer into its hex representation with a preceding '0x' */
   def hexStr(i: Int): String = "0x" + Integer.toHexString(i)
 }
