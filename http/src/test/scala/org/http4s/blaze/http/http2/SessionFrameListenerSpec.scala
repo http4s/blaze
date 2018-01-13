@@ -255,13 +255,12 @@ class SessionFrameListenerSpec extends Specification with Http2SpecTools {
     "on GOAWAY frame" >> {
       "delegates to the sessions goAway logic" >> {
         val tools = new MockTools(true) {
-          var observedGoAway: Option[(Int, Long, String)] = None
+          var observedGoAway: Option[(Int, Http2SessionException)] = None
           override def invokeGoAway(
             lastHandledOutboundStream: Int,
-            errorCode: Long,
-            message: String
+            reason: Http2SessionException
           ): Unit = {
-            observedGoAway = Some((lastHandledOutboundStream, errorCode, message))
+            observedGoAway = Some(lastHandledOutboundStream -> reason)
           }
         }
 
@@ -271,7 +270,7 @@ class SessionFrameListenerSpec extends Specification with Http2SpecTools {
           "lol".getBytes(StandardCharsets.UTF_8)) must_== Continue
 
         tools.observedGoAway must beLike {
-          case Some((1,NO_ERROR.code, "lol")) => ok
+          case Some((1, Http2SessionException(NO_ERROR.code, "lol"))) => ok
         }
       }
     }

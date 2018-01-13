@@ -54,7 +54,7 @@ private trait SessionCore {
     * This will entail shutting down the [[StreamManager]] and waiting for
     * all write interests to drain.
     */
-  def invokeGoAway(lastHandledOutboundStream: Int, errorCode: Long, message: String): Unit
+  def invokeGoAway(lastHandledOutboundStream: Int, error: Http2SessionException): Unit
 
   def invokeDrain(gracePeriod: Duration): Unit
 }

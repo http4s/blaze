@@ -43,7 +43,8 @@ private trait StreamManager {
     */
   def newOutboundStream(): OutboundStreamState
 
-  /** Cause the associated stream to be reset, if it exists
+  /** Cause the associated stream to be reset, if it exists as if due to
+    * a RST_STREAM frame.
     *
     * @param cause the reason the stream was reset
     */
@@ -80,5 +81,5 @@ private trait StreamManager {
     *
     * @return a `Future` that will resolve once all streams have been drained
     */
-  def goAway(lastHandledOutboundStream: Int, message: String): Future[Unit]
+  def goAway(lastHandledOutboundStream: Int, error: Http2SessionException): Future[Unit]
 }

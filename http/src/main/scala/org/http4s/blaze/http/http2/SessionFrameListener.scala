@@ -139,7 +139,7 @@ private class SessionFrameListener(
 
   override def onGoAwayFrame(lastStream: Int, errorCode: Long, debugData: Array[Byte]): Http2Result = {
     val message = new String(debugData, StandardCharsets.UTF_8)
-    session.invokeGoAway(lastStream, errorCode, message)
+    session.invokeGoAway(lastStream, Http2SessionException(errorCode, message))
     Continue
   }
 }
