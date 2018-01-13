@@ -1,6 +1,7 @@
 package org.http4s.blaze.http.http2
 
-import org.http4s.blaze.http.Http2ClientSession
+import org.http4s.blaze.http.{Http2ClientSession, HttpClientSession}
+import org.http4s.blaze.http.HttpClientSession.Status
 import org.http4s.blaze.http.http2.Http2Connection.ConnectionState
 import org.http4s.blaze.pipeline.HeadStage
 
@@ -14,12 +15,26 @@ trait Http2Connection {
 
   /** An estimate for the current quality of the connection
     *
+    * Quality is intended to provide a metric for health of a session.
+    * Factors considered may be the number of outstanding streams, available
+    * outbound streams, and flow window status and behavior.
+    *
     * @see [[Http2ClientSession]]
     *
     * @return a number with domain [0, 1] signifying the health or quality of
     *         the session. The scale is intended to be linear.
     */
   def quality: Double
+
+  /** Get the status of session
+    *
+    * Status is intended to be used for deciding if a session is ready for
+    * dispatches or needs to be cleaned up.
+    *
+    * @note The status is racy and is only intended to be used as advisory.
+    * @see `quality` for a metric of health of the session
+    */
+  def status: Status
 
   /** Signal that the session should shutdown within the grace period
     *

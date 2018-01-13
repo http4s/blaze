@@ -3,15 +3,15 @@ package org.http4s.blaze.http.http2.server
 import java.nio.ByteBuffer
 import java.nio.charset.StandardCharsets
 
-import org.http4s.blaze.http.http2.SettingsDecoder.SettingsFrame
 import org.http4s.blaze.http.http2._
 import org.http4s.blaze.pipeline.stages.{BasicTail, OneMessageStage}
-import org.http4s.blaze.pipeline.{Command, LeafBuilder, TailStage}
-import org.http4s.blaze.util.{BufferTools, Execution, StageTools}
+import org.http4s.blaze.pipeline.{Command, LeafBuilder}
+import org.http4s.blaze.util.{BufferTools, StageTools}
 
 import scala.concurrent.Future
 import scala.util.Failure
 
+// TODO: can we reduce the visibility of this?
 private[http] class Http2TlsServerHandshaker(
     mySettings: ImmutableHttp2Settings,
     nodeBuilder: Int => Option[LeafBuilder[StreamMessage]])

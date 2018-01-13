@@ -16,7 +16,7 @@ import scala.util.{Failure, Success}
   * @param selector selects the preferred protocol from the seq of supported clients. May get an empty sequence.
   * @param builder builds the appropriate pipeline based on the
   */
-class ALPNServerSelector(engine: SSLEngine,
+private[http] class ALPNServerSelector(engine: SSLEngine,
                          selector: Seq[String] => String,
                          builder: String => LeafBuilder[ByteBuffer]) extends TailStage[ByteBuffer] {
 

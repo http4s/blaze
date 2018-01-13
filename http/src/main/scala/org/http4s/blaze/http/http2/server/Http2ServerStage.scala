@@ -16,8 +16,8 @@ import scala.concurrent.Future
 import scala.util.{Failure, Success, Try}
 
 /** Basic implementation of a http2 stream [[TailStage]] */
-// TODO: need to use the HttpServerConfig object
-class Http2ServerStage(streamId: Int,
+// TODO: can we reduce the scope of this?
+private[http] class Http2ServerStage(streamId: Int,
                        service: HttpService,
                        config: HttpServerStageConfig) extends TailStage[StreamMessage] {
 
