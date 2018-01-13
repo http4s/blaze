@@ -5,7 +5,7 @@ import java.util
 
 import org.http4s.blaze.http.http2.Http2Exception._
 import org.http4s.blaze.pipeline.Command.{EOF, OutboundCommand}
-import org.http4s.blaze.pipeline.{Command, HeadStage}
+import org.http4s.blaze.pipeline.Command
 import org.http4s.blaze.util.BufferTools
 
 import scala.concurrent.{Future, Promise}
@@ -130,7 +130,6 @@ private abstract class StreamStateImpl(session: SessionCore) extends StreamState
    * acked and we may now be able to make forward progress.
    */
   final override def outboundFlowWindowChanged(): Unit = {
-    // TODO: we may already be registered. Maybe keep track of that state? Maybe also want to unregister.
     if (writePromise != null && flowWindow.outboundWindowAvailable) {
       doRegisterWriteInterest()
     }

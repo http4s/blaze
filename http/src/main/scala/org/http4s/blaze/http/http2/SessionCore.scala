@@ -26,6 +26,8 @@ private trait SessionCore {
 
   def writeController: WriteController
 
+  def idManager: StreamIdManager
+
   def streamManager: StreamManager
 
   def pingManager: PingManager
@@ -33,6 +35,8 @@ private trait SessionCore {
   // Properties
 
   def state: ConnectionState
+
+  val isClient: Boolean
 
   // Behaviors
   def newInboundStream(streamId: Int): Option[LeafBuilder[StreamMessage]]
@@ -45,7 +49,12 @@ private trait SessionCore {
     */
   def invokeShutdownWithError(ex: Option[Throwable], phase: String): Unit
 
-  def invokeGoaway(lastHandledStream: Int, message: String): Unit
+  /** Signal to the session to shutdown gracefully
+    *
+    * This will entail shutting down the [[StreamManager]] and waiting for
+    * all write interests to drain.
+    */
+  def invokeGoAway(lastHandledOutboundStream: Int, error: Http2SessionException): Unit
 
   def invokeDrain(gracePeriod: Duration): Unit
 }

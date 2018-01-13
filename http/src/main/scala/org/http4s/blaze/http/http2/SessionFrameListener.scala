@@ -6,10 +6,7 @@ import java.nio.charset.StandardCharsets
 import org.http4s.blaze.http._
 import org.http4s.blaze.http.http2.Http2Exception._
 import org.http4s.blaze.http.http2.Http2Settings.Setting
-import org.http4s.blaze.pipeline.Command
 import org.log4s.getLogger
-
-import scala.concurrent.duration.Duration
 
 /** Receives frames from the `Http2FrameDecoder`
   *
@@ -23,74 +20,35 @@ private class SessionFrameListener(
 
   private[this] val logger = getLogger
 
-  // Just an alias
-  private[this] def idManager = session.streamManager.idManager
-
   // Concrete methods ////////////////////////////////////////////////////////////////////
 
   override def onCompleteHeadersFrame(streamId: Int, priority: Priority, endStream: Boolean, headers: Headers): Http2Result = {
-    val streamManager = session.streamManager
-    streamManager.get(streamId) match {
+    session.streamManager.get(streamId) match {
       case Some(stream) =>
         stream.invokeInboundHeaders(priority, endStream, headers)
 
       case None =>
-        if (streamId == 0) {
-          Error(PROTOCOL_ERROR.goaway(s"Illegal stream ID for headers frame: 0"))
-        } else if (idManager.observeInboundId(streamId)) {
-          // Looks like it was a valid idle inbound stream id so try to start a new stream
-          if (streamManager.size >= session.localSettings.maxConcurrentStreams) {
-            // 5.1.2 Stream Concurrency
-            //
-            // Endpoints MUST NOT exceed the limit set by their peer.  An endpoint
-            // that receives a HEADERS frame that causes its advertised concurrent
-            // stream limit to be exceeded MUST treat this as a stream error
-            // (Section 5.4.2) of type PROTOCOL_ERROR or REFUSED_STREAM.  The choice
-            // of error code determines whether the endpoint wishes to enable
-            // automatic retry (see Section 8.1.4) for details).
-            Error(REFUSED_STREAM.rst(streamId))
-          } else {
-            val streamFlowWindow = session.sessionFlowControl.newStreamFlowWindow(streamId)
-            val streamState = new InboundStreamStateImpl(session, streamId, streamFlowWindow)
-            // TODO: A stream could be refused because the session is draining which
-            // doesn't necessarily need to be acknowledged
-            if (!streamManager.registerInboundStream(streamState)) Error(REFUSED_STREAM.rst(streamId))
-            else session.newInboundStream(streamId) match {
-              case Some(leafBuilder) =>
-                leafBuilder.base(streamState)
-                streamState.sendInboundCommand(Command.Connected)
-                streamState.invokeInboundHeaders(priority, endStream, headers)
-
-              case None =>
-                // the closeWithError call will remove it from the stream manager
-                // and send the appropriate error to the peer
-                streamState.closeWithError(Some(REFUSED_STREAM.rst(streamId)))
-                Continue
-            }
-          }
-        } else if (idManager.isIdleOutboundId(streamId)) {
-          Error(PROTOCOL_ERROR.goaway(s"Received HEADERS frame for idle outbound stream id $streamId"))
-        } else {
-          Error(PROTOCOL_ERROR.goaway(s"Received HEADERS frame for non-idle inbound stream id $streamId"))
+        session.streamManager.newInboundStream(streamId) match {
+          case Left(ex) => Error(ex)
+          case Right(is) => is.invokeInboundHeaders(priority, endStream, headers)
         }
     }
   }
 
   // See https://tools.ietf.org/html/rfc7540#section-6.6 and section-8.2 for the list of rules
   override def onCompletePushPromiseFrame(streamId: Int, promisedId: Int, headers: Headers): Http2Result = {
-    if (!idManager.isClient) {
+    if (!session.isClient) {
+      // A client cannot push. Thus, servers MUST treat the receipt of a
+      // PUSH_PROMISE frame as a connection error of type PROTOCOL_ERROR.
+      // https://tools.ietf.org/html/rfc7540#section-8.2
       Error(PROTOCOL_ERROR.goaway(s"Server received PUSH_PROMISE frame for stream $streamId"))
     } else if (!session.localSettings.pushEnabled) {
+      // PUSH_PROMISE MUST NOT be sent if the SETTINGS_ENABLE_PUSH setting of
+      // the peer endpoint is set to 0.  An endpoint that has set this setting
+      // and has received acknowledgement MUST treat the receipt of a
+      // PUSH_PROMISE frame as a connection error (Section 5.4.1) of type PROTOCOL_ERROR.
       Error(PROTOCOL_ERROR.goaway("Received PUSH_PROMISE frame then they are disallowed"))
-    } else if (idManager.isIdleOutboundId(streamId)) {
-      Error(PROTOCOL_ERROR.goaway(s"Received PUSH_PROMISE for associated to an idle stream ($streamId)"))
-    } else if (!idManager.isInboundId(promisedId)) {
-      Error(PROTOCOL_ERROR.goaway(s"Received PUSH_PROMISE frame with illegal stream id: $promisedId"))
-    } else if (!idManager.observeInboundId(promisedId)) {
-      Error(PROTOCOL_ERROR.goaway("Received PUSH_PROMISE frame on non-idle stream"))
-    } else {
-      session.streamManager.handlePushPromise(streamId, promisedId, headers)
-    }
+    } else session.streamManager.handlePushPromise(streamId, promisedId, headers)
   }
 
   override def onDataFrame(streamId: Int, isLast: Boolean, data: ByteBuffer, flow: Int): Http2Result = {
@@ -101,9 +59,10 @@ private class SessionFrameListener(
 
       case None =>
         if (!session.sessionFlowControl.sessionInboundObserved(flow)) {
-          val msg = s"data frame for inactive stream (id $streamId) overflowed session flow window. Size: $flow."
+          val msg = s"data frame for inactive stream (id $streamId) overflowed " +
+            s"session flow window. Size: $flow."
           Error(FLOW_CONTROL_ERROR.goaway(msg))
-        } else if (idManager.isIdleId(streamId)) {
+        } else if (session.idManager.isIdleId(streamId)) {
           Error(PROTOCOL_ERROR.goaway(s"DATA on uninitialized stream ($streamId)"))
         } else {
           // There is an intrinsic race here: the server may have closed the stream
@@ -126,34 +85,12 @@ private class SessionFrameListener(
 
   // https://tools.ietf.org/html/rfc7540#section-6.4
   override def onRstStreamFrame(streamId: Int, code: Long): Http2Result = {
-    if (idManager.isIdleId(streamId)) {
-      Error(PROTOCOL_ERROR.goaway(s"RST_STREAM for idle stream id $streamId"))
-    } else {
-      val ex = Http2Exception.errorGenerator(code).rst(streamId)
-      session.streamManager.rstStream(ex)
-      Continue
-    }
+    val ex = Http2Exception.errorGenerator(code).rst(streamId)
+    session.streamManager.rstStream(ex)
   }
 
   override def onWindowUpdateFrame(streamId: Int, sizeIncrement: Int): Http2Result = {
-    if (idManager.isIdleId(streamId)) {
-      Error(PROTOCOL_ERROR.goaway(s"WINDOW_UPDATE on uninitialized stream ($streamId)"))
-    } else if (sizeIncrement <= 0) {
-      // Illegal update size. https://tools.ietf.org/html/rfc7540#section-6.9
-      if (streamId == 0) {
-        Error(PROTOCOL_ERROR.goaway(s"Session WINDOW_UPDATE of invalid size: $sizeIncrement"))
-      } else {
-        val err = FLOW_CONTROL_ERROR.rst(streamId,
-          s"Session WINDOW_UPDATE of invalid size: $sizeIncrement")
-        // The stream will send the RST_STREAM when it closes down
-        session.streamManager.get(streamId).foreach { stream =>
-          stream.closeWithError(Some(err))
-        }
-        Error(err)
-      }
-    } else {
-      session.streamManager.flowWindowUpdate(streamId, sizeIncrement)
-    }
+    session.streamManager.flowWindowUpdate(streamId, sizeIncrement)
   }
 
   override def onPingFrame(ack: Boolean, data: Array[Byte]): Http2Result = {
@@ -191,7 +128,8 @@ private class SessionFrameListener(
       }
 
       if (result == Continue) {
-        // ack the SETTINGS frame on success, otherwise we are tearing down the connection anyway so no need
+        // ack the SETTINGS frame on success, otherwise we are tearing
+        // down the connection anyway so no need
         session.writeController.write(Http2FrameSerializer.mkSettingsAckFrame())
       }
 
@@ -199,15 +137,9 @@ private class SessionFrameListener(
     }
   }
 
-  override def onGoAwayFrame(lastStream: Int,errorCode: Long,debugData: Array[Byte]): Http2Result = {
+  override def onGoAwayFrame(lastStream: Int, errorCode: Long, debugData: Array[Byte]): Http2Result = {
     val message = new String(debugData, StandardCharsets.UTF_8)
-    logger.debug {
-      val errorName = Http2Exception.errorName(errorCode)
-      val errorCodeStr = s"0x${java.lang.Long.toHexString(errorCode)}: $errorName"
-      s"Received GOAWAY($errorCodeStr, '$message'). Last processed stream: $lastStream"
-    }
-
-    session.invokeGoaway(lastStream, message)
+    session.invokeGoAway(lastStream, Http2SessionException(errorCode, message))
     Continue
   }
 }

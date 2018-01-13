@@ -17,7 +17,7 @@ private object StreamIdManager {
 
 /** Tool for tracking stream ids */
 private final class StreamIdManager private(
-    val isClient: Boolean,
+    isClient: Boolean,
     private var nextInbound: Int,
     private var nextOutbound: Int) {
 

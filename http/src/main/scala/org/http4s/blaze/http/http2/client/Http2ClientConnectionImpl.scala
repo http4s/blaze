@@ -11,7 +11,7 @@ import scala.concurrent.duration.Duration
 import scala.concurrent.{ExecutionContext, Future}
 
 
-private class Http2ClientConnectionImpl(
+private final class Http2ClientConnectionImpl(
     tailStage: TailStage[ByteBuffer],
     localSettings: ImmutableHttp2Settings, // the settings of this side
     remoteSettings: MutableHttp2Settings, // the settings of their side
@@ -67,5 +67,5 @@ private class Http2ClientConnectionImpl(
     * not guaranteed to succeed.
     */
   override def newOutboundStream(): HeadStage[StreamMessage] =
-    new OutboundStreamStateImpl(Core)
+    Core.streamManager.newOutboundStream()
 }

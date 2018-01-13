@@ -1,291 +1,318 @@
 package org.http4s.blaze.http.http2
 
 import org.http4s.blaze.http.http2.Http2Exception._
-import org.http4s.blaze.http.http2.mocks.{MockInboundStreamState, MockOutboundStreamState, MockStreamFlowWindow, MockTools}
+import org.http4s.blaze.pipeline.Command.EOF
+import org.http4s.blaze.pipeline.{Command, LeafBuilder}
+import org.http4s.blaze.pipeline.stages.BasicTail
 import org.specs2.mutable.Specification
+import scala.util.Failure
 
 class StreamManagerImplSpec extends Specification {
-  private class Ctx {
-    lazy val tools = new MockTools(isClient = true)
-    lazy val streamManager = new StreamManagerImpl(tools, StreamIdManager(isClient = true))
-  }
 
-  private class ISS(streamId: Int) extends MockInboundStreamState(streamId) {
-    var observedError: Option[Option[Throwable]] = None
-    override def closeWithError(t: Option[Throwable]): Unit = {
-      observedError = Some(t)
-    }
+  private class MockTools(isClient: Boolean) extends mocks.MockTools(isClient) {
+    override lazy val streamManager: StreamManager = new StreamManagerImpl(this)
 
-    var initialWindowChange: Option[Int] = None
-    override val flowWindow: StreamFlowWindow = new MockStreamFlowWindow {
-      override def peerSettingsInitialWindowChange(delta: Int): MaybeError = {
-        initialWindowChange = Some(delta)
-        Continue
+    var connects: Int = 0
+
+    lazy val tail = new BasicTail[StreamMessage]("name") {
+      override def inboundCommand(cmd: Command.InboundCommand): Unit = {
+        if (cmd == Command.Connected) { connects += 1 }
+        super.inboundCommand(cmd)
       }
     }
+
+    override def newInboundStream(streamId: Int) = Some(LeafBuilder(tail))
   }
-
-
 
   "StreamManagerImpl" should {
     "close streams" in {
-
-      class ISS(streamId: Int) extends MockInboundStreamState(streamId) {
-        var observedError: Option[Option[Throwable]] = None
-        override def closeWithError(t: Option[Throwable]): Unit = {
-          observedError = Some(t)
-        }
-      }
-
-      class OSS extends MockOutboundStreamState {
-        var sid: Int = -1
-        override def streamId: Int = sid
-
-        var observedError: Option[Option[Throwable]] = None
-        override def closeWithError(t: Option[Throwable]): Unit = {
-          observedError = Some(t)
-        }
-      }
-
       "force close" in {
-        val ctx = new Ctx
-        import ctx._
+        val tools = new MockTools(isClient = false)
 
-        val iss2 = new ISS(2) // inbound stream for the client are even numbered
-        val iss4 = new ISS(4)
+        // inbound stream for the client are even numbered
+        val Right(s1) = tools.streamManager.newInboundStream(1)
+        val Right(s3) = tools.streamManager.newInboundStream(3)
 
-        streamManager.registerInboundStream(iss2)
-        streamManager.registerInboundStream(iss4)
+        tools.connects must_== 2
 
         val ex = new Exception("boom")
-        streamManager.forceClose(Some(ex))
+        tools.streamManager.forceClose(Some(ex))
 
         // further calls to drain should happen immediately
-        streamManager.goAway(100, "whatever").isCompleted must beTrue
-        iss2.observedError must beLike {
-          case Some(Some(e)) => e must_== ex
+        tools.streamManager.goAway(100, Http2Exception.NO_ERROR.goaway("whatever")).isCompleted must beTrue
+
+        // Since the streams are closed stream operations should fail
+        val hs = HeadersFrame(Priority.NoPriority, false, Seq.empty)
+        s1.writeRequest(hs).value must beLike {
+          case Some(Failure(EOF)) => ok
         }
 
-        iss4.observedError must beLike {
-          case Some(Some(e)) => e must_== ex
+        s3.writeRequest(hs).value must beLike {
+          case Some(Failure(EOF)) => ok
         }
       }
 
-      "drain via goaway" in {
-        val ctx = new Ctx
-        import ctx._
+      "drain via goAway" in {
+        val tools = new MockTools(isClient = false)
 
-        val oss2 = new OSS
-        val oss4 = new OSS
+        val os2 = tools.streamManager.newOutboundStream()
+        val os4 = tools.streamManager.newOutboundStream()
 
-        streamManager.registerOutboundStream(oss2) must beLike {
-          case Some(sid) =>
-            oss2.sid = sid
-            ok
-        }
-        streamManager.registerOutboundStream(oss4) must beLike {
-          case Some(sid) =>
-            oss4.sid = sid
-            ok
-        }
+        // each needs to write some data to initialize
+        val f2 = os2.writeRequest(HeadersFrame(Priority.NoPriority, false, Seq.empty))
+        val f4 = os4.writeRequest(HeadersFrame(Priority.NoPriority, false, Seq.empty))
 
-        val f = streamManager.goAway(2, "bye-bye")
+        val f = tools.streamManager.goAway(2, Http2Exception.NO_ERROR.goaway("bye-bye"))
         f.isCompleted must beFalse
 
-        oss2.observedError must beNone
-        oss4.observedError must beLike {
-          case Some(Some(ex: Http2StreamException)) => ex.code must_== REFUSED_STREAM.code
+        f4.value must beLike {
+          case Some(Failure(ex: Http2Exception)) => ex.code must_== REFUSED_STREAM.code
         }
 
-        streamManager.streamClosed(oss2)
+        tools.streamManager.streamClosed(os2)
         f.isCompleted must beTrue
       }
 
-      "new streams are rejected after a goaway is issued" in {
-        val ctx = new Ctx
-        import ctx._
+      "new streams are rejected after a GOAWAY is issued" in {
+        val tools = new MockTools(isClient = false)
 
-        val oss2 = new OSS
+        // Need a stream so it doesn't all shut down
+        val Right(s) = tools.streamManager.newInboundStream(1)
 
+        tools.streamManager.goAway(1, Http2Exception.NO_ERROR.goaway("bye-bye"))
 
-        streamManager.registerOutboundStream(oss2) must beLike {
-          case Some(sid) =>
-            oss2.sid = sid
-            ok
+        tools.streamManager.newInboundStream(3) must beLike {
+          case Left(ex: Http2StreamException) => ex.code must_== REFUSED_STREAM.code
         }
 
-        streamManager.goAway(2, "bye-bye")
-        streamManager.registerOutboundStream(new OSS) must beNone
-        streamManager.registerInboundStream(new ISS(2)) must beFalse
+        tools.streamManager
+          .newOutboundStream()
+          .writeRequest(HeadersFrame(Priority.NoPriority, false, Seq.empty))
+          .value must beLike {
+            case Some(Failure(ex: Http2StreamException)) => ex.code must_== REFUSED_STREAM.code
+          }
       }
     }
 
-    "register streams" in {
-      "register inbound streams" in {
-        val ctx = new Ctx
-        import ctx._
+    "create streams" in {
+      "create inbound streams (server)" in {
+        val tools = new MockTools(isClient = false)
 
         // inbound stream for the client are even numbered
         // https://tools.ietf.org/html/rfc7540#section-5.1.1
-        val iss2 = new ISS(2)
-        val iss4 = new ISS(4)
+        val Right(s1) = tools.streamManager.newInboundStream(1)
+        val Right(s3) = tools.streamManager.newInboundStream(3)
 
-        streamManager.registerInboundStream(iss2) must beTrue
-        streamManager.registerInboundStream(iss4) must beTrue
-
-        streamManager.get(2) must beSome(iss2)
-        streamManager.get(4) must beSome(iss4)
-        streamManager.get(6) must beNone
+        tools.streamManager.get(1) must beSome(s1)
+        tools.streamManager.get(3) must beSome(s3)
+        tools.streamManager.get(5) must beNone
       }
 
-      "register outbound streams" in {
-        class OSS extends MockOutboundStreamState {
-          var sid: Int = -1
-          override def streamId: Int = sid
+      "Reject inbound streams (client)" in {
+        val tools = new MockTools(isClient = true)
+
+        // inbound stream for the client are even numbered
+        // https://tools.ietf.org/html/rfc7540#section-5.1.1
+        tools.streamManager.newInboundStream(2) must beLike {
+          case Left(ex: Http2SessionException) => ex.code must_== PROTOCOL_ERROR.code
+        }
+      }
+
+      "reject inbound streams with for non-idle streams" in {
+        val tools = new MockTools(isClient = false)
+
+        val Right(_) = tools.streamManager.newInboundStream(1)
+
+        // Reject invalid stream ids
+        tools.streamManager.newInboundStream(1) must beLike {
+          case Left(ex: Http2SessionException) => ex.code must_== PROTOCOL_ERROR.code
+        }
+      }
+
+      "reject inbound streams when MAX_CONCURRENT_STREAMS hit" in {
+        val tools = new MockTools(isClient = false)
+
+        tools.localSettings.maxConcurrentStreams = 1
+        val Right(s) = tools.streamManager.newInboundStream(1) // should work
+
+        // Too many streams!
+        tools.streamManager.newInboundStream(3) must beLike {
+          case Left(ex: Http2StreamException) => ex.code must_== REFUSED_STREAM.code
         }
 
-        val ctx = new Ctx
-        import ctx._
+        s.closeWithError(None)
+
+        // Now we can make a new stream
+        tools.streamManager.newInboundStream(5) must beLike {
+          case Right(_) => ok
+        }
+      }
+
+      "create outbound streams" in {
+        val tools = new MockTools(isClient = true)
 
         // inbound stream for the client are odd numbered
         // https://tools.ietf.org/html/rfc7540#section-5.1.1
-        val oss1 = new OSS
-        val oss3 = new OSS
 
-        streamManager.registerOutboundStream(oss1) must beLike {
-          case Some(sid) =>
-            oss1.sid = sid
-            ok
-        }
-        streamManager.registerOutboundStream(oss3) must beLike {
-          case Some(sid) =>
-            oss3.sid = sid
-            ok
-        }
+        // Explicitly reversed to make sure order doesn't matter
+        val oss3 = tools.streamManager.newOutboundStream()
+        val oss1 = tools.streamManager.newOutboundStream()
 
-        streamManager.get(1) must beSome(oss1)
-        streamManager.get(3) must beSome(oss3)
-        streamManager.get(5) must beNone
+        // Shouldn't be registered yet since they haven't written anything
+        tools.streamManager.get(1) must beNone
+        tools.streamManager.get(3) must beNone
+
+        val hs = HeadersFrame(Priority.NoPriority, false, Seq.empty)
+        oss1.writeRequest(hs)
+        oss3.writeRequest(hs)
+
+        tools.streamManager.get(1) must beSome(oss1)
+        tools.streamManager.get(3) must beSome(oss3)
+        tools.streamManager.get(5) must beNone
       }
     }
 
     "flow windows" in {
-      class ISSFlow(streamId: Int, settingResult: MaybeError) extends MockInboundStreamState(streamId) {
-        var initialWindowChange: Option[Int] = None
-        override val flowWindow: StreamFlowWindow = new MockStreamFlowWindow {
-          override def peerSettingsInitialWindowChange(delta: Int): MaybeError = {
-            initialWindowChange = Some(delta)
-            settingResult
-          }
-        }
-      }
-
       "update streams flow window on a successful initial flow window change" in {
         // https://tools.ietf.org/html/rfc7540#section-6.9.2
-        val ctx = new Ctx
-        import ctx._
-        val iss2 = new ISSFlow(2, Continue)
-        streamManager.registerInboundStream(iss2) must beTrue
-        streamManager.initialFlowWindowChange(100) must_== Continue
-        iss2.initialWindowChange must beSome(100)
-        iss2.calledOutboundFlowWindowChanged must beTrue
+        val tools = new MockTools(isClient = false)
+
+        val Right(s) = tools.streamManager.newInboundStream(1)
+        val startFlowWindow = s.flowWindow.outboundWindow
+        tools.streamManager.initialFlowWindowChange(1) must_== Continue
+        s.flowWindow.streamOutboundWindow must_== (startFlowWindow + 1)
       }
 
       "close streams flow window on a failed initial flow window change" in {
         // https://tools.ietf.org/html/rfc7540#section-6.9.2
-        val ctx = new Ctx
-        import ctx._
-        val iss2 = new ISSFlow(2, Error(Http2Exception.FLOW_CONTROL_ERROR.goaway("overflowed")))
-        streamManager.registerInboundStream(iss2) must beTrue
-        streamManager.initialFlowWindowChange(100) must beLike {
+        val tools = new MockTools(isClient = false)
+
+        val Right(s) = tools.streamManager.newInboundStream(1)
+        val delta = Int.MaxValue - s.flowWindow.outboundWindow
+        s.flowWindow.streamOutboundAcked(delta) must_== Continue
+        s.flowWindow.streamOutboundWindow must_== Int.MaxValue
+
+        tools.streamManager.initialFlowWindowChange(1) must beLike {
           case Error(ex: Http2SessionException) => ex.code must_== FLOW_CONTROL_ERROR.code
         }
-        iss2.initialWindowChange must beSome(100)
-        iss2.calledOutboundFlowWindowChanged must beFalse
-      }
 
-      class ISSWindow(streamId: Int, flowResult: MaybeError) extends MockInboundStreamState(streamId) {
-
-        var outboundAcked: Option[Int] = None
-        override val flowWindow: StreamFlowWindow = new MockStreamFlowWindow {
-          override def streamOutboundAcked(count: Int): MaybeError = {
-            outboundAcked = Some(count)
-            flowResult
-          }
+        "results in GOAWAY(PROTOCOL_ERROR) for update on idle stream" in {
+          new MockTools(isClient = true)
+            .streamManager
+            .flowWindowUpdate(1, 1) must beLike {
+              case Error(ex: Http2SessionException) => ex.code must_== PROTOCOL_ERROR.code
+            }
         }
       }
 
       "handle successful flow window updates for streams" in {
-        val ctx = new Ctx
-        import ctx._
+        val tools = new MockTools(isClient = false)
 
-        val iss2 = new ISSWindow(2, Continue)
-        streamManager.registerInboundStream(iss2) must beTrue
-        streamManager.flowWindowUpdate(2, 100) must_== Continue
-        iss2.calledOutboundFlowWindowChanged must beTrue
+        val Right(s) = tools.streamManager.newInboundStream(1)
+        val initFlowWindow = s.flowWindow.outboundWindow
+        tools.streamManager.flowWindowUpdate(streamId = 1, sizeIncrement = 1) must_== Continue
+        s.flowWindow.streamOutboundWindow must_== (initFlowWindow + 1)
       }
 
       "handle failed flow window updates for streams" in {
-        val ctx = new Ctx
-        import ctx._
+        val tools = new MockTools(isClient = false)
 
-        val iss2 = new ISSWindow(2, Error(FLOW_CONTROL_ERROR.rst(2)))
-        streamManager.registerInboundStream(iss2) must beTrue
-        streamManager.flowWindowUpdate(2, 100) must beLike {
+        val Right(s) = tools.streamManager.newInboundStream(1)
+        s.flowWindow.streamOutboundAcked(
+          Int.MaxValue - s.flowWindow.streamOutboundWindow) must_== Continue
+
+        tools.streamManager.flowWindowUpdate(streamId = 1, sizeIncrement = 1) must beLike {
           case Error(ex: Http2StreamException) => ex.code must_== FLOW_CONTROL_ERROR.code
         }
-        iss2.calledOutboundFlowWindowChanged must beFalse
       }
 
       "handle successful flow window updates for the session" in {
         var sessionAcked: Option[Int] = None
-        val ctx = new Ctx {
-          override lazy val tools = new MockTools(true) {
-            override lazy val sessionFlowControl: SessionFlowControl = new MockSessionFlowControl {
-              override def sessionOutboundAcked(count: Int): MaybeError = {
-                sessionAcked = Some(count)
-                Continue
-              }
+        val tools = new MockTools(true) {
+          override lazy val sessionFlowControl: SessionFlowControl = new MockSessionFlowControl {
+            override def sessionOutboundAcked(count: Int): MaybeError = {
+              sessionAcked = Some(count)
+              Continue
             }
           }
-
         }
-        import ctx._
 
-        streamManager.flowWindowUpdate(0, 100) must_== Continue
+        tools.streamManager.flowWindowUpdate(0, 100) must_== Continue
         sessionAcked must beSome(100)
       }
 
       "handle failed flow window updates for the session" in {
         var sessionAcked: Option[Int] = None
-        val ctx = new Ctx {
-          override lazy val tools = new MockTools(true) {
-            override lazy val sessionFlowControl: SessionFlowControl = new MockSessionFlowControl {
-              override def sessionOutboundAcked(count: Int): MaybeError = {
-                sessionAcked = Some(count)
-                Error(FLOW_CONTROL_ERROR.goaway("boom"))
-              }
+        val tools = new MockTools(true) {
+          override lazy val sessionFlowControl: SessionFlowControl = new MockSessionFlowControl {
+            override def sessionOutboundAcked(count: Int): MaybeError = {
+              sessionAcked = Some(count)
+              Error(FLOW_CONTROL_ERROR.goaway("boom"))
             }
           }
-
         }
-        import ctx._
 
-        streamManager.flowWindowUpdate(0, 100) must beLike {
+        tools.streamManager.flowWindowUpdate(0, 100) must beLike {
           case Error(ex: Http2SessionException) => ex.code must_== FLOW_CONTROL_ERROR.code
         }
         sessionAcked must beSome(100)
       }
     }
 
-    "PUSH_PROMISE frames are rejected by default" in {
-      val ctx = new Ctx
-      import ctx._
+    "PUSH_PROMISE frames are rejected by default by the client" in {
+      val tools = new MockTools(isClient = true)
 
-      streamManager.handlePushPromise(1, 2, Seq.empty) must_== Continue
-      // We should have written a RST_STREAM frame to abort the stream
-      tools.writeController.observedWrites must not(beEmpty)
+      tools.streamManager.newOutboundStream()
+        .writeRequest(HeadersFrame(Priority.NoPriority, true, Seq.empty))
+
+      tools.streamManager.handlePushPromise(
+        streamId = 1,
+        promisedId = 2,
+        headers = Seq.empty) must beLike {
+          case Error(ex: Http2StreamException) =>
+            ex.code must_== REFUSED_STREAM.code
+            ex.stream must_== 2
+        }
+    }
+
+    "PUSH_PROMISE frames are rejected by the server" in {
+      val tools = new MockTools(isClient = false)
+
+      tools.streamManager.handlePushPromise(1, 2, Seq.empty) must beLike {
+        case Error(ex: Http2SessionException) => ex.code must_== PROTOCOL_ERROR.code
+      }
+    }
+
+    "PUSH_PROMISE with idle associated stream" in {
+      val tools = new MockTools(isClient = true)
+
+      tools.streamManager.handlePushPromise(1, 2, Seq.empty) must beLike {
+        case Error(ex: Http2SessionException) => ex.code must_== PROTOCOL_ERROR.code
+      }
+    }
+
+    "PUSH_PROMISE with closed associated stream" in {
+      val tools = new MockTools(isClient = true)
+      val streamId = tools.idManager.takeOutboundId().getOrElse(sys.error("failed to acquire id"))
+
+      // We don't accept the stream because we don't support it, but it should
+      // just be a RST_STREAM(REFUSED_STREAM) response
+      tools.streamManager.handlePushPromise(streamId, 2, Seq.empty) must beLike {
+        case Error(ex: Http2StreamException) =>
+          ex.code must_== REFUSED_STREAM.code
+          ex.stream must_== 2
+      }
+    }
+
+    "PUSH_PROMISE with promised stream which is not idle" in {
+      val promisedId = 2
+      val tools = new MockTools(isClient = true)
+      val streamId = tools.idManager.takeOutboundId().getOrElse(sys.error("failed to acquire id"))
+      tools.idManager.observeInboundId(promisedId)
+
+      tools.streamManager.handlePushPromise(streamId, promisedId, Seq.empty) must beLike {
+        case Error(ex: Http2SessionException) => ex.code must_== PROTOCOL_ERROR.code
+      }
     }
   }
-
 }

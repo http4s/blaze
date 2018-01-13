@@ -19,11 +19,18 @@ class BasicTail[T](val name: String) extends TailStage[T] {
   def close(): Unit = sendOutboundCommand(Disconnect)
 
   override def inboundCommand(cmd: InboundCommand): Unit = cmd match {
-    case Connected => startP.trySuccess(())
-    case Disconnected | EOF => closeP.trySuccess(())
+    case Connected =>
+      startP.trySuccess(())
+      ()
+
+    case Disconnected | EOF =>
+      closeP.trySuccess(())
+      ()
+
     case other =>
       val exc = new IllegalStateException(s"Unknown command: $other")
       log.warn(exc)("Unknown command")
       closeP.tryFailure(exc)
+      ()
   }
 }

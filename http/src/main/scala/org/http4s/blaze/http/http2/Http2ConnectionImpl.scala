@@ -29,7 +29,7 @@ private abstract class Http2ConnectionImpl(
   private[this] var currentState: ConnectionState = Running
   private[this] var started = false
 
-  protected object Core extends SessionCore {
+  protected val Core: SessionCore = new SessionCore {
     override val localSettings: Http2Settings = Http2ConnectionImpl.this.localSettings
     override val remoteSettings: MutableHttp2Settings = Http2ConnectionImpl.this.remoteSettings
 
@@ -50,15 +50,13 @@ private abstract class Http2ConnectionImpl(
     override val http2Decoder = new Http2FrameDecoder(localSettings, frameListener)
     override val http2Encoder = new Http2FrameEncoder(remoteSettings, headerEncoder)
     override val writeController = new WriteControllerImpl(this, 64*1024, tailStage)
-
     override val pingManager: PingManager = new PingManager(this)
     override val sessionFlowControl: SessionFlowControl = new SessionFlowControlImpl(this, flowStrategy)
-
-    override val streamManager: StreamManager = new StreamManagerImpl(this, StreamIdManager(isClient))
-
+    override val streamManager: StreamManager = new StreamManagerImpl(this)
+    override val isClient: Boolean = Http2ConnectionImpl.this.isClient
+    override val idManager: StreamIdManager = StreamIdManager(isClient)
 
     override def state: ConnectionState = Http2ConnectionImpl.this.state
-
 
     override def newInboundStream(streamId: Int): Option[LeafBuilder[StreamMessage]] = {
       // TODO: check the state
@@ -91,7 +89,7 @@ private abstract class Http2ConnectionImpl(
 
             streamManager.forceClose(Some(ex)) // Fail hard
             val goawayFrame = Http2FrameSerializer.mkGoAwayFrame(
-              streamManager.idManager.lastInboundStream, http2SessionError)
+              idManager.lastInboundStream, http2SessionError)
             // TODO: maybe we should clear the `WriteController` before writing?
             writeController.write(goawayFrame)
             writeController.close().onComplete { _ =>
@@ -107,14 +105,14 @@ private abstract class Http2ConnectionImpl(
         // Don't set the state to draining because we'll do that in `invokeGoaway`
 
         // Start draining: send a GOAWAY and set a timer to shutdown
-        val noError = Http2Exception.NO_ERROR.goaway()
+        val noError = Http2Exception.NO_ERROR.goaway(s"Session draining for duration $gracePeriod")
         val someNoError = Some(noError)
-        val frame = Http2FrameSerializer.mkGoAwayFrame(streamManager.idManager.lastInboundStream, noError)
+        val frame = Http2FrameSerializer.mkGoAwayFrame(idManager.lastInboundStream, noError)
         writeController.write(frame)
 
         // Drain the StreamManager
-        val lastHandledStream = Core.streamManager.idManager.lastOutboundStream
-        invokeGoaway(lastHandledStream, s"Session draining for duration $gracePeriod")
+        val lastHandledStream = idManager.lastOutboundStream
+        invokeGoAway(lastHandledStream, noError)
 
         // Now set a timer to force closed the session after the expiration
         // if draining takes too long.
@@ -125,11 +123,12 @@ private abstract class Http2ConnectionImpl(
       }
     }
 
-    override def invokeGoaway(lastHandledOutboundStream: Int, message: String): Unit = {
+    // TODO: should we switch the dependency between drain and GOAWAY?
+    override def invokeGoAway(lastHandledOutboundStream: Int, error: Http2SessionException): Unit = {
       if (currentState == Running) {
         currentState = Http2Connection.Draining
         // Drain the `StreamManager` and then the `WriteController`, then close up.
-        Core.streamManager.goAway(lastHandledOutboundStream, message)
+        Core.streamManager.goAway(lastHandledOutboundStream, error)
           .flatMap { _ => writeController.close() }(serialExecutor)
           .onComplete { _ => invokeShutdownWithError(None, "invokeGoaway") }(serialExecutor)
       }
@@ -153,7 +152,7 @@ private abstract class Http2ConnectionImpl(
   }
 
   override def quality: Double = {
-    if (isClosing || !Core.streamManager.idManager.unusedOutboundStreams) 0.0
+    if (isClosing || !Core.idManager.unusedOutboundStreams) 0.0
     else 1.0 - Core.streamManager.size.toDouble/remoteSettings.maxConcurrentStreams.toDouble
   }
 

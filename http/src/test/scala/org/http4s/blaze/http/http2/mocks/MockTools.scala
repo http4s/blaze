@@ -8,11 +8,11 @@ import org.http4s.blaze.util.Execution
 import scala.concurrent.ExecutionContext
 import scala.concurrent.duration.Duration
 
-private[http2] class MockTools(isClient: Boolean) extends SessionCore {
+private[http2] class MockTools(val isClient: Boolean) extends SessionCore {
 
   def flowStrategy: FlowStrategy = new DefaultFlowStrategy(localSettings)
 
-  lazy val frameListener: MockHeaderAggregatingFrameListener = new MockHeaderAggregatingFrameListener
+  lazy val frameListener: HeaderAggregatingFrameListener = ???
 
   override lazy val localSettings: MutableHttp2Settings = MutableHttp2Settings.default()
 
@@ -26,7 +26,8 @@ private[http2] class MockTools(isClient: Boolean) extends SessionCore {
 
   override lazy val serialExecutor: ExecutionContext = Execution.trampoline
 
-  override lazy val sessionFlowControl: SessionFlowControl = new MockSessionFlowControl
+  override lazy val sessionFlowControl: SessionFlowControl =
+    new SessionFlowControlImpl(this, flowStrategy)
 
   override lazy val http2Encoder: Http2FrameEncoder =
     new Http2FrameEncoder(remoteSettings, headerEncoder)
@@ -38,10 +39,10 @@ private[http2] class MockTools(isClient: Boolean) extends SessionCore {
 
   override lazy val pingManager: PingManager = new PingManager(this)
 
-  override lazy val streamManager: MockStreamManager = new MockStreamManager
+  override lazy val streamManager: StreamManager = ???
 
   // Behaviors
-  override def newInboundStream(streamId: Int): Option[LeafBuilder[StreamMessage]] = ???
+  override def newInboundStream(streamId: Int): Option[LeafBuilder[StreamMessage]] = None
 
   override def state: ConnectionState = Running
 
@@ -51,7 +52,7 @@ private[http2] class MockTools(isClient: Boolean) extends SessionCore {
     drainGracePeriod = Some(gracePeriod)
   }
 
-  override def invokeGoaway(lastHandledStream: Int, message: String): Unit = ???
+  override def invokeGoAway(lastHandledOutboundStream: Int, reason: Http2SessionException): Unit = ???
 
   override def invokeShutdownWithError(ex: Option[Throwable], phase: String): Unit = ???
 }
