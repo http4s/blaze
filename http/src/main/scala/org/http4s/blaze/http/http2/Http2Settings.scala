@@ -154,12 +154,12 @@ object Http2Settings {
       else None
   }
 
-  val HEADER_TABLE_SIZE      = makeKey(0x1, "SETTINGS_HEADER_TABLE_SIZE")
-  val ENABLE_PUSH            = makeKey(0x2, "SETTINGS_ENABLE_PUSH")
-  val MAX_CONCURRENT_STREAMS = makeKey(0x3, "SETTINGS_MAX_CONCURRENT_STREAMS")
-  val INITIAL_WINDOW_SIZE    = makeKey(0x4, "SETTINGS_INITIAL_WINDOW_SIZE")
-  val MAX_FRAME_SIZE         = makeKey(0x5, "SETTINGS_MAX_FRAME_SIZE")
-  val MAX_HEADER_LIST_SIZE   = makeKey(0x6, "SETTINGS_MAX_HEADER_LIST_SIZE")
+  val HEADER_TABLE_SIZE: SettingKey      = makeKey(0x1, "SETTINGS_HEADER_TABLE_SIZE")
+  val ENABLE_PUSH: SettingKey            = makeKey(0x2, "SETTINGS_ENABLE_PUSH")
+  val MAX_CONCURRENT_STREAMS: SettingKey = makeKey(0x3, "SETTINGS_MAX_CONCURRENT_STREAMS")
+  val INITIAL_WINDOW_SIZE: SettingKey    = makeKey(0x4, "SETTINGS_INITIAL_WINDOW_SIZE")
+  val MAX_FRAME_SIZE: SettingKey         = makeKey(0x5, "SETTINGS_MAX_FRAME_SIZE")
+  val MAX_HEADER_LIST_SIZE: SettingKey   = makeKey(0x6, "SETTINGS_MAX_HEADER_LIST_SIZE")
 }
 
 /** Internal mutable representation of the [[Http2Settings]] */
