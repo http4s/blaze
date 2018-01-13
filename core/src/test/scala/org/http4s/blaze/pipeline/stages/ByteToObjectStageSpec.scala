@@ -1,6 +1,5 @@
 package org.http4s.blaze.pipeline.stages
 
-import org.http4s.blaze.util.BufferTools
 import org.specs2.mutable._
 
 import java.nio.ByteBuffer

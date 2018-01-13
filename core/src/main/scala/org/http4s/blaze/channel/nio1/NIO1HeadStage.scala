@@ -5,7 +5,6 @@ import org.http4s.blaze.channel.ChannelHead
 import scala.util.{Failure, Success, Try}
 import java.nio.ByteBuffer
 import java.nio.channels.{CancelledKeyException, SelectionKey, SelectableChannel}
-import java.util.concurrent.atomic.AtomicReference
 import scala.concurrent.{Future, Promise}
 import scala.util.control.NonFatal
 import org.http4s.blaze.pipeline.Command.{Disconnected, EOF}

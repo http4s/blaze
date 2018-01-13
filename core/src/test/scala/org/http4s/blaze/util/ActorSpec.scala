@@ -1,11 +1,10 @@
 package org.http4s.blaze.util
 
 import java.util.concurrent.{CountDownLatch, TimeUnit}
-import java.util.concurrent.atomic.{AtomicInteger, AtomicReference}
+import java.util.concurrent.atomic.AtomicReference
 
 import scala.concurrent.ExecutionContext
 import scala.concurrent.ExecutionContext.global
-import scala.concurrent.duration._
 import org.specs2.mutable.Specification
 
 class ActorSpec extends Specification {
