@@ -39,7 +39,7 @@ class StreamManagerImplSpec extends Specification {
         tools.streamManager.forceClose(Some(ex))
 
         // further calls to drain should happen immediately
-        tools.streamManager.goAway(100, "whatever").isCompleted must beTrue
+        tools.streamManager.goAway(100, Http2Exception.NO_ERROR.goaway("whatever")).isCompleted must beTrue
 
         // Since the streams are closed stream operations should fail
         val hs = HeadersFrame(Priority.NoPriority, false, Seq.empty)
@@ -62,7 +62,7 @@ class StreamManagerImplSpec extends Specification {
         val f2 = os2.writeRequest(HeadersFrame(Priority.NoPriority, false, Seq.empty))
         val f4 = os4.writeRequest(HeadersFrame(Priority.NoPriority, false, Seq.empty))
 
-        val f = tools.streamManager.goAway(2, "bye-bye")
+        val f = tools.streamManager.goAway(2, Http2Exception.NO_ERROR.goaway("bye-bye"))
         f.isCompleted must beFalse
 
         f4.value must beLike {
@@ -79,7 +79,7 @@ class StreamManagerImplSpec extends Specification {
         // Need a stream so it doesn't all shut down
         val Right(s) = tools.streamManager.newInboundStream(1)
 
-        tools.streamManager.goAway(1, "bye-bye")
+        tools.streamManager.goAway(1, Http2Exception.NO_ERROR.goaway("bye-bye"))
 
         tools.streamManager.newInboundStream(3) must beLike {
           case Left(ex: Http2StreamException) => ex.code must_== REFUSED_STREAM.code

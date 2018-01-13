@@ -1,7 +1,7 @@
 package org.http4s.blaze.http.http2.mocks
 
 import org.http4s.blaze.http.Headers
-import org.http4s.blaze.http.http2.{Http2Result, InboundStreamState, MaybeError, _}
+import org.http4s.blaze.http.http2.{Http2Result, MaybeError, _}
 
 import scala.collection.mutable
 import scala.concurrent.Future
@@ -28,7 +28,7 @@ private[http2] class MockStreamManager(isClient: Boolean) extends StreamManager 
 
   override def get(streamId: Int): Option[StreamState] = None
 
-  override def goAway(lastHandledOutboundStream: Int, message: String): Future[Unit] = ???
+  override def goAway(lastHandledOutboundStream: Int, reason: Http2SessionException): Future[Unit] = ???
 
   override def rstStream(cause: Http2StreamException): MaybeError = Continue
 

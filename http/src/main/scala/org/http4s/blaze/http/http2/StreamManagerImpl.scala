@@ -208,14 +208,14 @@ private final class StreamManagerImpl(
     }
   }
 
-  override def goAway(lastHandledOutboundStream: Int, message: String): Future[Unit] = {
+  override def goAway(lastHandledOutboundStream: Int, reason: Http2SessionException): Future[Unit] = {
     drainingP match {
       case Some(p) =>
-        logger.debug(s"Received a second GOAWAY($lastHandledOutboundStream, $message")
+        logger.debug(reason)(s"Received a second GOAWAY($lastHandledOutboundStream")
         p.future
 
       case None =>
-        logger.debug(s"StreamManager.goaway($lastHandledOutboundStream, $message)")
+        logger.debug(reason)(s"StreamManager.goaway($lastHandledOutboundStream)")
         val unhandledStreams = streams.filterKeys { id =>
           lastHandledOutboundStream < id && session.idManager.isOutboundId(id)
         }
@@ -224,7 +224,7 @@ private final class StreamManagerImpl(
           // We remove the stream first so that we don't send a RST back to
           // the peer, since they have discarded the stream anyway.
           streams.remove(id)
-          val ex = Http2Exception.REFUSED_STREAM.rst(id, message)
+          val ex = Http2Exception.REFUSED_STREAM.rst(id, reason.msg)
           stream.closeWithError(Some(ex))
         }
 

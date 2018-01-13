@@ -52,7 +52,7 @@ private[http2] class MockTools(val isClient: Boolean) extends SessionCore {
     drainGracePeriod = Some(gracePeriod)
   }
 
-  override def invokeGoAway(lastHandledOutboundStream: Int, errorCode: Long, message: String): Unit = ???
+  override def invokeGoAway(lastHandledOutboundStream: Int, reason: Http2SessionException): Unit = ???
 
   override def invokeShutdownWithError(ex: Option[Throwable], phase: String): Unit = ???
 }

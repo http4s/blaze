@@ -56,7 +56,7 @@ object Http2Exception {
     def goaway(): Http2Exception = Http2SessionException(code, name)
 
     /** Create a Http2Exception with stream id 0 */
-    def goaway(msg: String): Http2Exception = Http2SessionException(code, name + ": " + msg)
+    def goaway(msg: String): Http2SessionException = Http2SessionException(code, name + ": " + msg)
 
     /** Create a Http2Exception with the requisite stream id */
     def rst(stream: Int): Http2StreamException = rst(stream, name)
