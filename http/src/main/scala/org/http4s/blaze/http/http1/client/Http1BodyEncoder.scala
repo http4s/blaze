@@ -3,7 +3,6 @@ package org.http4s.blaze.http.http1.client
 import java.nio.ByteBuffer
 import java.nio.charset.StandardCharsets
 
-import org.http4s.blaze.http.HttpRequest
 import org.http4s.blaze.util.BufferTools
 
 // Different encoders for the message body, either regular or transfer-encoding

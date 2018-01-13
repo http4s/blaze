@@ -2,7 +2,6 @@ package org.http4s.blaze.http.endtoend
 
 import java.nio.charset.StandardCharsets
 
-import org.asynchttpclient.RequestBuilder
 import org.http4s.blaze.http._
 import org.http4s.blaze.util.BufferTools
 import org.specs2.mutable.Specification

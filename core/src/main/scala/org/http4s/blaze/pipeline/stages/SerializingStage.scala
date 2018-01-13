@@ -1,10 +1,8 @@
 package org.http4s.blaze.pipeline
 package stages
 
-import java.util.concurrent.atomic.{AtomicInteger, AtomicReference}
-import scala.concurrent.{Promise, Future}
+import scala.concurrent.Future
 
-import org.http4s.blaze.util.Execution.directec
 import org.http4s.blaze.pipeline.stages.addons.Serializer
 
 final class SerializingStage[I](val name: String = "SerializingStage",

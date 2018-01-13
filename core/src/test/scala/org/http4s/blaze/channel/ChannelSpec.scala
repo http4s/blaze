@@ -10,7 +10,7 @@ import org.http4s.blaze.pipeline.{Command, LeafBuilder, TailStage}
 import org.http4s.blaze.util.Execution
 import org.specs2.mutable.Specification
 
-import scala.concurrent.{Await, Awaitable, Future, Promise}
+import scala.concurrent.{Await, Future, Promise}
 import scala.concurrent.duration._
 
 
