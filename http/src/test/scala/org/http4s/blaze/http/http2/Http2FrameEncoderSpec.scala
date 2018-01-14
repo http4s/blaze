@@ -33,10 +33,10 @@ class Http2FrameEncoderSpec extends Specification with Mockito with Http2SpecToo
       decoder.decodeBuffer(data2) must_== ReturnTag(2)
     }
 
-    "fragments data frames if they exceed the mySettings.maxFrameSize" >> {
+    "fragments data frames if they exceed the localSettings.maxFrameSize" >> {
       val tools = new MockTools(true)
       val listener = mockListener()
-      val decoder = new Http2FrameDecoder(tools.remoteSettings, listener)
+      val remoteDecoder = new Http2FrameDecoder(tools.remoteSettings, listener)
 
       tools.remoteSettings.maxFrameSize = 10 // technically an illegal size...
 
@@ -45,22 +45,22 @@ class Http2FrameEncoderSpec extends Specification with Mockito with Http2SpecToo
 
       // Frame 1
       listener.onDataFrame(1, false, zeroBuffer(10), 10) returns ReturnTag(1)
-      decoder.decodeBuffer(data1) must_== ReturnTag(1)
+      remoteDecoder.decodeBuffer(data1) must_== ReturnTag(1)
 
       // Frame 2
       listener.onDataFrame(1, true, zeroBuffer(5), 5) returns ReturnTag(2)
-      decoder.decodeBuffer(data1) must_== ReturnTag(2)
+      remoteDecoder.decodeBuffer(data1) must_== ReturnTag(2)
 
       // `endStream = false`
       val data2 = BufferTools.joinBuffers(tools.frameEncoder.dataFrame(1, false, zeroBuffer(15)))
 
       // Frame 1
       listener.onDataFrame(1, false, zeroBuffer(10), 10) returns ReturnTag(3)
-      decoder.decodeBuffer(data2) must_== ReturnTag(3)
+      remoteDecoder.decodeBuffer(data2) must_== ReturnTag(3)
 
       // Frame 2
       listener.onDataFrame(1, false, zeroBuffer(5), 5) returns ReturnTag(4)
-      decoder.decodeBuffer(data2) must_== ReturnTag(4)
+      remoteDecoder.decodeBuffer(data2) must_== ReturnTag(4)
     }
 
     "not fragment headers if they fit into a single frame" >> {

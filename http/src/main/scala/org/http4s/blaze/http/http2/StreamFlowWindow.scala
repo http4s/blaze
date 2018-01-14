@@ -36,7 +36,7 @@ abstract class StreamFlowWindow {
     * @param delta change in intial window size. Maybe be positive or negative, but must not
     *              cause the window to overflow Int.MaxValue.
     */
-  def peerSettingsInitialWindowChange(delta: Int): MaybeError
+  def remoteSettingsInitialWindowChange(delta: Int): MaybeError
 
   /** Signal that a stream window update was received for `count` bytes */
   def streamOutboundAcked(count: Int): MaybeError

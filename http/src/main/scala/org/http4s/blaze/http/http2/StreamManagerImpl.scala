@@ -41,7 +41,7 @@ private final class StreamManagerImpl(
     val it = streams.valuesIterator
     while (it.hasNext && result == Continue) {
       val stream = it.next()
-      stream.flowWindow.peerSettingsInitialWindowChange(diff) match {
+      stream.flowWindow.remoteSettingsInitialWindowChange(diff) match {
         case Continue =>
           stream.outboundFlowWindowChanged()
 
