@@ -38,5 +38,5 @@ abstract class SessionFlowControl {
     *       the session as there should always be an associated stream
     *       when sending flow control counted bytes outbound.
     */
-  def sessionOutboundAcked(count: Int): MaybeError
+  def sessionOutboundAcked(count: Int): Option[Http2Exception]
 }

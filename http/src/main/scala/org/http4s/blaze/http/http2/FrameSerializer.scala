@@ -6,7 +6,7 @@ import java.nio.charset.StandardCharsets
 import org.http4s.blaze.http.http2.Http2Settings.Setting
 import org.http4s.blaze.util.BufferTools
 
-private object Http2FrameSerializer {
+private object FrameSerializer {
   import bits._
 
   // Override the scala provided `require(condition, => msg)` to avoid the thunks

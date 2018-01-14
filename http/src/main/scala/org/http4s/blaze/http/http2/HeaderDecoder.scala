@@ -22,7 +22,7 @@ import scala.util.control.NonFatal
   * https://tools.ietf.org/html/rfc7540#section-6.5.2
   * @param maxTableSize maximum compression table to maintain
   */
-final class HeaderDecoder(
+private final class HeaderDecoder(
   maxHeaderListSize: Int,
   discardOverflowHeaders: Boolean,
   val maxTableSize: Int

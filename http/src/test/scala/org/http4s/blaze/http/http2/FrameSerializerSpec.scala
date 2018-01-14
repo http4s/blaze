@@ -11,7 +11,7 @@ import org.scalacheck.{Arbitrary, Gen}
 import org.specs2.mutable.Specification
 import org.specs2.ScalaCheck
 
-class Http2FrameSerializerSpec extends Specification with ScalaCheck {
+class FrameSerializerSpec extends Specification with ScalaCheck {
   import CodecUtils._
 
   lazy val tfGen: Gen[Boolean] = Gen.oneOf(true, false)
@@ -37,10 +37,10 @@ class Http2FrameSerializerSpec extends Specification with ScalaCheck {
       } yield DataFrame(streamId, isLast, mkData(bytes), padding)
     )
 
-    def dec(dataFrame: DataFrame): TestHttp2FrameDecoder =
+    def dec(dataFrame: DataFrame): TestFrameDecoder =
       decoder(new MockFrameListener(false) {
         override def onDataFrame(streamId: Int, isLast: Boolean,
-                                 data: ByteBuffer, flowSize: Int): Http2Result = {
+                                 data: ByteBuffer, flowSize: Int): Result = {
           streamId must_== dataFrame.streamId
           isLast must_== dataFrame.endStream
           compare(data::Nil, dataFrame.data.duplicate::Nil) must beTrue
@@ -53,7 +53,7 @@ class Http2FrameSerializerSpec extends Specification with ScalaCheck {
 
     "roundtrip" >> prop { dataFrame: DataFrame =>
       val frame = joinBuffers(
-        Http2FrameSerializer.mkDataFrame(
+        FrameSerializer.mkDataFrame(
           dataFrame.streamId, dataFrame.endStream, dataFrame.padding, dataFrame.data.duplicate()))
       dec(dataFrame).decodeBuffer(frame) == Continue
     }
@@ -61,7 +61,7 @@ class Http2FrameSerializerSpec extends Specification with ScalaCheck {
     "Decode padded buffers" in {
       forall(0 to 256) { i: Int =>
         def dat = mkData(20)
-        val frame = joinBuffers(Http2FrameSerializer.mkDataFrame(3, false, i, dat))
+        val frame = joinBuffers(FrameSerializer.mkDataFrame(3, false, i, dat))
         dec(DataFrame(3, false, dat, i)).decodeBuffer(frame) must_== Continue
       }
     }
@@ -100,7 +100,7 @@ class Http2FrameSerializerSpec extends Specification with ScalaCheck {
                                     priority: Priority,
                                     end_headers: Boolean,
                                     end_stream: Boolean,
-                                    buffer: ByteBuffer): Http2Result = {
+                                    buffer: ByteBuffer): Result = {
           headerFrame.streamId must_== streamId
           headerFrame.priority must_== priority
           headerFrame.endHeaders must_== end_headers
@@ -111,7 +111,7 @@ class Http2FrameSerializerSpec extends Specification with ScalaCheck {
     })
 
     "roundtrip" >> prop { headerFrame: HeadersFrame =>
-      val buff1 = joinBuffers(Http2FrameSerializer.mkHeaderFrame(
+      val buff1 = joinBuffers(FrameSerializer.mkHeaderFrame(
         headerFrame.streamId,
         headerFrame.priority,
         headerFrame.endHeaders,
@@ -123,12 +123,12 @@ class Http2FrameSerializerSpec extends Specification with ScalaCheck {
     }
 
     "make round trip" in {
-      val buff1 = joinBuffers(Http2FrameSerializer.mkHeaderFrame(1, Priority.NoPriority, true, true, 0, dat))
+      val buff1 = joinBuffers(FrameSerializer.mkHeaderFrame(1, Priority.NoPriority, true, true, 0, dat))
       dec(HeadersFrame(1, Priority.NoPriority, true, true, dat, 0)).decodeBuffer(buff1) must_== Continue
       buff1.remaining() must_== 0
 
       val priority = Priority.Dependent(3, false, 6)
-      val buff2 = joinBuffers(Http2FrameSerializer.mkHeaderFrame(2, priority, true, false, 0, dat))
+      val buff2 = joinBuffers(FrameSerializer.mkHeaderFrame(2, priority, true, false, 0, dat))
       dec(HeadersFrame(2, priority, true, false, dat, 0)).decodeBuffer(buff2) must_== Continue
       buff2.remaining() must_== 0
     }
@@ -136,17 +136,17 @@ class Http2FrameSerializerSpec extends Specification with ScalaCheck {
     "handle padding" in {
       val paddingSize = 10
       val buff = joinBuffers(
-        Http2FrameSerializer.mkHeaderFrame(1, Priority.NoPriority, true, true, paddingSize, dat))
+        FrameSerializer.mkHeaderFrame(1, Priority.NoPriority, true, true, paddingSize, dat))
       dec(HeadersFrame(1, Priority.NoPriority, true, true, dat, paddingSize)).decodeBuffer(buff) must_== Continue
     }
 
     "fail on bad stream ID" in {
-      Http2FrameSerializer.mkHeaderFrame(
+      FrameSerializer.mkHeaderFrame(
         0, Priority.NoPriority, true, true, 0, dat) must throwA[Exception]
     }
 
     "fail on bad padding" in {
-      Http2FrameSerializer.mkHeaderFrame(
+      FrameSerializer.mkHeaderFrame(
         1, Priority.NoPriority, true, true, -10, dat) must throwA[Exception]
     }
   }
@@ -157,7 +157,7 @@ class Http2FrameSerializerSpec extends Specification with ScalaCheck {
 
     def dec(priorityFrame: PriorityFrame) =
       decoder(new MockFrameListener(false) {
-        override def onPriorityFrame(streamId: Int, priority: Priority.Dependent): Http2Result = {
+        override def onPriorityFrame(streamId: Int, priority: Priority.Dependent): Result = {
           priorityFrame.streamId must_== streamId
           priorityFrame.priority must_== priority
           Continue
@@ -172,7 +172,7 @@ class Http2FrameSerializerSpec extends Specification with ScalaCheck {
     )
 
     "roundtrip" >> prop { p: PriorityFrame =>
-      val buff1 = Http2FrameSerializer.mkPriorityFrame(p.streamId, p.priority)
+      val buff1 = FrameSerializer.mkPriorityFrame(p.streamId, p.priority)
       dec(p).decodeBuffer(buff1) must_== Continue
       buff1.remaining() must_== 0
     }
@@ -183,7 +183,7 @@ class Http2FrameSerializerSpec extends Specification with ScalaCheck {
     }
 
     "fail on bad streamId" in {
-      Http2FrameSerializer.mkPriorityFrame(0, Priority.Dependent(1, true, 0)) must throwA[Exception]
+      FrameSerializer.mkPriorityFrame(0, Priority.Dependent(1, true, 0)) must throwA[Exception]
     }
 
     "fail on bad stream dependency" in {
@@ -203,7 +203,7 @@ class Http2FrameSerializerSpec extends Specification with ScalaCheck {
 
     def dec(rstFrame: RstFrame) =
       decoder(new MockFrameListener(false) {
-        override def onRstStreamFrame(streamId: Int, code: Long): Http2Result = {
+        override def onRstStreamFrame(streamId: Int, code: Long): Result = {
           rstFrame.streamId must_== streamId
           rstFrame.code must_== code
           Continue
@@ -211,13 +211,13 @@ class Http2FrameSerializerSpec extends Specification with ScalaCheck {
       })
 
     "roundtrip" >> prop { rst: RstFrame =>
-      val buff1 = Http2FrameSerializer.mkRstStreamFrame(rst.streamId, rst.code)
+      val buff1 = FrameSerializer.mkRstStreamFrame(rst.streamId, rst.code)
       dec(rst).decodeBuffer(buff1) must_== Continue
       buff1.remaining() must_== 0
     }
 
     "fail on bad stream Id" in {
-      Http2FrameSerializer.mkRstStreamFrame(0, 1) must throwA[Exception]
+      FrameSerializer.mkRstStreamFrame(0, 1) must throwA[Exception]
     }
   }
 
@@ -226,7 +226,7 @@ class Http2FrameSerializerSpec extends Specification with ScalaCheck {
 
     def dec(settingsFrame: SettingsFrame) =
       decoder(new MockFrameListener(false) {
-        override def onSettingsFrame(ack: Boolean, settings: Seq[Setting]): Http2Result = {
+        override def onSettingsFrame(ack: Boolean, settings: Seq[Setting]): Result = {
           settingsFrame.ack must_== ack
           settingsFrame.settings must_== settings
           Continue
@@ -237,8 +237,8 @@ class Http2FrameSerializerSpec extends Specification with ScalaCheck {
       val settings = if (ack) Seq.empty else (0 until 100).map(i => Setting(i, i + 3))
 
       val buff1 =
-        if (ack) Http2FrameSerializer.mkSettingsAckFrame()
-        else Http2FrameSerializer.mkSettingsFrame(settings)
+        if (ack) FrameSerializer.mkSettingsAckFrame()
+        else FrameSerializer.mkSettingsFrame(settings)
 
       dec(SettingsFrame(ack, settings)).decodeBuffer(buff1) must_== Continue
       buff1.remaining() must_== 0
@@ -257,7 +257,7 @@ class Http2FrameSerializerSpec extends Specification with ScalaCheck {
 
     def dec(pingFrame: PingFrame) =
       decoder(new MockHeaderAggregatingFrameListener {
-        override def onPingFrame(ack: Boolean, data: Array[Byte]): Http2Result = {
+        override def onPingFrame(ack: Boolean, data: Array[Byte]): Result = {
           pingFrame.ack must_== ack
           assert(util.Arrays.equals(pingFrame.data, data))
           Continue
@@ -265,7 +265,7 @@ class Http2FrameSerializerSpec extends Specification with ScalaCheck {
       })
 
     "make a simple round trip" >> prop { pingFrame: PingFrame =>
-      val pingBuffer = Http2FrameSerializer.mkPingFrame(pingFrame.ack, pingFrame.data)
+      val pingBuffer = FrameSerializer.mkPingFrame(pingFrame.ack, pingFrame.data)
       dec(pingFrame).decodeBuffer(pingBuffer) must_== Continue
     }
   }
@@ -284,7 +284,7 @@ class Http2FrameSerializerSpec extends Specification with ScalaCheck {
 
     def dec(goAway: GoAwayFrame) =
       decoder(new MockHeaderAggregatingFrameListener {
-        override def onGoAwayFrame(lastStream: Int, errorCode: Long, debugData: Array[Byte]): Http2Result = {
+        override def onGoAwayFrame(lastStream: Int, errorCode: Long, debugData: Array[Byte]): Result = {
           goAway.lastStream must_== lastStream
           goAway.err must_== errorCode
           assert(util.Arrays.equals(goAway.data, debugData))
@@ -293,7 +293,7 @@ class Http2FrameSerializerSpec extends Specification with ScalaCheck {
       })
 
     "roundtrip" >> prop { goAway: GoAwayFrame =>
-      val encodedGoAway = Http2FrameSerializer.mkGoAwayFrame(goAway.lastStream, goAway.err, goAway.data)
+      val encodedGoAway = FrameSerializer.mkGoAwayFrame(goAway.lastStream, goAway.err, goAway.data)
       dec(goAway).decodeBuffer(joinBuffers(encodedGoAway)) must_== Continue
     }
   }
@@ -310,7 +310,7 @@ class Http2FrameSerializerSpec extends Specification with ScalaCheck {
 
     def dec(update: WindowUpdateFrame) =
       decoder(new MockHeaderAggregatingFrameListener {
-        override def onWindowUpdateFrame(streamId: Int, sizeIncrement: Int): Http2Result = {
+        override def onWindowUpdateFrame(streamId: Int, sizeIncrement: Int): Result = {
           update.streamId must_== streamId
           update.increment must_== sizeIncrement
           Continue
@@ -318,18 +318,18 @@ class Http2FrameSerializerSpec extends Specification with ScalaCheck {
       })
 
     "roundtrip" >> prop { updateFrame: WindowUpdateFrame =>
-      val updateBuffer = Http2FrameSerializer.mkWindowUpdateFrame(
+      val updateBuffer = FrameSerializer.mkWindowUpdateFrame(
         updateFrame.streamId, updateFrame.increment)
       dec(updateFrame).decodeBuffer(updateBuffer) must_== Continue
     }
 
     "fail on invalid stream" in {
-      Http2FrameSerializer.mkWindowUpdateFrame(-1, 10) must throwA[Exception]
+      FrameSerializer.mkWindowUpdateFrame(-1, 10) must throwA[Exception]
     }
 
     "fail on invalid window update" in {
-      Http2FrameSerializer.mkWindowUpdateFrame(1, 0) must throwA[Exception]
-      Http2FrameSerializer.mkWindowUpdateFrame(1, -1) must throwA[Exception]
+      FrameSerializer.mkWindowUpdateFrame(1, 0) must throwA[Exception]
+      FrameSerializer.mkWindowUpdateFrame(1, -1) must throwA[Exception]
     }
   }
 }

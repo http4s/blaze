@@ -58,7 +58,7 @@ private trait StreamManager {
   def streamClosed(streamState: StreamState): Boolean
 
   /** Handle a valid and complete PUSH_PROMISE frame */
-  def handlePushPromise(streamId: Int, promisedId: Int, headers: Headers): Http2Result
+  def handlePushPromise(streamId: Int, promisedId: Int, headers: Headers): Result
 
   /** Update the specified flow window with the specified bytes
     *

@@ -6,15 +6,15 @@ import Http2Settings.Setting
 /** Handles the HTTP messages defined in https://tools.ietf.org/html/rfc7540
   *
   * It is expected that implementations will handle validation errors based on the incoming data:
-  * the supplier of the data (commonly a [[Http2FrameDecoder]]) is responsible for ensuring that
+  * the supplier of the data (commonly a [[FrameDecoder]]) is responsible for ensuring that
   * the frames are properly formatted but doesn't concern itself with validating the sanity of a
   * frames content.
   *
-  * For example, the [[Http2FrameDecoder]] is responsible for ensuring that the body of a WINDOW_UPDATE
-  * is 4 bytes long and the [[Http2FrameListener]] would be expected to signal an error if the
+  * For example, the [[FrameDecoder]] is responsible for ensuring that the body of a WINDOW_UPDATE
+  * is 4 bytes long and the [[FrameListener]] would be expected to signal an error if the
   * window increment was 0 or the update was for an idle stream.
   */
-trait Http2FrameListener {
+private trait FrameListener {
 
   /** Determine whether we are in the midst of a sequence of header and header continuation frames
     *
@@ -34,7 +34,7 @@ trait Http2FrameListener {
     * @param data raw data of this message. Does NOT include padding.
     * @param flowSize bytes counted against the flow window. Includes the data and padding
     */
-  def onDataFrame(streamId: Int, endStream: Boolean, data: ByteBuffer, flowSize: Int): Http2Result
+  def onDataFrame(streamId: Int, endStream: Boolean, data: ByteBuffer, flowSize: Int): Result
 
   /** Called successful receipt of a HEADERS frame
     *
@@ -48,7 +48,7 @@ trait Http2FrameListener {
     * @param data compressed binary header data
     * @return
     */
-  def onHeadersFrame(streamId: Int, priority: Priority, endHeaders: Boolean, endStream: Boolean, data: ByteBuffer): Http2Result
+  def onHeadersFrame(streamId: Int, priority: Priority, endHeaders: Boolean, endStream: Boolean, data: ByteBuffer): Result
 
   /** Called on successful receipt of a CONTINUATION frame
     *
@@ -58,14 +58,14 @@ trait Http2FrameListener {
     * @param endHeaders this is the last CONTINUATION frame of the headers sequence
     * @param data compressed binary header data
     */
-  def onContinuationFrame(streamId: Int, endHeaders: Boolean, data: ByteBuffer): Http2Result
+  def onContinuationFrame(streamId: Int, endHeaders: Boolean, data: ByteBuffer): Result
 
   /** Called on successful receipt of a PRIORITY frame
     *
     * @param streamId stream id associated with this priority frame. The codec will never set this to 0.
     * @param priority priority data
     */
-  def onPriorityFrame(streamId: Int, priority: Priority.Dependent): Http2Result
+  def onPriorityFrame(streamId: Int, priority: Priority.Dependent): Result
 
   /** Called on successful receipt of a RST_STREAM frame
     *
@@ -75,7 +75,7 @@ trait Http2FrameListener {
     * @param code error code detailing the reason for the reset.
     * @return
     */
-  def onRstStreamFrame(streamId: Int, code: Long): Http2Result
+  def onRstStreamFrame(streamId: Int, code: Long): Result
 
   /** Called on successful receipt of a SETTINGS frame
     *
@@ -84,7 +84,7 @@ trait Http2FrameListener {
     * @param ack if this was an acknowledgment to an outbound SETTINGS frame
     * @param settings Settings contained in this frame. If this is an ack, it will always be empty.
     */
-  def onSettingsFrame(ack: Boolean, settings: Seq[Setting]): Http2Result
+  def onSettingsFrame(ack: Boolean, settings: Seq[Setting]): Result
 
   /** Called on successful receipt of a PUSH_PROMISE frame
     *
@@ -95,7 +95,7 @@ trait Http2FrameListener {
     * @param end_headers This is the last frame of this promise block.
     * @param data compressed binary header data.
     */
-  def onPushPromiseFrame(streamId: Int, promisedId: Int, end_headers: Boolean, data: ByteBuffer): Http2Result
+  def onPushPromiseFrame(streamId: Int, promisedId: Int, end_headers: Boolean, data: ByteBuffer): Result
 
   /** Called on successful receipt of a PING frame
     *
@@ -104,7 +104,7 @@ trait Http2FrameListener {
     * @param ack if this is an acknowledgment of an outbound PING frame.
     * @param data opaque data associated with this PING frame.
     */
-  def onPingFrame(ack: Boolean, data: Array[Byte]): Http2Result
+  def onPingFrame(ack: Boolean, data: Array[Byte]): Result
 
   /** Called on successful receipt of a GOAWAY frame
     *
@@ -114,7 +114,7 @@ trait Http2FrameListener {
     * @param errorCode error code describing the reason for the GOAWAY frame.
     * @param debugData opaque data that may be useful for debugging purposes.
     */
-  def onGoAwayFrame(lastStream: Int, errorCode: Long, debugData: Array[Byte]): Http2Result
+  def onGoAwayFrame(lastStream: Int, errorCode: Long, debugData: Array[Byte]): Result
 
   /** Called on successful receipt of a WINDOW_UPDATE frame
     *
@@ -124,6 +124,6 @@ trait Http2FrameListener {
     * @param sizeIncrement number of bytes to increment the flow window. The codec will never set
     *                      this to less than 1.
     */
-  def onWindowUpdateFrame(streamId: Int, sizeIncrement: Int): Http2Result
+  def onWindowUpdateFrame(streamId: Int, sizeIncrement: Int): Result
 }
 

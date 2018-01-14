@@ -1,7 +1,7 @@
 package org.http4s.blaze.http.http2.mocks
 
 import org.http4s.blaze.http.Headers
-import org.http4s.blaze.http.http2.{Http2Result, MaybeError, _}
+import org.http4s.blaze.http.http2.{Result, MaybeError, _}
 
 import scala.collection.mutable
 import scala.concurrent.Future
@@ -24,7 +24,7 @@ private[http2] class MockStreamManager(isClient: Boolean) extends StreamManager 
 
   override def flowWindowUpdate(streamId: Int, sizeIncrement: Int): MaybeError = ???
 
-  override def handlePushPromise(streamId: Int, promisedId: Int, headers: Headers): Http2Result = ???
+  override def handlePushPromise(streamId: Int, promisedId: Int, headers: Headers): Result = ???
 
   override def get(streamId: Int): Option[StreamState] = None
 

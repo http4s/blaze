@@ -98,13 +98,13 @@ class SessionFlowControlSpec extends Specification {
   "SessionFlowControl session outbound window" should {
     "session outbound deposits update the window" in {
       val flow = flowControl()
-      flow.sessionOutboundAcked(1) must_== Continue
+      flow.sessionOutboundAcked(1) must beNone
       flow.sessionOutboundWindow must_== DefaultSettings.INITIAL_WINDOW_SIZE + 1
     }
 
     "session outbound deposits update the window to Int.MaxValue" in {
       val flow = flowControl()
-      flow.sessionOutboundAcked(Int.MaxValue - flow.sessionOutboundWindow) must_== Continue
+      flow.sessionOutboundAcked(Int.MaxValue - flow.sessionOutboundWindow) must beNone
       flow.sessionOutboundWindow must_== Int.MaxValue
     }
 
@@ -112,7 +112,7 @@ class SessionFlowControlSpec extends Specification {
     "session outbound deposits of 0 throw Http2Exception with flag FLOW_CONTROL" in {
       val flow = flowControl()
       flow.sessionOutboundAcked(0) must be like {
-        case Error(Http2SessionException(code, name)) => code must_== Http2Exception.PROTOCOL_ERROR.code
+        case Some(Http2SessionException(code, name)) => code must_== Http2Exception.PROTOCOL_ERROR.code
       }
     }
 
@@ -121,7 +121,7 @@ class SessionFlowControlSpec extends Specification {
       val flow = flowControl()
       val overflowBy1 = Int.MaxValue - flow.sessionOutboundWindow + 1
       flow.sessionOutboundAcked(overflowBy1) must be like {
-        case Error(Http2SessionException(code, name)) => code must_== Http2Exception.FLOW_CONTROL_ERROR.code
+        case Some(Http2SessionException(code, name)) => code must_== Http2Exception.FLOW_CONTROL_ERROR.code
       }
     }
   }
@@ -219,7 +219,7 @@ class SessionFlowControlSpec extends Specification {
       val session = flowControl()
       val flow = session.newStreamFlowWindow(1)
 
-      flow.streamOutboundAcked(1) must_== Continue
+      flow.streamOutboundAcked(1) must beNone
 
       flow.streamOutboundWindow must_== DefaultSettings.INITIAL_WINDOW_SIZE + 1
       session.sessionOutboundWindow must_== DefaultSettings.INITIAL_WINDOW_SIZE
@@ -229,7 +229,7 @@ class SessionFlowControlSpec extends Specification {
       val session = flowControl()
       val flow = session.newStreamFlowWindow(1)
 
-      flow.streamOutboundAcked(Int.MaxValue - flow.streamOutboundWindow) must_== Continue
+      flow.streamOutboundAcked(Int.MaxValue - flow.streamOutboundWindow) must beNone
 
       flow.streamOutboundWindow must_== Int.MaxValue
       session.sessionOutboundWindow must_== DefaultSettings.INITIAL_WINDOW_SIZE
@@ -240,7 +240,7 @@ class SessionFlowControlSpec extends Specification {
       val flow = flowControl().newStreamFlowWindow(1)
 
       flow.streamOutboundAcked(0) must be like {
-        case Error(Http2SessionException(code, name)) => code must_== Http2Exception.PROTOCOL_ERROR.code
+        case Some(Http2SessionException(code, name)) => code must_== Http2Exception.PROTOCOL_ERROR.code
       }
     }
 
@@ -250,7 +250,7 @@ class SessionFlowControlSpec extends Specification {
 
       val overflowBy1 = Int.MaxValue - flow.streamOutboundWindow + 1
       flow.streamOutboundAcked(overflowBy1) must be like {
-        case Error(Http2StreamException(streamId, code, _)) =>
+        case Some(Http2StreamException(streamId, code, _)) =>
           streamId must_== flow.streamId
           code must_== Http2Exception.FLOW_CONTROL_ERROR.code
       }

@@ -1,6 +1,5 @@
 package org.http4s.blaze.http.http2
 
-import org.http4s.blaze.http.http2.Http2Connection.ConnectionState
 import org.http4s.blaze.pipeline.LeafBuilder
 
 import scala.concurrent.ExecutionContext
@@ -20,9 +19,9 @@ private trait SessionCore {
 
   def sessionFlowControl: SessionFlowControl
 
-  def http2Decoder: Http2FrameDecoder
+  def http2Decoder: FrameDecoder
 
-  def http2Encoder: Http2FrameEncoder
+  def http2Encoder: FrameEncoder
 
   def writeController: WriteController
 
@@ -34,7 +33,7 @@ private trait SessionCore {
 
   // Properties
 
-  def state: ConnectionState
+  def state: Connection.State
 
   val isClient: Boolean
 

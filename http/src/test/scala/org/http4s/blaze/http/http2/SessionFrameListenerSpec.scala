@@ -11,7 +11,7 @@ import org.http4s.blaze.util.BufferTools
 import org.specs2.mutable.Specification
 import scala.util.Success
 
-class SessionFrameListenerSpec extends Specification with Http2SpecTools {
+class SessionFrameListenerSpec extends Specification {
 
   private class MockTools(isClient: Boolean) extends mocks.MockTools(isClient) {
     lazy val headerDecoder: HeaderDecoder =
@@ -219,7 +219,7 @@ class SessionFrameListenerSpec extends Specification with Http2SpecTools {
         tools.frameListener.onPingFrame(false, data) must_== Continue
 
         val written = tools.writeController.observedWrites.dequeue()
-        written must_== Http2FrameSerializer.mkPingFrame(ack = true, data = data)
+        written must_== FrameSerializer.mkPingFrame(ack = true, data = data)
       }
 
       "pass ping ACK's to the PingManager" >> {
@@ -248,7 +248,7 @@ class SessionFrameListenerSpec extends Specification with Http2SpecTools {
 
         // Should have written an ACK
         val written = tools.writeController.observedWrites.dequeue()
-        written must_== Http2FrameSerializer.mkSettingsAckFrame()
+        written must_== FrameSerializer.mkSettingsAckFrame()
       }
     }
 
