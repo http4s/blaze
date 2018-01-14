@@ -6,23 +6,20 @@ import java.nio.charset.StandardCharsets
 import org.http4s.blaze.http._
 import org.http4s.blaze.http.http2.Http2Exception._
 import org.http4s.blaze.http.http2.Http2Settings.Setting
-import org.log4s.getLogger
 
 /** Receives frames from the `Http2FrameDecoder`
   *
   * Concurrency is not controlled by this type; it is expected that thread safety
-  * will be managed by the [[Http2ConnectionImpl]].
+  * will be managed by the [[ConnectionImpl]].
   */
 private class SessionFrameListener(
     session: SessionCore,
     headerDecoder: HeaderDecoder)
   extends HeaderAggregatingFrameListener(session.localSettings, headerDecoder) {
 
-  private[this] val logger = getLogger
-
   // Concrete methods ////////////////////////////////////////////////////////////////////
 
-  override def onCompleteHeadersFrame(streamId: Int, priority: Priority, endStream: Boolean, headers: Headers): Http2Result = {
+  override def onCompleteHeadersFrame(streamId: Int, priority: Priority, endStream: Boolean, headers: Headers): Result = {
     session.streamManager.get(streamId) match {
       case Some(stream) =>
         stream.invokeInboundHeaders(priority, endStream, headers)
@@ -36,7 +33,7 @@ private class SessionFrameListener(
   }
 
   // See https://tools.ietf.org/html/rfc7540#section-6.6 and section-8.2 for the list of rules
-  override def onCompletePushPromiseFrame(streamId: Int, promisedId: Int, headers: Headers): Http2Result = {
+  override def onCompletePushPromiseFrame(streamId: Int, promisedId: Int, headers: Headers): Result = {
     if (!session.isClient) {
       // A client cannot push. Thus, servers MUST treat the receipt of a
       // PUSH_PROMISE frame as a connection error of type PROTOCOL_ERROR.
@@ -51,7 +48,7 @@ private class SessionFrameListener(
     } else session.streamManager.handlePushPromise(streamId, promisedId, headers)
   }
 
-  override def onDataFrame(streamId: Int, isLast: Boolean, data: ByteBuffer, flow: Int): Http2Result = {
+  override def onDataFrame(streamId: Int, isLast: Boolean, data: ByteBuffer, flow: Int): Result = {
     session.streamManager.get(streamId) match {
       case Some(stream) =>
         // the stream will deal with updating the flow windows
@@ -80,27 +77,27 @@ private class SessionFrameListener(
   }
 
   // TODO: what would priority handling look like?
-  override def onPriorityFrame(streamId: Int, priority: Priority.Dependent): Http2Result =
+  override def onPriorityFrame(streamId: Int, priority: Priority.Dependent): Result =
     Continue
 
   // https://tools.ietf.org/html/rfc7540#section-6.4
-  override def onRstStreamFrame(streamId: Int, code: Long): Http2Result = {
+  override def onRstStreamFrame(streamId: Int, code: Long): Result = {
     val ex = Http2Exception.errorGenerator(code).rst(streamId)
     session.streamManager.rstStream(ex)
   }
 
-  override def onWindowUpdateFrame(streamId: Int, sizeIncrement: Int): Http2Result = {
+  override def onWindowUpdateFrame(streamId: Int, sizeIncrement: Int): Result = {
     session.streamManager.flowWindowUpdate(streamId, sizeIncrement)
   }
 
-  override def onPingFrame(ack: Boolean, data: Array[Byte]): Http2Result = {
+  override def onPingFrame(ack: Boolean, data: Array[Byte]): Result = {
     // TODO: need to prioritize ping acks
     if (!ack) session.writeController.write(session.http2Encoder.pingAck(data))
     else session.pingManager.pingAckReceived(data)
     Continue
   }
 
-  override def onSettingsFrame(ack: Boolean, settings: Seq[Setting]): Http2Result = {
+  override def onSettingsFrame(ack: Boolean, settings: Seq[Setting]): Result = {
     // We don't consider the uncertainty between us sending a SETTINGS frame and its ack
     // but that's OK since we never update settings after the initial handshake.
     if (ack) Continue
@@ -130,14 +127,14 @@ private class SessionFrameListener(
       if (result == Continue) {
         // ack the SETTINGS frame on success, otherwise we are tearing
         // down the connection anyway so no need
-        session.writeController.write(Http2FrameSerializer.mkSettingsAckFrame())
+        session.writeController.write(FrameSerializer.mkSettingsAckFrame())
       }
 
       result
     }
   }
 
-  override def onGoAwayFrame(lastStream: Int, errorCode: Long, debugData: Array[Byte]): Http2Result = {
+  override def onGoAwayFrame(lastStream: Int, errorCode: Long, debugData: Array[Byte]): Result = {
     val message = new String(debugData, StandardCharsets.UTF_8)
     session.invokeGoAway(lastStream, Http2SessionException(errorCode, message))
     Continue

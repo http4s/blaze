@@ -6,7 +6,7 @@ import scala.annotation.tailrec
 import scala.collection.BitSet
 
 
-object Http2StageTools {
+private object StageTools {
   // Request pseudo headers
   val Method = ":method"
   val Scheme = ":scheme"

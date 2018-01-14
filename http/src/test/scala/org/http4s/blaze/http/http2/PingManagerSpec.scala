@@ -14,7 +14,7 @@ class PingManagerSpec extends Specification {
     var pingData: Array[Byte] = Array.empty
     val tools: MockTools = new MockTools(false) {
       override lazy val frameListener: MockHeaderAggregatingFrameListener = new MockHeaderAggregatingFrameListener {
-        override def onPingFrame(ack: Boolean, data: Array[Byte]): Http2Result = {
+        override def onPingFrame(ack: Boolean, data: Array[Byte]): Result = {
           assert(!ack)
           pingData = data
           Continue

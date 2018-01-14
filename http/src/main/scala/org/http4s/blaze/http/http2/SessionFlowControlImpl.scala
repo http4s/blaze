@@ -125,19 +125,19 @@ private class SessionFlowControlImpl(
     *       the session as there should always be an associated stream
     *       when sending flow control counted bytes outbound.
     */
-  final override def sessionOutboundAcked(count: Int): MaybeError = {
+  final override def sessionOutboundAcked(count: Int): Option[Http2Exception] = {
     logger.trace(s"$count outbound session bytes were ACKed. $sessionWindowString")
     // Updates MUST be greater than 0, otherwise its protocol error
     // https://tools.ietf.org/html/rfc7540#section-6.9
     if (count <= 0) {
-      Error(PROTOCOL_ERROR.goaway("Invalid session WINDOW_UPDATE: size <= 0."))
+      Some(PROTOCOL_ERROR.goaway("Invalid session WINDOW_UPDATE: size <= 0."))
     } else if (Int.MaxValue - sessionOutboundWindow < count) {
       // A sender MUST NOT allow a flow-control window to exceed 2^31-1 octets.
       // https://tools.ietf.org/html/rfc7540#section-6.9.1
-      Error(FLOW_CONTROL_ERROR.goaway("Session flow control exceeded max window."))
+      Some(FLOW_CONTROL_ERROR.goaway("Session flow control exceeded max window."))
     } else {
       _sessionOutboundWindow += count
-      Continue
+      None
     }
   }
 
@@ -160,32 +160,32 @@ private class SessionFlowControlImpl(
 
     override def streamOutboundWindow: Int = _streamOutboundWindow
 
-    override def streamOutboundAcked(count: Int): MaybeError = {
+    override def streamOutboundAcked(count: Int): Option[Http2Exception] = {
       logger.trace(s"Stream($streamId) had $count outbound bytes ACKed. $streamWindowString")
       // Updates MUST be greater than 0, otherwise its protocol error
       // https://tools.ietf.org/html/rfc7540#section-6.9
       if (count <= 0) {
-        Error(PROTOCOL_ERROR.goaway(
+        Some(PROTOCOL_ERROR.goaway(
           s"Invalid stream ($streamId) WINDOW_UPDATE: size <= 0."))
       } else if (Int.MaxValue - streamOutboundWindow < count) {
         // A sender MUST NOT allow a flow-control window to exceed 2^31-1 octets.
         // https://tools.ietf.org/html/rfc7540#section-6.9.1
-        Error(FLOW_CONTROL_ERROR.rst(streamId, "Stream flow control exceeded max window."))
+        Some(FLOW_CONTROL_ERROR.rst(streamId, "Stream flow control exceeded max window."))
       } else {
         _streamOutboundWindow += count
-        Continue
+        None
       }
     }
 
-    override def remoteSettingsInitialWindowChange(delta: Int): MaybeError = {
+    override def remoteSettingsInitialWindowChange(delta: Int): Option[Http2Exception] = {
       logger.trace(s"Stream($streamId) outbound window adjusted by $delta bytes. $streamWindowString")
       // A sender MUST NOT allow a flow-control window to exceed 2^31-1 octets.
       // https://tools.ietf.org/html/rfc7540#section-6.9.2
       if (Int.MaxValue - streamOutboundWindow < delta) {
-        Error(FLOW_CONTROL_ERROR.goaway(s"Flow control exceeded max window for stream $streamId."))
+        Some(FLOW_CONTROL_ERROR.goaway(s"Flow control exceeded max window for stream $streamId."))
       } else {
         _streamOutboundWindow += delta
-        Continue
+        None
       }
     }
 

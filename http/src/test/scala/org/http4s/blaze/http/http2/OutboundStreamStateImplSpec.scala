@@ -1,6 +1,5 @@
 package org.http4s.blaze.http.http2
 
-import org.http4s.blaze.http.http2.Http2Connection.{Closed, ConnectionState, Running}
 import org.http4s.blaze.http.http2.mocks.MockStreamFlowWindow
 import org.specs2.mutable.Specification
 
@@ -9,7 +8,7 @@ import scala.util.Failure
 
 class OutboundStreamStateImplSpec extends Specification {
 
-  private class Ctx(connectionState: ConnectionState) {
+  private class Ctx(connectionState: Connection.State) {
 
     val streamId = 1
 
@@ -21,7 +20,7 @@ class OutboundStreamStateImplSpec extends Specification {
         }
       }
 
-      override def state: ConnectionState = connectionState
+      override def state: Connection.State = connectionState
 
       override lazy val streamManager = new StreamManagerImpl(this)
     }
@@ -35,7 +34,7 @@ class OutboundStreamStateImplSpec extends Specification {
 
   "OutboundStreamState" should {
     "initialize a flow window and stream id lazily" in {
-      val ctx = new Ctx(Running)
+      val ctx = new Ctx(Connection.Running)
       import ctx._
 
       streamState.streamId must throwAn[IllegalStateException]
@@ -45,7 +44,7 @@ class OutboundStreamStateImplSpec extends Specification {
     }
 
     "fail write requests if we fail to acquire a stream ID" in {
-      val ctx = new Ctx(Running) {
+      val ctx = new Ctx(Connection.Running) {
         override lazy val tools = new MockTools {
           override lazy val idManager = StreamIdManager.create(true, -10) // should be depleted
         }
@@ -61,7 +60,7 @@ class OutboundStreamStateImplSpec extends Specification {
     }
 
     "fail write requests if the session is closing" in {
-      val ctx = new Ctx(Closed)
+      val ctx = new Ctx(Connection.Closed)
       import ctx._
 
       val f = streamState.writeRequest(HeadersFrame(Priority.NoPriority, true, Seq.empty))

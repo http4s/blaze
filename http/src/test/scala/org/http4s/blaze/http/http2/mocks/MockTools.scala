@@ -1,6 +1,5 @@
 package org.http4s.blaze.http.http2.mocks
 
-import org.http4s.blaze.http.http2.Http2Connection.{ConnectionState, Running}
 import org.http4s.blaze.http.http2._
 import org.http4s.blaze.pipeline.LeafBuilder
 import org.http4s.blaze.util.Execution
@@ -20,7 +19,7 @@ private[http2] class MockTools(val isClient: Boolean) extends SessionCore {
 
   lazy val headerEncoder: HeaderEncoder = new HeaderEncoder(remoteSettings.headerTableSize)
 
-  lazy val frameEncoder: Http2FrameEncoder = new Http2FrameEncoder(remoteSettings, headerEncoder)
+  lazy val frameEncoder: FrameEncoder = new FrameEncoder(remoteSettings, headerEncoder)
 
   lazy val idManager: StreamIdManager = StreamIdManager(isClient)
 
@@ -29,11 +28,11 @@ private[http2] class MockTools(val isClient: Boolean) extends SessionCore {
   override lazy val sessionFlowControl: SessionFlowControl =
     new SessionFlowControlImpl(this, flowStrategy)
 
-  override lazy val http2Encoder: Http2FrameEncoder =
-    new Http2FrameEncoder(remoteSettings, headerEncoder)
+  override lazy val http2Encoder: FrameEncoder =
+    new FrameEncoder(remoteSettings, headerEncoder)
 
-  override lazy val http2Decoder: Http2FrameDecoder =
-    new Http2FrameDecoder(localSettings, frameListener)
+  override lazy val http2Decoder: FrameDecoder =
+    new FrameDecoder(localSettings, frameListener)
 
   override val writeController: MockWriteController = new MockWriteController
 
@@ -44,7 +43,7 @@ private[http2] class MockTools(val isClient: Boolean) extends SessionCore {
   // Behaviors
   override def newInboundStream(streamId: Int): Option[LeafBuilder[StreamMessage]] = None
 
-  override def state: ConnectionState = Running
+  override def state: Connection.State = Connection.Running
 
   var drainGracePeriod: Option[Duration] = None
 

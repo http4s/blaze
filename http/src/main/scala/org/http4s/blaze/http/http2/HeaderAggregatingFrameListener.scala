@@ -6,7 +6,7 @@ import org.http4s.blaze.http.Headers
 import org.http4s.blaze.util.BufferTools
 import Http2Exception.PROTOCOL_ERROR
 
-/** A [[Http2FrameListener]] that decodes raw HEADERS, PUSH_PROMISE,
+/** A [[FrameListener]] that decodes raw HEADERS, PUSH_PROMISE,
   * and CONTINUATION frames from ByteBuffer packets to a complete
   * collections of headers.
   *
@@ -17,10 +17,10 @@ import Http2Exception.PROTOCOL_ERROR
   *
   * @note This class is not 'thread safe' and should be treated accordingly.
   */
-private[http2] abstract class HeaderAggregatingFrameListener(
+private abstract class HeaderAggregatingFrameListener(
     localSettings: Http2Settings,
     headerDecoder: HeaderDecoder)
-  extends Http2FrameListener {
+  extends FrameListener {
 
   private[this] sealed trait PartialFrame {
     def streamId: Int
@@ -55,7 +55,7 @@ private[http2] abstract class HeaderAggregatingFrameListener(
     priority: Priority,
     endStream: Boolean,
     headers: Headers
-  ): Http2Result
+  ): Result
 
   /** Called on the successful receipt of a complete PUSH_PROMISE block
     *
@@ -63,7 +63,7 @@ private[http2] abstract class HeaderAggregatingFrameListener(
     * @param promisedId promised stream id. This must be a valid, idle stream id. The codec will never pass 0.
     * @param headers decompressed headers.
     */
-  def onCompletePushPromiseFrame(streamId: Int, promisedId: Int, headers: Headers): Http2Result
+  def onCompletePushPromiseFrame(streamId: Int, promisedId: Int, headers: Headers): Result
 
   ////////////////////////////////////////////////////////////////////////////
 
@@ -78,12 +78,12 @@ private[http2] abstract class HeaderAggregatingFrameListener(
     endHeaders: Boolean,
     endStream: Boolean,
     buffer: ByteBuffer
-  ): Http2Result = {
+  ): Result = {
 
     if (inHeaderSequence) {
       Error(PROTOCOL_ERROR.goaway(
         s"Received HEADERS frame while in in headers sequence. Stream id " +
-          Http2FrameDecoder.hexStr(streamId)))
+          FrameDecoder.hexStr(streamId)))
     } else if (buffer.remaining > localSettings.maxHeaderListSize) {
       headerSizeError(buffer.remaining, streamId)
     } else if (endHeaders) {
@@ -104,7 +104,7 @@ private[http2] abstract class HeaderAggregatingFrameListener(
     promisedId: Int,
     endHeaders: Boolean,
     buffer: ByteBuffer
-  ): Http2Result = {
+  ): Result = {
 
     if (localSettings.maxHeaderListSize < buffer.remaining) {
       headerSizeError(buffer.remaining, streamId)
@@ -125,7 +125,7 @@ private[http2] abstract class HeaderAggregatingFrameListener(
     streamId: Int,
     endHeaders: Boolean,
     buffer: ByteBuffer
-  ): Http2Result = {
+  ): Result = {
     if (hInfo.streamId != streamId) {
       val msg = s"Invalid CONTINUATION frame: stream Id's don't match. " +
         s"Expected ${hInfo.streamId}, received $streamId"
@@ -159,7 +159,7 @@ private[http2] abstract class HeaderAggregatingFrameListener(
   }
 
   private[this] def headerSizeError(size: Int, streamId: Int): Error = {
-    val msg = s"Stream(${Http2FrameDecoder.hexStr(streamId)}) sent too large of " +
+    val msg = s"Stream(${FrameDecoder.hexStr(streamId)}) sent too large of " +
       s"a header block. Received: $size. Limit: ${localSettings.maxHeaderListSize}"
     Error(PROTOCOL_ERROR.goaway(msg))
   }

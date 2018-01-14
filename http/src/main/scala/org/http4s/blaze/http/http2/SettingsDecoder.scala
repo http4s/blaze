@@ -1,10 +1,9 @@
 package org.http4s.blaze.http.http2
+
 import java.nio.ByteBuffer
 
 import org.http4s.blaze.http.http2.Http2Settings.Setting
 import org.http4s.blaze.http.http2.bits.{Flags, FrameTypes}
-
-import scala.collection.mutable.ArrayBuffer
 
 /** Utility for decoding a settings frame
   * @see https://tools.ietf.org/html/rfc7540#section-6.5
@@ -19,7 +18,7 @@ private object SettingsDecoder {
     * @return A [[SettingsFrame]] or a [[Http2Exception]]
     */
   def decodeSettingsFrame(buffer: ByteBuffer): Either[Http2Exception, SettingsFrame] = {
-    val len = Http2FrameDecoder.getLengthField(buffer)
+    val len = FrameDecoder.getLengthField(buffer)
     assert(len + bits.HeaderSize - bits.LengthFieldSize == buffer.remaining())
 
     val tpe = buffer.get()
@@ -27,7 +26,7 @@ private object SettingsDecoder {
     if (tpe != FrameTypes.SETTINGS) Left(Http2Exception.PROTOCOL_ERROR.goaway("Expected SETTINGS frame"))
     else {
       val flags = buffer.get()
-      val streamId = Http2FrameDecoder.getStreamId(buffer)
+      val streamId = FrameDecoder.getStreamId(buffer)
       decodeSettingsFrame(buffer, streamId, flags)
     }
   }

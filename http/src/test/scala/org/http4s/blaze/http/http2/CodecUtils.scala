@@ -2,11 +2,15 @@ package org.http4s.blaze.http.http2
 
 import java.nio.ByteBuffer
 import java.nio.charset.StandardCharsets
-import java.util
 
 import org.http4s.blaze.util.BufferTools._
 
-object CodecUtils {
+import scala.concurrent.{Await, Awaitable}
+import scala.concurrent.duration._
+
+private object CodecUtils {
+
+  def await[T](awaitable: Awaitable[T]): T = Await.result(awaitable, 5.seconds)
 
   def byteData: Array[Byte] =
     "The quick brown fox jumps over the lazy dog".getBytes(StandardCharsets.UTF_8)
@@ -19,14 +23,16 @@ object CodecUtils {
     buff
   }
 
+  def zeroBuffer(size: Int): ByteBuffer = ByteBuffer.wrap(new Array(size))
+
   def compare(s1: Seq[ByteBuffer], s2: Seq[ByteBuffer]): Boolean = {
     val b1 = joinBuffers(s1)
     val b2 = joinBuffers(s2)
     b1.equals(b2)
   }
 
-  class TestHttp2FrameDecoder(val listener: Http2FrameListener) extends Http2FrameDecoder(Http2Settings.default, listener)
+  class TestFrameDecoder(val listener: FrameListener) extends FrameDecoder(Http2Settings.default, listener)
 
-  def decoder(h: Http2FrameListener, inHeaders: Boolean = false): TestHttp2FrameDecoder =
-    new TestHttp2FrameDecoder(h)
+  def decoder(h: FrameListener, inHeaders: Boolean = false): TestFrameDecoder =
+    new TestFrameDecoder(h)
 }

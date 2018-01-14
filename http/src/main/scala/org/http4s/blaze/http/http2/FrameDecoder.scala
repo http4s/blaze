@@ -5,22 +5,20 @@ import java.nio.{BufferUnderflowException, ByteBuffer}
 import Http2Exception._
 import org.http4s.blaze.http.http2.SettingsDecoder.SettingsFrame
 import org.http4s.blaze.http.http2.bits.{Flags, Masks}
-import org.http4s.blaze.util.BufferTools
-
 
 /* The job of the Http2FrameDecoder is to slice the ByteBuffers. It does
    not attempt to decode headers or perform any size limiting operations */
-class Http2FrameDecoder(localSettings: Http2Settings, listener: Http2FrameListener) {
+private class FrameDecoder(localSettings: Http2Settings, listener: FrameListener) {
   import bits._
-  import Http2FrameDecoder._
+  import FrameDecoder._
 
   /** Decode a data frame. */
-  final def decodeBuffer(buffer: ByteBuffer): Http2Result = {
+  final def decodeBuffer(buffer: ByteBuffer): Result = {
     if (buffer.remaining < HeaderSize) BufferUnderflow
     else doDecodeBuffer(buffer)
   }
 
-  private[this] def doDecodeBuffer(buffer: ByteBuffer): Http2Result = {
+  private[this] def doDecodeBuffer(buffer: ByteBuffer): Result = {
     buffer.mark()
     val len = getLengthField(buffer)
     val frameType = buffer.get()
@@ -86,14 +84,14 @@ class Http2FrameDecoder(localSettings: Http2Settings, listener: Http2FrameListen
     * @return result of handling the message. If this extension frame is of
     *         unknown type, it MUST be ignored by spec.
     */
-  def onExtensionFrame(code: Byte, streamId: Int, flags: Byte, buffer: ByteBuffer): Http2Result =
+  def onExtensionFrame(code: Byte, streamId: Int, flags: Byte, buffer: ByteBuffer): Result =
     Continue
 
   //////////////// Decoding algorithms ///////////////////////////////////////////////////////////
 
   //////////// DATA ///////////////
   // https://tools.ietf.org/html/rfc7540#section-6.1
-  private[this] def decodeDataFrame(buffer: ByteBuffer, streamId: Int, flags: Byte): Http2Result = {
+  private[this] def decodeDataFrame(buffer: ByteBuffer, streamId: Int, flags: Byte): Result = {
     if (streamId == 0) {
       /*
        DATA frames MUST be associated with a stream.  If a DATA frame is
@@ -121,7 +119,7 @@ class Http2FrameDecoder(localSettings: Http2Settings, listener: Http2FrameListen
   }
 
   //////////// HEADERS ///////////////
-  private[this] def decodeHeaderFrame(buffer: ByteBuffer, streamId: Int, flags: Byte): Http2Result = {
+  private[this] def decodeHeaderFrame(buffer: ByteBuffer, streamId: Int, flags: Byte): Result = {
     if (streamId == 0) {
       Error(PROTOCOL_ERROR.goaway("Headers frame with stream id 0x0"))
     } else {
@@ -147,7 +145,7 @@ class Http2FrameDecoder(localSettings: Http2Settings, listener: Http2FrameListen
 
 
   //////////// PRIORITY ///////////////
-  private[this] def decodePriorityFrame(buffer: ByteBuffer, streamId: Int, flags: Byte): Http2Result = {
+  private[this] def decodePriorityFrame(buffer: ByteBuffer, streamId: Int, flags: Byte): Result = {
     if (streamId == 0) {
       Error(PROTOCOL_ERROR.goaway("Priority frame with stream id 0x0"))
     } else  if (buffer.remaining != 5) {    // Make sure the frame has the right amount of data
@@ -164,7 +162,7 @@ class Http2FrameDecoder(localSettings: Http2Settings, listener: Http2FrameListen
   }
 
   //////////// RST_STREAM ///////////////
-  private[this] def decodeRstStreamFrame(buffer: ByteBuffer, streamId: Int): Http2Result = {
+  private[this] def decodeRstStreamFrame(buffer: ByteBuffer, streamId: Int): Result = {
     if (streamId == 0) {
       Error(PROTOCOL_ERROR.goaway("RST_STREAM frame with stream id 0x0"))
     } else if (buffer.remaining != 4) {
@@ -177,7 +175,7 @@ class Http2FrameDecoder(localSettings: Http2Settings, listener: Http2FrameListen
   }
 
   //////////// SETTINGS ///////////////
-  private[this] def decodeSettingsFrame(buffer: ByteBuffer, streamId: Int, flags: Byte): Http2Result = {
+  private[this] def decodeSettingsFrame(buffer: ByteBuffer, streamId: Int, flags: Byte): Result = {
     SettingsDecoder.decodeSettingsFrame(buffer, streamId, flags) match {
       case Right(SettingsFrame(isAck, settings)) =>
         listener.onSettingsFrame(isAck, settings)
@@ -188,7 +186,7 @@ class Http2FrameDecoder(localSettings: Http2Settings, listener: Http2FrameListen
   }
 
   //////////// PUSH_PROMISE ///////////////
-  private[this] def decodePushPromiseFrame(buffer: ByteBuffer, streamId: Int, flags: Byte): Http2Result = {
+  private[this] def decodePushPromiseFrame(buffer: ByteBuffer, streamId: Int, flags: Byte): Result = {
     if (streamId == 0) {
       Error(PROTOCOL_ERROR.goaway("PUSH_PROMISE frame with stream id 0x0"))
     } else {
@@ -210,7 +208,7 @@ class Http2FrameDecoder(localSettings: Http2Settings, listener: Http2FrameListen
   }
 
   //////////// PING ///////////////
-  private[this] def decodePingFrame(buffer: ByteBuffer, streamId: Int, flags: Byte): Http2Result = {
+  private[this] def decodePingFrame(buffer: ByteBuffer, streamId: Int, flags: Byte): Result = {
     val PingSize = 8
     if (streamId != 0) {
       Error(PROTOCOL_ERROR.goaway(
@@ -226,7 +224,7 @@ class Http2FrameDecoder(localSettings: Http2Settings, listener: Http2FrameListen
   }
 
   //////////// GOAWAY ///////////////
-  private[this] def decodeGoAwayFrame(buffer: ByteBuffer, streamId: Int): Http2Result = {
+  private[this] def decodeGoAwayFrame(buffer: ByteBuffer, streamId: Int): Result = {
     if (streamId != 0) {
       Error(PROTOCOL_ERROR.goaway(
         s"GOAWAY frame with stream id ${hexStr(streamId)} != 0x0."))
@@ -240,7 +238,7 @@ class Http2FrameDecoder(localSettings: Http2Settings, listener: Http2FrameListen
   }
 
   //////////// WINDOW_UPDATE ///////////////
-  private[this] def decodeWindowUpdateFrame(buffer: ByteBuffer, streamId: Int): Http2Result = {
+  private[this] def decodeWindowUpdateFrame(buffer: ByteBuffer, streamId: Int): Result = {
     if (buffer.remaining != 4) {
       Error(FRAME_SIZE_ERROR.goaway(
         s"WindowUpdate with invalid frame size. Expected 4, found ${buffer.remaining}"))
@@ -258,7 +256,7 @@ class Http2FrameDecoder(localSettings: Http2Settings, listener: Http2FrameListen
   }
 
   //////////// CONTINUATION ///////////////
-  private[this] def decodeContinuationFrame(buffer: ByteBuffer, streamId: Int, flags: Byte): Http2Result = {
+  private[this] def decodeContinuationFrame(buffer: ByteBuffer, streamId: Int, flags: Byte): Result = {
     if (streamId == 0) {
       val msg = s"CONTINUATION frame with invalid stream dependency on 0x0"
       Error(PROTOCOL_ERROR.goaway(msg))
@@ -268,7 +266,7 @@ class Http2FrameDecoder(localSettings: Http2Settings, listener: Http2FrameListen
   }
 }
 
-private object Http2FrameDecoder {
+private object FrameDecoder {
 
   /** Get the length field of the frame, consuming the bytes from the buffer.
     *

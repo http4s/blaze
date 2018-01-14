@@ -3,7 +3,6 @@ package org.http4s.blaze.http.http2
 import org.http4s.blaze.http.http2.Http2Exception._
 import org.http4s.blaze.pipeline.Command.EOF
 import org.http4s.blaze.pipeline.{Command, LeafBuilder, TailStage}
-import org.http4s.blaze.pipeline.stages.BasicTail
 import org.specs2.mutable.Specification
 
 import scala.util.Failure
@@ -191,7 +190,7 @@ class StreamManagerImplSpec extends Specification {
 
         val Right(s) = tools.streamManager.newInboundStream(1)
         val delta = Int.MaxValue - s.flowWindow.outboundWindow
-        s.flowWindow.streamOutboundAcked(delta) must_== Continue
+        s.flowWindow.streamOutboundAcked(delta) must beNone
         s.flowWindow.streamOutboundWindow must_== Int.MaxValue
 
         tools.streamManager.initialFlowWindowChange(1) must beLike {
@@ -221,7 +220,7 @@ class StreamManagerImplSpec extends Specification {
 
         val Right(s) = tools.streamManager.newInboundStream(1)
         s.flowWindow.streamOutboundAcked(
-          Int.MaxValue - s.flowWindow.streamOutboundWindow) must_== Continue
+          Int.MaxValue - s.flowWindow.streamOutboundWindow) must beNone
 
         tools.streamManager.flowWindowUpdate(streamId = 1, sizeIncrement = 1) must beLike {
           case Error(ex: Http2StreamException) => ex.code must_== FLOW_CONTROL_ERROR.code
@@ -232,9 +231,9 @@ class StreamManagerImplSpec extends Specification {
         var sessionAcked: Option[Int] = None
         val tools = new MockTools(true) {
           override lazy val sessionFlowControl: SessionFlowControl = new MockSessionFlowControl {
-            override def sessionOutboundAcked(count: Int): MaybeError = {
+            override def sessionOutboundAcked(count: Int): Option[Http2Exception] = {
               sessionAcked = Some(count)
-              Continue
+              None
             }
           }
         }
@@ -247,9 +246,9 @@ class StreamManagerImplSpec extends Specification {
         var sessionAcked: Option[Int] = None
         val tools = new MockTools(true) {
           override lazy val sessionFlowControl: SessionFlowControl = new MockSessionFlowControl {
-            override def sessionOutboundAcked(count: Int): MaybeError = {
+            override def sessionOutboundAcked(count: Int): Option[Http2Exception] = {
               sessionAcked = Some(count)
-              Error(FLOW_CONTROL_ERROR.goaway("boom"))
+              Some(FLOW_CONTROL_ERROR.goaway("boom"))
             }
           }
         }
