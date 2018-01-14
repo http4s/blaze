@@ -2,9 +2,10 @@ package org.http4s.blaze.http.http2
 
 import org.http4s.blaze.http.http2.Http2Exception._
 import org.http4s.blaze.pipeline.Command.EOF
-import org.http4s.blaze.pipeline.{Command, LeafBuilder}
+import org.http4s.blaze.pipeline.{Command, LeafBuilder, TailStage}
 import org.http4s.blaze.pipeline.stages.BasicTail
 import org.specs2.mutable.Specification
+
 import scala.util.Failure
 
 class StreamManagerImplSpec extends Specification {
@@ -14,7 +15,8 @@ class StreamManagerImplSpec extends Specification {
 
     var connects: Int = 0
 
-    lazy val tail = new BasicTail[StreamMessage]("name") {
+    lazy val tail = new TailStage[StreamMessage] {
+      override def name: String = "name"
       override def inboundCommand(cmd: Command.InboundCommand): Unit = {
         if (cmd == Command.Connected) { connects += 1 }
         super.inboundCommand(cmd)
