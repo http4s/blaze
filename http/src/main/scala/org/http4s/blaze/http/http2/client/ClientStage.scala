@@ -14,8 +14,8 @@ import scala.collection.immutable.VectorBuilder
 import scala.concurrent.{ExecutionContext, Future, Promise}
 import scala.util.{Failure, Success, Try}
 
-private class Http2ClientStage(request: HttpRequest, executor: ExecutionContext) extends TailStage[StreamMessage] {
-  import Http2ClientStage._
+private class ClientStage(request: HttpRequest, executor: ExecutionContext) extends TailStage[StreamMessage] {
+  import ClientStage._
 
   private[this] val lock: Object = this
 
@@ -41,7 +41,7 @@ private class Http2ClientStage(request: HttpRequest, executor: ExecutionContext)
   private class ReleasableResponseImpl(
       code: Int, status: String, headers: Headers, body: BodyReader)
     extends ClientResponse(code, status, headers, body) with ReleaseableResponse {
-    override def release(): Unit = Http2ClientStage.this.release(Command.Disconnect)
+    override def release(): Unit = ClientStage.this.release(Command.Disconnect)
   }
 
   override def name: String = "Http2ClientTail"
@@ -142,7 +142,7 @@ private class Http2ClientStage(request: HttpRequest, executor: ExecutionContext)
         return Failure(new Exception("Pseudo headers were not contiguous"))
       } else k match {
           // Matching on pseudo headers now
-        case Http2StageTools.Status =>
+        case StageTools.Status =>
           if (statusCode != -1)
             return Failure(new Exception("Multiple status code HTTP2 pseudo headers detected in response"))
 
@@ -173,16 +173,16 @@ private class Http2ClientStage(request: HttpRequest, executor: ExecutionContext)
   }
 }
 
-private object Http2ClientStage {
+private object ClientStage {
   def makeHeaders(request: HttpRequest): Try[Vector[(String, String)]] = {
     UrlComposition(request.url).map { breakdown =>
       val hs = new VectorBuilder[(String, String)]
 
       // h2 pseudo headers
-      hs += Http2StageTools.Method -> request.method.toUpperCase
-      hs += Http2StageTools.Scheme -> breakdown.scheme
-      hs += Http2StageTools.Authority -> breakdown.authority
-      hs += Http2StageTools.Path -> breakdown.fullPath
+      hs += StageTools.Method -> request.method.toUpperCase
+      hs += StageTools.Scheme -> breakdown.scheme
+      hs += StageTools.Authority -> breakdown.authority
+      hs += StageTools.Path -> breakdown.fullPath
 
       hs ++= request.headers
       hs.result()

@@ -2,7 +2,6 @@ package org.http4s.blaze.http.http2
 
 import java.nio.ByteBuffer
 
-import org.http4s.blaze.http.http2.SettingsDecoder.SettingsFrame
 import org.http4s.blaze.pipeline.{Command, TailStage}
 import org.http4s.blaze.util.{BufferTools, Execution}
 
@@ -33,7 +32,7 @@ abstract class PriorKnowledgeHandshaker[T](localSettings: ImmutableHttp2Settings
   }
 
   private[this] def sendSettings(): Future[Unit] = {
-    val settingsBuffer = Http2FrameSerializer.mkSettingsFrame(localSettings.toSeq)
+    val settingsBuffer = FrameSerializer.mkSettingsFrame(localSettings.toSeq)
     channelWrite(settingsBuffer)
   }
 
@@ -70,7 +69,7 @@ abstract class PriorKnowledgeHandshaker[T](localSettings: ImmutableHttp2Settings
               case None => sendSettingsAck().map { _ => remoteSettings -> acc }
               case Some(ex) =>
                 // there was a problem with the settings: write it and fail.
-                channelWrite(Http2FrameSerializer.mkGoAwayFrame(0, ex)).flatMap { _ =>
+                channelWrite(FrameSerializer.mkGoAwayFrame(0, ex)).flatMap { _ =>
                   Future.failed(ex)
                 }
             }
@@ -87,7 +86,7 @@ abstract class PriorKnowledgeHandshaker[T](localSettings: ImmutableHttp2Settings
   }
 
   private[this] def sendHttp2GoAway(http2Exception: Http2Exception): Future[Nothing] = {
-    val reply = Http2FrameSerializer.mkGoAwayFrame(0, http2Exception)
+    val reply = FrameSerializer.mkGoAwayFrame(0, http2Exception)
     channelWrite(reply).flatMap { _ =>
       sendOutboundCommand(Command.Disconnect)
       Future.failed(http2Exception)
@@ -100,7 +99,7 @@ abstract class PriorKnowledgeHandshaker[T](localSettings: ImmutableHttp2Settings
   //  preface MUST be acknowledged (see Section 6.5.3) after sending the
   //  connection preface.
   private[this] def sendSettingsAck(): Future[Unit] = {
-    val ackSettings = Http2FrameSerializer.mkSettingsAckFrame()
+    val ackSettings = FrameSerializer.mkSettingsAckFrame()
     channelWrite(ackSettings)
   }
 
@@ -108,7 +107,7 @@ abstract class PriorKnowledgeHandshaker[T](localSettings: ImmutableHttp2Settings
     if (buffer.remaining < bits.HeaderSize) -1
     else {
       buffer.mark()
-      val len = Http2FrameDecoder.getLengthField(buffer)
+      val len = FrameDecoder.getLengthField(buffer)
       buffer.reset()
 
       if (len == -1) len

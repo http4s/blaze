@@ -93,7 +93,7 @@ private[http] class Http2ClientSessionManagerImpl(
         logger.error(s"Failed to negotiate H2. Using H2 protocol anyway.")
 
       val f = new DefaultFlowStrategy(initialSettings)
-      val handShaker = new Http2TlsClientHandshaker(initialSettings, f, Execution.trampoline)
+      val handShaker = new ClientPriorKnowledgeHandshaker(initialSettings, f, Execution.trampoline)
       p.completeWith(handShaker.clientSession)
       LeafBuilder(handShaker)
     }

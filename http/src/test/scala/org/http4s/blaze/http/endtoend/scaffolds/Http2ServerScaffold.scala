@@ -3,7 +3,7 @@ package org.http4s.blaze.http.endtoend.scaffolds
 import java.nio.ByteBuffer
 
 import org.http4s.blaze.http.http2.{Http2Settings, StreamMessage}
-import org.http4s.blaze.http.http2.server.{Http2ServerStage, Http2TlsServerHandshaker}
+import org.http4s.blaze.http.http2.server.{Http2ServerStage, ServerPriorKnowledgeHandshaker}
 import org.http4s.blaze.http.{HttpServerStageConfig, _}
 import org.http4s.blaze.pipeline.{LeafBuilder, TailStage}
 
@@ -17,7 +17,7 @@ class Http2ServerScaffold(service: HttpService) extends ServerScaffold {
     val localSettings = Http2Settings.default.copy(
       maxHeaderListSize = config.maxNonBodyBytes)
 
-    new Http2TlsServerHandshaker(localSettings, newNode)
+    new ServerPriorKnowledgeHandshaker(localSettings, newNode)
   }
 
   override protected def newLeafBuilder(): LeafBuilder[ByteBuffer] = {

@@ -11,7 +11,7 @@ import org.log4s.getLogger
 import scala.concurrent.duration.Duration
 import scala.concurrent.{ExecutionContext, Future}
 
-private final class Http2ClientSessionImpl(
+private final class ClientSessionImpl(
     tailStage: TailStage[ByteBuffer],
     localSettings: ImmutableHttp2Settings,
     remoteSettings: MutableHttp2Settings,
@@ -20,7 +20,7 @@ private final class Http2ClientSessionImpl(
   extends Http2ClientSession {
 
   private[this] val logger = getLogger
-  private[this] val connection = new  Http2ConnectionImpl(
+  private[this] val connection = new  ConnectionImpl(
     isClient = true,
     tailStage = tailStage,
     localSettings = localSettings,
@@ -32,7 +32,7 @@ private final class Http2ClientSessionImpl(
 
   override def dispatch(request: HttpRequest): Future[ReleaseableResponse] = {
     logger.debug(s"Dispatching request: $request")
-    val tail = new Http2ClientStage(request, parentExecutor)
+    val tail = new ClientStage(request, parentExecutor)
     val head = connection.newOutboundStream()
     LeafBuilder(tail).base(head)
     head.sendInboundCommand(Command.Connected)

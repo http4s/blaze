@@ -8,7 +8,7 @@ import scala.concurrent.Future
 import scala.concurrent.duration.Duration
 
 /** Representation of the HTTP connection or session */
-private trait Http2Connection {
+private trait Connection {
 
   /** An estimate for the current quality of the connection
     *
@@ -56,8 +56,8 @@ private trait Http2Connection {
   def newOutboundStream(): HeadStage[StreamMessage]
 }
 
-private object Http2Connection {
-  sealed abstract class ConnectionState extends Product with Serializable {
+private object Connection {
+  sealed abstract class State extends Product with Serializable {
     final def closing: Boolean = !running
     final def running: Boolean = this == Running
   }
@@ -65,9 +65,9 @@ private object Http2Connection {
   /** The `Running` state represents a session that is active and able to accept
     * new streams.
     */
-  case object Running extends ConnectionState
+  case object Running extends State
 
-  sealed abstract class Closing extends ConnectionState
+  sealed abstract class Closing extends State
 
   /** The `Draining` state represents a session that is no longer accepting new
     * streams and is in the process of draining existing connection.

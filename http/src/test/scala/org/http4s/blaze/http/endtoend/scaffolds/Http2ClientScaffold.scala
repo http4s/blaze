@@ -4,7 +4,7 @@ import java.nio.ByteBuffer
 
 import org.http4s.blaze.http.http2.{DefaultFlowStrategy, Http2Settings}
 import org.http4s.blaze.http._
-import org.http4s.blaze.http.http2.client.{Http2ClientSessionManagerImpl, Http2TlsClientHandshaker}
+import org.http4s.blaze.http.http2.client.{Http2ClientSessionManagerImpl, ClientPriorKnowledgeHandshaker}
 import org.http4s.blaze.pipeline.{Command, HeadStage, LeafBuilder}
 import org.http4s.blaze.util.Execution
 
@@ -27,7 +27,7 @@ class Http2ClientScaffold extends ClientScaffold(2, 0) {
         val localSettings = h2Settings.copy()
 
         val flowStrategy = new DefaultFlowStrategy(localSettings)
-        val handshaker = new Http2TlsClientHandshaker(localSettings, flowStrategy, Execution.trampoline)
+        val handshaker = new ClientPriorKnowledgeHandshaker(localSettings, flowStrategy, Execution.trampoline)
         p.completeWith(handshaker.clientSession)
         LeafBuilder(handshaker).base(head)
 

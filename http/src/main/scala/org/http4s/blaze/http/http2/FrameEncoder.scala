@@ -5,7 +5,7 @@ import org.http4s.blaze.util.BufferTools
 import scala.collection.mutable.ArrayBuffer
 
 /** A more humane interface for writing HTTP messages. */
-final class Http2FrameEncoder(
+private final class FrameEncoder(
    remoteSettings: Http2Settings,
    headerEncoder: HeaderEncoder) {
 
@@ -22,19 +22,19 @@ final class Http2FrameEncoder(
 
   /** Generate a window update frame for the specified stream flow window */
   def streamWindowUpdate(streamId: Int, size: Int): ByteBuffer =
-    Http2FrameSerializer.mkWindowUpdateFrame(streamId, size)
+    FrameSerializer.mkWindowUpdateFrame(streamId, size)
 
   /** Generate a ping frame */
   def pingFrame(data: Array[Byte]): ByteBuffer =
-    Http2FrameSerializer.mkPingFrame(false, data)
+    FrameSerializer.mkPingFrame(false, data)
 
   /** Generate a ping ack frame with the specified data */
   def pingAck(data: Array[Byte]): ByteBuffer =
-    Http2FrameSerializer.mkPingFrame(true, data)
+    FrameSerializer.mkPingFrame(true, data)
 
   /** Generate a RST frame with the specified stream id and error code */
   def rstFrame(streamId: Int, errorCode: Long): ByteBuffer =
-    Http2FrameSerializer.mkRstStreamFrame(streamId, errorCode)
+    FrameSerializer.mkRstStreamFrame(streamId, errorCode)
 
   /** Generate stream data frame(s) for the specified data
     *
@@ -43,13 +43,13 @@ final class Http2FrameEncoder(
     */
   def dataFrame(streamId: Int, endStream: Boolean, data: ByteBuffer): Seq[ByteBuffer] = {
     val limit = maxFrameSize
-    if (data.remaining <= limit) Http2FrameSerializer.mkDataFrame(streamId, endStream, padding = 0, data)
+    if (data.remaining <= limit) FrameSerializer.mkDataFrame(streamId, endStream, padding = 0, data)
     else { // need to fragment
       val acc = new ArrayBuffer[ByteBuffer]
       while(data.hasRemaining) {
         val thisData = BufferTools.takeSlice(data, math.min(data.remaining, limit))
         val eos = endStream && !data.hasRemaining
-        acc ++= Http2FrameSerializer.mkDataFrame(streamId, eos, padding = 0, thisData)
+        acc ++= FrameSerializer.mkDataFrame(streamId, eos, padding = 0, thisData)
       }
       acc.result()
     }
@@ -73,19 +73,19 @@ final class Http2FrameEncoder(
     val headersPrioritySize = if (priority.isDefined) 5 else 0 // priority(4) + weight(1), padding = 0
 
     if (rawHeaders.remaining() + headersPrioritySize <= limit) {
-      Http2FrameSerializer.mkHeaderFrame(streamId, priority, endHeaders = true, endStream, padding = 0, rawHeaders)
+      FrameSerializer.mkHeaderFrame(streamId, priority, endHeaders = true, endStream, padding = 0, rawHeaders)
     } else {
       // need to fragment
       val acc = new ArrayBuffer[ByteBuffer]
 
       val headersBuf = BufferTools.takeSlice(rawHeaders, limit - headersPrioritySize)
-      acc ++= Http2FrameSerializer.mkHeaderFrame(streamId, priority, endHeaders = false, endStream, padding = 0, headersBuf)
+      acc ++= FrameSerializer.mkHeaderFrame(streamId, priority, endHeaders = false, endStream, padding = 0, headersBuf)
 
       while(rawHeaders.hasRemaining) {
         val size = math.min(limit, rawHeaders.remaining)
         val continueBuf = BufferTools.takeSlice(rawHeaders, size)
         val endHeaders = !rawHeaders.hasRemaining
-        acc ++= Http2FrameSerializer.mkContinuationFrame(streamId, endHeaders, continueBuf)
+        acc ++= FrameSerializer.mkContinuationFrame(streamId, endHeaders, continueBuf)
       }
       acc.result()
     }

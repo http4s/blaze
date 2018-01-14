@@ -2,7 +2,6 @@ package org.http4s.blaze.http.http2
 
 import java.nio.ByteBuffer
 
-import org.http4s.blaze.http.http2.Http2Connection.{Closed, ConnectionState, Running}
 import org.http4s.blaze.pipeline.Command.EOF
 import org.http4s.blaze.pipeline.{Command, LeafBuilder, TailStage}
 import org.http4s.blaze.util.{Execution, SerialExecutionContext}
@@ -23,7 +22,7 @@ private final class SessionCoreImpl(
   final protected val logger = org.log4s.getLogger
 
   @volatile
-  private[this] var currentState: ConnectionState = Running
+  private[this] var currentState: Connection.State = Connection.Running
   // used to signal that the session is closed
   private[this] val closedPromise = Promise[Unit]
 
@@ -42,28 +41,27 @@ private final class SessionCoreImpl(
   private[this] val headerEncoder: HeaderEncoder = new HeaderEncoder(remoteSettings.maxHeaderListSize)
   private[this] val frameListener = new SessionFrameListener(this, headerDecoder)
 
-  override val http2Decoder = new Http2FrameDecoder(localSettings, frameListener)
-  override val http2Encoder = new Http2FrameEncoder(remoteSettings, headerEncoder)
+  override val http2Decoder = new FrameDecoder(localSettings, frameListener)
+  override val http2Encoder = new FrameEncoder(remoteSettings, headerEncoder)
   override val writeController = new WriteControllerImpl(this, 64*1024, tailStage)
   override val pingManager: PingManager = new PingManager(this)
   override val sessionFlowControl: SessionFlowControl = new SessionFlowControlImpl(this, flowStrategy)
   override val streamManager: StreamManager = new StreamManagerImpl(this)
   override val idManager: StreamIdManager = StreamIdManager(isClient)
 
-  override def state: ConnectionState = currentState
+  override def state: Connection.State = currentState
 
   override def newInboundStream(streamId: Int): Option[LeafBuilder[StreamMessage]] = {
     // TODO: check the state
     inboundStreamBuilder(streamId)
   }
 
-
   // Must be called from within the session executor.
   // If an error is provided, a GO_AWAY is written and we wait for the writeController to
   // close the connection. If not, we do it.
   def invokeShutdownWithError(ex: Option[Throwable], phase: String): Unit = {
-    if (state != Closed) {
-      currentState = Closed
+    if (state != Connection.Closed) {
+      currentState = Connection.Closed
 
       ex match {
         case None | Some(EOF) =>
@@ -82,7 +80,7 @@ private final class SessionCoreImpl(
           }
 
           streamManager.forceClose(Some(ex)) // Fail hard
-        val goawayFrame = Http2FrameSerializer.mkGoAwayFrame(
+        val goawayFrame = FrameSerializer.mkGoAwayFrame(
             idManager.lastInboundStream, http2SessionError)
           // TODO: maybe we should clear the `WriteController` before writing?
           writeController.write(goawayFrame)
@@ -95,13 +93,13 @@ private final class SessionCoreImpl(
 
   // TODO: this is geared toward the server, what about the client?
   override def invokeDrain(gracePeriod: Duration): Unit = {
-    if (currentState == Running) {
+    if (currentState == Connection.Running) {
       // Don't set the state to draining because we'll do that in `invokeGoaway`
 
       // Start draining: send a GOAWAY and set a timer to shutdown
       val noError = Http2Exception.NO_ERROR.goaway(s"Session draining for duration $gracePeriod")
       val someNoError = Some(noError)
-      val frame = Http2FrameSerializer.mkGoAwayFrame(idManager.lastInboundStream, noError)
+      val frame = FrameSerializer.mkGoAwayFrame(idManager.lastInboundStream, noError)
       writeController.write(frame)
 
       // Drain the StreamManager
@@ -119,8 +117,8 @@ private final class SessionCoreImpl(
 
   // TODO: should we switch the dependency between drain and GOAWAY?
   override def invokeGoAway(lastHandledOutboundStream: Int, error: Http2SessionException): Unit = {
-    if (currentState == Running) {
-      currentState = Http2Connection.Draining
+    if (currentState == Connection.Running) {
+      currentState = Connection.Draining
       // Drain the `StreamManager` and then the `WriteController`, then close up.
       streamManager.goAway(lastHandledOutboundStream, error)
         .flatMap { _ => writeController.close() }(serialExecutor)

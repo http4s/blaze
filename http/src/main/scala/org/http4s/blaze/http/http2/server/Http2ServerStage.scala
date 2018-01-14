@@ -5,7 +5,7 @@ import java.util.Locale
 
 import org.http4s.blaze.http._
 import org.http4s.blaze.http.http2.Http2Exception._
-import org.http4s.blaze.http.http2.Http2StageTools._
+import org.http4s.blaze.http.http2.StageTools._
 import org.http4s.blaze.http.http2.{DataFrame, HeadersFrame, Priority, StreamMessage}
 import org.http4s.blaze.http.util.ServiceTimeoutFilter
 import org.http4s.blaze.pipeline.{TailStage, Command => Cmd}

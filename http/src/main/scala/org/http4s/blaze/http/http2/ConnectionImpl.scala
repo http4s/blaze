@@ -4,7 +4,6 @@ import java.nio.ByteBuffer
 
 import org.http4s.blaze.http.HttpClientSession
 import org.http4s.blaze.http.HttpClientSession.Status
-import org.http4s.blaze.http.http2.Http2Connection._
 import org.http4s.blaze.pipeline.{Command, HeadStage, LeafBuilder, TailStage}
 import org.http4s.blaze.util.BufferTools
 
@@ -20,7 +19,7 @@ import scala.util.{Failure, Success}
   * @note the TailStage needs to be ready to go as this session will start
   *       reading from the channel immediately.
   */
-private final class Http2ConnectionImpl(
+private final class ConnectionImpl(
     isClient: Boolean,
     tailStage: TailStage[ByteBuffer],
     localSettings: Http2Settings, // The settings of this side
@@ -28,7 +27,7 @@ private final class Http2ConnectionImpl(
     flowStrategy: FlowStrategy,
     inboundStreamBuilder: Int => Option[LeafBuilder[StreamMessage]],
     parentExecutor: ExecutionContext)
-  extends Http2Connection {
+  extends Connection {
 
   private[this] val logger = org.log4s.getLogger
   private[this] val core = new SessionCoreImpl(
@@ -53,7 +52,7 @@ private final class Http2ConnectionImpl(
     // Note that this is susceptible to memory visibility issues
     // but that's okay since this is intrinsically racy.
     val isClosing = core.state match {
-      case _: Closing => true
+      case _: Connection.Closing => true
       case _ => false
     }
 
@@ -67,7 +66,7 @@ private final class Http2ConnectionImpl(
   }
 
   override def status: Status = {
-    if (core.state != Http2Connection.Running) HttpClientSession.Closed
+    if (core.state != Connection.Running) HttpClientSession.Closed
     else if (core.streamManager.size < remoteSettings.maxConcurrentStreams) {
       HttpClientSession.Ready
     } else {
@@ -121,7 +120,7 @@ private final class Http2ConnectionImpl(
                 stream.closeWithError(Some(ex))
 
               case None =>
-                val msg = Http2FrameSerializer.mkRstStreamFrame(ex.stream, ex.code)
+                val msg = FrameSerializer.mkRstStreamFrame(ex.stream, ex.code)
                 core.writeController.write(msg)
             }
 

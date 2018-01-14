@@ -7,18 +7,19 @@ import org.http4s.blaze.util.BufferTools
 import org.specs2.mock.Mockito
 import org.specs2.mutable.Specification
 
-class Http2FrameEncoderSpec extends Specification with Mockito with Http2SpecTools {
+class FrameEncoderSpec extends Specification with Mockito {
+  import CodecUtils._
 
-  def mockListener() = mock[Http2FrameListener]
+  private def mockListener() = mock[FrameListener]
 
   // increase the ID by 25 to lift it out of the normal h2 exception codes
-  def ReturnTag(id: Int): Error = Error(Http2Exception.errorGenerator(id.toLong + 25l).goaway())
+  private def ReturnTag(id: Int): Error = Error(Http2Exception.errorGenerator(id.toLong + 25l).goaway())
 
   "Http2FrameEncoder" >> {
     "not fragment data frames if they fit into a single frame" >> {
       val tools = new MockTools(true)
       val listener = mockListener()
-      val decoder = new Http2FrameDecoder(tools.remoteSettings, listener)
+      val decoder = new FrameDecoder(tools.remoteSettings, listener)
 
       tools.remoteSettings.maxFrameSize = 15 // technically an illegal size...
 
@@ -36,7 +37,7 @@ class Http2FrameEncoderSpec extends Specification with Mockito with Http2SpecToo
     "fragments data frames if they exceed the localSettings.maxFrameSize" >> {
       val tools = new MockTools(true)
       val listener = mockListener()
-      val remoteDecoder = new Http2FrameDecoder(tools.remoteSettings, listener)
+      val remoteDecoder = new FrameDecoder(tools.remoteSettings, listener)
 
       tools.remoteSettings.maxFrameSize = 10 // technically an illegal size...
 
@@ -70,7 +71,7 @@ class Http2FrameEncoderSpec extends Specification with Mockito with Http2SpecToo
         }
       }
       val listener = mockListener()
-      val decoder = new Http2FrameDecoder(tools.remoteSettings, listener)
+      val decoder = new FrameDecoder(tools.remoteSettings, listener)
 
       tools.remoteSettings.maxFrameSize = 15 // technically an illegal size...
       // `endStream = true`
@@ -93,7 +94,7 @@ class Http2FrameEncoderSpec extends Specification with Mockito with Http2SpecToo
         }
       }
       val listener = mockListener()
-      val decoder = new Http2FrameDecoder(tools.remoteSettings, listener)
+      val decoder = new FrameDecoder(tools.remoteSettings, listener)
 
       tools.remoteSettings.maxFrameSize = 10 // technically an illegal size...
       val data = BufferTools.joinBuffers(tools.frameEncoder.headerFrame(1, Priority.NoPriority, true, Nil))
@@ -115,7 +116,7 @@ class Http2FrameEncoderSpec extends Specification with Mockito with Http2SpecToo
         }
       }
       val listener = mockListener()
-      val decoder = new Http2FrameDecoder(tools.remoteSettings, listener)
+      val decoder = new FrameDecoder(tools.remoteSettings, listener)
 
       tools.remoteSettings.maxFrameSize = 10 // technically an illegal size...
       val p = Priority.Dependent(2, true, 12)

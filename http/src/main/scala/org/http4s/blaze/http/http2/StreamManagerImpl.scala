@@ -42,10 +42,10 @@ private final class StreamManagerImpl(
     while (it.hasNext && result == Continue) {
       val stream = it.next()
       stream.flowWindow.remoteSettingsInitialWindowChange(diff) match {
-        case Continue =>
+        case None =>
           stream.outboundFlowWindowChanged()
 
-        case Error(ex) =>
+        case Some(ex) =>
           // We shouldn't get stream exceptions here, only a
           // GO_AWAY of type FLOW_CONTROL_ERROR
           result = Error(ex.toSessionException())
@@ -149,7 +149,7 @@ private final class StreamManagerImpl(
     result
   }
 
-  override def handlePushPromise(streamId: Int, promisedId: Int, headers: Headers): Http2Result = {
+  override def handlePushPromise(streamId: Int, promisedId: Int, headers: Headers): Result = {
     if (session.idManager.isIdleOutboundId(streamId)) {
       Error(PROTOCOL_ERROR.goaway(s"Received PUSH_PROMISE for associated to an idle stream ($streamId)"))
     } else if (!session.idManager.isInboundId(promisedId)) {
@@ -182,7 +182,7 @@ private final class StreamManagerImpl(
     if (session.idManager.isIdleId(streamId)) {
       Error(PROTOCOL_ERROR.goaway(s"WINDOW_UPDATE on uninitialized stream ($streamId)"))
     } else if (streamId == 0) {
-      val result = session.sessionFlowControl.sessionOutboundAcked(sizeIncrement)
+      val result = MaybeError(session.sessionFlowControl.sessionOutboundAcked(sizeIncrement))
       logger.debug(s"Session flow update: $sizeIncrement. Result: $result")
       if (result.success) {
         // TODO: do we need to wake all the open streams in every case? Maybe just when we go from 0 to > 0?
@@ -196,7 +196,7 @@ private final class StreamManagerImpl(
           Continue // nop
 
         case Some(stream) =>
-          val result = stream.flowWindow.streamOutboundAcked(sizeIncrement)
+          val result = MaybeError(stream.flowWindow.streamOutboundAcked(sizeIncrement))
           logger.debug(s"Stream(${stream.streamId}) WINDOW_UPDATE($sizeIncrement). Result: $result")
 
           if (result.success) {

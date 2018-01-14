@@ -25,7 +25,7 @@ import scala.concurrent.{ExecutionContext, Future, Promise}
   *
   * @param localSettings settings to transmit to the server while performing the handshake
   */
-private[http] class Http2TlsClientHandshaker(
+private[http] class ClientPriorKnowledgeHandshaker(
     localSettings: ImmutableHttp2Settings,
     flowStrategy: FlowStrategy,
     executor: ExecutionContext)
@@ -58,7 +58,7 @@ private[http] class Http2TlsClientHandshaker(
     this.replaceTail(newTail, true)
 
     val h2ClientStage =
-      new Http2ClientSessionImpl(
+      new ClientSessionImpl(
         tailStage,
         localSettings,
         remoteSettings,
@@ -70,7 +70,7 @@ private[http] class Http2TlsClientHandshaker(
   }
 }
 
-private object Http2TlsClientHandshaker {
+private object ClientPriorKnowledgeHandshaker {
 
   val DefaultClientSettings: Seq[Setting] = Vector(
     Http2Settings.ENABLE_PUSH(0) /*false*/

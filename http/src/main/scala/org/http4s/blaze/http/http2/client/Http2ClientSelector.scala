@@ -12,7 +12,7 @@ import org.log4s.getLogger
 
 import scala.concurrent.Promise
 
-class Http2ClientSelector(config: HttpClientConfig) {
+private[http] class Http2ClientSelector(config: HttpClientConfig) {
   import ALPNTokens._
 
   private[this] val logger = getLogger
@@ -31,7 +31,7 @@ class Http2ClientSelector(config: HttpClientConfig) {
         logger.debug(s"Selected $s, resulted in H2 protocol.")
         val localSettings = newH2Settings()
         val f = new DefaultFlowStrategy(localSettings)
-        val handshaker = new Http2TlsClientHandshaker(localSettings, f, Execution.trampoline)
+        val handshaker = new ClientPriorKnowledgeHandshaker(localSettings, f, Execution.trampoline)
         p.completeWith(handshaker.clientSession)
         LeafBuilder(handshaker)
 

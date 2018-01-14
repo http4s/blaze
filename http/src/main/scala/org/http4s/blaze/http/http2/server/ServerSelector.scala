@@ -10,7 +10,7 @@ import org.http4s.blaze.http.http2.{Http2Settings, StreamMessage}
 import org.http4s.blaze.pipeline.{LeafBuilder, TailStage}
 import org.log4s.getLogger
 
-object Http2ServerSelector {
+private object ServerSelector {
 
   private val logger = getLogger
 
@@ -48,6 +48,6 @@ object Http2ServerSelector {
       Http2Settings.default.copy(
         maxConcurrentStreams = config.maxConcurrentStreams,
         maxHeaderListSize = config.maxNonBodyBytes)
-    new Http2TlsServerHandshaker(localSettings, newNode)
+    new ServerPriorKnowledgeHandshaker(localSettings, newNode)
   }
 }
