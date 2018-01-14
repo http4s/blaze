@@ -23,13 +23,13 @@ import scala.concurrent.{ExecutionContext, Future, Promise}
   * - Ack the initial settings frame
   * - Finish constructing the connection
   *
-  * @param mySettings settings to transmit to the server while performing the handshake
+  * @param localSettings settings to transmit to the server while performing the handshake
   */
 private[http] class Http2TlsClientHandshaker(
-    mySettings: ImmutableHttp2Settings,
+    localSettings: ImmutableHttp2Settings,
     flowStrategy: FlowStrategy,
     executor: ExecutionContext)
-  extends PriorKnowledgeHandshaker[Http2ClientSession](mySettings) {
+  extends PriorKnowledgeHandshaker[Http2ClientSession](localSettings) {
 
   private[this] val session = Promise[Http2ClientSession]
 
@@ -45,12 +45,12 @@ private[http] class Http2TlsClientHandshaker(
     channelWrite(bits.getHandshakeBuffer()).map { _ => BufferTools.emptyBuffer }
 
   override protected def handshakeComplete(
-    peerSettings: MutableHttp2Settings,
+    remoteSettings: MutableHttp2Settings,
     data: ByteBuffer
   ): Future[Http2ClientSession] = {
 
-    val tail = new BasicTail[ByteBuffer]("http2cClientTail")
-    var newTail = LeafBuilder(tail)
+    val tailStage = new BasicTail[ByteBuffer]("http2cClientTail")
+    var newTail = LeafBuilder(tailStage)
     if (data.hasRemaining) {
       newTail = newTail.prepend(new OneMessageStage[ByteBuffer](data))
     }
@@ -59,9 +59,9 @@ private[http] class Http2TlsClientHandshaker(
 
     val h2ClientStage =
       new Http2ClientSessionImpl(
-        tail,
-        mySettings,
-        peerSettings,
+        tailStage,
+        localSettings,
+        remoteSettings,
         flowStrategy,
         executor
       )

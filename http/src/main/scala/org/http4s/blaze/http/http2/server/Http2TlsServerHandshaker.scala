@@ -27,8 +27,8 @@ private[http] class Http2TlsServerHandshaker(
     }
   }
 
-  override protected def handshakeComplete(peerSettings: MutableHttp2Settings, data: ByteBuffer): Future[Unit] =
-    Future(installHttp2ServerStage(peerSettings, data))
+  override protected def handshakeComplete(remoteSettings: MutableHttp2Settings, data: ByteBuffer): Future[Unit] =
+    Future(installHttp2ServerStage(remoteSettings, data))
 
   override protected def handlePrelude(): Future[ByteBuffer] =
     StageTools.accumulateAtLeast(bits.ClientHandshakeString.length, this).flatMap { buf =>
@@ -61,7 +61,7 @@ private[http] class Http2TlsServerHandshaker(
       isClient = false,
       tailStage = tail,
       localSettings = localSettings,
-      remoteSettings = remoteSettings,  // peer settings
+      remoteSettings = remoteSettings,
       flowStrategy = flowStrategy,
       inboundStreamBuilder = nodeBuilder,
       parentExecutor = Execution.trampoline)

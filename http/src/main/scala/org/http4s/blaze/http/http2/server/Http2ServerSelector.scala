@@ -44,11 +44,10 @@ object Http2ServerSelector {
       Some(LeafBuilder(new Http2ServerStage(streamId, service, config)))
     }
 
-    val mySettings =
+    val localSettings =
       Http2Settings.default.copy(
         maxConcurrentStreams = config.maxConcurrentStreams,
-        maxHeaderListSize = config.maxNonBodyBytes
-      )
-    new Http2TlsServerHandshaker(mySettings, newNode)
+        maxHeaderListSize = config.maxNonBodyBytes)
+    new Http2TlsServerHandshaker(localSettings, newNode)
   }
 }

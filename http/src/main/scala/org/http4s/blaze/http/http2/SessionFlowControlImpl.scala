@@ -177,7 +177,7 @@ private class SessionFlowControlImpl(
       }
     }
 
-    override def peerSettingsInitialWindowChange(delta: Int): MaybeError = {
+    override def remoteSettingsInitialWindowChange(delta: Int): MaybeError = {
       logger.trace(s"Stream($streamId) outbound window adjusted by $delta bytes. $streamWindowString")
       // A sender MUST NOT allow a flow-control window to exceed 2^31-1 octets.
       // https://tools.ietf.org/html/rfc7540#section-6.9.2

@@ -29,9 +29,9 @@ class Http2ClientSelector(config: HttpClientConfig) {
     s match {
       case H2 | H2_14 =>
         logger.debug(s"Selected $s, resulted in H2 protocol.")
-        val mySettings = newH2Settings()
-        val f = new DefaultFlowStrategy(mySettings)
-        val handshaker = new Http2TlsClientHandshaker(mySettings, f, Execution.trampoline)
+        val localSettings = newH2Settings()
+        val f = new DefaultFlowStrategy(localSettings)
+        val handshaker = new Http2TlsClientHandshaker(localSettings, f, Execution.trampoline)
         p.completeWith(handshaker.clientSession)
         LeafBuilder(handshaker)
 

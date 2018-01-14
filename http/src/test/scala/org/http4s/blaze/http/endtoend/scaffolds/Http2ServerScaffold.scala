@@ -14,10 +14,10 @@ class Http2ServerScaffold(service: HttpService) extends ServerScaffold {
       Some(LeafBuilder(new Http2ServerStage(streamId, service, config)))
     }
 
-    val mySettings = Http2Settings.default.copy(
+    val localSettings = Http2Settings.default.copy(
       maxHeaderListSize = config.maxNonBodyBytes)
 
-    new Http2TlsServerHandshaker(mySettings, newNode)
+    new Http2TlsServerHandshaker(localSettings, newNode)
   }
 
   override protected def newLeafBuilder(): LeafBuilder[ByteBuffer] = {

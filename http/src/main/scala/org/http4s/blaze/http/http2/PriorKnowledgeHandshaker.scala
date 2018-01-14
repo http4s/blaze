@@ -8,15 +8,15 @@ import org.http4s.blaze.util.{BufferTools, Execution}
 
 import scala.concurrent.Future
 
-abstract class PriorKnowledgeHandshaker[T](mySettings: ImmutableHttp2Settings) extends TailStage[ByteBuffer] {
+abstract class PriorKnowledgeHandshaker[T](localSettings: ImmutableHttp2Settings) extends TailStage[ByteBuffer] {
 
   final protected implicit def ec = Execution.trampoline
 
-  override def name: String = s"${getClass.getSimpleName}($mySettings)"
+  override def name: String = s"${getClass.getSimpleName}($localSettings)"
 
   protected def handlePrelude(): Future[ByteBuffer]
 
-  protected def handshakeComplete(peerSettings: MutableHttp2Settings, data: ByteBuffer): Future[T]
+  protected def handshakeComplete(remoteSettings: MutableHttp2Settings, data: ByteBuffer): Future[T]
 
   final def handshake(): Future[T] = {
     logger.debug("Beginning handshake.")
@@ -33,7 +33,7 @@ abstract class PriorKnowledgeHandshaker[T](mySettings: ImmutableHttp2Settings) e
   }
 
   private[this] def sendSettings(): Future[Unit] = {
-    val settingsBuffer = Http2FrameSerializer.mkSettingsFrame(mySettings.toSeq)
+    val settingsBuffer = Http2FrameSerializer.mkSettingsFrame(localSettings.toSeq)
     channelWrite(settingsBuffer)
   }
 
@@ -65,9 +65,9 @@ abstract class PriorKnowledgeHandshaker[T](mySettings: ImmutableHttp2Settings) e
         val settingsBuffer = BufferTools.takeSlice(acc, size)
         SettingsDecoder.decodeSettingsFrame(settingsBuffer) match {
           case Right(settingsFrame) if !settingsFrame.isAck =>
-            val peerSettings = MutableHttp2Settings.default()
-            MutableHttp2Settings.updateSettings(peerSettings, settingsFrame.settings) match {
-              case None => sendSettingsAck().map { _ => peerSettings -> acc }
+            val remoteSettings = MutableHttp2Settings.default()
+            MutableHttp2Settings.updateSettings(remoteSettings, settingsFrame.settings) match {
+              case None => sendSettingsAck().map { _ => remoteSettings -> acc }
               case Some(ex) =>
                 // there was a problem with the settings: write it and fail.
                 channelWrite(Http2FrameSerializer.mkGoAwayFrame(0, ex)).flatMap { _ =>
@@ -77,7 +77,7 @@ abstract class PriorKnowledgeHandshaker[T](mySettings: ImmutableHttp2Settings) e
 
           case Right(_) => // was an ack! This is a PROTOCOL_ERROR
             val ex = Http2Exception.PROTOCOL_ERROR.goaway(
-              "Received a SETTINGS ack before receiving peer settings")
+              "Received a SETTINGS ack before receiving remote settings")
             sendHttp2GoAway(ex)
 
 

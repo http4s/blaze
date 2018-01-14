@@ -8,7 +8,7 @@ private[http2] class MockStreamFlowWindow extends StreamFlowWindow {
   override def outboundRequest(request: Int): Int = ???
   override def streamId: Int = ???
   override def inboundObserved(count: Int): Boolean = ???
-  override def peerSettingsInitialWindowChange(delta: Int): MaybeError = ???
+  override def remoteSettingsInitialWindowChange(delta: Int): MaybeError = ???
   override def streamInboundWindow: Int = ???
   override def streamOutboundWindow: Int = ???
   override def inboundConsumed(count: Int): Unit = ???

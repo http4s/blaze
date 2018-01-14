@@ -24,10 +24,10 @@ class Http2ClientScaffold extends ClientScaffold(2, 0) {
         val p = Promise[Http2ClientSession]
 
         // TODO: we need a better model for these
-        val mySettings = h2Settings.copy()
+        val localSettings = h2Settings.copy()
 
-        val flowStrategy = new DefaultFlowStrategy(mySettings)
-        val handshaker = new Http2TlsClientHandshaker(mySettings, flowStrategy, Execution.trampoline)
+        val flowStrategy = new DefaultFlowStrategy(localSettings)
+        val handshaker = new Http2TlsClientHandshaker(localSettings, flowStrategy, Execution.trampoline)
         p.completeWith(handshaker.clientSession)
         LeafBuilder(handshaker).base(head)
 
