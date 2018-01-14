@@ -16,8 +16,11 @@ import scala.util.{Failure, Success}
 /** Representation of the http2 session.
   *
   * This is mostly a shell around a concrete [[SessionCore]] implementation.
+  *
+  * @note the TailStage needs to be ready to go as this session will start
+  *       reading from the channel immediately.
   */
-private class Http2ConnectionImpl(
+private final class Http2ConnectionImpl(
     isClient: Boolean,
     tailStage: TailStage[ByteBuffer],
     localSettings: Http2Settings, // The settings of this side
@@ -27,10 +30,7 @@ private class Http2ConnectionImpl(
     parentExecutor: ExecutionContext)
   extends Http2Connection {
 
-  final protected val logger = org.log4s.getLogger
-
-  private[this] var started = false
-
+  private[this] val logger = org.log4s.getLogger
   private[this] val core = new SessionCoreImpl(
     isClient = isClient,
     tailStage = tailStage,
@@ -41,57 +41,50 @@ private class Http2ConnectionImpl(
     parentExecutor = parentExecutor
   )
 
-  private[this] def isClosing: Boolean = state match {
-    case _: Closing => true
-    case _ => false
-  }
+  logger.debug(s"starting session with peer settings $remoteSettings")
+  readLoop(BufferTools.emptyBuffer)
 
-  /** `Future` which is satisfied when the session is terminated */
-//  def onClose: Future[Unit] = closedPromise.future
+  // Make sure we disconnect from the reactor once the session is done
+  core.onClose.onComplete { _ =>
+    tailStage.sendOutboundCommand(Command.Disconnect)
+  }(parentExecutor)
 
-  // Start the session. This entails starting the read loop
-  final def startSession(): Unit = {
-    synchronized {
-      if (started) throw new IllegalStateException(s"Session already started")
-      started = true
-    }
-    logger.debug(s"starting session with peer settings $remoteSettings")
-    readLoop(BufferTools.emptyBuffer)
-
-    // Make sure we disconnect from the reactor once the session is done
-    core.onClose.onComplete { _ =>
-      tailStage.sendOutboundCommand(Command.Disconnect)
-    }(parentExecutor)
-  }
-
-  final override def quality: Double = {
+  override def quality: Double = {
     // Note that this is susceptible to memory visibility issues
     // but that's okay since this is intrinsically racy.
-    if (isClosing || !core.idManager.unusedOutboundStreams) 0.0
-    else 1.0 - (core.streamManager.size.toDouble/remoteSettings.maxConcurrentStreams.toDouble)
-  }
+    val isClosing = core.state match {
+      case _: Closing => true
+      case _ => false
+    }
 
-  /** Get the status of session */
-  final override def status: Status = {
-    if (state == Http2Connection.Running) {
-      if (core.streamManager.size < remoteSettings.maxConcurrentStreams) {
-        HttpClientSession.Ready
-      } else {
-        HttpClientSession.Busy
-      }
-    } else {
-      HttpClientSession.Closed
+    if (isClosing || !core.idManager.unusedOutboundStreams) 0.0
+    else {
+      val maxConcurrent = remoteSettings.maxConcurrentStreams
+      val currentStreams = core.streamManager.size
+      if (maxConcurrent == 0 || maxConcurrent <= currentStreams) 0.0
+      else 1.0 - (currentStreams.toDouble/maxConcurrent.toDouble)
     }
   }
 
-  override def ping: Future[Duration] = {
+  override def status: Status = {
+    if (core.state != Http2Connection.Running) HttpClientSession.Closed
+    else if (core.streamManager.size < remoteSettings.maxConcurrentStreams) {
+      HttpClientSession.Ready
+    } else {
+      HttpClientSession.Busy
+    }
+  }
+
+  override def activeStreams: Int = core.streamManager.size
+
+  override def ping(): Future[Duration] = {
     val p = Promise[Duration]
     core.serialExecutor.execute(new Runnable { def run(): Unit =
       p.completeWith(core.pingManager.ping()) })
     p.future
   }
 
-  final override def drainSession(gracePeriod: Duration): Future[Unit] = {
+  override def drainSession(gracePeriod: Duration): Future[Unit] = {
     require(gracePeriod.isFinite())
     core.serialExecutor.execute(new Runnable {
       def run(): Unit = core.invokeDrain(gracePeriod)
@@ -99,19 +92,9 @@ private class Http2ConnectionImpl(
     core.onClose
   }
 
-  /** Create a new outbound stream
-    *
-    * Resources are not necessarily allocated to this stream, therefore it is
-    * not guaranteed to succeed.
-    */
-  final def newOutboundStream(): HeadStage[StreamMessage] = {
-    // TODO: right now this only benefits the client. We need to get the push-promise support for the server side
+  override def newOutboundStream(): HeadStage[StreamMessage] = {
     core.streamManager.newOutboundStream()
   }
-
-
-  /** Get the current state of the `Session` */
-  final def state: ConnectionState = core.state
 
   ////////////////////////////////////////////////////////////////////////
   private[this] def readLoop(remainder: ByteBuffer): Unit = {

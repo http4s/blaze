@@ -4,9 +4,9 @@ import java.nio.ByteBuffer
 
 import org.http4s.blaze.channel.nio2.ClientChannelFactory
 import org.http4s.blaze.http.ALPNTokens._
+import org.http4s.blaze.http.HttpClientSession.Ready
 import org.http4s.blaze.http._
 import org.http4s.blaze.http.util.UrlTools.UrlComposition
-import org.http4s.blaze.http.http2.Http2Connection.Running
 import org.http4s.blaze.http.http2._
 import org.http4s.blaze.http.util.UrlTools
 import org.http4s.blaze.pipeline.stages.SSLStage
@@ -25,7 +25,7 @@ private[http] class Http2ClientSessionManagerImpl(
 
   private[this] val logger = getLogger
   private[this] val factory = new ClientChannelFactory(group = config.channelGroup)
-  private[this] val sessionCache = new mutable.HashMap[String, Future[Http2ClientConnection]]
+  private[this] val sessionCache = new mutable.HashMap[String, Future[Http2ClientSession]]
 
   override def acquireSession(request: HttpRequest): Future[HttpClientSession] =
     UrlTools.UrlComposition(request.url) match {
@@ -35,7 +35,7 @@ private[http] class Http2ClientSessionManagerImpl(
           sessionCache.get(composition.authority) match {
             case Some(session) =>
               session.value match {
-                case Some(Success(s)) if s.state == Running => session
+                case Some(Success(s)) if s.status == Ready => session
                 // we have either a session that is no good any more, or never was.
                 case _ => makeAndStoreSession(composition)
               }
@@ -71,7 +71,7 @@ private[http] class Http2ClientSessionManagerImpl(
   override def returnSession(session: HttpClientSession): Unit = ()
 
   // starts to acquire a new session and adds the attempt to the sessionCache
-  private def makeAndStoreSession(url: UrlComposition): Future[Http2ClientConnection] = {
+  private def makeAndStoreSession(url: UrlComposition): Future[Http2ClientSession] = {
     logger.debug(s"Creating a new session for composition $url")
 
     val fSession = acquireSession(url)
@@ -79,14 +79,14 @@ private[http] class Http2ClientSessionManagerImpl(
     fSession
   }
 
-  private[this] def acquireSession(url: UrlComposition): Future[Http2ClientConnection] = {
+  private[this] def acquireSession(url: UrlComposition): Future[Http2ClientSession] = {
     logger.debug(s"Creating a new session for composition $url")
     factory.connect(url.getAddress).flatMap(initialPipeline)(Execution.directec)
   }
 
   // protected for testing purposes
-  protected def initialPipeline(head: HeadStage[ByteBuffer]): Future[Http2ClientConnection] = {
-    val p = Promise[Http2ClientConnection]
+  protected def initialPipeline(head: HeadStage[ByteBuffer]): Future[Http2ClientSession] = {
+    val p = Promise[Http2ClientSession]
 
     def buildConnection(s: String): LeafBuilder[ByteBuffer] = {
       if (s != H2 && s != H2_14)

@@ -2,8 +2,8 @@ package org.http4s.blaze.http.endtoend.scaffolds
 
 import java.nio.ByteBuffer
 
-import org.http4s.blaze.http.http2.{DefaultFlowStrategy, Http2ClientConnection, Http2Settings}
-import org.http4s.blaze.http.{HttpClientConfig, HttpClientImpl, HttpRequest, HttpResponsePrelude}
+import org.http4s.blaze.http.http2.{DefaultFlowStrategy, Http2Settings}
+import org.http4s.blaze.http._
 import org.http4s.blaze.http.http2.client.{Http2ClientSessionManagerImpl, Http2TlsClientHandshaker}
 import org.http4s.blaze.pipeline.{Command, HeadStage, LeafBuilder}
 import org.http4s.blaze.util.Execution
@@ -20,8 +20,8 @@ class Http2ClientScaffold extends ClientScaffold(2, 0) {
       initialWindowSize = 256 * 1024)
 
     val manager = new Http2ClientSessionManagerImpl(HttpClientConfig.Default, h2Settings) {
-      override protected def initialPipeline(head: HeadStage[ByteBuffer]): Future[Http2ClientConnection] = {
-        val p = Promise[Http2ClientConnection]
+      override protected def initialPipeline(head: HeadStage[ByteBuffer]): Future[Http2ClientSession] = {
+        val p = Promise[Http2ClientSession]
 
         // TODO: we need a better model for these
         val mySettings = h2Settings.copy()

@@ -3,20 +3,24 @@ package org.http4s.blaze.http.http2.client
 import java.nio.ByteBuffer
 
 import org.http4s.blaze.http.{Http2ClientSession, HttpRequest}
-import org.http4s.blaze.http.HttpClientSession.ReleaseableResponse
+import org.http4s.blaze.http.HttpClientSession.{ReleaseableResponse, Status}
 import org.http4s.blaze.http.http2._
 import org.http4s.blaze.pipeline.{Command, LeafBuilder, TailStage}
+import org.log4s.getLogger
 
 import scala.concurrent.duration.Duration
 import scala.concurrent.{ExecutionContext, Future}
 
-private final class Http2ClientConnectionImpl(
+private final class Http2ClientSessionImpl(
     tailStage: TailStage[ByteBuffer],
-    localSettings: ImmutableHttp2Settings, // the settings of this side
-    remoteSettings: MutableHttp2Settings, // the settings of their side
+    localSettings: ImmutableHttp2Settings,
+    remoteSettings: MutableHttp2Settings,
     flowStrategy: FlowStrategy,
     parentExecutor: ExecutionContext)
-  extends Http2ConnectionImpl(
+  extends Http2ClientSession {
+
+  private[this] val logger = getLogger
+  private[this] val connection = new  Http2ConnectionImpl(
     isClient = true,
     tailStage = tailStage,
     localSettings = localSettings,
@@ -24,22 +28,28 @@ private final class Http2ClientConnectionImpl(
     flowStrategy = flowStrategy,
     inboundStreamBuilder = _ => None,
     parentExecutor = parentExecutor
-  ) with Http2ClientSession
-  with Http2ClientConnection {
+  )
 
   override def dispatch(request: HttpRequest): Future[ReleaseableResponse] = {
     logger.debug(s"Dispatching request: $request")
     val tail = new Http2ClientStage(request, parentExecutor)
-    val head = newOutboundStream()
+    val head = connection.newOutboundStream()
     LeafBuilder(tail).base(head)
     head.sendInboundCommand(Command.Connected)
 
     tail.result
   }
 
+  override def quality: Double = connection.quality
+
+  override def ping(): Future[Duration] = connection.ping
+
+  override def status: Status = connection.status
+
   /** Close the session.
     *
     * This will generally entail closing the socket connection.
     */
-  override def close(within: Duration): Future[Unit] = drainSession(within)
+  override def close(within: Duration): Future[Unit] =
+    connection.drainSession(within)
 }

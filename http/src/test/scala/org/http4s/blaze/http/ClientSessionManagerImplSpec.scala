@@ -61,6 +61,7 @@ class ClientSessionManagerImplSpec extends Specification {
           closed = true
           Future.successful(())
         }
+        override def ping(): Future[Duration] = ???
         override def status: Status = Closed
         override def quality: Double = 1.0
       }
@@ -68,6 +69,7 @@ class ClientSessionManagerImplSpec extends Specification {
       object lowQuality extends Http2ClientSession {
         override def dispatch(request: HttpRequest): Future[ReleaseableResponse] = ???
         override def close(within: Duration): Future[Unit] = ???
+        override def ping(): Future[Duration] = ???
         override def status: Status = Ready
         override def quality: Double = 0.0
       }
@@ -75,6 +77,7 @@ class ClientSessionManagerImplSpec extends Specification {
       object good extends Http2ClientSession {
         override def dispatch(request: HttpRequest): Future[ReleaseableResponse] = ???
         override def close(within: Duration): Future[Unit] = ???
+        override def ping(): Future[Duration] = ???
         override def status: Status = Ready
         override def quality: Double = 1.0
       }

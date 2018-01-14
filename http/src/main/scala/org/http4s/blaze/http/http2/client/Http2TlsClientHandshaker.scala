@@ -2,6 +2,7 @@ package org.http4s.blaze.http.http2.client
 
 import java.nio.ByteBuffer
 
+import org.http4s.blaze.http.Http2ClientSession
 import org.http4s.blaze.http.http2._
 import org.http4s.blaze.http.http2.Http2Settings.Setting
 import org.http4s.blaze.http.http2.SettingsDecoder.SettingsFrame
@@ -28,11 +29,11 @@ private[http] class Http2TlsClientHandshaker(
     mySettings: ImmutableHttp2Settings,
     flowStrategy: FlowStrategy,
     executor: ExecutionContext)
-  extends PriorKnowledgeHandshaker[Http2ClientConnection](mySettings) {
+  extends PriorKnowledgeHandshaker[Http2ClientSession](mySettings) {
 
-  private[this] val session = Promise[Http2ClientConnection]
+  private[this] val session = Promise[Http2ClientSession]
 
-  def clientSession: Future[Http2ClientConnection] = session.future
+  def clientSession: Future[Http2ClientSession] = session.future
 
   override protected def stageStartup(): Unit = {
     logger.debug("initiating handshake")
@@ -44,27 +45,26 @@ private[http] class Http2TlsClientHandshaker(
     channelWrite(bits.getHandshakeBuffer()).map { _ => BufferTools.emptyBuffer }
 
   override protected def handshakeComplete(
-      peerSettings: MutableHttp2Settings,
-      data: ByteBuffer): Future[Http2ClientConnection] = {
+    peerSettings: MutableHttp2Settings,
+    data: ByteBuffer
+  ): Future[Http2ClientSession] = {
 
     val tail = new BasicTail[ByteBuffer]("http2cClientTail")
+    var newTail = LeafBuilder(tail)
+    if (data.hasRemaining) {
+      newTail = newTail.prepend(new OneMessageStage[ByteBuffer](data))
+    }
+
+    this.replaceTail(newTail, true)
+
     val h2ClientStage =
-      new Http2ClientConnectionImpl(
+      new Http2ClientSessionImpl(
         tail,
         mySettings,
         peerSettings,
         flowStrategy,
         executor
       )
-
-    var newTail = LeafBuilder(tail)
-
-    if (data.hasRemaining) {
-      newTail = newTail.prepend(new OneMessageStage[ByteBuffer](data))
-    }
-
-    this.replaceTail(newTail, true)
-    h2ClientStage.startSession()
 
     Future.successful(h2ClientStage)
   }
