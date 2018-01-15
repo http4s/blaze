@@ -220,7 +220,6 @@ private abstract class StreamStateImpl(session: SessionCore) extends StreamState
     } else if (flowWindow.inboundObserved(flowBytes)) {
       receivedEndStream = endStream
       val consumed = if (queueMessage(DataFrame(endStream, data))) flowBytes else flowBytes - data.remaining()
-      println(s"Accepting data! Bytes consume: $consumed")
       flowWindow.inboundConsumed(consumed)
       Continue
     }

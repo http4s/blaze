@@ -12,6 +12,8 @@ class HeaderAggregatingFrameListenerSpec extends Specification {
   import BufferTools._
   import CodecUtils._
 
+  private val Halt = Error(Http2SessionException(-1, "test"))
+
   private def encodeHeaders(hs: Seq[(String, String)]): ByteBuffer =
     new HeaderEncoder(Http2Settings.default.headerTableSize).encodeHeaders(hs)
 

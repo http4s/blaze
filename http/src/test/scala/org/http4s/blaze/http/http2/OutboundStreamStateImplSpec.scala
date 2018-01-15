@@ -22,7 +22,7 @@ class OutboundStreamStateImplSpec extends Specification {
 
       override def state: Connection.State = connectionState
 
-      override lazy val streamManager = new StreamManagerImpl(this)
+      override lazy val streamManager = new StreamManagerImpl(this, None)
     }
 
     lazy val tools = new MockTools

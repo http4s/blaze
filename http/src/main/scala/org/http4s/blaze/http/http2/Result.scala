@@ -2,7 +2,8 @@ package org.http4s.blaze.http.http2
 
 /** Result type of many of the codec methods */
 private sealed trait Result extends Product with Serializable
-private case object Halt extends Result
+
+/** Didn't get enough data to decode a full HTTP/2 frame */
 private case object BufferUnderflow extends Result
 
 /** Represents the possibility of failure */

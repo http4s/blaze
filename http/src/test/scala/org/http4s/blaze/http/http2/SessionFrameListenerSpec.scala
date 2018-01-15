@@ -19,10 +19,12 @@ class SessionFrameListenerSpec extends Specification {
         true, // discard overflow headers
         localSettings.headerTableSize)
 
-    override lazy val frameListener: SessionFrameListener =
-      new SessionFrameListener(this, headerDecoder)
+    lazy val newInboundStream: Option[Int => LeafBuilder[StreamMessage]] = None
 
-    override lazy val streamManager: StreamManager = new StreamManagerImpl(this)
+    override lazy val frameListener: SessionFrameListener =
+      new SessionFrameListener(this, isClient, headerDecoder)
+
+    override lazy val streamManager: StreamManager = new StreamManagerImpl(this, newInboundStream)
   }
 
   val hs = Seq("foo" -> "bar")
@@ -50,7 +52,7 @@ class SessionFrameListenerSpec extends Specification {
       "initiate a new stream for idle inbound stream (server)" >> {
         val head = new BasicTail[StreamMessage]("")
         val tools = new MockTools(isClient = false) {
-          override def newInboundStream(streamId: Int) = Some(LeafBuilder(head))
+          override lazy val newInboundStream = Some { _: Int => LeafBuilder(head) }
         }
 
         tools.streamManager.get(1) must beNone
