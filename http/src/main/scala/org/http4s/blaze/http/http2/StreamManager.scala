@@ -34,6 +34,7 @@ private trait StreamManager {
     *
     * Validates the state of the session accordingly.
     */
+  // TODO: these are not necessarily appropriate for both client and server. Maybe there is a better model based on refinement.
   def newInboundStream(streamId: Int): Either[Http2Exception, InboundStreamState]
 
   /** Creates a new OutboundStreamState which hasn't been allocated a stream id

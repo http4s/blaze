@@ -3,7 +3,6 @@ package org.http4s.blaze.http.http2
 import java.nio.ByteBuffer
 
 import org.http4s.blaze.http.HttpClientSession
-import org.http4s.blaze.http.HttpClientSession.Status
 import org.http4s.blaze.pipeline.stages.BasicTail
 import org.http4s.blaze.pipeline.{HeadStage, LeafBuilder}
 import org.http4s.blaze.util.Execution
@@ -134,6 +133,22 @@ class ConnectionImplSpec extends Specification {
         CodecUtils.await(connection.drainSession(Duration.Zero))
         connection.status must_== HttpClientSession.Closed
       }
+    }
+
+    "newInboundStream" >> {
+      ko
+    }
+
+    "invokeShutdownWithError" >> {
+      ko
+    }
+
+    "invokeGoAway" >> {
+      ko
+    }
+
+    "invokeDrain" >> {
+      ko
     }
   }
 }

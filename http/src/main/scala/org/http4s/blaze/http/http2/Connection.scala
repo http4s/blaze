@@ -54,6 +54,9 @@ private trait Connection {
     */
   // TODO: right now this only benefits the client. We need to get the push-promise support for the server side
   def newOutboundStream(): HeadStage[StreamMessage]
+
+  /** Hook into the shutdown events of the connection */
+  def onClose: Future[Unit]
 }
 
 private object Connection {
