@@ -2,12 +2,14 @@ package org.http4s.blaze.http.http2
 
 import org.http4s.blaze.http._
 import org.http4s.blaze.http.http2.Http2Exception.{PROTOCOL_ERROR, REFUSED_STREAM}
-import org.http4s.blaze.pipeline.Command
+import org.http4s.blaze.pipeline.{Command, LeafBuilder}
+
 import scala.collection.mutable.HashMap
 import scala.concurrent.{Future, Promise}
 
 private final class StreamManagerImpl(
-  session: SessionCore
+  session: SessionCore,
+  inboundStreamBuilder: Option[Int => LeafBuilder[StreamMessage]]
 ) extends StreamManager {
   private[this] val logger = org.log4s.getLogger
   private[this] val streams = new HashMap[Int, StreamState]
@@ -87,7 +89,7 @@ private final class StreamManagerImpl(
           s"Received HEADERS frame for non-idle inbound stream id $streamId"
         }
       Left(PROTOCOL_ERROR.goaway(msg))
-    } else if (session.isClient) {
+    } else if (inboundStreamBuilder.isEmpty) {
       Left(PROTOCOL_ERROR.goaway(
         s"Client received request for new inbound stream ($streamId) without push promise"))
     } else if (drainingP.isDefined) {
@@ -102,18 +104,17 @@ private final class StreamManagerImpl(
       // of error code determines whether the endpoint wishes to enable
       // automatic retry (see Section 8.1.4) for details).
       Left(REFUSED_STREAM.rst(streamId))
-    } else session.newInboundStream(streamId) match {
-      case None => Left(REFUSED_STREAM.rst(streamId))
-      case Some(leafBuilder) =>
-        val streamFlowWindow = session.sessionFlowControl.newStreamFlowWindow(streamId)
-        val streamState = new InboundStreamStateImpl(session, streamId, streamFlowWindow)
-        assert(streams.put(streamId, streamState).isEmpty)
+    } else {
+      val leafBuilder = inboundStreamBuilder.get.apply(streamId) // we alread made sure it wasn't empty
+      val streamFlowWindow = session.sessionFlowControl.newStreamFlowWindow(streamId)
+      val streamState = new InboundStreamStateImpl(session, streamId, streamFlowWindow)
+      assert(streams.put(streamId, streamState).isEmpty)
 
-        // assemble the pipeline
-        leafBuilder.base(streamState)
-        streamState.sendInboundCommand(Command.Connected)
+      // assemble the pipeline
+      leafBuilder.base(streamState)
+      streamState.sendInboundCommand(Command.Connected)
 
-        Right(streamState)
+      Right(streamState)
     }
   }
 

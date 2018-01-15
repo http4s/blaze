@@ -1,6 +1,5 @@
 package org.http4s.blaze.http.http2
 
-import org.http4s.blaze.pipeline.LeafBuilder
 
 import scala.concurrent.ExecutionContext
 import scala.concurrent.duration.Duration
@@ -34,12 +33,7 @@ private abstract class SessionCore {
   // Properties
   def state: Connection.State
 
-  val isClient: Boolean
-
   // Behaviors
-  /** Optionally create a new inbound stream */
-  def newInboundStream(streamId: Int): Option[LeafBuilder[StreamMessage]]
-
   /** Shutdown the session due to unhandled exception
     *
     * This is an emergency shutdown, and the session is in an undefined state.

@@ -40,9 +40,8 @@ object ServerSelector {
   private def http2Stage(service: HttpService, config: HttpServerStageConfig): TailStage[ByteBuffer] = {
     logger.debug("Selected HTTP2")
 
-    def newNode(streamId: Int): Option[LeafBuilder[StreamMessage]] = {
-      Some(LeafBuilder(new Http2ServerStage(streamId, service, config)))
-    }
+    def newNode(streamId: Int): LeafBuilder[StreamMessage] =
+      LeafBuilder(new Http2ServerStage(streamId, service, config))
 
     val localSettings =
       Http2Settings.default.copy(

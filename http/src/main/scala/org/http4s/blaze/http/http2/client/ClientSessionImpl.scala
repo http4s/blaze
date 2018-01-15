@@ -21,12 +21,11 @@ private final class ClientSessionImpl(
 
   private[this] val logger = getLogger
   private[this] val connection = new  ConnectionImpl(
-    isClient = true,
     tailStage = tailStage,
     localSettings = localSettings,
     remoteSettings = remoteSettings,
     flowStrategy = flowStrategy,
-    inboundStreamBuilder = _ => None,
+    inboundStreamBuilder = None,
     parentExecutor = parentExecutor
   )
 

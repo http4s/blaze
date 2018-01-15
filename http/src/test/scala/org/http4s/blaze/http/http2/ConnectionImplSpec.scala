@@ -47,10 +47,9 @@ class ConnectionImplSpec extends Specification {
 
     lazy val flowStrategy = new DefaultFlowStrategy(localSettings)
 
-    def streamBuilder(streamId: Int): Option[LeafBuilder[StreamMessage]] = None
+    lazy val streamBuilder: Option[Int => LeafBuilder[StreamMessage]] = None
 
     lazy val connection = new ConnectionImpl(
-      isClient = false,
       tailStage = tailStage,
       localSettings = localSettings,
       remoteSettings = remoteSettings,

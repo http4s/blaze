@@ -10,7 +10,9 @@ import scala.util.Failure
 class StreamManagerImplSpec extends Specification {
 
   private class MockTools(isClient: Boolean) extends mocks.MockTools(isClient) {
-    override lazy val streamManager: StreamManager = new StreamManagerImpl(this)
+    override lazy val streamManager: StreamManager = new StreamManagerImpl(this,
+      if (isClient) None else Some(newInboundStream(_))
+    )
 
     var connects: Int = 0
 
@@ -22,7 +24,7 @@ class StreamManagerImplSpec extends Specification {
       }
     }
 
-    override def newInboundStream(streamId: Int) = Some(LeafBuilder(tail))
+    private def newInboundStream(streamId: Int) = LeafBuilder(tail)
   }
 
   "StreamManagerImpl" should {

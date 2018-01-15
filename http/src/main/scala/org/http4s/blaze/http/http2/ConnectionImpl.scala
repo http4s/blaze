@@ -19,14 +19,16 @@ import scala.util.{Failure, Success}
   *       reading from the channel immediately.
   */
 private final class ConnectionImpl(
-  val isClient: Boolean,
   tailStage: TailStage[ByteBuffer],
   val localSettings: Http2Settings,
   val remoteSettings: MutableHttp2Settings,
   flowStrategy: FlowStrategy,
-  inboundStreamBuilder: Int => Option[LeafBuilder[StreamMessage]],
+  inboundStreamBuilder: Option[Int => LeafBuilder[StreamMessage]],
   parentExecutor: ExecutionContext
 ) extends SessionCore with Connection {
+
+  // Shortcut methods
+  private[this] def isClient = inboundStreamBuilder.isEmpty
 
   private[this] val logger = org.log4s.getLogger
   private[this] val closedPromise = Promise[Unit]
@@ -45,15 +47,15 @@ private final class ConnectionImpl(
     maxTableSize = localSettings.headerTableSize)
 
   private[this] val headerEncoder: HeaderEncoder = new HeaderEncoder(remoteSettings.maxHeaderListSize)
-  private[this] val frameListener = new SessionFrameListener(this, headerDecoder)
+  private[this] val frameListener = new SessionFrameListener(this, isClient, headerDecoder)
 
+  override val idManager: StreamIdManager = StreamIdManager(isClient)
   override val http2Decoder = new FrameDecoder(localSettings, frameListener)
   override val http2Encoder = new FrameEncoder(remoteSettings, headerEncoder)
   override val writeController = new WriteControllerImpl(this, 64*1024, tailStage)
   override val pingManager: PingManager = new PingManager(this)
   override val sessionFlowControl: SessionFlowControl = new SessionFlowControlImpl(this, flowStrategy)
-  override val streamManager: StreamManager = new StreamManagerImpl(this)
-  override val idManager: StreamIdManager = StreamIdManager(isClient)
+  override val streamManager: StreamManager = new StreamManagerImpl(this, inboundStreamBuilder)
 
   // start read loop and add shutdown hooks
   readLoop(BufferTools.emptyBuffer)
@@ -138,11 +140,6 @@ private final class ConnectionImpl(
   override def onClose: Future[Unit] = closedPromise.future
 
   override def state: Connection.State = currentState
-
-  override def newInboundStream(streamId: Int): Option[LeafBuilder[StreamMessage]] = {
-    // TODO: check the state
-    inboundStreamBuilder(streamId)
-  }
 
   // Must be called from within the session executor.
   // If an error is provided, a GOAWAY is written and we wait for the writeController to

@@ -14,7 +14,7 @@ import scala.util.Failure
 // TODO: can we reduce the visibility of this?
 private[http] class ServerPriorKnowledgeHandshaker(
     localSettings: ImmutableHttp2Settings,
-    nodeBuilder: Int => Option[LeafBuilder[StreamMessage]])
+    nodeBuilder: Int => LeafBuilder[StreamMessage])
   extends PriorKnowledgeHandshaker[Unit](localSettings) {
 
   override protected def stageStartup(): Unit = synchronized {
@@ -58,12 +58,11 @@ private[http] class ServerPriorKnowledgeHandshaker(
     // TODO: The instance should start itself up, but who will have a reference to it?
     // TODO: Maybe through the continuations attached to the readloop?
     new ConnectionImpl(
-      isClient = false,
       tailStage = tail,
       localSettings = localSettings,
       remoteSettings = remoteSettings,
       flowStrategy = flowStrategy,
-      inboundStreamBuilder = nodeBuilder,
+      inboundStreamBuilder = Some(nodeBuilder),
       parentExecutor = Execution.trampoline)
   }
 }
