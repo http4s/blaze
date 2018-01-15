@@ -19,14 +19,11 @@ private final class SessionCoreImpl(
   parentExecutor: ExecutionContext
 ) extends SessionCore {
 
-  final protected val logger = org.log4s.getLogger
+  private[this] val logger = org.log4s.getLogger
+  private[this] val closedPromise = Promise[Unit]
 
   @volatile
   private[this] var currentState: Connection.State = Connection.Running
-  // used to signal that the session is closed
-  private[this] val closedPromise = Promise[Unit]
-
-  def onClose: Future[Unit] = closedPromise.future
 
   override val serialExecutor = new SerialExecutionContext(parentExecutor) {
     override def reportFailure(cause: Throwable): Unit =
@@ -49,6 +46,8 @@ private final class SessionCoreImpl(
   override val streamManager: StreamManager = new StreamManagerImpl(this)
   override val idManager: StreamIdManager = StreamIdManager(isClient)
 
+  def onClose: Future[Unit] = closedPromise.future
+
   override def state: Connection.State = currentState
 
   override def newInboundStream(streamId: Int): Option[LeafBuilder[StreamMessage]] = {
@@ -57,7 +56,7 @@ private final class SessionCoreImpl(
   }
 
   // Must be called from within the session executor.
-  // If an error is provided, a GO_AWAY is written and we wait for the writeController to
+  // If an error is provided, a GOAWAY is written and we wait for the writeController to
   // close the connection. If not, we do it.
   def invokeShutdownWithError(ex: Option[Throwable], phase: String): Unit = {
     if (state != Connection.Closed) {
@@ -66,7 +65,8 @@ private final class SessionCoreImpl(
       ex match {
         case None | Some(EOF) =>
           streamManager.forceClose(None)
-          closedPromise.trySuccess(())
+          closedPromise.success(())
+          tailStage.sendOutboundCommand(Command.Disconnect)
 
         case Some(ex) =>
           val http2SessionError = ex match {
@@ -80,12 +80,13 @@ private final class SessionCoreImpl(
           }
 
           streamManager.forceClose(Some(ex)) // Fail hard
-        val goawayFrame = FrameSerializer.mkGoAwayFrame(
+          val goawayFrame = FrameSerializer.mkGoAwayFrame(
             idManager.lastInboundStream, http2SessionError)
           // TODO: maybe we should clear the `WriteController` before writing?
           writeController.write(goawayFrame)
           writeController.close().onComplete { _ =>
             tailStage.sendOutboundCommand(Command.Disconnect)
+            closedPromise.failure(ex)
           }(serialExecutor)
       }
     }
@@ -98,7 +99,6 @@ private final class SessionCoreImpl(
 
       // Start draining: send a GOAWAY and set a timer to shutdown
       val noError = Http2Exception.NO_ERROR.goaway(s"Session draining for duration $gracePeriod")
-      val someNoError = Some(noError)
       val frame = FrameSerializer.mkGoAwayFrame(idManager.lastInboundStream, noError)
       writeController.write(frame)
 
@@ -109,7 +109,8 @@ private final class SessionCoreImpl(
       // Now set a timer to force closed the session after the expiration
       // if draining takes too long.
       val work = new Runnable {
-        def run(): Unit = invokeShutdownWithError(someNoError, s"drainSession($gracePeriod)")
+        // We already drained so no error necessary
+        def run(): Unit = invokeShutdownWithError(None, s"drainSession($gracePeriod)")
       }
       Execution.scheduler.schedule(work, serialExecutor, gracePeriod)
     }

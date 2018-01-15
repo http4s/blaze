@@ -10,7 +10,7 @@ import org.http4s.blaze.http.http2.{Http2Settings, StreamMessage}
 import org.http4s.blaze.pipeline.{LeafBuilder, TailStage}
 import org.log4s.getLogger
 
-private object ServerSelector {
+object ServerSelector {
 
   private val logger = getLogger
 

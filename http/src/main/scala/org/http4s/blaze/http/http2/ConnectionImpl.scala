@@ -22,8 +22,8 @@ import scala.util.{Failure, Success}
 private final class ConnectionImpl(
     isClient: Boolean,
     tailStage: TailStage[ByteBuffer],
-    localSettings: Http2Settings, // The settings of this side
-    remoteSettings: MutableHttp2Settings, // The peers settings. These can change during the session.
+    localSettings: Http2Settings,
+    remoteSettings: MutableHttp2Settings,
     flowStrategy: FlowStrategy,
     inboundStreamBuilder: Int => Option[LeafBuilder[StreamMessage]],
     parentExecutor: ExecutionContext)
@@ -51,27 +51,21 @@ private final class ConnectionImpl(
   override def quality: Double = {
     // Note that this is susceptible to memory visibility issues
     // but that's okay since this is intrinsically racy.
-    val isClosing = core.state match {
-      case _: Connection.Closing => true
-      case _ => false
-    }
-
-    if (isClosing || !core.idManager.unusedOutboundStreams) 0.0
+    if (core.state.closing || !core.idManager.unusedOutboundStreams) 0.0
     else {
       val maxConcurrent = remoteSettings.maxConcurrentStreams
-      val currentStreams = core.streamManager.size
+      val currentStreams = activeStreams
       if (maxConcurrent == 0 || maxConcurrent <= currentStreams) 0.0
       else 1.0 - (currentStreams.toDouble/maxConcurrent.toDouble)
     }
   }
 
-  override def status: Status = {
-    if (core.state != Connection.Running) HttpClientSession.Closed
-    else if (core.streamManager.size < remoteSettings.maxConcurrentStreams) {
-      HttpClientSession.Ready
-    } else {
-      HttpClientSession.Busy
-    }
+  override def status: Status = core.state match {
+    case Connection.Draining => HttpClientSession.Busy
+    case Connection.Closed => HttpClientSession.Closed
+    case Connection.Running =>
+      if (quality == 0.0) HttpClientSession.Busy
+      else HttpClientSession.Ready
   }
 
   override def activeStreams: Int = core.streamManager.size
@@ -84,10 +78,8 @@ private final class ConnectionImpl(
   }
 
   override def drainSession(gracePeriod: Duration): Future[Unit] = {
-    require(gracePeriod.isFinite())
     core.serialExecutor.execute(new Runnable {
-      def run(): Unit = core.invokeDrain(gracePeriod)
-    })
+      def run(): Unit = core.invokeDrain(gracePeriod) })
     core.onClose
   }
 
@@ -109,7 +101,6 @@ private final class ConnectionImpl(
         logger.debug("Handling inbound data.")
         @tailrec
         def go(): Unit = core.http2Decoder.decodeBuffer(data) match {
-          case Halt => () // nop
           case Continue => go()
           case BufferUnderflow => readLoop(data)
           case Error(ex: Http2StreamException) =>

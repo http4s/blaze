@@ -7,7 +7,7 @@ import org.http4s.blaze.channel._
 import org.http4s.blaze.channel.nio1.NIO1SocketServerGroup
 import org.http4s.blaze.examples.{ExampleKeystore, ExampleService}
 import org.http4s.blaze.http.HttpServerStageConfig
-import org.http4s.blaze.http.http2.server.Http2ServerSelector
+import org.http4s.blaze.http.http2.server.ServerSelector
 import org.http4s.blaze.pipeline.TrunkBuilder
 import org.http4s.blaze.pipeline.stages.SSLStage
 
@@ -17,7 +17,7 @@ class Http2ServerExample(port: Int) {
   private val f: BufferPipelineBuilder = { _ =>
     val eng = sslContext.createSSLEngine()
     eng.setUseClientMode(false)
-    TrunkBuilder(new SSLStage(eng)).cap(Http2ServerSelector(eng, ExampleService.service(None), HttpServerStageConfig()))
+    TrunkBuilder(new SSLStage(eng)).cap(ServerSelector(eng, ExampleService.service(None), HttpServerStageConfig()))
   }
 
   private val factory = NIO1SocketServerGroup.fixedGroup(workerThreads = channel.DefaultPoolSize)
