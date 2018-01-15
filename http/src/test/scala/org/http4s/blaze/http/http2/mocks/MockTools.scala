@@ -7,7 +7,7 @@ import org.http4s.blaze.util.Execution
 import scala.concurrent.ExecutionContext
 import scala.concurrent.duration.Duration
 
-private[http2] class MockTools(val isClient: Boolean) extends SessionCore {
+private[http2] class MockTools(isClient: Boolean) extends SessionCore {
 
   def flowStrategy: FlowStrategy = new DefaultFlowStrategy(localSettings)
 
@@ -41,8 +41,6 @@ private[http2] class MockTools(val isClient: Boolean) extends SessionCore {
   override lazy val streamManager: StreamManager = ???
 
   // Behaviors
-  override def newInboundStream(streamId: Int): Option[LeafBuilder[StreamMessage]] = None
-
   override def state: Connection.State = Connection.Running
 
   var drainGracePeriod: Option[Duration] = None

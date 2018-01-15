@@ -1,6 +1,5 @@
 package org.http4s.blaze.http.http2
 
-import org.http4s.blaze.pipeline.LeafBuilder
 
 import scala.concurrent.ExecutionContext
 import scala.concurrent.duration.Duration
@@ -9,7 +8,7 @@ import scala.concurrent.duration.Duration
   * provides a 'bag-o-references' so that each component can reference each
   * other. This helps to avoid construction order conflicts.
   */
-private trait SessionCore {
+private abstract class SessionCore {
   // Fields
   def serialExecutor: ExecutionContext
 
@@ -32,14 +31,9 @@ private trait SessionCore {
   def pingManager: PingManager
 
   // Properties
-
   def state: Connection.State
 
-  val isClient: Boolean
-
   // Behaviors
-  def newInboundStream(streamId: Int): Option[LeafBuilder[StreamMessage]]
-
   /** Shutdown the session due to unhandled exception
     *
     * This is an emergency shutdown, and the session is in an undefined state.
@@ -48,12 +42,21 @@ private trait SessionCore {
     */
   def invokeShutdownWithError(ex: Option[Throwable], phase: String): Unit
 
-  /** Signal to the session to shutdown gracefully
+  /** Signal to the session to shutdown gracefully based direction from the remote peer
     *
-    * This will entail shutting down the [[StreamManager]] and waiting for
-    * all write interests to drain.
+    * This entails draining the [[StreamManager]] and waiting for all write interests
+    * to drain.
+    *
+    * @see `invokeDrain` for the locally initiated analog
     */
   def invokeGoAway(lastHandledOutboundStream: Int, error: Http2SessionException): Unit
 
+  /** Signal for the session to begin draining based on the direction of the local peer
+    *
+    * This entails draining the [[StreamManager]] and waiting for all write interests
+    * to drain.
+    *
+    * @see `invokeGoAway` for the remote initiated analog
+    */
   def invokeDrain(gracePeriod: Duration): Unit
 }
