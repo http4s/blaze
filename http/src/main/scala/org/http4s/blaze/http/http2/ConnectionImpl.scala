@@ -35,6 +35,7 @@ private final class ConnectionImpl(
 
   @volatile
   private[this] var currentState: Connection.State = Connection.Running
+  private[this] var sentGoAway = false
 
   override val serialExecutor = new SerialExecutionContext(parentExecutor) {
     override def reportFailure(cause: Throwable): Unit =
@@ -148,68 +149,66 @@ private final class ConnectionImpl(
     if (state != Connection.Closed) {
       currentState = Connection.Closed
 
-      ex match {
-        case None | Some(EOF) =>
-          streamManager.forceClose(None)
-          closedPromise.success(())
-          tailStage.sendOutboundCommand(Command.Disconnect)
-
-        case Some(ex) =>
-          val http2SessionError = ex match {
-            case ex: Http2Exception =>
-              logger.debug(ex)(s"Shutting down with HTTP/2 session in phase $phase")
-              ex
-
-            case other =>
-              logger.warn(other)(s"Shutting down HTTP/2 with unhandled exception in phase $phase")
-              Http2Exception.INTERNAL_ERROR.goaway("Unhandled internal exception")
-          }
-
-          streamManager.forceClose(Some(ex)) // Fail hard
-          val goawayFrame = FrameSerializer.mkGoAwayFrame(
-            idManager.lastInboundStream, http2SessionError)
-          // TODO: maybe we should clear the `WriteController` before writing?
-          writeController.write(goawayFrame)
-          writeController.close().onComplete { _ =>
-            tailStage.sendOutboundCommand(Command.Disconnect)
-            closedPromise.failure(ex)
-          }(serialExecutor)
+      val http2Ex: Option[Http2Exception] = ex match {
+        case None | Some(EOF) => None
+        case Some(e: Http2Exception) => Some(e)
+        case Some(other) =>
+          logger.warn(other)(s"Shutting down HTTP/2 with unhandled exception in phase $phase")
+          Some(Http2Exception.INTERNAL_ERROR.goaway("Unhandled internal exception"))
       }
+
+      streamManager.forceClose(http2Ex)  // Fail hard
+      sendGoAway(http2Ex.getOrElse(Http2Exception.NO_ERROR.goaway(s"No Error")))
+      writeController.close().onComplete { _ =>
+        tailStage.sendOutboundCommand(Command.Disconnect)
+        ex match {
+          case Some(ex) => closedPromise.failure(ex)
+          case None => closedPromise.success(())
+        }
+      }(serialExecutor)
     }
   }
 
-  // TODO: this is geared toward the server, what about the client?
-  def invokeDrain(gracePeriod: Duration): Unit = {
+  override def invokeDrain(gracePeriod: Duration): Unit = {
     if (currentState == Connection.Running) {
-      // Don't set the state to draining because we'll do that in `invokeGoaway`
-
-      // Start draining: send a GOAWAY and set a timer to shutdown
+      // Start draining: send a GOAWAY and set a timer to force shutdown
       val noError = Http2Exception.NO_ERROR.goaway(s"Session draining for duration $gracePeriod")
-      val frame = FrameSerializer.mkGoAwayFrame(idManager.lastInboundStream, noError)
-      writeController.write(frame)
+      sendGoAway(noError)
 
-      // Drain the StreamManager
-      val lastHandledStream = idManager.lastOutboundStream
-      invokeGoAway(lastHandledStream, noError)
+      // Drain the StreamManager. We are going to reject our own outbound streams too
+      doDrain(idManager.lastOutboundStream, noError)
 
-      // Now set a timer to force closed the session after the expiration
-      // if draining takes too long.
       val work = new Runnable {
         // We already drained so no error necessary
         def run(): Unit = invokeShutdownWithError(None, s"drainSession($gracePeriod)")
       }
-      Execution.scheduler.schedule(work, serialExecutor, gracePeriod)
+      // We don't want to leave the timer set since we don't know know long it will live
+      val c = Execution.scheduler.schedule(work, serialExecutor, gracePeriod)
+      onClose.onComplete(_ => c.cancel())(Execution.directec)
     }
   }
 
-  // TODO: should we switch the dependency between drain and GOAWAY?
   override def invokeGoAway(lastHandledOutboundStream: Int, error: Http2SessionException): Unit = {
-    if (currentState == Connection.Running) {
+    // We drain all the streams so we send the remote peer a GOAWAY as well
+    sendGoAway(Http2Exception.NO_ERROR.goaway(s"Session received GOAWAY with code ${error.code}"))
+    doDrain(lastHandledOutboundStream, error)
+  }
+
+  private[this] def doDrain(lastHandledOutboundStream: Int, error: Http2SessionException): Unit = {
+    if (currentState != Connection.Closed) {
       currentState = Connection.Draining
       // Drain the `StreamManager` and then the `WriteController`, then close up.
-      streamManager.goAway(lastHandledOutboundStream, error)
+      streamManager.drain(lastHandledOutboundStream, error)
         .flatMap { _ => writeController.close() }(serialExecutor)
-        .onComplete { _ => invokeShutdownWithError(None, "invokeGoaway") }(serialExecutor)
+        .onComplete { _ => invokeShutdownWithError(None, /* unused */ "") }(serialExecutor)
+    }
+  }
+
+  private[this] def sendGoAway(ex: Http2Exception): Unit = {
+    if (!sentGoAway) {
+      sentGoAway = true
+      val frame = FrameSerializer.mkGoAwayFrame(idManager.lastInboundStream, ex)
+      writeController.write(frame)
     }
   }
 }

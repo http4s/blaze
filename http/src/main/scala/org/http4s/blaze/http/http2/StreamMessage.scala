@@ -31,10 +31,3 @@ case class HeadersFrame(priority: Priority,
                          headers: Seq[(String,String)]) extends StreamMessage {
   override def flowBytes: Int = 0
 }
-
-// TODO: how to handle push promise frames?
-//  case class PushPromiseFrame[HType](promisedId: Int, headers: HType) extends Http2Msg[HType]
-
-// For handling unknown stream frames
-//  case class ExtensionFrame(tpe: Int, flags: Byte, data: ByteBuffer) extends Http2Msg[Nothing]
-

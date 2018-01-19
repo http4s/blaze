@@ -82,5 +82,5 @@ private trait StreamManager {
     *
     * @return a `Future` that will resolve once all streams have been drained
     */
-  def goAway(lastHandledOutboundStream: Int, error: Http2SessionException): Future[Unit]
+  def drain(lastHandledOutboundStream: Int, error: Http2SessionException): Future[Unit]
 }

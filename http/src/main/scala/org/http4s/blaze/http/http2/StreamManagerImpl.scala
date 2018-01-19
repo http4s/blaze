@@ -209,28 +209,36 @@ private final class StreamManagerImpl(
     }
   }
 
-  override def goAway(lastHandledOutboundStream: Int, reason: Http2SessionException): Future[Unit] = {
+  override def drain(lastHandledOutboundStream: Int, reason: Http2SessionException): Future[Unit] = {
+
+    val unhandledStreams = streams.filterKeys { id =>
+      lastHandledOutboundStream < id && session.idManager.isOutboundId(id)
+    }.toVector
+
+    unhandledStreams.foreach { case (id, stream) =>
+      // We remove the stream first so that we don't send a RST back to
+      // the peer, since they have discarded the stream anyway.
+      streams.remove(id)
+      val ex = Http2Exception.REFUSED_STREAM.rst(id, reason.msg)
+      stream.closeWithError(Some(ex))
+    }
+
     drainingP match {
       case Some(p) =>
-        logger.debug(reason)(s"Received a second GOAWAY($lastHandledOutboundStream")
+        // in this case we know there were at least some streams and
+        // either they remain or closed normally
+        logger.debug(reason)(s"Received another drain command($lastHandledOutboundStream")
         p.future
 
       case None =>
-        logger.debug(reason)(s"StreamManager.goaway($lastHandledOutboundStream)")
-        val unhandledStreams = streams.filterKeys { id =>
-          lastHandledOutboundStream < id && session.idManager.isOutboundId(id)
-        }
-
-        unhandledStreams.foreach { case (id, stream) =>
-          // We remove the stream first so that we don't send a RST back to
-          // the peer, since they have discarded the stream anyway.
-          streams.remove(id)
-          val ex = Http2Exception.REFUSED_STREAM.rst(id, reason.msg)
-          stream.closeWithError(Some(ex))
-        }
-
         val p = Promise[Unit]
         drainingP = Some(p)
+
+        // No active streams so we can call it a day
+        if (streams.isEmpty) {
+          p.success(())
+        }
+
         p.future
     }
   }

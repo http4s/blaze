@@ -5,10 +5,11 @@ import java.nio.ByteBuffer
 import org.http4s.blaze.http.HttpClientSession
 import org.http4s.blaze.pipeline.stages.BasicTail
 import org.http4s.blaze.pipeline.{HeadStage, LeafBuilder}
-import org.http4s.blaze.util.Execution
+import org.http4s.blaze.util.{BufferTools, Execution}
 import org.specs2.mutable.Specification
 
 import scala.collection.mutable
+import scala.concurrent.duration._
 import scala.concurrent.duration.Duration
 import scala.concurrent.{Future, Promise}
 
@@ -134,20 +135,52 @@ class ConnectionImplSpec extends Specification {
       }
     }
 
-    "newInboundStream" >> {
-      ko
-    }
-
     "invokeShutdownWithError" >> {
-      ko
+      "is idempotent" in {
+        ko
+      }
+
+      "sends a GOAWAY frame if no GOAWAY has been sent" in {
+        ko
+      }
+
+      "wont send a GOAWAY frame if a GOAWAY has been sent" in {
+        ko
+      }
     }
 
     "invokeGoAway" >> {
-      ko
+      "immediately closes streams below the last handled stream" in {
+        ko
+      }
+
+      "lets non-terminated streams finish" in {
+        ko
+      }
+
+      "rejects new streams" in {
+        ko
+      }
     }
 
     "invokeDrain" >> {
-      ko
+      "sends a GOAWAY" in {
+        val ctx = new Ctx
+        import ctx._
+
+        connection.invokeDrain(4.seconds)
+        val buf = BufferTools.joinBuffers(head.writes.toList.map(_._1))
+
+        ko
+      }
+
+      "lets existing streams finish" in {
+        ko
+      }
+
+      "rejects new streams" in {
+        ko
+      }
     }
   }
 }
