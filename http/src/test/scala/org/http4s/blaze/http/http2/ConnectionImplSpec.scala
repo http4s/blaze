@@ -1,8 +1,11 @@
 package org.http4s.blaze.http.http2
 
 import java.nio.ByteBuffer
+import java.nio.charset.StandardCharsets
 
 import org.http4s.blaze.http.HttpClientSession
+import org.http4s.blaze.http.http2.ProtocolFrame.GoAway
+import org.http4s.blaze.http.http2.mocks.MockFrameListener
 import org.http4s.blaze.pipeline.stages.BasicTail
 import org.http4s.blaze.pipeline.{HeadStage, LeafBuilder}
 import org.http4s.blaze.util.{BufferTools, Execution}
@@ -58,6 +61,20 @@ class ConnectionImplSpec extends Specification {
       inboundStreamBuilder = streamBuilder,
       parentExecutor = Execution.trampoline
     )
+  }
+
+  private def decodeGoAway(buffer: ByteBuffer): ProtocolFrame.GoAway = {
+    var goAway: ProtocolFrame.GoAway = null
+    val listener = new MockFrameListener(false) {
+      override def onGoAwayFrame(lastStream: Int, errorCode: Long, debugData: Array[Byte]): Result = {
+        val str = new String(debugData, StandardCharsets.UTF_8)
+        goAway = ProtocolFrame.GoAway(lastStream, Http2SessionException(errorCode, str))
+        Continue
+      }
+    }
+    require(new FrameDecoder(Http2Settings.default, listener).decodeBuffer(buffer) == Continue)
+    require(goAway != null)
+    goAway
   }
 
   "ConnectionImpl" >> {
@@ -170,8 +187,9 @@ class ConnectionImplSpec extends Specification {
 
         connection.invokeDrain(4.seconds)
         val buf = BufferTools.joinBuffers(head.writes.toList.map(_._1))
-
-        ko
+        decodeGoAway(buf) must beLike {
+          case GoAway(0, Http2SessionException(code, _)) => code must_== Http2Exception.NO_ERROR.code
+        }
       }
 
       "lets existing streams finish" in {
