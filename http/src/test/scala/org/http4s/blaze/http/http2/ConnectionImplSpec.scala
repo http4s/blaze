@@ -15,6 +15,7 @@ import scala.collection.mutable
 import scala.concurrent.duration._
 import scala.concurrent.duration.Duration
 import scala.concurrent.{Future, Promise}
+import scala.util.{Failure, Success}
 
 class ConnectionImplSpec extends Specification {
 
@@ -41,6 +42,15 @@ class ConnectionImplSpec extends Specification {
 
     lazy val head = new Head
     lazy val tailStage = new BasicTail[ByteBuffer]("Tail")
+
+    def consumeOutboundData(): ByteBuffer = {
+      val buf = BufferTools.joinBuffers(head.writes.toList.map { case (b, p) =>
+        p.success(())
+        b
+      })
+      head.writes.clear()
+      buf
+    }
 
     // Zip up the stages
     LeafBuilder(tailStage).base(head)
@@ -83,7 +93,10 @@ class ConnectionImplSpec extends Specification {
         val ctx = new Ctx
         import ctx._
 
-        CodecUtils.await(connection.drainSession(Duration.Zero))
+        val f = connection.drainSession(Duration.Zero)
+        while (head.writes.nonEmpty) head.writes.dequeue()._2.success(())
+
+        CodecUtils.await(f)
         connection.quality must_== 0.0
       }
 
@@ -147,36 +160,112 @@ class ConnectionImplSpec extends Specification {
         val ctx = new Ctx
         import ctx._
 
-        CodecUtils.await(connection.drainSession(Duration.Zero))
+        val f = connection.drainSession(Duration.Zero)
+        while (head.writes.nonEmpty) head.writes.dequeue()._2.success(())
+
+        CodecUtils.await(f)
         connection.status must_== HttpClientSession.Closed
       }
     }
 
     "invokeShutdownWithError" >> {
       "is idempotent" in {
-        ko
+        val ctx = new Ctx
+        import ctx._
+
+        connection.invokeShutdownWithError(None, "test1")
+
+        decodeGoAway(consumeOutboundData()) must beLike {
+          case GoAway(0, Http2SessionException(code, _)) => code must_== Http2Exception.NO_ERROR.code
+        }
+
+        connection.invokeShutdownWithError(None, "test2")
+        head.writes.isEmpty must beTrue
       }
 
       "sends a GOAWAY frame if no GOAWAY has been sent" in {
-        ko
+        val ctx = new Ctx
+        import ctx._
+
+        connection.invokeShutdownWithError(None, "test1")
+
+        decodeGoAway(consumeOutboundData()) must beLike {
+          case GoAway(0, Http2SessionException(code, _)) => code must_== Http2Exception.NO_ERROR.code
+        }
       }
 
-      "wont send a GOAWAY frame if a GOAWAY has been sent" in {
-        ko
+      "won't send a GOAWAY frame if a GOAWAY has been sent" in {
+        val ctx = new Ctx
+        import ctx._
+
+        val f = connection.drainSession(Duration.Inf)
+
+        decodeGoAway(consumeOutboundData()) must beLike {
+          case GoAway(0, Http2SessionException(code, _)) => code must_== Http2Exception.NO_ERROR.code
+        }
+
+        connection.invokeShutdownWithError(None, "test1")
+
+        consumeOutboundData().remaining must_== 0
       }
     }
 
     "invokeGoAway" >> {
       "immediately closes streams below the last handled stream" in {
-        ko
+        val ctx = new Ctx
+        import ctx._
+
+        val stage = connection.newOutboundStream()
+        val basicStage = new BasicTail[StreamMessage]("")
+        LeafBuilder(basicStage).base(stage)
+
+        val w1 = basicStage.channelWrite(HeadersFrame(Priority.NoPriority, endStream = true, Seq.empty))
+        consumeOutboundData()
+        w1.value must_== Some(Success(()))
+        // Now the stream has been initiated
+        val err = Http2Exception.NO_ERROR.goaway("")
+        connection.invokeGoAway(math.max(0, connection.idManager.lastOutboundStream - 2), err)
+        consumeOutboundData() // need to consume the GOAWAY
+
+        val w2 = basicStage.channelRead()
+        w2.value must beLike {
+          case Some(Failure(e: Http2StreamException)) => e.code must_== Http2Exception.REFUSED_STREAM.code
+        }
       }
 
       "lets non-terminated streams finish" in {
-        ko
+        val ctx = new Ctx
+        import ctx._
+
+        val stage = connection.newOutboundStream()
+        val basicStage = new BasicTail[StreamMessage]("")
+        LeafBuilder(basicStage).base(stage)
+
+        val w1 = basicStage.channelWrite(HeadersFrame(Priority.NoPriority, endStream = false, Seq.empty))
+        consumeOutboundData()
+        w1.value must_== Some(Success(()))
+        // Now the stream has been initiated
+        val err = Http2Exception.NO_ERROR.goaway("")
+        connection.invokeGoAway(connection.idManager.lastOutboundStream, err)
+        consumeOutboundData() // need to consume the GOAWAY
+
+        val w2 = basicStage.channelWrite(DataFrame(true, BufferTools.emptyBuffer))
+        w2.value must_== Some(Success(()))
       }
 
       "rejects new streams" in {
-        ko
+        val ctx = new Ctx
+        import ctx._
+
+        connection.invokeDrain(4.seconds)
+
+        val stage = connection.newOutboundStream()
+        val basicStage = new BasicTail[StreamMessage]("")
+        LeafBuilder(basicStage).base(stage)
+        val f = basicStage.channelWrite(HeadersFrame(Priority.NoPriority, true, Seq.empty))
+        f.value must beLike {
+          case Some(Failure(t: Http2StreamException)) => t.code must_== Http2Exception.REFUSED_STREAM.code
+        }
       }
     }
 
@@ -186,18 +275,44 @@ class ConnectionImplSpec extends Specification {
         import ctx._
 
         connection.invokeDrain(4.seconds)
-        val buf = BufferTools.joinBuffers(head.writes.toList.map(_._1))
-        decodeGoAway(buf) must beLike {
+
+        decodeGoAway(consumeOutboundData()) must beLike {
           case GoAway(0, Http2SessionException(code, _)) => code must_== Http2Exception.NO_ERROR.code
         }
       }
 
       "lets existing streams finish" in {
-        ko
+        val ctx = new Ctx
+        import ctx._
+
+        val stage = connection.newOutboundStream()
+        val basicStage = new BasicTail[StreamMessage]("")
+        LeafBuilder(basicStage).base(stage)
+
+        val w1 = basicStage.channelWrite(HeadersFrame(Priority.NoPriority, endStream = false, Seq.empty))
+        consumeOutboundData()
+        w1.value must_== Some(Success(()))
+        // Now the stream has been initiated
+        connection.invokeDrain(4.seconds)
+        consumeOutboundData() // need to consume the GOAWAY
+
+        val w2 = basicStage.channelWrite(DataFrame(true, BufferTools.emptyBuffer))
+        w2.value must_== Some(Success(()))
       }
 
       "rejects new streams" in {
-        ko
+        val ctx = new Ctx
+        import ctx._
+
+        connection.invokeDrain(4.seconds)
+
+        val stage = connection.newOutboundStream()
+        val basicStage = new BasicTail[StreamMessage]("")
+        LeafBuilder(basicStage).base(stage)
+        val f = basicStage.channelWrite(HeadersFrame(Priority.NoPriority, true, Seq.empty))
+        f.value must beLike {
+          case Some(Failure(t: Http2StreamException)) => t.code must_== Http2Exception.REFUSED_STREAM.code
+        }
       }
     }
   }

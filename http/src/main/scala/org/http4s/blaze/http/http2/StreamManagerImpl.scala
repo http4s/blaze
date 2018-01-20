@@ -209,7 +209,7 @@ private final class StreamManagerImpl(
     }
   }
 
-  override def goAway(lastHandledOutboundStream: Int, reason: Http2SessionException): Future[Unit] = {
+  override def drain(lastHandledOutboundStream: Int, reason: Http2SessionException): Future[Unit] = {
     drainingP match {
       case Some(p) =>
         logger.debug(reason)(s"Received a second GOAWAY($lastHandledOutboundStream")

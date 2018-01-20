@@ -47,11 +47,11 @@ class StreamManagerImplSpec extends Specification {
         // Since the streams are closed stream operations should fail
         val hs = HeadersFrame(Priority.NoPriority, false, Seq.empty)
         s1.writeRequest(hs).value must beLike {
-          case Some(Failure(EOF)) => ok
+          case Some(Failure(`ex`)) => ok
         }
 
         s3.writeRequest(hs).value must beLike {
-          case Some(Failure(EOF)) => ok
+          case Some(Failure(`ex`)) => ok
         }
       }
 
