@@ -294,7 +294,7 @@ class FrameSerializerSpec extends Specification with ScalaCheck {
 
     "roundtrip" >> prop { goAway: GoAwayFrame =>
       val encodedGoAway = FrameSerializer.mkGoAwayFrame(goAway.lastStream, goAway.err, goAway.data)
-      dec(goAway).decodeBuffer(joinBuffers(encodedGoAway)) must_== Continue
+      dec(goAway).decodeBuffer(encodedGoAway) must_== Continue
     }
   }
 

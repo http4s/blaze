@@ -25,7 +25,7 @@ import scala.concurrent.{Future, Promise}
 private abstract class StreamStateImpl(session: SessionCore) extends StreamState {
 
   // State associated with the streams inbound data flow
-  private[this] val pendingInboundMessages = new util.ArrayDeque[StreamMessage]
+  private[this] val pendingInboundMessages = new util.ArrayDeque[StreamMessage](1)
   private[this] var pendingRead: Promise[StreamMessage] = null
 
   // State associated with the streams outbound data flow
@@ -40,11 +40,13 @@ private abstract class StreamStateImpl(session: SessionCore) extends StreamState
       assert(session.writeController.registerWriteInterest(this))
     }
 
+  // Whether the steam is closed
+  private[this] def streamIsClosed: Boolean = closedReason.isDefined
 
   // Determines if we can receive and send messages
   // WARNING: this should only be set to true in the `closeWithError` handler and
   //          only handled within the session executor
-  private[this] var streamIsClosed = false
+  private[this] var closedReason: Option[Throwable] = None
 
   // Similar to the state of halfClosedLocal
   // we can no longer send frames other than WINDOW_UPDATE, PRIORITY, and RST_STREAM
@@ -71,7 +73,8 @@ private abstract class StreamStateImpl(session: SessionCore) extends StreamState
         s"Already have an outstanding read on a stream ($streamId)"))
       ()
     } else if (streamIsClosed) {
-      p.failure(EOF)
+      // `.get` is safe since it must be Some if `streamIsClosed == true`
+      p.failure(closedReason.get)
       ()
     } else pendingInboundMessages.poll() match {
       case null if receivedEndStream =>
@@ -112,7 +115,8 @@ private abstract class StreamStateImpl(session: SessionCore) extends StreamState
       ()
     } else if (streamIsClosed) {
       sentEndStream = msg.endStream
-      p.failure(EOF)
+      // safe to call `.get` because it must be Some if `streamIsClosed == true`
+      p.failure(closedReason.get)
       ()
     } else {
       sentEndStream = msg.endStream
@@ -254,7 +258,10 @@ private abstract class StreamStateImpl(session: SessionCore) extends StreamState
   // WARNING: this must be called from within the session executor.
   final override def closeWithError(t: Option[Throwable]): Unit = {
     if (!streamIsClosed) {
-      streamIsClosed = true
+      closedReason = t match {
+        case s @ Some(_) => s
+        case None => StreamStateImpl.SomeEOF
+      }
 
       // Release resources, including flow bytes pending
       clearDataChannels(t match {
@@ -338,4 +345,9 @@ private abstract class StreamStateImpl(session: SessionCore) extends StreamState
       ()
     }
   }
+}
+
+private object StreamStateImpl {
+  // Cache this since it will be a common value
+  private val SomeEOF: Some[Throwable] = Some(EOF)
 }

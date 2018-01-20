@@ -34,6 +34,7 @@ private trait StreamManager {
     *
     * Validates the state of the session accordingly.
     */
+  // TODO: these are not necessarily appropriate for both client and server. Maybe there is a better model based on refinement.
   def newInboundStream(streamId: Int): Either[Http2Exception, InboundStreamState]
 
   /** Creates a new OutboundStreamState which hasn't been allocated a stream id
@@ -81,5 +82,5 @@ private trait StreamManager {
     *
     * @return a `Future` that will resolve once all streams have been drained
     */
-  def goAway(lastHandledOutboundStream: Int, error: Http2SessionException): Future[Unit]
+  def drain(lastHandledOutboundStream: Int, error: Http2SessionException): Future[Unit]
 }
