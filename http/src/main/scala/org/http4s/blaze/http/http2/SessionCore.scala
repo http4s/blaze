@@ -18,8 +18,6 @@ private abstract class SessionCore {
 
   def sessionFlowControl: SessionFlowControl
 
-//  def http2Decoder: FrameDecoder
-
   def http2Encoder: FrameEncoder
 
   def writeController: WriteController

@@ -15,6 +15,11 @@ private object ProtocolFrameDecoder {
       frame = ProtocolFrame.GoAway(lastStream, ex)
       Continue
     }
+
+    override def onPingFrame(ack: Boolean, data: Array[Byte]): Result = {
+      frame = ProtocolFrame.Ping(if (ack) None else Some(data))
+      Continue
+    }
   }
 
   def decode(

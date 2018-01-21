@@ -11,11 +11,6 @@ private[http2] class MockTools(isClient: Boolean) extends SessionCore {
 
   def flowStrategy: FlowStrategy = new DefaultFlowStrategy(localSettings)
 
-  lazy val frameListener: HeaderAggregatingFrameListener = ???
-
-  lazy val frameDecoder: FrameDecoder =
-    new FrameDecoder(localSettings, frameListener)
-
   override lazy val localSettings: MutableHttp2Settings = MutableHttp2Settings.default()
 
   override lazy val remoteSettings: MutableHttp2Settings = MutableHttp2Settings.default()
