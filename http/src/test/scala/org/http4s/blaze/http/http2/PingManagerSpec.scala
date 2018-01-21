@@ -19,7 +19,7 @@ class PingManagerSpec extends Specification {
       val buffer1 = BufferTools.joinBuffers(tools.writeController.observedWrites.toList)
       tools.writeController.observedWrites.clear()
 
-      val ProtocolFrame.Ping(Some(pingData1)) = ProtocolFrameDecoder.decode(buffer1)
+      val ProtocolFrame.Ping(false, pingData1) = ProtocolFrameDecoder.decode(buffer1)
       tools.pingManager.pingAckReceived(pingData1)
 
       f1.value must beLike {
@@ -30,7 +30,7 @@ class PingManagerSpec extends Specification {
       val f2 = tools.pingManager.ping()
       val buffer2 = BufferTools.joinBuffers(tools.writeController.observedWrites.toList)
 
-      val ProtocolFrame.Ping(Some(pingData2)) = ProtocolFrameDecoder.decode(buffer2)
+      val ProtocolFrame.Ping(false, pingData2) = ProtocolFrameDecoder.decode(buffer2)
       tools.pingManager.pingAckReceived(pingData2)
 
       f2.value must beLike {
@@ -55,7 +55,7 @@ class PingManagerSpec extends Specification {
       val buffer1 = BufferTools.joinBuffers(tools.writeController.observedWrites.toList)
       tools.writeController.observedWrites.clear()
 
-      val ProtocolFrame.Ping(Some(pingData)) = ProtocolFrameDecoder.decode(buffer1)
+      val ProtocolFrame.Ping(false, pingData) = ProtocolFrameDecoder.decode(buffer1)
       tools.pingManager.pingAckReceived(pingData)
 
       f1.value must beLike {

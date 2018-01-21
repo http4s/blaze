@@ -8,10 +8,10 @@ private object bits {
   val LengthFieldSize: Int = 3
   val HeaderSize: Int = 9
 
-  val ClientHandshakeString: String = "PRI * HTTP/2.0\r\n\r\nSM\r\n\r\n"
+  val PrefaceString: String = "PRI * HTTP/2.0\r\n\r\nSM\r\n\r\n"
 
-  def getHandshakeBuffer(): ByteBuffer =
-    clientHandshakeBuffer.duplicate()
+  def getPrefaceBuffer(): ByteBuffer =
+    clientPrefaceBuffer.duplicate()
 
   object Masks {
     val INT31: Int = 0x7fffffff
@@ -59,7 +59,7 @@ private object bits {
     private[this] def checkFlag(flags: Byte, flag: Byte) = (flags & flag) != 0
   }
 
-  private[this] val clientHandshakeBuffer: ByteBuffer =
-    ByteBuffer.wrap(ClientHandshakeString.getBytes(StandardCharsets.UTF_8))
+  private[this] val clientPrefaceBuffer: ByteBuffer =
+    ByteBuffer.wrap(PrefaceString.getBytes(StandardCharsets.UTF_8))
       .asReadOnlyBuffer()
 }
