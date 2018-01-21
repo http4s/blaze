@@ -6,7 +6,7 @@ import javax.net.ssl.SSLEngine
 import org.http4s.blaze.http._
 import org.http4s.blaze.http.ALPNTokens._
 import org.http4s.blaze.http.http1.server.Http1ServerStage
-import org.http4s.blaze.http.http2.{Http2Settings, StreamMessage}
+import org.http4s.blaze.http.http2.{DefaultFlowStrategy, Http2Settings, StreamMessage}
 import org.http4s.blaze.pipeline.{LeafBuilder, TailStage}
 import org.log4s.getLogger
 
@@ -47,6 +47,10 @@ object ServerSelector {
       Http2Settings.default.copy(
         maxConcurrentStreams = config.maxConcurrentStreams,
         maxHeaderListSize = config.maxNonBodyBytes)
-    new ServerPriorKnowledgeHandshaker(localSettings, newNode)
+
+    new ServerPriorKnowledgeHandshaker(
+      localSettings = localSettings,
+      flowStrategy = new DefaultFlowStrategy(localSettings),
+      nodeBuilder = newNode)
   }
 }

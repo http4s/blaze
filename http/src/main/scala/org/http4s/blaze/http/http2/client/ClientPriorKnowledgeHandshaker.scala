@@ -5,10 +5,9 @@ import java.nio.ByteBuffer
 import org.http4s.blaze.http.Http2ClientSession
 import org.http4s.blaze.http.http2._
 import org.http4s.blaze.http.http2.Http2Settings.Setting
-import org.http4s.blaze.http.http2.SettingsDecoder.SettingsFrame
 import org.http4s.blaze.pipeline.stages.{BasicTail, OneMessageStage}
-import org.http4s.blaze.pipeline.{Command, LeafBuilder, TailStage}
-import org.http4s.blaze.util.{BufferTools, Execution}
+import org.http4s.blaze.pipeline.{Command, LeafBuilder}
+import org.http4s.blaze.util.BufferTools
 
 import scala.concurrent.{ExecutionContext, Future, Promise}
 
@@ -41,8 +40,11 @@ private[http] class ClientPriorKnowledgeHandshaker(
     ()
   }
 
-  override protected def handlePreface(): Future[ByteBuffer] =
-    channelWrite(bits.getHandshakeBuffer()).map { _ => BufferTools.emptyBuffer }
+  override protected def handlePreface(): Future[ByteBuffer] = {
+    sendOutboundCommand(Command.Connect) // establish the pipeline
+    channelWrite(bits.getPrefaceBuffer()).map { _ => BufferTools.emptyBuffer }
+  }
+
 
   override protected def handshakeComplete(
     remoteSettings: MutableHttp2Settings,

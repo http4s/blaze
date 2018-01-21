@@ -14,6 +14,7 @@ import scala.util.Failure
 // TODO: can we reduce the visibility of this?
 private[http] class ServerPriorKnowledgeHandshaker(
     localSettings: ImmutableHttp2Settings,
+    flowStrategy: FlowStrategy,
     nodeBuilder: Int => LeafBuilder[StreamMessage])
   extends PriorKnowledgeHandshaker[Unit](localSettings) {
 
@@ -31,14 +32,16 @@ private[http] class ServerPriorKnowledgeHandshaker(
     Future(installHttp2ServerStage(remoteSettings, data))
 
   override protected def handlePreface(): Future[ByteBuffer] =
-    StageTools.accumulateAtLeast(bits.ClientHandshakeString.length, this).flatMap { buf =>
-      val prelude = BufferTools.takeSlice(buf, bits.ClientHandshakeString.length)
-      val preludeString = StandardCharsets.UTF_8.decode(prelude).toString
-      if (preludeString == bits.ClientHandshakeString) Future.successful(buf)
+    StageTools.accumulateAtLeast(bits.PrefaceString.length, this).flatMap { buf =>
+      val prelude = BufferTools.takeSlice(buf, bits.PrefaceString.length)
+
+      if (prelude == bits.getPrefaceBuffer()) Future.successful(buf)
       else {
+        val preludeString = StandardCharsets.UTF_8.decode(prelude).toString
         val msg = s"Invalid prelude: $preludeString"
-        logger.error(msg)
-        Future.failed(Http2Exception.PROTOCOL_ERROR.goaway(msg))
+        val ex = Http2Exception.PROTOCOL_ERROR.goaway(msg)
+        logger.error(ex)(msg)
+        Future.failed(ex)
       }
     }
 
@@ -54,7 +57,6 @@ private[http] class ServerPriorKnowledgeHandshaker(
     }
 
     this.replaceTail(newTail, true)
-    val flowStrategy = new DefaultFlowStrategy(localSettings)
     // TODO: The instance should start itself up, but who will have a reference to it?
     // TODO: Maybe through the continuations attached to the readloop?
     new ConnectionImpl(

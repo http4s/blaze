@@ -72,7 +72,7 @@ abstract class PriorKnowledgeHandshaker[T](localSettings: ImmutableHttp2Settings
         val ex = Http2Exception.FRAME_SIZE_ERROR.goaway(
           "While waiting for initial settings frame, encountered frame of " +
             s"size $size exceeded MAX_FRAME_SIZE (${localSettings.maxFrameSize})")
-        sendHttp2GoAway(ex)
+        sendGoAway(ex)
 
       case size =>  // we have at least a settings frame
         val settingsBuffer = BufferTools.takeSlice(acc, size)
@@ -91,15 +91,15 @@ abstract class PriorKnowledgeHandshaker[T](localSettings: ImmutableHttp2Settings
           case Right(SettingsFrame(None)) => // was an ack! This is a PROTOCOL_ERROR
             val ex = Http2Exception.PROTOCOL_ERROR.goaway(
               "Received a SETTINGS ack before receiving remote settings")
-            sendHttp2GoAway(ex)
+            sendGoAway(ex)
 
 
-          case Left(http2Exception) => sendHttp2GoAway(http2Exception)
+          case Left(http2Exception) => sendGoAway(http2Exception)
         }
     }
   }
 
-  private[this] def sendHttp2GoAway(http2Exception: Http2Exception): Future[Nothing] = {
+  private[this] def sendGoAway(http2Exception: Http2Exception): Future[Nothing] = {
     val reply = FrameSerializer.mkGoAwayFrame(0, http2Exception)
     channelWrite(reply).flatMap { _ =>
       sendOutboundCommand(Command.Disconnect)
