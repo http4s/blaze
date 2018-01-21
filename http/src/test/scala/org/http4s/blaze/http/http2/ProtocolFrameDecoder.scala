@@ -3,6 +3,7 @@ package org.http4s.blaze.http.http2
 import java.nio.charset.StandardCharsets
 import java.nio.ByteBuffer
 
+import org.http4s.blaze.http.http2.Http2Settings.Setting
 import org.http4s.blaze.http.http2.mocks.MockFrameListener
 
 private object ProtocolFrameDecoder {
@@ -18,6 +19,11 @@ private object ProtocolFrameDecoder {
 
     override def onPingFrame(ack: Boolean, data: Array[Byte]): Result = {
       frame = ProtocolFrame.Ping(if (ack) None else Some(data))
+      Continue
+    }
+
+    override def onSettingsFrame(settings: Option[Seq[Setting]]): Result = {
+      frame = ProtocolFrame.Settings(settings)
       Continue
     }
   }

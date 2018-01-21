@@ -4,6 +4,7 @@ import java.nio.ByteBuffer
 import java.util
 
 import org.http4s.blaze.http.http2.Http2Settings.Setting
+import org.http4s.blaze.http.http2.SettingsDecoder.SettingsFrame
 import org.http4s.blaze.http.http2.bits.Masks
 import org.http4s.blaze.http.http2.mocks.{MockFrameListener, MockHeaderAggregatingFrameListener}
 import org.http4s.blaze.util.BufferTools._
@@ -222,25 +223,24 @@ class FrameSerializerSpec extends Specification with ScalaCheck {
   }
 
   "SETTINGS frame" should {
-    case class SettingsFrame(ack: Boolean, settings: Seq[Setting])
 
     def dec(settingsFrame: SettingsFrame) =
       decoder(new MockFrameListener(false) {
-        override def onSettingsFrame(ack: Boolean, settings: Seq[Setting]): Result = {
-          settingsFrame.ack must_== ack
+        override def onSettingsFrame(settings: Option[Seq[Setting]]): Result = {
           settingsFrame.settings must_== settings
           Continue
         }
       })
 
     "roundtrip" >> prop { ack: Boolean =>
-      val settings = if (ack) Seq.empty else (0 until 100).map(i => Setting(i, i + 3))
+      val settings = if (ack) None else Some((0 until 100).map(i => Setting(i, i + 3)))
 
-      val buff1 =
-        if (ack) FrameSerializer.mkSettingsAckFrame()
-        else FrameSerializer.mkSettingsFrame(settings)
+      val buff1 = settings match {
+        case None => FrameSerializer.mkSettingsAckFrame()
+        case Some(settings) => FrameSerializer.mkSettingsFrame(settings)
+      }
 
-      dec(SettingsFrame(ack, settings)).decodeBuffer(buff1) must_== Continue
+      dec(SettingsFrame(settings)).decodeBuffer(buff1) must_== Continue
       buff1.remaining() must_== 0
     }
   }
