@@ -21,7 +21,7 @@ class SessionFrameListenerSpec extends Specification {
 
     lazy val newInboundStream: Option[Int => LeafBuilder[StreamMessage]] = None
 
-    override lazy val frameListener: SessionFrameListener =
+    lazy val frameListener: SessionFrameListener =
       new SessionFrameListener(this, isClient, headerDecoder)
 
     override lazy val streamManager: StreamManager = new StreamManagerImpl(this, newInboundStream)

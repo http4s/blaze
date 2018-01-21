@@ -6,5 +6,7 @@ sealed abstract class ProtocolFrame private extends Product with Serializable
 object ProtocolFrame {
   case class GoAway(lastHandleStream: Int, cause: Http2Exception) extends ProtocolFrame
 
+  case class Ping(data: Option[Array[Byte]]) extends ProtocolFrame
+
   case object Empty extends ProtocolFrame
 }

@@ -10,31 +10,17 @@ import scala.util.{Failure, Success}
 
 class PingManagerSpec extends Specification {
 
-  private class Ctx {
-    var pingData: Array[Byte] = Array.empty
-    val tools: MockTools = new MockTools(false) {
-      override lazy val frameListener: MockHeaderAggregatingFrameListener = new MockHeaderAggregatingFrameListener {
-        override def onPingFrame(ack: Boolean, data: Array[Byte]): Result = {
-          assert(!ack)
-          pingData = data
-          Continue
-        }
-      }
-    }
-  }
-
   "PingManager" should {
     "write a ping" in {
-      val ctx = new Ctx
-      import ctx._
+      val tools = new MockTools(false)
 
       // send one ping
       val f1 = tools.pingManager.ping()
       val buffer1 = BufferTools.joinBuffers(tools.writeController.observedWrites.toList)
       tools.writeController.observedWrites.clear()
 
-      tools.http2Decoder.decodeBuffer(buffer1) must_== Continue
-      tools.pingManager.pingAckReceived(pingData)
+      val ProtocolFrame.Ping(Some(pingData1)) = ProtocolFrameDecoder.decode(buffer1)
+      tools.pingManager.pingAckReceived(pingData1)
 
       f1.value must beLike {
         case Some(Success(_)) => ok
@@ -44,8 +30,8 @@ class PingManagerSpec extends Specification {
       val f2 = tools.pingManager.ping()
       val buffer2 = BufferTools.joinBuffers(tools.writeController.observedWrites.toList)
 
-      tools.http2Decoder.decodeBuffer(buffer2) must_== Continue
-      tools.pingManager.pingAckReceived(pingData)
+      val ProtocolFrame.Ping(Some(pingData2)) = ProtocolFrameDecoder.decode(buffer2)
+      tools.pingManager.pingAckReceived(pingData2)
 
       f2.value must beLike {
         case Some(Success(_)) => ok
@@ -53,8 +39,7 @@ class PingManagerSpec extends Specification {
     }
 
     "fail for a ping already in progress" in {
-      val ctx = new Ctx
-      import ctx._
+      val tools = new MockTools(false)
 
       // send one ping
       val f1 = tools.pingManager.ping()
@@ -70,7 +55,7 @@ class PingManagerSpec extends Specification {
       val buffer1 = BufferTools.joinBuffers(tools.writeController.observedWrites.toList)
       tools.writeController.observedWrites.clear()
 
-      tools.http2Decoder.decodeBuffer(buffer1) must_== Continue
+      val ProtocolFrame.Ping(Some(pingData)) = ProtocolFrameDecoder.decode(buffer1)
       tools.pingManager.pingAckReceived(pingData)
 
       f1.value must beLike {
@@ -79,14 +64,11 @@ class PingManagerSpec extends Specification {
     }
 
     "fail if the write fails" in {
-      val ctx = new Ctx {
-        override val tools: MockTools = new MockTools(true) {
-          override val writeController: MockWriteController = new MockWriteController {
-            override def write(data: Seq[ByteBuffer]): Boolean = false
-          }
+      val tools = new MockTools(true) {
+        override val writeController: MockWriteController = new MockWriteController {
+          override def write(data: Seq[ByteBuffer]): Boolean = false
         }
       }
-      import ctx._
 
       // ping should fail
       tools.pingManager.ping().value must beLike {
@@ -95,8 +77,7 @@ class PingManagerSpec extends Specification {
     }
 
     "closing fails pending ping" in {
-      val ctx = new Ctx
-      import ctx._
+      val tools = new MockTools(true)
 
       // ping should fail
       val f = tools.pingManager.ping()
