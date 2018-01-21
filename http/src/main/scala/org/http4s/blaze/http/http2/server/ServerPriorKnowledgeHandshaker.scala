@@ -30,7 +30,7 @@ private[http] class ServerPriorKnowledgeHandshaker(
   override protected def handshakeComplete(remoteSettings: MutableHttp2Settings, data: ByteBuffer): Future[Unit] =
     Future(installHttp2ServerStage(remoteSettings, data))
 
-  override protected def handlePrelude(): Future[ByteBuffer] =
+  override protected def handlePreface(): Future[ByteBuffer] =
     StageTools.accumulateAtLeast(bits.ClientHandshakeString.length, this).flatMap { buf =>
       val prelude = BufferTools.takeSlice(buf, bits.ClientHandshakeString.length)
       val preludeString = StandardCharsets.UTF_8.decode(prelude).toString

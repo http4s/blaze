@@ -32,6 +32,18 @@ private final class ConnectionImpl(
 
   private[this] val logger = org.log4s.getLogger
   private[this] val closedPromise = Promise[Unit]
+  private[this] val frameDecoder = new FrameDecoder(
+    localSettings,
+    new SessionFrameListener(
+      this,
+      isClient,
+      new HeaderDecoder(
+        maxHeaderListSize = localSettings.maxHeaderListSize,
+        discardOverflowHeaders = true,
+        maxTableSize = localSettings.headerTableSize
+      )
+    )
+  )
 
   @volatile
   private[this] var currentState: Connection.State = Connection.Running
@@ -42,21 +54,15 @@ private final class ConnectionImpl(
       invokeShutdownWithError(Some(cause), "SerialExecutor")
   }
 
-  private[this] val headerDecoder = new HeaderDecoder(
-    maxHeaderListSize = localSettings.maxHeaderListSize,
-    discardOverflowHeaders = true,
-    maxTableSize = localSettings.headerTableSize)
-
-  private[this] val headerEncoder: HeaderEncoder = new HeaderEncoder(remoteSettings.maxHeaderListSize)
-  private[this] val frameListener = new SessionFrameListener(this, isClient, headerDecoder)
+  override val http2Encoder = new FrameEncoder(remoteSettings,
+    new HeaderEncoder(remoteSettings.maxHeaderListSize))
 
   override val idManager: StreamIdManager = StreamIdManager(isClient)
-  override val http2Decoder = new FrameDecoder(localSettings, frameListener)
-  override val http2Encoder = new FrameEncoder(remoteSettings, headerEncoder)
   override val writeController = new WriteControllerImpl(this, 64*1024, tailStage)
   override val pingManager: PingManager = new PingManager(this)
   override val sessionFlowControl: SessionFlowControl = new SessionFlowControlImpl(this, flowStrategy)
   override val streamManager: StreamManager = new StreamManagerImpl(this, inboundStreamBuilder)
+
 
   // start read loop and add shutdown hooks
   readLoop(BufferTools.emptyBuffer)
@@ -78,7 +84,7 @@ private final class ConnectionImpl(
 
         logger.debug("Handling inbound data.")
         @tailrec
-        def go(): Unit = http2Decoder.decodeBuffer(data) match {
+        def go(): Unit = frameDecoder.decodeBuffer(data) match {
           case Continue => go()
           case BufferUnderflow => readLoop(data)
           case Error(ex: Http2StreamException) =>

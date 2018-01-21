@@ -41,7 +41,7 @@ private[http] class ClientPriorKnowledgeHandshaker(
     ()
   }
 
-  override protected def handlePrelude(): Future[ByteBuffer] =
+  override protected def handlePreface(): Future[ByteBuffer] =
     channelWrite(bits.getHandshakeBuffer()).map { _ => BufferTools.emptyBuffer }
 
   override protected def handshakeComplete(

@@ -1,6 +1,7 @@
 package org.http4s.blaze.http.http2
 
 import java.nio.ByteBuffer
+import java.nio.charset.StandardCharsets
 
 import org.http4s.blaze.pipeline.{Command, TailStage}
 import org.http4s.blaze.util.{BufferTools, Execution}
@@ -13,14 +14,23 @@ abstract class PriorKnowledgeHandshaker[T](localSettings: ImmutableHttp2Settings
 
   override def name: String = s"${getClass.getSimpleName}($localSettings)"
 
-  protected def handlePrelude(): Future[ByteBuffer]
+  /** Handle the prior knowledge preface
+    *
+    * The preface is the magic string "PRI * HTTP/2.0\r\n\r\nSM\r\n\r\n"
+    * which is intended to cause HTTP/1.x connections to fail gracefully.
+    * For clients, this involves sending the magic string and for servers
+    * this consists of receiving the magic string. The return value of this
+    * function is any unconsumed inbound data.
+    */
+  protected def handlePreface(): Future[ByteBuffer]
 
+  /** Perform pipeline manipulations necessary upon successful handshaking */
   protected def handshakeComplete(remoteSettings: MutableHttp2Settings, data: ByteBuffer): Future[T]
 
+  /** Perform the HTTP/2 prior knowledge handshake */
   final def handshake(): Future[T] = {
     logger.debug("Beginning handshake.")
-
-    handlePrelude()
+    handlePreface()
       .flatMap(handleSettings)
       .flatMap { case (settings, acc) =>
         handshakeComplete(settings, acc)
@@ -44,21 +54,24 @@ abstract class PriorKnowledgeHandshaker[T](localSettings: ImmutableHttp2Settings
           receiveSettings(BufferTools.concatBuffers(acc, buff))
         }
 
-      // still need more data
-      case size if acc.remaining() < size =>
+        // still need more data
+      case size if acc.remaining < size =>
         logger.debug {
-          val b = acc.duplicate()
-          val sb = new StringBuilder
-          while (b.hasRemaining) {
-            sb.append(b.get.toChar)
-          }
-
-          s"Insufficient data: ${sb.result()}"
+          val str = StandardCharsets.UTF_8.decode(acc.duplicate())
+          s"Insufficient data. Current representation: ${str}"
         }
 
         channelRead().flatMap { buff =>
           receiveSettings(BufferTools.concatBuffers(acc, buff))
         }
+
+        // received an oversized frame
+      case size if localSettings.maxFrameSize < size =>
+        // The settings frame is too large so abort
+        val ex = Http2Exception.FRAME_SIZE_ERROR.goaway(
+          "While waiting for initial settings frame, encountered frame of " +
+            s"size $size exceeded MAX_FRAME_SIZE (${localSettings.maxFrameSize})")
+        sendHttp2GoAway(ex)
 
       case size =>  // we have at least a settings frame
         val settingsBuffer = BufferTools.takeSlice(acc, size)

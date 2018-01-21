@@ -5,7 +5,7 @@ import java.nio.charset.StandardCharsets
 
 import org.http4s.blaze.http.HttpClientSession
 import org.http4s.blaze.http.http2.ProtocolFrame.GoAway
-import org.http4s.blaze.http.http2.mocks.MockFrameListener
+import org.http4s.blaze.http.http2.mocks.{MockFrameListener, MockHeadStage}
 import org.http4s.blaze.pipeline.stages.BasicTail
 import org.http4s.blaze.pipeline.{HeadStage, LeafBuilder}
 import org.http4s.blaze.util.{BufferTools, Execution}
@@ -19,38 +19,9 @@ import scala.util.{Failure, Success}
 
 class ConnectionImplSpec extends Specification {
 
-  private class Head extends HeadStage[ByteBuffer] {
-    override def name: String = "Head"
-
-    val reads = new mutable.Queue[Promise[ByteBuffer]]()
-    val writes = new mutable.Queue[(ByteBuffer, Promise[Unit])]()
-
-    override def readRequest(size: Int): Future[ByteBuffer] = {
-      val p = Promise[ByteBuffer]
-      reads += p
-      p.future
-    }
-
-    override def writeRequest(data: ByteBuffer): Future[Unit] = {
-      val p = Promise[Unit]
-      writes += data -> p
-      p.future
-    }
-  }
-
   private class Ctx {
-
-    lazy val head = new Head
+    lazy val head = new MockHeadStage
     lazy val tailStage = new BasicTail[ByteBuffer]("Tail")
-
-    def consumeOutboundData(): ByteBuffer = {
-      val buf = BufferTools.joinBuffers(head.writes.toList.map { case (b, p) =>
-        p.success(())
-        b
-      })
-      head.writes.clear()
-      buf
-    }
 
     // Zip up the stages
     LeafBuilder(tailStage).base(head)
@@ -71,20 +42,9 @@ class ConnectionImplSpec extends Specification {
       inboundStreamBuilder = streamBuilder,
       parentExecutor = Execution.trampoline
     )
-  }
 
-  private def decodeGoAway(buffer: ByteBuffer): ProtocolFrame.GoAway = {
-    var goAway: ProtocolFrame.GoAway = null
-    val listener = new MockFrameListener(false) {
-      override def onGoAwayFrame(lastStream: Int, errorCode: Long, debugData: Array[Byte]): Result = {
-        val str = new String(debugData, StandardCharsets.UTF_8)
-        goAway = ProtocolFrame.GoAway(lastStream, Http2SessionException(errorCode, str))
-        Continue
-      }
-    }
-    require(new FrameDecoder(Http2Settings.default, listener).decodeBuffer(buffer) == Continue)
-    require(goAway != null)
-    goAway
+    def decodeGoAway(data: ByteBuffer): ProtocolFrame =
+      ProtocolFrameDecoder.decode(data)
   }
 
   "ConnectionImpl" >> {
@@ -175,7 +135,7 @@ class ConnectionImplSpec extends Specification {
 
         connection.invokeShutdownWithError(None, "test1")
 
-        decodeGoAway(consumeOutboundData()) must beLike {
+        decodeGoAway(head.consumeOutboundData()) must beLike {
           case GoAway(0, Http2SessionException(code, _)) => code must_== Http2Exception.NO_ERROR.code
         }
 
@@ -189,7 +149,7 @@ class ConnectionImplSpec extends Specification {
 
         connection.invokeShutdownWithError(None, "test1")
 
-        decodeGoAway(consumeOutboundData()) must beLike {
+        decodeGoAway(head.consumeOutboundData()) must beLike {
           case GoAway(0, Http2SessionException(code, _)) => code must_== Http2Exception.NO_ERROR.code
         }
       }
@@ -200,13 +160,13 @@ class ConnectionImplSpec extends Specification {
 
         val f = connection.drainSession(Duration.Inf)
 
-        decodeGoAway(consumeOutboundData()) must beLike {
+        decodeGoAway(head.consumeOutboundData()) must beLike {
           case GoAway(0, Http2SessionException(code, _)) => code must_== Http2Exception.NO_ERROR.code
         }
 
         connection.invokeShutdownWithError(None, "test1")
 
-        consumeOutboundData().remaining must_== 0
+        head.consumeOutboundData().remaining must_== 0
       }
     }
 
@@ -220,12 +180,12 @@ class ConnectionImplSpec extends Specification {
         LeafBuilder(basicStage).base(stage)
 
         val w1 = basicStage.channelWrite(HeadersFrame(Priority.NoPriority, endStream = true, Seq.empty))
-        consumeOutboundData()
+        head.consumeOutboundData()
         w1.value must_== Some(Success(()))
         // Now the stream has been initiated
         val err = Http2Exception.NO_ERROR.goaway("")
         connection.invokeGoAway(math.max(0, connection.idManager.lastOutboundStream - 2), err)
-        consumeOutboundData() // need to consume the GOAWAY
+        head.consumeOutboundData() // need to consume the GOAWAY
 
         val w2 = basicStage.channelRead()
         w2.value must beLike {
@@ -242,12 +202,12 @@ class ConnectionImplSpec extends Specification {
         LeafBuilder(basicStage).base(stage)
 
         val w1 = basicStage.channelWrite(HeadersFrame(Priority.NoPriority, endStream = false, Seq.empty))
-        consumeOutboundData()
+        head.consumeOutboundData()
         w1.value must_== Some(Success(()))
         // Now the stream has been initiated
         val err = Http2Exception.NO_ERROR.goaway("")
         connection.invokeGoAway(connection.idManager.lastOutboundStream, err)
-        consumeOutboundData() // need to consume the GOAWAY
+        head.consumeOutboundData() // need to consume the GOAWAY
 
         val w2 = basicStage.channelWrite(DataFrame(true, BufferTools.emptyBuffer))
         w2.value must_== Some(Success(()))
@@ -276,7 +236,7 @@ class ConnectionImplSpec extends Specification {
 
         connection.invokeDrain(4.seconds)
 
-        decodeGoAway(consumeOutboundData()) must beLike {
+        decodeGoAway(head.consumeOutboundData()) must beLike {
           case GoAway(0, Http2SessionException(code, _)) => code must_== Http2Exception.NO_ERROR.code
         }
       }
@@ -290,11 +250,11 @@ class ConnectionImplSpec extends Specification {
         LeafBuilder(basicStage).base(stage)
 
         val w1 = basicStage.channelWrite(HeadersFrame(Priority.NoPriority, endStream = false, Seq.empty))
-        consumeOutboundData()
+        head.consumeOutboundData()
         w1.value must_== Some(Success(()))
         // Now the stream has been initiated
         connection.invokeDrain(4.seconds)
-        consumeOutboundData() // need to consume the GOAWAY
+        head.consumeOutboundData() // need to consume the GOAWAY
 
         val w2 = basicStage.channelWrite(DataFrame(true, BufferTools.emptyBuffer))
         w2.value must_== Some(Success(()))
