@@ -82,6 +82,8 @@ class ServerPriorKnowledgeHandshakerSpec extends Specification {
       serverSession.value must beLike {
         case Some(Failure(ex: Http2Exception)) => ex.code must_== Http2Exception.FRAME_SIZE_ERROR.code
       }
+
+      head.disconnected must beTrue
     }
 
     "Sends a GOAWAY(PROTOCOL_ERROR) if the first frame isn't a settings frame" in {
@@ -107,6 +109,8 @@ class ServerPriorKnowledgeHandshakerSpec extends Specification {
       serverSession.value must beLike {
         case Some(Failure(ex: Http2Exception)) => ex.code must_== Http2Exception.PROTOCOL_ERROR.code
       }
+
+      head.disconnected must beTrue
     }
   }
 }
