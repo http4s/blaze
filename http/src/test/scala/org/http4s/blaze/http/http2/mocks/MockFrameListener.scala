@@ -13,7 +13,7 @@ private[http2] class MockFrameListener(inHeaders: Boolean) extends FrameListener
 
   // For handling unknown stream frames
   override def onHeadersFrame(streamId: Int, priority: Priority, end_headers: Boolean, end_stream: Boolean, buffer: ByteBuffer): Result = ???
-  override def onSettingsFrame(ack: Boolean, settings: Seq[Setting]): Result = ???
+  override def onSettingsFrame(settings: Option[Seq[Setting]]): Result = ???
   override def onRstStreamFrame(streamId: Int, code: Long): Result = ???
   override def onPriorityFrame(streamId: Int, priority: Priority.Dependent): Result = ???
   override def onContinuationFrame(streamId: Int, endHeaders: Boolean, data: ByteBuffer): Result = ???

@@ -243,7 +243,7 @@ class SessionFrameListenerSpec extends Specification {
       "Updates remote settings" >> {
         val tools = new MockTools(true)
         val settingChange = Http2Settings.INITIAL_WINDOW_SIZE(1)
-        tools.frameListener.onSettingsFrame(false, Seq(settingChange)) must_== Continue
+        tools.frameListener.onSettingsFrame(Some(Seq(settingChange))) must_== Continue
 
         // Should have changed the setting
         tools.remoteSettings.initialWindowSize must_== 1

@@ -3,6 +3,7 @@ package org.http4s.blaze.http.http2
 import java.nio.ByteBuffer
 import java.nio.charset.StandardCharsets
 
+import org.http4s.blaze.http.http2.SettingsDecoder.SettingsFrame
 import org.http4s.blaze.pipeline.{Command, TailStage}
 import org.http4s.blaze.util.{BufferTools, Execution}
 
@@ -76,9 +77,9 @@ abstract class PriorKnowledgeHandshaker[T](localSettings: ImmutableHttp2Settings
       case size =>  // we have at least a settings frame
         val settingsBuffer = BufferTools.takeSlice(acc, size)
         SettingsDecoder.decodeSettingsFrame(settingsBuffer) match {
-          case Right(settingsFrame) if !settingsFrame.isAck =>
+          case Right(SettingsFrame(Some(newSettings))) =>
             val remoteSettings = MutableHttp2Settings.default()
-            MutableHttp2Settings.updateSettings(remoteSettings, settingsFrame.settings) match {
+            remoteSettings.updateSettings(newSettings) match {
               case None => sendSettingsAck().map { _ => remoteSettings -> acc }
               case Some(ex) =>
                 // there was a problem with the settings: write it and fail.
@@ -87,7 +88,7 @@ abstract class PriorKnowledgeHandshaker[T](localSettings: ImmutableHttp2Settings
                 }
             }
 
-          case Right(_) => // was an ack! This is a PROTOCOL_ERROR
+          case Right(SettingsFrame(None)) => // was an ack! This is a PROTOCOL_ERROR
             val ex = Http2Exception.PROTOCOL_ERROR.goaway(
               "Received a SETTINGS ack before receiving remote settings")
             sendHttp2GoAway(ex)

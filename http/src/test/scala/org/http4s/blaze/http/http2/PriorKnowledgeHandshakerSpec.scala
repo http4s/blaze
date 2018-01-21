@@ -3,7 +3,7 @@ package org.http4s.blaze.http.http2
 import org.http4s.blaze.http.http2.client.ClientPriorKnowledgeHandshaker
 import org.http4s.blaze.http.http2.mocks.MockHeadStage
 import org.http4s.blaze.pipeline.{Command, LeafBuilder}
-import org.http4s.blaze.util.Execution
+import org.http4s.blaze.util.{BufferTools, Execution}
 import org.specs2.mutable.Specification
 
 abstract class PriorKnowledgeHandshakerSpec extends Specification {
@@ -55,8 +55,14 @@ class ClientPriorKnowledgeHandshakerSpec extends PriorKnowledgeHandshakerSpec {
       LeafBuilder(tail).base(head)
       head.sendInboundCommand(Command.Connected)
 
+      val expectedPreludeBuffer = bits.getHandshakeBuffer()
       val data = head.consumeOutboundData()
-      ko
+      val receivedPrelude = BufferTools.takeSlice(data, expectedPreludeBuffer.remaining)
+
+      receivedPrelude must_== expectedPreludeBuffer
+      ProtocolFrameDecoder.decode(data) must beLike {
+        case ProtocolFrame.Settings(Some(_)) => ok
+      }
     }
   }
 }

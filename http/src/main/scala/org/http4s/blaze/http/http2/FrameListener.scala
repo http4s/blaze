@@ -81,10 +81,10 @@ private trait FrameListener {
     *
     * https://tools.ietf.org/html/rfc7540#section-6.5
     *
-    * @param ack if this was an acknowledgment to an outbound SETTINGS frame
-    * @param settings Settings contained in this frame. If this is an ack, it will always be empty.
+    * @param settings Settings contained in this frame. If this is an ack,
+    *                 `settings` will be `None`.
     */
-  def onSettingsFrame(ack: Boolean, settings: Seq[Setting]): Result
+  def onSettingsFrame(settings: Option[Seq[Setting]]): Result
 
   /** Called on successful receipt of a PUSH_PROMISE frame
     *
