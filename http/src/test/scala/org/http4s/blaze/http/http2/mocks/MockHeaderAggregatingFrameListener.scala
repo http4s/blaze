@@ -13,7 +13,7 @@ private[http2] class MockHeaderAggregatingFrameListener extends HeaderAggregatin
   override def onCompleteHeadersFrame(streamId: Int, priority: Priority, end_stream: Boolean, headers: Headers): Result = ???
   override def onGoAwayFrame(lastStream: Int, errorCode: Long, debugData: Array[Byte]): Result = ???
   override def onPingFrame(ack: Boolean, data: Array[Byte]): Result = ???
-  override def onSettingsFrame(ack: Boolean, settings: Seq[Setting]): Result = ???
+  override def onSettingsFrame(settings: Option[Seq[Setting]]): Result = ???
 
   // For handling unknown stream frames
   override def onRstStreamFrame(streamId: Int, code: Long): Result = ???

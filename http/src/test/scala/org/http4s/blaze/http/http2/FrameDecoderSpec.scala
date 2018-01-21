@@ -546,10 +546,8 @@ class FrameDecoderSpec extends Specification {
 
   "SETTINGS" >> {
     class SettingsListener extends MockFrameListener(false) {
-      var ack: Option[Boolean] = None
-      var settings: Option[Seq[Setting]] = None
-      override def onSettingsFrame(ack: Boolean, settings: Seq[Setting]): Result = {
-        this.ack = Some(ack)
+      var settings: Option[Option[Seq[Setting]]] = None
+      override def onSettingsFrame(settings: Option[Seq[Setting]]): Result = {
         this.settings = Some(settings)
         Continue
       }
@@ -574,8 +572,7 @@ class FrameDecoderSpec extends Specification {
       val dec = new FrameDecoder(Http2Settings.default, listener)
 
       dec.decodeBuffer(testData) must_== Continue
-      listener.ack must beSome(false)
-      listener.settings must_== Some(Seq.empty[Setting])
+      listener.settings must_== Some(Some(Seq.empty[Setting]))
     }
 
     "simple frame ack" >> {
@@ -591,8 +588,7 @@ class FrameDecoderSpec extends Specification {
       val dec = new FrameDecoder(Http2Settings.default, listener)
 
       dec.decodeBuffer(testData) must_== Continue
-      listener.ack must beSome(true)
-      listener.settings must_== Some(Seq.empty[Setting])
+      listener.settings must_== Some(None)
     }
 
     "simple frame with settings" >> {
@@ -610,8 +606,7 @@ class FrameDecoderSpec extends Specification {
       val dec = new FrameDecoder(Http2Settings.default, listener)
 
       dec.decodeBuffer(testData) must_== Continue
-      listener.ack must beSome(false)
-      listener.settings must_== Some(Seq(Setting(0, 1)))
+      listener.settings must_== Some(Some(Seq(Setting(0, 1))))
     }
 
     "streamid != 0" >> {

@@ -98,17 +98,17 @@ private class SessionFrameListener(
     Continue
   }
 
-  override def onSettingsFrame(ack: Boolean, settings: Seq[Setting]): Result = {
+  override def onSettingsFrame(settings: Option[Seq[Setting]]): Result = settings match {
     // We don't consider the uncertainty between us sending a SETTINGS frame and its ack
     // but that's OK since we never update settings after the initial handshake.
-    if (ack) Continue
-    else {
+    case None => Continue // ack
+    case Some(settings) =>
       val remoteSettings = session.remoteSettings
       // These two settings require some action if they change
       val initialInitialWindowSize = remoteSettings.initialWindowSize
       val initialHeaderTableSize = remoteSettings.headerTableSize
 
-      val result = MutableHttp2Settings.updateSettings(remoteSettings, settings) match {
+      val result = remoteSettings.updateSettings(settings) match {
         case Some(ex) => Error(ex) // problem with settings
         case None =>
           if (remoteSettings.headerTableSize != initialHeaderTableSize) {
@@ -132,7 +132,6 @@ private class SessionFrameListener(
       }
 
       result
-    }
   }
 
   override def onGoAwayFrame(lastStream: Int, errorCode: Long, debugData: Array[Byte]): Result = {

@@ -177,8 +177,8 @@ private class FrameDecoder(localSettings: Http2Settings, listener: FrameListener
   //////////// SETTINGS ///////////////
   private[this] def decodeSettingsFrame(buffer: ByteBuffer, streamId: Int, flags: Byte): Result = {
     SettingsDecoder.decodeSettingsFrame(buffer, streamId, flags) match {
-      case Right(SettingsFrame(isAck, settings)) =>
-        listener.onSettingsFrame(isAck, settings)
+      case Right(SettingsFrame(settings)) =>
+        listener.onSettingsFrame(settings)
 
       case Left(ex) =>
         Error(ex)

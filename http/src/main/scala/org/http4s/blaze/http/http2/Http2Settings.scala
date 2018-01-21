@@ -131,14 +131,22 @@ object Http2Settings {
     */
   object InvalidSetting {
     def unapply(setting: Setting): Option[Http2Exception] = setting match {
+
+      case ENABLE_PUSH(v) if !isBoolSetting(v) =>
+        Some(Http2Exception.PROTOCOL_ERROR.goaway(s"Invalid ENABLE_PUSH value: $v"))
+
       case MAX_FRAME_SIZE(size) if 16384 > size || size > 16777215 =>
         Some(Http2Exception.PROTOCOL_ERROR.goaway(s"Invalid MAX_FRAME_SIZE: $size"))
 
       case Setting(code, value) if value < 0 =>
-        val ex = Http2Exception.PROTOCOL_ERROR.goaway(s"Integer overflow for setting ${setting.name}: ${value}")
-        Some(ex)
+        Some(Http2Exception.PROTOCOL_ERROR.goaway(s"Integer overflow for setting ${setting.name}: ${value}"))
 
       case _ => None
+    }
+
+    private def isBoolSetting(i: Int): Boolean = i match {
+      case 0 | 1 => true
+      case _ => false
     }
   }
 
@@ -171,17 +179,38 @@ private final class MutableHttp2Settings private(
   var maxFrameSize: Int,
   var maxHeaderListSize: Int
 ) extends Http2Settings { // initially unbounded
+  import MutableHttp2Settings._
 
-  // Have we received a GOAWAY frame?
-  var receivedGoAway = false
+  def updateSettings(newSettings: Seq[Setting]): Option[Http2Exception] = {
+    import Http2Settings._
+
+    val invalidSettingError = newSettings.collectFirst {
+      case i @ InvalidSetting(ex) =>
+        logger.info(ex)(s"Received invalid setting $i")
+        ex
+    }
+
+    // If we didn't detect an invalid setting we can update ourselves
+    if (invalidSettingError.isEmpty) newSettings.foreach {
+      case HEADER_TABLE_SIZE(size)      => headerTableSize = size.toInt
+      case ENABLE_PUSH(v) => pushEnabled = v != 0
+      case MAX_CONCURRENT_STREAMS(max)  => maxConcurrentStreams = max.toInt
+      case INITIAL_WINDOW_SIZE(size)    => initialWindowSize = size.toInt
+      case MAX_FRAME_SIZE(size)         => maxFrameSize = size.toInt
+      case MAX_HEADER_LIST_SIZE(size)   => maxHeaderListSize = size.toInt
+      case setting =>
+        logger.info(s"Received setting $setting which we don't know what to do with. Ignoring.")
+    }
+
+    invalidSettingError
+  }
 
   override def toString: String =
-    s"MutableHttp2Settings($toSeq, GOAWAY: $receivedGoAway)"
+    s"MutableHttp2Settings(${toSeq.mkString(", ")})"
 }
 
 private object MutableHttp2Settings {
-
-  private[this] val logger = getLogger
+  private val logger = getLogger
 
   /** Construct a new [[MutableHttp2Settings]] from a [[Http2Settings]] instance */
   def apply(settings: Http2Settings): MutableHttp2Settings =
@@ -193,31 +222,6 @@ private object MutableHttp2Settings {
       maxFrameSize = settings.maxFrameSize,
       maxHeaderListSize = settings.maxHeaderListSize
     )
-
-  def updateSettings(settings: MutableHttp2Settings, newSettings: Seq[Setting]): Option[Http2Exception] = {
-    import Http2Settings._
-    val it = newSettings.iterator
-    while(it.hasNext) it.next() match {
-      case i@InvalidSetting(ex)         =>
-        logger.info(ex)(s"Received invalid setting $i")
-        return Some(ex)
-
-      case HEADER_TABLE_SIZE(size)      => settings.headerTableSize = size.toInt
-      case ENABLE_PUSH(enabled)         =>
-        if (enabled == 0) settings.pushEnabled = false
-        else if (enabled == 1) settings.pushEnabled = true
-        else return Some(Http2Exception.PROTOCOL_ERROR.goaway(s"Invalid ENABLE_PUSH value: $enabled"))
-
-      case MAX_CONCURRENT_STREAMS(max)  => settings.maxConcurrentStreams = max.toInt
-      case INITIAL_WINDOW_SIZE(size)    => settings.initialWindowSize = size.toInt
-      case MAX_FRAME_SIZE(size)         => settings.maxFrameSize = size.toInt
-      case MAX_HEADER_LIST_SIZE(size)   => settings.maxHeaderListSize = size.toInt
-      case setting =>
-        logger.info(s"Received setting $setting which we don't know what to do with. Ignoring.")
-    }
-
-    None
-  }
 
   /** Create a new [[MutableHttp2Settings]] using the HTTP2 defaults */
   def default(): MutableHttp2Settings = MutableHttp2Settings(Http2Settings.default)
