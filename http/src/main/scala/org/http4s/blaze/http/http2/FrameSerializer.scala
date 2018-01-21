@@ -204,24 +204,23 @@ private object FrameSerializer {
     buffer
   }
 
-  def mkGoAwayFrame(lastStreamId: Int, error: Http2Exception): Seq[ByteBuffer] = {
+  def mkGoAwayFrame(lastStreamId: Int, error: Http2Exception): ByteBuffer = {
     val msgString = error.getMessage.getBytes(StandardCharsets.UTF_8)
     mkGoAwayFrame(lastStreamId, error.code, msgString)
   }
 
-
-  def mkGoAwayFrame(lastStreamId: Int, error: Long, debugData: Array[Byte]): Seq[ByteBuffer] = {
+  def mkGoAwayFrame(lastStreamId: Int, error: Long, debugData: Array[Byte]): ByteBuffer = {
     require(0 <= lastStreamId, "Invalid last stream id for GOAWAY frame")
 
     val size = 8
-    val buffer = BufferTools.allocate(HeaderSize + size)
+    val buffer = BufferTools.allocate(HeaderSize + size + debugData.length)
     writeFrameHeader(size + debugData.length, FrameTypes.GOAWAY, 0x0, 0, buffer)
     buffer
       .putInt(lastStreamId & Masks.INT31)
       .putInt(error.toInt)
+      .put(debugData)
       .flip()
-
-    buffer::ByteBuffer.wrap(debugData)::Nil
+    buffer
   }
 
   def mkWindowUpdateFrame(streamId: Int, increment: Int): ByteBuffer = {
