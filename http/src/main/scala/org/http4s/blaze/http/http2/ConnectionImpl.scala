@@ -97,6 +97,7 @@ private final class ConnectionImpl(
               case None =>
                 val msg = FrameSerializer.mkRstStreamFrame(ex.stream, ex.code)
                 writeController.write(msg)
+                ()
             }
 
           case Error(ex) =>
@@ -130,8 +131,10 @@ private final class ConnectionImpl(
 
   override def ping(): Future[Duration] = {
     val p = Promise[Duration]
-    serialExecutor.execute(new Runnable { def run(): Unit =
-      p.completeWith(pingManager.ping()) })
+    serialExecutor.execute(new Runnable { def run(): Unit = {
+      p.completeWith(pingManager.ping())
+      ()
+    }})
     p.future
   }
 
@@ -215,6 +218,7 @@ private final class ConnectionImpl(
       sentGoAway = true
       val frame = FrameSerializer.mkGoAwayFrame(idManager.lastInboundStream, ex)
       writeController.write(frame)
+      ()
     }
   }
 }
