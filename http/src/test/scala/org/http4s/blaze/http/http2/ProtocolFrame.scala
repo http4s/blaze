@@ -12,7 +12,5 @@ object ProtocolFrame {
 
   case class Settings(settings: Option[Seq[Setting]]) extends ProtocolFrame
 
-  case class Settings(settings: Option[Seq[Setting]]) extends ProtocolFrame
-
   case object Empty extends ProtocolFrame
 }
