@@ -48,12 +48,12 @@ private object SettingsDecoder {
 
     val len = buffer.remaining
     val isAck = Flags.ACK(flags)
-    val settingsCount = len / 6 // 6 bytes per setting
 
     if (len % 6 != 0) { // Invalid frame size
-    val msg = s"SETTINGS frame payload must be multiple of 6 bytes, size: $len"
+      val msg = s"SETTINGS frame payload must be multiple of 6 bytes, size: $len"
       Left(FRAME_SIZE_ERROR.goaway(msg))
-    } else if (isAck && settingsCount != 0) {
+    } else if (isAck && len != 0) {
+      val settingsCount = len / 6 // 6 bytes per setting
       val msg = s"SETTINGS ACK frame with settings payload ($settingsCount settings)"
       Left(FRAME_SIZE_ERROR.goaway(msg))
     } else if (streamId != 0x0) {

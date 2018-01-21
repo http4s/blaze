@@ -26,6 +26,11 @@ private object ProtocolFrameDecoder {
       frame = ProtocolFrame.Settings(settings)
       Continue
     }
+
+    override def onSettingsFrame(settings: Option[Seq[Setting]]): Result = {
+      frame = ProtocolFrame.Settings(settings)
+      Continue
+    }
   }
 
   def decode(
