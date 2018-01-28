@@ -2,7 +2,10 @@ package org.http4s.blaze.http.http2
 
 import org.http4s.blaze.http.http2.FlowStrategy.Increment
 
-/** The goal of the `FlowStrategy` is to advise when to do windows updates for inbound data */
+/** `FlowStrategy` advises a session when to send window updates
+  *
+  * A `FlowStrategy` will be shared among many sessions.
+  */
 trait FlowStrategy {
   /** Decide if the session window needs to send a WINDOW_UPDATE frame
     *

@@ -18,7 +18,7 @@ private object ProtocolFrameDecoder {
     }
 
     override def onPingFrame(ack: Boolean, data: Array[Byte]): Result = {
-      frame = ProtocolFrame.Ping(if (ack) None else Some(data))
+      frame = ProtocolFrame.Ping(ack, data)
       Continue
     }
 
