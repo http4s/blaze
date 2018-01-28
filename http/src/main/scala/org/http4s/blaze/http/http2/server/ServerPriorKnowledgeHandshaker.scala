@@ -11,7 +11,6 @@ import org.http4s.blaze.util.{BufferTools, Execution, StageTools}
 import scala.concurrent.Future
 import scala.util.Failure
 
-// TODO: can we reduce the visibility of this?
 private[http] class ServerPriorKnowledgeHandshaker(
     localSettings: ImmutableHttp2Settings,
     flowStrategy: FlowStrategy,

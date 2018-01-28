@@ -5,12 +5,12 @@ import java.nio.ByteBuffer
 import org.http4s.blaze.http.{Http2ClientSession, HttpRequest}
 import org.http4s.blaze.http.HttpClientSession.{ReleaseableResponse, Status}
 import org.http4s.blaze.http.http2._
-import org.http4s.blaze.pipeline.{Command, LeafBuilder, TailStage}
-import org.log4s.getLogger
+import org.http4s.blaze.pipeline.TailStage
 
 import scala.concurrent.duration.Duration
 import scala.concurrent.{ExecutionContext, Future}
 
+// TODO: a stub interface that will be filled out later
 private final class ClientSessionImpl(
     tailStage: TailStage[ByteBuffer],
     localSettings: ImmutableHttp2Settings,

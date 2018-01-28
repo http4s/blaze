@@ -1,7 +1,6 @@
 package org.http4s.blaze.http.http2
 
 import java.nio.ByteBuffer
-import java.nio.charset.StandardCharsets
 
 import org.http4s.blaze.http.http2.SettingsDecoder.SettingsFrame
 import org.http4s.blaze.pipeline.{Command, TailStage}
@@ -39,7 +38,7 @@ abstract class PriorKnowledgeHandshaker[T](localSettings: ImmutableHttp2Settings
   }
 
   private[this] def handleSettings(bytes: ByteBuffer): Future[(MutableHttp2Settings, ByteBuffer)] = {
-    sendSettings().flatMap { _ => receiveSettings(bytes) }
+    sendSettings().flatMap { _ => readSettings(bytes) }
   }
 
   private[this] def sendSettings(): Future[Unit] = {
@@ -47,48 +46,50 @@ abstract class PriorKnowledgeHandshaker[T](localSettings: ImmutableHttp2Settings
     channelWrite(settingsBuffer)
   }
 
-  private[this] def receiveSettings(acc: ByteBuffer): Future[(MutableHttp2Settings, ByteBuffer)] = {
-    logger.debug("receiving settings")
+  // Attempt to read a SETTINGS frame and return it and any leftover data
+  private[this] def readSettings(acc: ByteBuffer): Future[(MutableHttp2Settings, ByteBuffer)] = {
+    logger.debug(s"receiving settings. Available data: $acc")
     getFrameSize(acc) match {
-      case -1 =>
-        channelRead().flatMap { buff =>
-          receiveSettings(BufferTools.concatBuffers(acc, buff))
-        }
-
-        // still need more data
-      case size if acc.remaining < size =>
-        logger.debug {
-          val str = StandardCharsets.UTF_8.decode(acc.duplicate())
-          s"Insufficient data. Current representation: ${str}"
-        }
-
-        channelRead().flatMap { buff =>
-          receiveSettings(BufferTools.concatBuffers(acc, buff))
-        }
-
-        // received an oversized frame
-      case size if localSettings.maxFrameSize < size =>
+      // received a (maybe partial) frame that exceeded the max allowed frame length
+      // which is 9 bytes for the header and the length of the frame payload.
+      case Some(size) if localSettings.maxFrameSize + bits.HeaderSize < size =>
         // The settings frame is too large so abort
         val ex = Http2Exception.FRAME_SIZE_ERROR.goaway(
           "While waiting for initial settings frame, encountered frame of " +
             s"size $size exceeded MAX_FRAME_SIZE (${localSettings.maxFrameSize})")
+        logger.info(ex)(s"Received SETTINGS frame that was to large")
         sendGoAway(ex)
 
-      case size =>  // we have at least a settings frame
+      // still need more data
+      case frameSize if needsMoreData(acc.remaining, frameSize) =>
+        logger.debug(s"Insufficient data. Current representation: " +
+          BufferTools.hexString(acc, 256))
+
+        channelRead().flatMap { buff =>
+          readSettings(BufferTools.concatBuffers(acc, buff))
+        }
+
+      // We have at least a SETTINGS frame so we can process it
+      case Some(size) =>
         val settingsBuffer = BufferTools.takeSlice(acc, size)
         SettingsDecoder.decodeSettingsFrame(settingsBuffer) match {
           case Right(SettingsFrame(Some(newSettings))) =>
             val remoteSettings = MutableHttp2Settings.default()
             remoteSettings.updateSettings(newSettings) match {
-              case None => sendSettingsAck().map { _ => remoteSettings -> acc }
+              case None =>
+                logger.debug(s"Successfully received settings frame. Current " +
+                  s"remote settings: $remoteSettings")
+                sendSettingsAck().map { _ => remoteSettings -> acc }
+
               case Some(ex) =>
-                // there was a problem with the settings: write it and fail.
+                logger.info(ex)(s"Received SETTINGS frame but failed to update.")
                 channelWrite(FrameSerializer.mkGoAwayFrame(0, ex)).flatMap { _ =>
                   Future.failed(ex)
                 }
             }
 
           case Right(SettingsFrame(None)) => // was an ack! This is a PROTOCOL_ERROR
+            logger.info(s"Received a SETTINGS ack frame which is a protocol error. Shutting down.")
             val ex = Http2Exception.PROTOCOL_ERROR.goaway(
               "Received a SETTINGS ack before receiving remote settings")
             sendGoAway(ex)
@@ -97,6 +98,11 @@ abstract class PriorKnowledgeHandshaker[T](localSettings: ImmutableHttp2Settings
           case Left(http2Exception) => sendGoAway(http2Exception)
         }
     }
+  }
+
+  private[this] def needsMoreData(have: Int, size: Option[Int]): Boolean = size match {
+    case None => true // didn't have enough data for even the header
+    case Some(size) => have < size // Have the header byt not a complete frame
   }
 
   private[this] def sendGoAway(http2Exception: Http2Exception): Future[Nothing] = {
@@ -117,15 +123,17 @@ abstract class PriorKnowledgeHandshaker[T](localSettings: ImmutableHttp2Settings
     channelWrite(ackSettings)
   }
 
-  private[this] def getFrameSize(buffer: ByteBuffer): Int = {
-    if (buffer.remaining < bits.HeaderSize) -1
+  // Read the frame size from the buffer, and includes the header size (9 bytes).
+  // If there isn't enough data for the frame header, `None` is returned.
+  private[this] def getFrameSize(buffer: ByteBuffer): Option[Int] = {
+    if (buffer.remaining < bits.HeaderSize) None
     else {
       buffer.mark()
       val len = FrameDecoder.getLengthField(buffer)
       buffer.reset()
 
-      if (len == -1) len
-      else len + bits.HeaderSize
+      if (len == -1) None
+      else Some(len + bits.HeaderSize)
     }
   }
 }
