@@ -51,7 +51,7 @@ private class ClientStage(request: HttpRequest, executor: ExecutionContext) exte
   def result: Future[ReleaseableResponse] = _result.future
 
   override protected def stageStartup(): Unit = makeHeaders(request) match {
-    case Failure(t) => shutdownWithError(t, "Failed to construct valid request")
+    case Failure(t) => shutdownWithError(t, "Failed to construct a valid request")
     case Success(hs) =>
       val eos = request.body.isExhausted
       val headerFrame = HeadersFrame(Priority.NoPriority, eos, hs)
@@ -86,7 +86,9 @@ private class ClientStage(request: HttpRequest, executor: ExecutionContext) exte
     case Success(HeadersFrame(_, eos, hs)) =>
       val body = if (eos) BodyReader.EmptyBodyReader else responseBody()
       // TODO: we need to make sure this wasn't a 1xx response
-      _result.tryComplete(collectResponseFromHeaders(body, hs))
+      val tryResponse = collectResponseFromHeaders(body, hs)
+      _result.tryComplete(tryResponse)
+      if (tryResponse.isFailure) release(Disconnect) // don't leave the pipeline dangling
 
     case Success(other) =>
       // The first frame must be a HEADERS frame, either of an informational
@@ -115,7 +117,7 @@ private class ClientStage(request: HttpRequest, executor: ExecutionContext) exte
           logger.debug(s"Received data frame: $d")
           data
 
-        // TODO: how do we expect to handle trailers? They are pretty important to http2...
+        // TODO: how do we expect to handle trailers? Maybe not for the normal client
         case other =>
           logger.debug(s"Received frame other than data: $other. Discarding remainder of body.")
           discard()
@@ -149,7 +151,7 @@ private class ClientStage(request: HttpRequest, executor: ExecutionContext) exte
           try statusCode = v.toInt
           catch { case ex: NumberFormatException => return Failure(ex) }
 
-        case _ => // don't care about other pseudo headers
+        case _ => // don't care about other pseudo headers at this time
       }
     }
 
@@ -162,7 +164,6 @@ private class ClientStage(request: HttpRequest, executor: ExecutionContext) exte
   }
 
   private[this] def shutdownWithError(ex: Throwable, phase: String): Unit = {
-    // TODO: what should be the log level here?
     logger.debug(ex)(s"$name shutting down due to error in phase $phase")
     if (_result.tryFailure(ex)) {
       // Since the user won't be getting a `ReleasableResponse`, it is our job
