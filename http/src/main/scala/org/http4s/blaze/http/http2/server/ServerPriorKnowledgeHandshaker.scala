@@ -11,7 +11,6 @@ import org.http4s.blaze.util.{BufferTools, Execution, StageTools}
 import scala.concurrent.Future
 import scala.util.Failure
 
-// TODO: can we reduce the visibility of this?
 private[http] class ServerPriorKnowledgeHandshaker(
     localSettings: ImmutableHttp2Settings,
     flowStrategy: FlowStrategy,
@@ -57,8 +56,8 @@ private[http] class ServerPriorKnowledgeHandshaker(
     }
 
     this.replaceTail(newTail, true)
-    // TODO: The instance should start itself up, but who will have a reference to it?
-    // TODO: Maybe through the continuations attached to the readloop?
+    
+    // The session starts itself up and drives the pipeline
     new ConnectionImpl(
       tailStage = tail,
       localSettings = localSettings,
@@ -66,5 +65,6 @@ private[http] class ServerPriorKnowledgeHandshaker(
       flowStrategy = flowStrategy,
       inboundStreamBuilder = Some(nodeBuilder),
       parentExecutor = Execution.trampoline)
+    ()
   }
 }

@@ -3,6 +3,7 @@ package org.http4s.blaze.http.http2
 import org.http4s.blaze.http.http2.mocks.MockHeadStage
 import org.http4s.blaze.http.http2.server.ServerPriorKnowledgeHandshaker
 import org.http4s.blaze.pipeline.LeafBuilder
+import org.http4s.blaze.util.BufferTools
 import org.specs2.mutable.Specification
 
 import scala.util.{Failure, Success}
@@ -28,8 +29,7 @@ class ServerPriorKnowledgeHandshakerSpec extends Specification {
       val serverSession = handshaker.handshake()
       head.reads.dequeue().success(bits.getPrefaceBuffer())
 
-      // Consume all the inbound data which may be a prelude and the local settings
-      head.consumeOutboundData()
+      // Consume all the inbound data which consists of the server settings
       head.consumeOutboundData()
 
       // Send in a settings frame
@@ -71,8 +71,15 @@ class ServerPriorKnowledgeHandshakerSpec extends Specification {
       // Consume all the inbound data which is the prelude and the local settings
       head.consumeOutboundData()
 
-      // Send in a settings frame that is guarenteed to break the limit
-      val frame = FrameSerializer.mkSettingsFrame(Seq(Http2Settings.HEADER_TABLE_SIZE(3)))
+      // We synthesize a SETTINGS frame header that has a size larger than 0
+      val frame = BufferTools.allocate(bits.HeaderSize)
+      // first 3 bytes are length, next is type, then
+      frame.putInt(0x01 << 8 | bits.FrameTypes.SETTINGS)
+      frame.put(0x00.toByte) // 1 byte flags
+      frame.putInt(0x00) // 4 bytes stream id
+      frame.flip()
+      assert(frame.remaining == 9)
+
       head.reads.dequeue().success(frame)
 
       ProtocolFrameDecoder.decode(head.consumeOutboundData()) must beLike {
