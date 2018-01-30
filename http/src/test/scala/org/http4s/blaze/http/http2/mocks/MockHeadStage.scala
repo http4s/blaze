@@ -1,45 +1,41 @@
 package org.http4s.blaze.http.http2.mocks
 
-import java.nio.ByteBuffer
-
 import org.http4s.blaze.pipeline.Command.OutboundCommand
 import org.http4s.blaze.pipeline.{Command, HeadStage}
-import org.http4s.blaze.util.BufferTools
 
 import scala.collection.mutable
 import scala.concurrent.{Future, Promise}
 
-private[http2] class MockHeadStage extends HeadStage[ByteBuffer] {
+private[http2] class MockHeadStage[T] extends HeadStage[T] {
   override def name: String = "Head"
 
-  val reads = new mutable.Queue[Promise[ByteBuffer]]()
-  val writes = new mutable.Queue[(ByteBuffer, Promise[Unit])]()
+  val reads = new mutable.Queue[Promise[T]]()
+  val writes = new mutable.Queue[(T, Promise[Unit])]()
 
   var disconnected: Boolean = false
 
-  override def readRequest(size: Int): Future[ByteBuffer] = {
-    val p = Promise[ByteBuffer]
+  override def readRequest(size: Int): Future[T] = {
+    val p = Promise[T]
     reads += p
     p.future
   }
 
-  override def writeRequest(data: ByteBuffer): Future[Unit] = {
-    val p = Promise[Unit]
-    writes += data -> p
-    p.future
-  }
-
-  def consumeOutboundData(): ByteBuffer = {
+  def consumeOutboundData(): Seq[T] = {
     // We need to take all the writes and then clear since completing the
     // promises might trigger more writes
     val writePairs = writes.toList
     writes.clear()
 
-    val buf = BufferTools.joinBuffers(writePairs.map { case (b, p) =>
+    writePairs.map { case (b, p) =>
       p.success(())
       b
-    })
-    buf
+    }
+  }
+
+  override def writeRequest(data: T): Future[Unit] = {
+    val p = Promise[Unit]
+    writes += data -> p
+    p.future
   }
 
   /** Receives outbound commands

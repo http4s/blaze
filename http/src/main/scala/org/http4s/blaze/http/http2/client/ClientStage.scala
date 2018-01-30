@@ -14,7 +14,7 @@ import scala.collection.immutable.VectorBuilder
 import scala.concurrent.{ExecutionContext, Future, Promise}
 import scala.util.{Failure, Success, Try}
 
-private class ClientStage(request: HttpRequest, executor: ExecutionContext) extends TailStage[StreamMessage] {
+private class ClientStage(request: HttpRequest) extends TailStage[StreamMessage] {
   import ClientStage._
 
   private[this] val lock: Object = this
@@ -22,7 +22,6 @@ private class ClientStage(request: HttpRequest, executor: ExecutionContext) exte
   private[this] var inboundEOF = false
   private[this] var released = false
 
-  // TODO: can this be called when the inbound body has been consumed?
   // there is no handle to detect when the request body has been written, and,
   // in general, we should not expect to receive the full response before the
   // full request has been written.
@@ -51,15 +50,18 @@ private class ClientStage(request: HttpRequest, executor: ExecutionContext) exte
   def result: Future[ReleaseableResponse] = _result.future
 
   override protected def stageStartup(): Unit = makeHeaders(request) match {
-    case Failure(t) => shutdownWithError(t, "Failed to construct a valid request")
+    case Failure(t) =>
+      shutdownWithError(t, "Failed to construct a valid request")
+
     case Success(hs) =>
       val eos = request.body.isExhausted
       val headerFrame = HeadersFrame(Priority.NoPriority, eos, hs)
 
       channelWrite(headerFrame).onComplete {
         case Success(_) =>
-          if (!eos) writeBody(request.body)
-
+          if (!eos) {
+            writeBody(request.body)
+          }
           readResponseHeaders()
 
         case Failure(ex) => shutdownWithError(ex, "writeHeaders")
@@ -72,23 +74,24 @@ private class ClientStage(request: HttpRequest, executor: ExecutionContext) exte
         val eos = b.hasRemaining
         val frame = DataFrame(eos, b)
         val f = channelWrite(frame)
-        if (!eos) f.flatMap(_ => go())(executor)
+        if (!eos) f.flatMap(_ => go())(Execution.trampoline)
         else f
       }(Execution.trampoline)
     }
 
     // The body writing computation is orphaned: if it completes that great, if not
-    // thats also fine. Errors should be propagated via the response or errors.
+    // that's also fine. Errors should be propagated via the response or errors.
     go().onComplete { _ => body.discard() }(Execution.directec)
   }
 
   private def readResponseHeaders(): Unit = channelRead().onComplete {
     case Success(HeadersFrame(_, eos, hs)) =>
-      val body = if (eos) BodyReader.EmptyBodyReader else responseBody()
+      val body = if (eos) BodyReader.EmptyBodyReader else new BodyReaderImpl
       // TODO: we need to make sure this wasn't a 1xx response
-      val tryResponse = collectResponseFromHeaders(body, hs)
-      _result.tryComplete(tryResponse)
-      if (tryResponse.isFailure) release(Disconnect) // don't leave the pipeline dangling
+      collectResponseFromHeaders(body, hs) match {
+        case s @ Success(_) => _result.tryComplete(s)
+        case Failure(ex) => shutdownWithError(ex, "readResponseHeaders")
+      }
 
     case Success(other) =>
       // The first frame must be a HEADERS frame, either of an informational
@@ -100,8 +103,7 @@ private class ClientStage(request: HttpRequest, executor: ExecutionContext) exte
     case Failure(ex) => shutdownWithError(ex, "readResponseHeaders")
   }(Execution.trampoline)
 
-  private def responseBody(): BodyReader = new BodyReader {
-
+  private[this] class BodyReaderImpl extends BodyReader {
     // We don't want to call `release()` here because we may be waiting for this message
     // to be written, so we don't want to close the stream
     override def discard(): Unit = observeEOF()
@@ -111,18 +113,16 @@ private class ClientStage(request: HttpRequest, executor: ExecutionContext) exte
     override def apply(): Future[ByteBuffer] = {
       if (inboundConsumed) BufferTools.emptyFutureBuffer
       else channelRead().map {
-        // TODO: do we need to care about the EOS? I believe its taken care of upstream
         case d@DataFrame(eos, data) =>
           if (eos) discard()
           logger.debug(s"Received data frame: $d")
           data
 
-        // TODO: how do we expect to handle trailers? Maybe not for the normal client
         case other =>
           logger.debug(s"Received frame other than data: $other. Discarding remainder of body.")
           discard()
           BufferTools.emptyBuffer
-      }(Execution.directec) // TODO: this seems to surface a strange error if its trampoline EC!
+      }(Execution.directec)
     }
   }
 
@@ -175,7 +175,7 @@ private class ClientStage(request: HttpRequest, executor: ExecutionContext) exte
 }
 
 private object ClientStage {
-  def makeHeaders(request: HttpRequest): Try[Vector[(String, String)]] = {
+  private[client] def makeHeaders(request: HttpRequest): Try[Vector[(String, String)]] = {
     UrlComposition(request.url).map { breakdown =>
       val hs = new VectorBuilder[(String, String)]
 
@@ -185,7 +185,13 @@ private object ClientStage {
       hs += StageTools.Authority -> breakdown.authority
       hs += StageTools.Path -> breakdown.fullPath
 
-      hs ++= request.headers
+      // Header keys need to be lower cased
+      request.headers.foreach { case p @ (k, v) =>
+        val lowerKey = k.toLowerCase
+        if (lowerKey eq k) hs += p
+        else hs += lowerKey -> v
+      }
+
       hs.result()
     }
   }
