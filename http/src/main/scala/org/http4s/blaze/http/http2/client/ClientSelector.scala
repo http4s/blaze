@@ -12,7 +12,7 @@ import org.log4s.getLogger
 
 import scala.concurrent.Promise
 
-private[http] class Http2ClientSelector(config: HttpClientConfig) {
+private[http] class ClientSelector(config: HttpClientConfig) {
   import ALPNTokens._
 
   private[this] val logger = getLogger
@@ -20,7 +20,7 @@ private[http] class Http2ClientSelector(config: HttpClientConfig) {
   def newStage(engine: SSLEngine, p: Promise[HttpClientSession]): ALPNClientSelector =
     new ALPNClientSelector(engine, AllTokens, HTTP_1_1, buildPipeline(p))
 
-  private[this] def newH2Settings(): ImmutableHttp2Settings =
+  private[this] val localSettings: ImmutableHttp2Settings =
     Http2Settings.default.copy(
       maxHeaderListSize = config.maxResponseLineLength + config.maxHeadersLength // the request line is part of the headers
     )
@@ -29,7 +29,6 @@ private[http] class Http2ClientSelector(config: HttpClientConfig) {
     s match {
       case H2 | H2_14 =>
         logger.debug(s"Selected $s, resulted in H2 protocol.")
-        val localSettings = newH2Settings()
         val f = new DefaultFlowStrategy(localSettings)
         val handshaker = new ClientPriorKnowledgeHandshaker(localSettings, f, Execution.trampoline)
         p.completeWith(handshaker.clientSession)

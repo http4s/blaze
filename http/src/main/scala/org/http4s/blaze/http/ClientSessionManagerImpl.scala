@@ -4,7 +4,7 @@ import org.http4s.blaze.channel.nio2.ClientChannelFactory
 import org.http4s.blaze.http.ClientSessionManagerImpl._
 import org.http4s.blaze.http.HttpClientSession.{Closed, ReleaseableResponse, Status}
 import org.http4s.blaze.http.http1.client.Http1ClientStage
-import org.http4s.blaze.http.http2.client.Http2ClientSelector
+import org.http4s.blaze.http.http2.client.ClientSelector
 import org.http4s.blaze.http.util.UrlTools.UrlComposition
 import org.http4s.blaze.pipeline.stages.SSLStage
 import org.http4s.blaze.pipeline.{Command, LeafBuilder}
@@ -32,55 +32,59 @@ private object ClientSessionManagerImpl {
   }
 }
 
-private final class ClientSessionManagerImpl(sessionCache: java.util.Map[ConnectionId, java.util.Collection[HttpClientSession]], config: HttpClientConfig) extends ClientSessionManager {
+private final class ClientSessionManagerImpl(
+    sessionCache: java.util.Map[ConnectionId, java.util.Collection[HttpClientSession]],
+    config: HttpClientConfig
+  ) extends ClientSessionManager {
 
-  private[this] def getId(composition: UrlComposition): ConnectionId =
+  private[this] def connectionId(composition: UrlComposition): ConnectionId =
     ConnectionId(composition.scheme, composition.authority)
 
   private[this] implicit def ec = Execution.trampoline
 
   private[this] val logger = getLogger
   private[this] val socketFactory = new ClientChannelFactory(group = config.channelGroup)
-  private[this] val http2ClientSelector = new Http2ClientSelector(config)
+  private[this] val http2ClientSelector = new ClientSelector(config)
 
   override def acquireSession(request: HttpRequest): Future[HttpClientSession] = {
     logger.debug(s"Acquiring session for request $request")
      UrlComposition(request.url) match {
       case Success(urlComposition) =>
-        val id = getId(urlComposition)
-        val session = findExistingSession(id)
+        val id = connectionId(urlComposition)
+        findExistingSession(id) match {
+          case Some(session) =>
+            logger.debug(s"Found hot session for id $id: $session")
+            Future.successful(session)
 
-        if (session == null) createNewSession(urlComposition, id)
-        else {
-          logger.debug(s"Found hot session for id $id: $session")
-          Future.successful(session)
+          case None =>
+            logger.debug(s"No suitable session found for id $id. Creating new session.")
+            createNewSession(urlComposition, id)
         }
 
       case Failure(t) => Future.failed(t)
     }
   }
 
-  // WARNING: can emit `null`. For internal use only
-  private[this] def findExistingSession(id: ConnectionId): HttpClientSession = sessionCache.synchronized {
+  private[this] def findExistingSession(id: ConnectionId): Option[HttpClientSession] = sessionCache.synchronized {
     sessionCache.get(id) match {
-      case null => null // nop
+      case null => None // nop
       case sessions =>
-        var session: HttpClientSession = null
+        var session: Option[HttpClientSession] = None
         val it = sessions.iterator
-        while(session == null && it.hasNext) it.next() match {
+        while(session.isEmpty && it.hasNext) it.next() match {
           case h2: Http2ClientSession if h2.status == Closed =>
             discardSession(h2) // make sure its closed
             it.remove()
 
-          case h2: Http2ClientSession if h2.quality > 0.1 =>
-            session = h2
+          case h2: Http2ClientSession if 0.1 < h2.quality =>
+            session = Some(h2)
 
           case _: Http2ClientSession => () // nop
 
           case h1: Http1ClientSession =>
             it.remove()
             if (h1.status != Closed) { // Should never be busy
-              session = h1 // found a suitable HTTP/1.x session.
+              session = Some(h1) // found a suitable HTTP/1.x session.
             }
         }
 
@@ -132,11 +136,6 @@ private final class ClientSessionManagerImpl(sessionCache: java.util.Map[Connect
     p.future
   }
 
-  /** Return the session to the pool.
-    *
-    * Depending on the state of the session and the nature of the pool, this may
-    * either cache the session for future use or close it.
-    */
   override def returnSession(session: HttpClientSession): Unit = {
     logger.debug(s"Returning session $session")
     session match {
@@ -151,9 +150,8 @@ private final class ClientSessionManagerImpl(sessionCache: java.util.Map[Connect
     }
   }
 
-  /** Close the `SessionManager` and free any resources */
   override def close(): Future[Unit] = {
-    logger.debug(s"Closing session")
+    logger.debug(s"Closing ${this.getClass.getSimpleName}")
     sessionCache.synchronized {
       sessionCache.asScala.values.foreach(_.asScala.foreach(discardSession(_)))
       sessionCache.clear()

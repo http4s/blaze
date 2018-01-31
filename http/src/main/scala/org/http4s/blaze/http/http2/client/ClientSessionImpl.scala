@@ -31,7 +31,7 @@ private final class ClientSessionImpl(
 
   override def dispatch(request: HttpRequest): Future[ReleaseableResponse] = {
     logger.debug(s"Dispatching request: $request")
-    val tail = new ClientStage(request, parentExecutor)
+    val tail = new ClientStage(request)
     val head = connection.newOutboundStream()
     LeafBuilder(tail).base(head)
     head.sendInboundCommand(Command.Connected)
