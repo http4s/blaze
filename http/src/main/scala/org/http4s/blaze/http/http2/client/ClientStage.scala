@@ -1,6 +1,7 @@
 package org.http4s.blaze.http.http2.client
 
 import java.nio.ByteBuffer
+import java.util.Locale
 
 import org.http4s.blaze.http.{ClientResponse, _}
 import org.http4s.blaze.http.HttpClientSession.ReleaseableResponse
@@ -187,7 +188,7 @@ private object ClientStage {
 
       // Header keys need to be lower cased
       request.headers.foreach { case p @ (k, v) =>
-        val lowerKey = k.toLowerCase
+        val lowerKey = k.toLowerCase(Locale.ENGLISH)
         if (lowerKey eq k) hs += p
         else hs += lowerKey -> v
       }
