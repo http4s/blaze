@@ -1,6 +1,6 @@
 package org.http4s.blaze.http.http2
 
-import org.http4s.blaze.http.http2.mocks.MockHeadStage
+import org.http4s.blaze.http.http2.mocks.MockByteBufferHeadStage
 import org.http4s.blaze.http.http2.server.ServerPriorKnowledgeHandshaker
 import org.http4s.blaze.pipeline.LeafBuilder
 import org.http4s.blaze.util.BufferTools
@@ -22,7 +22,7 @@ class ServerPriorKnowledgeHandshakerSpec extends Specification {
   "ServerPriorKnowledgeHandshaker">> {
     "can perform a handshake" in {
       val localSettings = Http2Settings.default
-      val head = new MockHeadStage
+      val head = new MockByteBufferHeadStage
       val handshaker = makeHandshaker(localSettings)
       LeafBuilder(handshaker).base(head)
 
@@ -30,13 +30,13 @@ class ServerPriorKnowledgeHandshakerSpec extends Specification {
       head.reads.dequeue().success(bits.getPrefaceBuffer())
 
       // Consume all the inbound data which consists of the server settings
-      head.consumeOutboundData()
+      head.consumeOutboundByteBuf()
 
       // Send in a settings frame
       val frame = FrameSerializer.mkSettingsFrame(Seq.empty)
       head.reads.dequeue().success(frame)
 
-      ProtocolFrameDecoder.decode(head.consumeOutboundData()) must beLike {
+      ProtocolFrameDecoder.decode(head.consumeOutboundByteBuf()) must beLike {
         case ProtocolFrame.Settings(None) => ok // should have sent an ack
       }
 
@@ -46,7 +46,7 @@ class ServerPriorKnowledgeHandshakerSpec extends Specification {
     }
 
     "Sends settings" in {
-      val head = new MockHeadStage
+      val head = new MockByteBufferHeadStage
       val settings = Http2Settings.default
       val tail = makeHandshaker(settings)
       LeafBuilder(tail).base(head)
@@ -54,14 +54,14 @@ class ServerPriorKnowledgeHandshakerSpec extends Specification {
       tail.handshake()
       head.reads.dequeue().success(bits.getPrefaceBuffer())
 
-      ProtocolFrameDecoder.decode(head.consumeOutboundData()) must beLike {
+      ProtocolFrameDecoder.decode(head.consumeOutboundByteBuf()) must beLike {
         case ProtocolFrame.Settings(Some(_)) => ok
       }
     }
 
     "Sends a GOAWAY(PROTOCOL_ERROR) if settings frame that exceeds the local MAX_FRAME_SIZE" in {
       val localSettings = Http2Settings.default.copy(maxFrameSize = 0)
-      val head = new MockHeadStage
+      val head = new MockByteBufferHeadStage
       val handshaker = makeHandshaker(localSettings)
       LeafBuilder(handshaker).base(head)
 
@@ -69,7 +69,7 @@ class ServerPriorKnowledgeHandshakerSpec extends Specification {
       head.reads.dequeue().success(bits.getPrefaceBuffer())
 
       // Consume all the inbound data which is the prelude and the local settings
-      head.consumeOutboundData()
+      head.consumeOutboundByteBuf()
 
       // We synthesize a SETTINGS frame header that has a size larger than 0
       val frame = BufferTools.allocate(bits.HeaderSize)
@@ -82,7 +82,7 @@ class ServerPriorKnowledgeHandshakerSpec extends Specification {
 
       head.reads.dequeue().success(frame)
 
-      ProtocolFrameDecoder.decode(head.consumeOutboundData()) must beLike {
+      ProtocolFrameDecoder.decode(head.consumeOutboundByteBuf()) must beLike {
         case ProtocolFrame.GoAway(0, cause) => cause.code must_== Http2Exception.FRAME_SIZE_ERROR.code
       }
 
@@ -95,7 +95,7 @@ class ServerPriorKnowledgeHandshakerSpec extends Specification {
 
     "Sends a GOAWAY(PROTOCOL_ERROR) if the first frame isn't a settings frame" in {
       val localSettings = Http2Settings.default
-      val head = new MockHeadStage
+      val head = new MockByteBufferHeadStage
       val handshaker = makeHandshaker(localSettings)
       LeafBuilder(handshaker).base(head)
 
@@ -103,13 +103,13 @@ class ServerPriorKnowledgeHandshakerSpec extends Specification {
       head.reads.dequeue().success(bits.getPrefaceBuffer())
 
       // Consume all the inbound data which is the local settings
-      head.consumeOutboundData()
+      head.consumeOutboundByteBuf()
 
       // Send in a non-settings frame
       val frame = FrameSerializer.mkRstStreamFrame(1, 1)
       head.reads.dequeue().success(frame)
 
-      ProtocolFrameDecoder.decode(head.consumeOutboundData()) must beLike {
+      ProtocolFrameDecoder.decode(head.consumeOutboundByteBuf()) must beLike {
         case ProtocolFrame.GoAway(0, cause) => cause.code must_== Http2Exception.PROTOCOL_ERROR.code
       }
 

@@ -5,12 +5,12 @@ import java.nio.ByteBuffer
 import org.http4s.blaze.http.{Http2ClientSession, HttpRequest}
 import org.http4s.blaze.http.HttpClientSession.{ReleaseableResponse, Status}
 import org.http4s.blaze.http.http2._
-import org.http4s.blaze.pipeline.TailStage
+import org.http4s.blaze.pipeline.{Command, LeafBuilder, TailStage}
+import org.log4s.getLogger
 
 import scala.concurrent.duration.Duration
 import scala.concurrent.{ExecutionContext, Future}
 
-// TODO: a stub interface that will be filled out later
 private final class ClientSessionImpl(
     tailStage: TailStage[ByteBuffer],
     localSettings: ImmutableHttp2Settings,
@@ -19,17 +19,36 @@ private final class ClientSessionImpl(
     parentExecutor: ExecutionContext)
   extends Http2ClientSession {
 
-  override def dispatch(request: HttpRequest): Future[ReleaseableResponse] = ???
+  private[this] val logger = getLogger
+  private[this] val connection: Connection = new ConnectionImpl(
+    tailStage = tailStage,
+    localSettings = localSettings,
+    remoteSettings = remoteSettings,
+    flowStrategy = flowStrategy,
+    inboundStreamBuilder = None,
+    parentExecutor = parentExecutor
+  )
 
-  override def quality: Double = ???
+  override def dispatch(request: HttpRequest): Future[ReleaseableResponse] = {
+    logger.debug(s"Dispatching request: $request")
+    val tail = new ClientStage(request)
+    val head = connection.newOutboundStream()
+    LeafBuilder(tail).base(head)
+    head.sendInboundCommand(Command.Connected)
 
-  override def ping(): Future[Duration] = ???
+    tail.result
+  }
 
-  override def status: Status = ???
+  override def quality: Double = connection.quality
+
+  override def ping(): Future[Duration] = connection.ping
+
+  override def status: Status = connection.status
 
   /** Close the session.
     *
     * This will generally entail closing the socket connection.
     */
-  override def close(within: Duration): Future[Unit] = ???
+  override def close(within: Duration): Future[Unit] =
+    connection.drainSession(within)
 }
