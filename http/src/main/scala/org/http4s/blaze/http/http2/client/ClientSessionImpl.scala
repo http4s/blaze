@@ -20,7 +20,7 @@ private final class ClientSessionImpl(
   extends Http2ClientSession {
 
   private[this] val logger = getLogger
-  private[this] val connection = new  ConnectionImpl(
+  private[this] val connection: Connection = new ConnectionImpl(
     tailStage = tailStage,
     localSettings = localSettings,
     remoteSettings = remoteSettings,
