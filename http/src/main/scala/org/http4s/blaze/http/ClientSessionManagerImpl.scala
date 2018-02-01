@@ -17,6 +17,9 @@ import scala.util.control.NonFatal
 import scala.util.{Failure, Success}
 
 private object ClientSessionManagerImpl {
+
+  private val LowQualityThreshold = 0.1
+
   case class ConnectionId(scheme: String, authority: String)
 
   case class Http1SessionProxy(id: ConnectionId, parent: Http1ClientSession) extends Http1ClientSession {
@@ -70,7 +73,7 @@ private final class ClientSessionManagerImpl(sessionCache: java.util.Map[Connect
             h2.closeNow() // make sure its closed
             it.remove()
 
-          case h2: Http2ClientSession if h2.quality > 0.1 =>
+          case h2: Http2ClientSession if LowQualityThreshold < h2.quality =>
             session = h2
 
           case _: Http2ClientSession => () // nop
@@ -79,6 +82,8 @@ private final class ClientSessionManagerImpl(sessionCache: java.util.Map[Connect
             it.remove()
             if (h1.status != Closed) { // Should never be busy
               session = h1 // found a suitable HTTP/1.x session.
+            } else {
+              h1.closeNow()
             }
         }
 
