@@ -53,7 +53,7 @@ class ClientSessionManagerImplSpec extends Specification {
       cache.get(connectionId).iterator.next must_== proxiedSession
     }
 
-    "dead HTTP/2 sesssions are removed" in {
+    "dead HTTP/2 sessions are removed" in {
       object bad extends Http2ClientSession {
         var closed = false
         override def dispatch(request: HttpRequest): Future[ReleaseableResponse] = ???
