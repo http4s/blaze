@@ -46,7 +46,7 @@ object H2LocalhostExample extends H2ClientExample(500, 300.seconds) {
     val dest = "ping"
     h2Clients(tag % h2Clients.length).GET(s"https://localhost:8443/$dest") { resp =>
       resp.body.accumulate().map { bytes =>
-        //println(s"Finished response $tag of size ${bytes.remaining()}")
+        println(s"Finished response $tag of size ${bytes.remaining()}")
         bytes.remaining
       }
     }
@@ -58,7 +58,6 @@ object H2GoogleExample extends H2ClientExample(20, 30.seconds) {
 
   private[this] def callGoogle(tag: Int): Future[String] = {
     Http2Client.defaultH2Client.GET("https://www.google.com/") { resp =>
-      //      println(s"Response: $resp")
       resp.body.accumulate().map { bytes =>
         println(s"Finished response $tag")
         StandardCharsets.UTF_8.decode(bytes).toString
@@ -72,9 +71,7 @@ object H2TwitterExample extends H2ClientExample(20, 30.seconds) {
 
   private[this] def callTwitter(tag: Int): Future[String] = {
     Http2Client.defaultH2Client.GET("https://twitter.com/") { resp =>
-      //      println(s"Response: $resp")
       resp.body.accumulate().map { bytes =>
-
         println(s"Finished response $tag of size ${bytes.remaining()}: ${resp.headers}")
         StandardCharsets.UTF_8.decode(bytes).toString
       }

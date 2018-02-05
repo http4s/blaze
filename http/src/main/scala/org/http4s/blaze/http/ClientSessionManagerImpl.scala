@@ -4,7 +4,6 @@ import org.http4s.blaze.channel.nio2.ClientChannelFactory
 import org.http4s.blaze.http.ClientSessionManagerImpl._
 import org.http4s.blaze.http.HttpClientSession.{Closed, ReleaseableResponse, Status}
 import org.http4s.blaze.http.http1.client.Http1ClientStage
-import org.http4s.blaze.http.http2.client.ClientSelector
 import org.http4s.blaze.http.util.UrlTools.UrlComposition
 import org.http4s.blaze.pipeline.stages.SSLStage
 import org.http4s.blaze.pipeline.{Command, LeafBuilder}
@@ -18,6 +17,9 @@ import scala.util.control.NonFatal
 import scala.util.{Failure, Success}
 
 private object ClientSessionManagerImpl {
+
+  private val LowQualityThreshold = 0.1
+
   case class ConnectionId(scheme: String, authority: String)
 
   case class Http1SessionProxy(id: ConnectionId, parent: Http1ClientSession) extends Http1ClientSession {
@@ -32,59 +34,56 @@ private object ClientSessionManagerImpl {
   }
 }
 
-private final class ClientSessionManagerImpl(
-    sessionCache: java.util.Map[ConnectionId, java.util.Collection[HttpClientSession]],
-    config: HttpClientConfig
-  ) extends ClientSessionManager {
+private final class ClientSessionManagerImpl(sessionCache: java.util.Map[ConnectionId, java.util.Collection[HttpClientSession]], config: HttpClientConfig) extends ClientSessionManager {
 
-  private[this] def connectionId(composition: UrlComposition): ConnectionId =
+  private[this] def getId(composition: UrlComposition): ConnectionId =
     ConnectionId(composition.scheme, composition.authority)
 
   private[this] implicit def ec = Execution.trampoline
 
   private[this] val logger = getLogger
   private[this] val socketFactory = new ClientChannelFactory(group = config.channelGroup)
-  private[this] val http2ClientSelector = new ClientSelector(config)
 
   override def acquireSession(request: HttpRequest): Future[HttpClientSession] = {
     logger.debug(s"Acquiring session for request $request")
      UrlComposition(request.url) match {
       case Success(urlComposition) =>
-        val id = connectionId(urlComposition)
-        findExistingSession(id) match {
-          case Some(session) =>
-            logger.debug(s"Found hot session for id $id: $session")
-            Future.successful(session)
+        val id = getId(urlComposition)
+        val session = findExistingSession(id)
 
-          case None =>
-            logger.debug(s"No suitable session found for id $id. Creating new session.")
-            createNewSession(urlComposition, id)
+        if (session == null) createNewSession(urlComposition, id)
+        else {
+          logger.debug(s"Found hot session for id $id: $session")
+          Future.successful(session)
         }
 
       case Failure(t) => Future.failed(t)
     }
   }
 
-  private[this] def findExistingSession(id: ConnectionId): Option[HttpClientSession] = sessionCache.synchronized {
+  // WARNING: can emit `null`. For internal use only
+  private[this] def findExistingSession(id: ConnectionId): HttpClientSession = sessionCache.synchronized {
     sessionCache.get(id) match {
-      case null => None // nop
+      case null => null // nop
       case sessions =>
-        var session: Option[HttpClientSession] = None
+        var session: HttpClientSession = null
         val it = sessions.iterator
-        while(session.isEmpty && it.hasNext) it.next() match {
+        while(session == null && it.hasNext) it.next() match {
           case h2: Http2ClientSession if h2.status == Closed =>
-            discardSession(h2) // make sure its closed
+            h2.closeNow() // make sure its closed
             it.remove()
 
-          case h2: Http2ClientSession if 0.1 < h2.quality =>
-            session = Some(h2)
+          case h2: Http2ClientSession if LowQualityThreshold < h2.quality =>
+            session = h2
 
           case _: Http2ClientSession => () // nop
 
           case h1: Http1ClientSession =>
             it.remove()
             if (h1.status != Closed) { // Should never be busy
-              session = Some(h1) // found a suitable HTTP/1.x session.
+              session = h1 // found a suitable HTTP/1.x session.
+            } else {
+              h1.closeNow()
             }
         }
 
@@ -104,38 +103,27 @@ private final class ClientSessionManagerImpl(
     socketFactory.connect(urlComposition.getAddress).onComplete {
       case Failure(e) => p.tryFailure(e)
       case Success(head) =>
+        val clientStage = new Http1ClientStage(config)
+        var builder = LeafBuilder(clientStage)
         if (urlComposition.scheme.equalsIgnoreCase("https")) {
           val engine = config.getClientSslEngine()
           engine.setUseClientMode(true)
-
-          val rawSession = Promise[HttpClientSession]
-
-          LeafBuilder(http2ClientSelector.newStage(engine, rawSession))
-            .prepend(new SSLStage(engine))
-            .base(head)
-          head.sendInboundCommand(Command.Connected)
-
-          p.completeWith(rawSession.future.map {
-            case h1: Http1ClientSession =>
-              new Http1SessionProxy(id, h1)
-
-            case h2: Http2ClientSession =>
-              addSessionToCache(id, h2)
-              h2
-          })
-
-        } else {
-          val clientStage = new Http1ClientStage(config)
-          val builder = LeafBuilder(clientStage)
-          builder.base(head)
-          head.sendInboundCommand(Command.Connected)
-          p.trySuccess(new Http1SessionProxy(id, clientStage))
+          builder = builder.prepend(new SSLStage(engine))
         }
-    }
+
+        builder.base(head)
+        head.sendInboundCommand(Command.Connected)
+        p.trySuccess(new Http1SessionProxy(id, clientStage))
+      }
 
     p.future
   }
 
+  /** Return the session to the pool.
+    *
+    * Depending on the state of the session and the nature of the pool, this may
+    * either cache the session for future use or close it.
+    */
   override def returnSession(session: HttpClientSession): Unit = {
     logger.debug(s"Returning session $session")
     session match {
@@ -143,29 +131,29 @@ private final class ClientSessionManagerImpl(
       case _: Http2ClientSession => () // nop
       case h1: Http1ClientSession if !h1.isReady =>
         logger.debug(s"Closing unready session $h1")
-        discardSession(h1)
+        h1.closeNow().onComplete {
+          case Failure(t) => logger.info(t)(s"Failure closing session $session")
+          case _ => ()
+        }
 
       case proxy: Http1SessionProxy => addSessionToCache(proxy.id, proxy)
       case other => sys.error(s"The impossible happened! Found invalid type: $other")
     }
   }
 
+  /** Close the `SessionManager` and free any resources */
   override def close(): Future[Unit] = {
-    logger.debug(s"Closing ${this.getClass.getSimpleName}")
+    logger.debug(s"Closing session")
     sessionCache.synchronized {
-      sessionCache.asScala.values.foreach(_.asScala.foreach(discardSession(_)))
+      sessionCache.asScala.values.foreach(_.asScala.foreach { session =>
+        try session.closeNow()
+        catch { case NonFatal(t) =>
+          logger.warn(t)("Exception caught while closing session")
+        }
+      })
       sessionCache.clear()
     }
     Future.successful(())
-  }
-
-  private[this] def discardSession(session: HttpClientSession): Unit = {
-    try session.closeNow().onComplete {
-      case Failure(t) => logger.info(t)(s"Failure closing session $session")
-      case _ => ()
-    } catch { case NonFatal(t) =>
-      logger.warn(t)("Exception caught while closing session")
-    }
   }
 
   private[this] def addSessionToCache(id: ConnectionId, session: HttpClientSession): Unit = {

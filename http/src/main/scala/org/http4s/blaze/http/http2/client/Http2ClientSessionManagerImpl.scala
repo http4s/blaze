@@ -15,30 +15,51 @@ import org.http4s.blaze.util.Execution
 import org.log4s.getLogger
 
 import scala.collection.mutable
+import scala.concurrent.duration.Duration
 import scala.concurrent.{Future, Promise}
 import scala.util.{Failure, Success}
 
+object Http2ClientSessionManagerImpl {
+  def apply(
+    config: HttpClientConfig,
+    initialSettings: ImmutableHttp2Settings
+  ): Http2ClientSessionManagerImpl =
+    new Http2ClientSessionManagerImpl(
+      config = config,
+      initialSettings = initialSettings,
+      sessionCache = new mutable.HashMap[String, Future[Http2ClientSession]])
+}
+
 private[http] class Http2ClientSessionManagerImpl(
     config: HttpClientConfig,
-    initialSettings: ImmutableHttp2Settings)
+    initialSettings: ImmutableHttp2Settings,
+    sessionCache: mutable.Map[String, Future[Http2ClientSession]])
   extends ClientSessionManager {
 
   private[this] val logger = getLogger
   private[this] val factory = new ClientChannelFactory(group = config.channelGroup)
-  private[this] val sessionCache = new mutable.HashMap[String, Future[Http2ClientSession]]
 
   override def acquireSession(request: HttpRequest): Future[HttpClientSession] =
     UrlTools.UrlComposition(request.url) match {
-      case Failure(t) => Future.failed(t)
+      case Failure(t) =>
+        Future.failed(t)
+
+      case Success(composition) if !composition.scheme.equalsIgnoreCase("https") =>
+        val ex = new IllegalArgumentException(s"Only https URL's allowed")
+        Future.failed(ex)
+
       case Success(composition) =>
         sessionCache.synchronized {
           sessionCache.get(composition.authority) match {
             case Some(session) =>
-              session.value match {
-                case Some(Success(s)) if s.status == Ready => session
-                // we have either a session that is no good any more, or never was.
-                case _ => makeAndStoreSession(composition)
-              }
+              session.flatMap { s =>
+                if (s.status == Ready) session
+                else makeAndStoreSession(composition)
+              }(Execution.trampoline).recoverWith {
+                case err =>
+                  logger.info(err)(s"Found bad session. Replacing.")
+                  makeAndStoreSession(composition)
+              }(Execution.trampoline)
 
             case None =>
               makeAndStoreSession(composition)
@@ -63,28 +84,31 @@ private[http] class Http2ClientSessionManagerImpl(
     }
   }
 
-  /** Return the session to the pool.
-    *
-    * Depending on the state of the session and the nature of the pool, this may
-    * either cache the session for future use or close it.
-    */
+  // No need to do anything on return since HTTP/2 sessions are shared, not taken.
   override def returnSession(session: HttpClientSession): Unit = ()
 
   // starts to acquire a new session and adds the attempt to the sessionCache
-  private def makeAndStoreSession(url: UrlComposition): Future[Http2ClientSession] = {
+  private[this] def makeAndStoreSession(url: UrlComposition): Future[Http2ClientSession] = {
     logger.debug(s"Creating a new session for composition $url")
 
     val fSession = acquireSession(url)
-    sessionCache.put(url.authority, fSession)
+    sessionCache.put(url.authority, fSession) match {
+      case Some(old) =>
+        old.onComplete {
+          case Success(session) => session.close(Duration.Inf)
+          case Failure(_) => // nop
+        }(Execution.directec)
+
+      case None => // nop
+    }
     fSession
   }
 
-  private[this] def acquireSession(url: UrlComposition): Future[Http2ClientSession] = {
+  protected def acquireSession(url: UrlComposition): Future[Http2ClientSession] = {
     logger.debug(s"Creating a new session for composition $url")
     factory.connect(url.getAddress).flatMap(initialPipeline)(Execution.directec)
   }
 
-  // protected for testing purposes
   protected def initialPipeline(head: HeadStage[ByteBuffer]): Future[Http2ClientSession] = {
     val p = Promise[Http2ClientSession]
 

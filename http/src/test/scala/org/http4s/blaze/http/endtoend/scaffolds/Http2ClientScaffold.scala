@@ -4,10 +4,11 @@ import java.nio.ByteBuffer
 
 import org.http4s.blaze.http.http2.{DefaultFlowStrategy, Http2Settings}
 import org.http4s.blaze.http._
-import org.http4s.blaze.http.http2.client.{Http2ClientSessionManagerImpl, ClientPriorKnowledgeHandshaker}
+import org.http4s.blaze.http.http2.client.{ClientPriorKnowledgeHandshaker, Http2ClientSessionManagerImpl}
 import org.http4s.blaze.pipeline.{Command, HeadStage, LeafBuilder}
 import org.http4s.blaze.util.Execution
 
+import scala.collection.mutable
 import scala.concurrent.{Await, Future, Promise}
 import scala.concurrent.duration._
 
@@ -19,7 +20,11 @@ class Http2ClientScaffold extends ClientScaffold(2, 0) {
     val h2Settings = Http2Settings.default.copy(
       initialWindowSize = 256 * 1024)
 
-    val manager = new Http2ClientSessionManagerImpl(HttpClientConfig.Default, h2Settings) {
+    val manager = new Http2ClientSessionManagerImpl(
+      HttpClientConfig.Default,
+      h2Settings,
+      new mutable.HashMap[String, Future[Http2ClientSession]]
+    ) {
       override protected def initialPipeline(head: HeadStage[ByteBuffer]): Future[Http2ClientSession] = {
         val p = Promise[Http2ClientSession]
 

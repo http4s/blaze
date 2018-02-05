@@ -11,7 +11,7 @@ object Http2Client {
   lazy val defaultH2Client: HttpClient = newH2Client()
 
   private[blaze] def newH2Client(): HttpClient = {
-    val manager = new Http2ClientSessionManagerImpl(HttpClientConfig.Default, defaultSettings)
+    val manager = Http2ClientSessionManagerImpl(HttpClientConfig.Default, defaultSettings)
     new HttpClientImpl(manager)
   }
 
