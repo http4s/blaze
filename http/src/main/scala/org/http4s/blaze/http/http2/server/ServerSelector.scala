@@ -41,7 +41,7 @@ object ServerSelector {
     logger.debug("Selected HTTP2")
 
     def newNode(streamId: Int): LeafBuilder[StreamMessage] =
-      LeafBuilder(new Http2ServerStage(streamId, service, config))
+      LeafBuilder(new ServerStage(streamId, service, config))
 
     val localSettings =
       Http2Settings.default.copy(
