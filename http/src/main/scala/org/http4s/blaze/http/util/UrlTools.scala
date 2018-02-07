@@ -40,11 +40,6 @@ private[blaze] object UrlTools {
     }
   }
 
-  private[this] def isPrefixedWithHTTP(string: String): Boolean = {
-    string.length >= 4 &&
-      (string.charAt(0) == 'h' || string.charAt(0) == 'H') &&
-      (string.charAt(1) == 't' || string.charAt(1) == 'T') &&
-      (string.charAt(2) == 't' || string.charAt(2) == 'T') &&
-      (string.charAt(3) == 'p' || string.charAt(3) == 'P')
-  }
+  private[this] def isPrefixedWithHTTP(string: String): Boolean =
+    string.regionMatches(true, 0, "http", 0, 4)
 }
