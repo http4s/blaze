@@ -29,7 +29,7 @@ trait BodyWriter {
 
   /** Flush any bytes to the pipeline
     *
-    * This may be a NOOP depending on the nature of the[[BodyWriter]].
+    * This may be a no-op depending on the nature of the[[BodyWriter]].
     *
     * @return a `Future[Unit]` that resolves when any buffers have been flushed.
     */

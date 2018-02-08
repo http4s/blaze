@@ -12,7 +12,7 @@ import org.http4s.blaze.pipeline.{Command, TailStage}
 import org.http4s.blaze.util.{BufferTools, Execution}
 
 import scala.collection.immutable.VectorBuilder
-import scala.concurrent.{ExecutionContext, Future, Promise}
+import scala.concurrent.{Future, Promise}
 import scala.util.{Failure, Success, Try}
 
 private class ClientStage(request: HttpRequest) extends TailStage[StreamMessage] {
