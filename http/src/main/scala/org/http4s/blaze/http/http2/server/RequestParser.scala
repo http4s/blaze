@@ -51,7 +51,7 @@ private object RequestParser {
             error += s"HTTP/2.0 forbids connection specific headers: $h. "
 
           case TE =>
-            if (!v.equalsIgnoreCase("trailers")) error += s"HTTP/2.0 forbids TE header values other than 'trailers'. "
+            if (!v.equalsIgnoreCase("trailers")) error += "HTTP/2.0 forbids TE header values other than 'trailers'. "
           // ignore otherwise
 
           case _ if !validHeaderName(k) =>
