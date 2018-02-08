@@ -23,12 +23,10 @@ object ServerSelector {
       case _          => LeafBuilder(http1xStage(service, config))
     }
 
-    def selector(protocols: Seq[String]): String = {
-      protocols.find {
-        case H2    => true
-        case H2_14 => true
-        case _     => false
-      } getOrElse(HTTP_1_1)
+    def selector(protocols: Set[String]): String = {
+      if (protocols(H2)) H2
+      else if (protocols(H2_14)) H2_14
+      else HTTP_1_1
     }
     
     new ALPNServerSelector(engine, selector, builder)

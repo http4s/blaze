@@ -17,7 +17,7 @@ import scala.util.{Failure, Success}
   * @param builder builds the appropriate pipeline based on the
   */
 private[http] class ALPNServerSelector(engine: SSLEngine,
-                         selector: Seq[String] => String,
+                         selector: Set[String] => String,
                          builder: String => LeafBuilder[ByteBuffer]) extends TailStage[ByteBuffer] {
 
   ALPN.put(engine, new ServerProvider)
@@ -40,7 +40,8 @@ private[http] class ALPNServerSelector(engine: SSLEngine,
 
   private def selectPipeline(): Unit = {
     try {
-      val b = builder(selected.getOrElse(selector(Nil)))
+      val protocol = selected.getOrElse(selector(Set.empty))
+      val b = builder(protocol)
       this.replaceTail(b, true)
       ()
     } catch {
@@ -55,7 +56,7 @@ private[http] class ALPNServerSelector(engine: SSLEngine,
 
     override def select(protocols: util.List[String]): String = {
       logger.debug("Available protocols: " + protocols)
-      val s = selector(protocols.asScala)
+      val s = selector(protocols.asScala.toSet)
       selected = Some(s)
       s
     }
