@@ -67,9 +67,9 @@ private[http] class ServerStage(streamId: Int,
     }
 
     length match {
-      case Some(Success(len)) => checkAndRunRequest(hs, new H2ServerBodyReader(len))
+      case Some(Success(len)) => checkAndRunRequest(hs, new BodyReaderImpl(len))
       case Some(Failure(error)) => shutdownWithCommand(Cmd.Error(error))
-      case None => checkAndRunRequest(hs, new H2ServerBodyReader(-1))
+      case None => checkAndRunRequest(hs, new BodyReaderImpl(-1))
     }
   }
 
@@ -130,7 +130,7 @@ private[http] class ServerStage(streamId: Int,
     override def close(): Future[Unit] = underlying.close()
   }
 
-  private class H2ServerBodyReader(length: Long) extends H2BodyReader(streamId, length) {
+  private class BodyReaderImpl(length: Long) extends AbstractBodyReader(streamId, length) {
     override protected def channelRead(): Future[StreamMessage] = ServerStage.this.channelRead()
     override protected def failed(ex: Throwable): Unit = sendOutboundCommand(Cmd.Error(ex))
   }
