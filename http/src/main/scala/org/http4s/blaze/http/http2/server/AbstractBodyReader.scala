@@ -23,25 +23,24 @@ private abstract class AbstractBodyReader(streamId: Int, length: Long) extends B
   private[this] var bytesRead = 0L
   private[this] var finished = false
 
-  private[this] val lock: Object = this
   private[this] val logger = getLogger
 
   protected def channelRead(): Future[StreamMessage]
 
   protected def failed(ex: Throwable): Unit
 
-  override def discard(): Unit = lock.synchronized {
+  override def discard(): Unit = this.synchronized {
     finished = true
   }
 
-  override def isExhausted: Boolean = lock.synchronized(finished)
+  override def isExhausted: Boolean = this.synchronized(finished)
 
   def apply(): Future[ByteBuffer] = {
     if (isExhausted) BufferTools.emptyFutureBuffer
     else {
       channelRead().flatMap { frame =>
         // We use `result` to escape the lock before doing arbitrary things
-        val result = lock.synchronized {
+        val result = AbstractBodyReader.this.synchronized {
           frame match {
             case DataFrame(endStream, bytes) =>
               finished = endStream
@@ -60,26 +59,24 @@ private abstract class AbstractBodyReader(streamId: Int, length: Long) extends B
               Success(BufferTools.emptyBuffer)
 
             case HeadersFrame(_, false, _) =>
-              // trailers must be the final frame of the stream:
-              // optionally, one HEADERS frame, followed by zero or more
-              // CONTINUATION frames containing the trailer-part, if present (see
-              // [RFC7230], Section 4.1.2).
-              // https://tools.ietf.org/html/rfc7540#section-8.1
+              // If their are trailers, they must not be followed by any more
+              // messages in the HTTP message dispatch.
+              // Rule 4 of a HTTP Request/Response Exchange
+              // (https://tools.ietf.org/html/rfc7540#section-8.1)
               finished = true
               val msg = "Received non-final HEADERS frame while reading body."
               Failure(PROTOCOL_ERROR.rst(streamId, msg))
           }
         }
-        // TODO: change to the `.fromTry` API once we've dumped 2.10.x builds
+
         result match {
           case Failure(e) =>
             logger.info(e)("While attempting to read body")
             failed(e)
-            Future.failed(e)
 
-          case Success(v) =>
-            Future.successful(v)
+          case Success(_) => // nop
         }
+        Future.fromTry(result)
       }(Execution.trampoline)
     }
   }
