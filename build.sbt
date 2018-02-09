@@ -6,7 +6,7 @@ organization in ThisBuild := "org.http4s"
 lazy val commonSettings = Seq(
   version := "0.14.0-SNAPSHOT",
   description := "NIO Framework for Scala",
-  crossScalaVersions := Seq("2.10.6", scalaVersion.value, "2.12.2")
+  crossScalaVersions := Seq(scalaVersion.value, "2.12.2")
 )
 
 
