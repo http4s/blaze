@@ -198,17 +198,17 @@ private final class Http1ServerCodec(maxNonBodyBytes: Int, pipeline: TailStage[B
     protected def doClose(): Future[RouteResult]
 
     final override def write(buffer: ByteBuffer): Future[Unit] = lock.synchronized {
-      if (closed) InternalWriter.closedChannelException
+      if (closed) InternalWriter.ClosedChannelException
       else doWrite(buffer)
     }
 
     final override def flush(): Future[Unit] = lock.synchronized {
-      if (closed) InternalWriter.closedChannelException
+      if (closed) InternalWriter.ClosedChannelException
       else doFlush()
     }
 
     final override def close(): Future[RouteResult] = lock.synchronized {
-      if (closed) InternalWriter.closedChannelException
+      if (closed) InternalWriter.ClosedChannelException
       else {
         closed = true
         doClose()
@@ -229,7 +229,7 @@ private final class Http1ServerCodec(maxNonBodyBytes: Int, pipeline: TailStage[B
     }
 
     override def doFlush(): Future[Unit] =
-      if (sb == null) InternalWriter.cachedSuccess
+      if (sb == null) InternalWriter.CachedSuccess
       else doWrite(BufferTools.emptyBuffer)
 
     // This writer will always request that the connection be closed
@@ -258,7 +258,7 @@ private final class Http1ServerCodec(maxNonBodyBytes: Int, pipeline: TailStage[B
       logger.debug(s"StaticBodyWriter: write: $buffer")
       val bufSize = buffer.remaining()
 
-      if (bufSize == 0) InternalWriter.cachedSuccess
+      if (bufSize == 0) InternalWriter.CachedSuccess
       else if (written + bufSize > len) {
         // This is a protocol error. We try to signal that something is wrong
         // to the client by _not_ sending the data and hopefully resulting in
@@ -269,7 +269,7 @@ private final class Http1ServerCodec(maxNonBodyBytes: Int, pipeline: TailStage[B
         val ex = new IllegalStateException(msg)
         logger.error(ex)(msg)
         Future.failed(ex)
-      } else if (cache.isEmpty && bufSize > InternalWriter.bufferLimit) {
+      } else if (cache.isEmpty && bufSize > InternalWriter.BufferLimit) {
         // just write the buffer if it alone fills the cache
         assert(cachedBytes == 0, "Invalid cached bytes state")
         written += bufSize
@@ -279,8 +279,8 @@ private final class Http1ServerCodec(maxNonBodyBytes: Int, pipeline: TailStage[B
         written += bufSize
         cachedBytes += bufSize
 
-        if (cachedBytes > InternalWriter.bufferLimit) flush()
-        else InternalWriter.cachedSuccess
+        if (cachedBytes > InternalWriter.BufferLimit) flush()
+        else InternalWriter.CachedSuccess
       }
     }
 
@@ -292,7 +292,7 @@ private final class Http1ServerCodec(maxNonBodyBytes: Int, pipeline: TailStage[B
         cachedBytes = 0
         pipeline.channelWrite(buffs)
       }
-      else InternalWriter.cachedSuccess
+      else InternalWriter.CachedSuccess
     }
 
     override def doClose(): Future[RouteResult] = {
@@ -318,13 +318,13 @@ private final class Http1ServerCodec(maxNonBodyBytes: Int, pipeline: TailStage[B
     private var cacheSize = 0
 
     override def doWrite(buffer: ByteBuffer): Future[Unit] = {
-      if (!buffer.hasRemaining) InternalWriter.cachedSuccess
+      if (!buffer.hasRemaining) InternalWriter.CachedSuccess
       else {
         cache += buffer
         cacheSize += buffer.remaining()
 
         if (cacheSize > maxCacheSize) doFlush()
-        else InternalWriter.cachedSuccess
+        else InternalWriter.CachedSuccess
       }
     }
 
@@ -349,7 +349,7 @@ private final class Http1ServerCodec(maxNonBodyBytes: Int, pipeline: TailStage[B
         buffers = buffer::buffers
       }
 
-      if (buffers.isEmpty) InternalWriter.cachedSuccess
+      if (buffers.isEmpty) InternalWriter.CachedSuccess
       else pipeline.channelWrite(buffers)
     }
 
@@ -368,7 +368,7 @@ private final class Http1ServerCodec(maxNonBodyBytes: Int, pipeline: TailStage[B
 
   /** Dynamically select a [[BodyWriter]]
     *
-    * This process writer buffers bytes until `InternalWriter.bufferLimit` is exceeded then
+    * This process writer buffers bytes until `InternalWriter.BufferLimit` is exceeded then
     * falls back to a [[ChunkedBodyWriter]]. If the buffer is not exceeded, the entire
     * body is written as a single chunk using standard encoding.
     */
@@ -387,11 +387,11 @@ private final class Http1ServerCodec(maxNonBodyBytes: Int, pipeline: TailStage[B
         cache += buffer
         cacheSize += buffer.remaining()
 
-        if (cacheSize > InternalWriter.bufferLimit) {
+        if (cacheSize > InternalWriter.BufferLimit) {
           // Abort caching: too much data. Create a chunked writer.
           startChunked()
         }
-        else InternalWriter.cachedSuccess
+        else InternalWriter.CachedSuccess
       }
     }
 
@@ -420,7 +420,7 @@ private final class Http1ServerCodec(maxNonBodyBytes: Int, pipeline: TailStage[B
     // start a chunked encoding writer and write the contents of the cache
     private[this] def startChunked(): Future[Unit] = {
       underlying = {
-        if (minor > 0) new ChunkedBodyWriter(false, sb, InternalWriter.bufferLimit)
+        if (minor > 0) new ChunkedBodyWriter(false, sb, InternalWriter.BufferLimit)
         else new ClosingWriter(sb)
       }
 

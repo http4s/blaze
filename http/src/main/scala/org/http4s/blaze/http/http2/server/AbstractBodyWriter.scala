@@ -35,7 +35,7 @@ private abstract class AbstractBodyWriter(private var hs: Headers) extends BodyW
       }
     }
 
-    if (wasClosed) InternalWriter.closedChannelException
+    if (wasClosed) InternalWriter.ClosedChannelException
     else if (hsToFlush != null) {
       val hs = HeadersFrame(Priority.NoPriority, false, hsToFlush)
       if (!buffer.hasRemaining) flushMessage(hs)
@@ -44,7 +44,7 @@ private abstract class AbstractBodyWriter(private var hs: Headers) extends BodyW
         flushMessage(hs :: bodyFrame :: Nil)
       }
     }
-    else if (!buffer.hasRemaining) InternalWriter.cachedSuccess
+    else if (!buffer.hasRemaining) InternalWriter.CachedSuccess
     else {
       val bodyFrame = DataFrame(false, buffer)
       flushMessage(bodyFrame)
@@ -60,8 +60,8 @@ private abstract class AbstractBodyWriter(private var hs: Headers) extends BodyW
         false
       }
     }
-    if (wasClosed) InternalWriter.closedChannelException
-    else if (hsToFlush == null) InternalWriter.cachedSuccess
+    if (wasClosed) InternalWriter.ClosedChannelException
+    else if (hsToFlush == null) InternalWriter.CachedSuccess
     else {
       // need to flush the headers
       val hs = HeadersFrame(Priority.NoPriority, false, hsToFlush)
@@ -79,7 +79,7 @@ private abstract class AbstractBodyWriter(private var hs: Headers) extends BodyW
         false
       }
     }
-    if (wasClosed) InternalWriter.closedChannelException
+    if (wasClosed) InternalWriter.ClosedChannelException
     else if (hsToFlush != null) {
       val frame = HeadersFrame(Priority.NoPriority, true, hsToFlush)
       flushMessage(frame)

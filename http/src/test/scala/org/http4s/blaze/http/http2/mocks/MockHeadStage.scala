@@ -13,6 +13,7 @@ private[http2] class MockHeadStage[T] extends HeadStage[T] {
   val writes = new mutable.Queue[(T, Promise[Unit])]()
 
   var disconnected: Boolean = false
+  var error: Option[Throwable] = None
 
   override def readRequest(size: Int): Future[T] = {
     val p = Promise[T]
@@ -40,8 +41,14 @@ private[http2] class MockHeadStage[T] extends HeadStage[T] {
 
   /** Receives outbound commands
     * Override to capture commands. */
-  override def outboundCommand(cmd: OutboundCommand): Unit = {
-    disconnected = disconnected | (cmd == Command.Disconnect)
-    super.outboundCommand(cmd)
+  override def outboundCommand(cmd: OutboundCommand): Unit = cmd match {
+    case Command.Disconnect =>
+      disconnected = true
+
+    case Command.Error(ex) =>
+      error = Some(ex)
+
+    case cmd =>
+      super.outboundCommand(cmd)
   }
 }

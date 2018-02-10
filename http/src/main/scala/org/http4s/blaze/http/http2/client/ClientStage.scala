@@ -186,12 +186,7 @@ private object ClientStage {
       hs += StageTools.Authority -> breakdown.authority
       hs += StageTools.Path -> breakdown.fullPath
 
-      // Header keys need to be lower cased
-      request.headers.foreach { case p @ (k, v) =>
-        val lowerKey = k.toLowerCase(Locale.ENGLISH)
-        if (lowerKey eq k) hs += p
-        else hs += lowerKey -> v
-      }
+      StageTools.copyHeaders(request.headers, hs)
 
       hs.result()
     }
