@@ -8,14 +8,14 @@ import org.http4s.blaze.util.BufferTools
 
 import scala.concurrent.Future
 
-private abstract class H2BodyWriter(private var hs: Headers) extends BodyWriter {
-  override type Finished = Unit
+private abstract class AbstractBodyWriter(private var hs: Headers) extends BodyWriter {
+  final override type Finished = Unit
 
-  private[this] val lock: Object = this
+  // must be protected by synchronized on `this`
   private[this] var closed = false
 
-  // must be called while holding the lock
-  private[this] def takeHeaders: Headers = {
+  // must only be called while synchronized on `this`
+  private[this] def takeHeaders(): Headers = {
     val taken = hs
     hs = null
     taken
@@ -27,10 +27,10 @@ private abstract class H2BodyWriter(private var hs: Headers) extends BodyWriter 
 
   final override def write(buffer: ByteBuffer): Future[Unit] = {
     var hsToFlush: Headers = null
-    val wasClosed = lock.synchronized {
+    val wasClosed = this.synchronized {
       if (closed) true
       else {
-        hsToFlush = takeHeaders
+        hsToFlush = takeHeaders()
         false
       }
     }
@@ -53,10 +53,10 @@ private abstract class H2BodyWriter(private var hs: Headers) extends BodyWriter 
 
   final override def flush(): Future[Unit] = {
     var hsToFlush: Headers = null
-    val wasClosed = lock.synchronized {
+    val wasClosed = this.synchronized {
       if (closed) true
       else {
-        hsToFlush = takeHeaders
+        hsToFlush = takeHeaders()
         false
       }
     }
@@ -71,10 +71,10 @@ private abstract class H2BodyWriter(private var hs: Headers) extends BodyWriter 
 
   final override def close(): Future[Finished] = {
     var hsToFlush: Headers = null
-    val wasClosed = lock.synchronized {
+    val wasClosed = this.synchronized {
       if (closed) true
       else {
-        hsToFlush = takeHeaders
+        hsToFlush = takeHeaders()
         closed = true
         false
       }
@@ -84,7 +84,7 @@ private abstract class H2BodyWriter(private var hs: Headers) extends BodyWriter 
       val frame = HeadersFrame(Priority.NoPriority, true, hsToFlush)
       flushMessage(frame)
     } else {
-      val frame = DataFrame(endStream = true, BufferTools.emptyBuffer)
+      val frame = DataFrame(true, BufferTools.emptyBuffer)
       flushMessage(frame)
     }
   }

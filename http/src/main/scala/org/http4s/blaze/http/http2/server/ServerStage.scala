@@ -102,7 +102,7 @@ private[http] class ServerStage(streamId: Int,
 
   ///////// BodyWriter's /////////////////////////////
 
-  private class StandardWriter(hs: Headers) extends H2BodyWriter(hs) {
+  private class StandardWriter(hs: Headers) extends AbstractBodyWriter(hs) {
     override protected def flushMessage(msg: StreamMessage): Future[Unit] =
       channelWrite(msg)
 
