@@ -16,9 +16,11 @@ import scala.concurrent.Future
 import scala.util.{Failure, Success, Try}
 
 /** Basic implementation of a http2 stream [[TailStage]] */
-private[http] class ServerStage(streamId: Int,
-                                service: HttpService,
-                                config: HttpServerStageConfig) extends TailStage[StreamMessage] {
+private[http] class ServerStage(
+  streamId: Int,
+  service: HttpService,
+  config: HttpServerStageConfig
+) extends TailStage[StreamMessage] {
 
   private implicit def _ec = Execution.trampoline // for all the onComplete calls
 
