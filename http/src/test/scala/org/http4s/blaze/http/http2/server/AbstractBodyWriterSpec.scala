@@ -4,6 +4,7 @@ import java.io.IOException
 import java.nio.ByteBuffer
 
 import org.http4s.blaze.http.http2.{DataFrame, HeadersFrame, Priority, StreamMessage}
+import org.http4s.blaze.pipeline.Command
 import org.http4s.blaze.util.BufferTools
 import org.specs2.mutable.Specification
 
@@ -26,7 +27,7 @@ class AbstractBodyWriterSpec extends Specification {
   }
 
   private def checkIOException(t: Future[Unit]): Boolean = t.value match {
-    case Some(Failure(_: IOException)) => true // nop
+    case Some(Failure(Command.EOF)) => true // nop
     case other => sys.error(s"Unexpected value: $other")
   }
 

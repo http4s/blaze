@@ -39,7 +39,9 @@ private[http] class ServerStage(
   }
 
   private def startRequest(): Unit = {
-    channelRead(timeout = config.requestPreludeTimeout).onComplete  {
+    // The prelude should already be available (or we wouldn't have a stream id)
+    // so adding a timeout is unnecessary.
+    channelRead().onComplete  {
       case Success(HeadersFrame(_, endStream, hs)) =>
         if (endStream) checkAndRunRequest(hs, BodyReader.EmptyBodyReader)
         else getBodyReader(hs)
@@ -124,7 +126,10 @@ private[http] class ServerStage(
     private val underlying = new StandardWriter(headers)
 
     override def write(buffer: ByteBuffer): Future[Unit] = {
-      underlying.close().flatMap( _ => InternalWriter.closedChannelException)
+      underlying.close().flatMap { _ =>
+        sendOutboundCommand(Cmd.Disconnect)
+        InternalWriter.ClosedChannelException
+      }
     }
 
     override def flush(): Future[Unit] = write(BufferTools.emptyBuffer)
