@@ -15,22 +15,27 @@ class HeaderDecoderSpec extends Specification {
 
   "HeaderDecoder" should {
     "decode a full headers block" in {
-      val bb = HeaderCodecHelpers.encodeHeaders(testHeaders, Int.MaxValue)
-      val dec = new HeaderDecoder(Int.MaxValue, false, Int.MaxValue)
+      val bb = HeaderCodecHelpers.encodeHeaders(testHeaders,
+        Http2Settings.DefaultSettings.HEADER_TABLE_SIZE)
+      val dec = new HeaderDecoder(Int.MaxValue, false,
+        Http2Settings.DefaultSettings.HEADER_TABLE_SIZE)
       dec.decode(bb, -1, true) must_== Continue
       dec.finish() must_== testHeaders
 
       // Decode another block to make sure we don't contaminate the first
       val nextHs = (0 until 10).map { i => i.toString -> i.toString }
-      val nextEncodedHs = HeaderCodecHelpers.encodeHeaders(nextHs, Int.MaxValue)
+      val nextEncodedHs = HeaderCodecHelpers.encodeHeaders(nextHs,
+        Http2Settings.DefaultSettings.HEADER_TABLE_SIZE)
 
       dec.decode(nextEncodedHs, -1, true) must_== Continue
       dec.finish() must_== nextHs
     }
 
     "decode a header block in chunks" in {
-      val bb = HeaderCodecHelpers.encodeHeaders(testHeaders, Int.MaxValue)
-      val dec = new HeaderDecoder(Int.MaxValue, false, Int.MaxValue)
+      val bb = HeaderCodecHelpers.encodeHeaders(testHeaders,
+        Http2Settings.DefaultSettings.HEADER_TABLE_SIZE)
+      val dec = new HeaderDecoder(Int.MaxValue, false,
+        Http2Settings.DefaultSettings.HEADER_TABLE_SIZE)
 
       val b1 = BufferTools.takeSlice(bb, bb.remaining() / 2)
 
@@ -40,8 +45,10 @@ class HeaderDecoderSpec extends Specification {
     }
 
     "count the current header block size" in {
-      val bb = HeaderCodecHelpers.encodeHeaders(testHeaders, Int.MaxValue)
-      val dec = new HeaderDecoder(Int.MaxValue, false, Int.MaxValue)
+      val bb = HeaderCodecHelpers.encodeHeaders(testHeaders,
+        Http2Settings.DefaultSettings.HEADER_TABLE_SIZE)
+      val dec = new HeaderDecoder(Int.MaxValue, false,
+        Http2Settings.DefaultSettings.HEADER_TABLE_SIZE)
 
       dec.currentHeaderBlockSize must_== 0
       dec.decode(bb, -1, true) must_== Continue
@@ -53,8 +60,11 @@ class HeaderDecoderSpec extends Specification {
     }
 
     "now overflow the maxHeaderBlockSize" in {
-      val bb = HeaderCodecHelpers.encodeHeaders(testHeaders ++ testHeaders, Int.MaxValue)
-      val dec = new HeaderDecoder(headersBlockSize, /*discardOnOverflow*/ true, Int.MaxValue)
+      val bb = HeaderCodecHelpers.encodeHeaders(
+        testHeaders ++ testHeaders,
+        Http2Settings.DefaultSettings.HEADER_TABLE_SIZE)
+      val dec = new HeaderDecoder(headersBlockSize, /*discardOnOverflow*/ true,
+        Http2Settings.DefaultSettings.HEADER_TABLE_SIZE)
 
       dec.decode(bb, -1, true) must_== Continue
       dec.headerListSizeOverflow must beTrue
@@ -68,7 +78,8 @@ class HeaderDecoderSpec extends Specification {
         0xff, 0x84, 0x49, 0x50, 0x9f, 0xff).map(_.toByte)
       )
 
-      val dec = new HeaderDecoder(Int.MaxValue, true, Int.MaxValue)
+      val dec = new HeaderDecoder(Int.MaxValue, true,
+        Http2Settings.DefaultSettings.HEADER_TABLE_SIZE)
       dec.decode(bb, -1, true) must throwA[Http2SessionException].like {
         case Http2SessionException(code, _) =>
           code must_== Http2Exception.COMPRESSION_ERROR.code
