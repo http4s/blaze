@@ -3,7 +3,6 @@ language: scala
 scala:
   - 2.12.4
   - 2.11.11
-  - 2.10.6
 
 jdk:
   - oraclejdk8
@@ -35,6 +34,3 @@ jobs:
       scala: 2.11.11
       script: ./travis-scripts/deploy.sh
     - <<: *publish
-      scala: 2.10.6
-      script: ./travis-scripts/deploy.sh
-

@@ -48,7 +48,7 @@ trait BodyReader {
     BodyReader.accumulate(max, this)
 }
 
-private object BodyReader {
+object BodyReader {
 
   /** Provides a simple way to proxy a `BodyReader` */
   abstract class Proxy(underlying: BodyReader) extends BodyReader {

@@ -51,6 +51,9 @@ trait Http2ClientSession extends HttpClientSession {
     *         the session. The scale is intended to be linear.
     */
   def quality: Double
+
+  /** Ping the peer, asynchronously returning the duration of the round trip */
+  def ping(): Future[Duration]
 }
 
 object HttpClientSession {

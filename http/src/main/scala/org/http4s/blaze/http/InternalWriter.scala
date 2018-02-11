@@ -1,10 +1,11 @@
 package org.http4s.blaze.http
 
-import java.io.IOException
+import org.http4s.blaze.pipeline.Command
+
 import scala.concurrent.Future
 
 private object InternalWriter {
-  val cachedSuccess = Future.successful(())
-  def closedChannelException = Future.failed(new IOException("Channel closed"))
-  val bufferLimit = 32*1024
+  val CachedSuccess = Future.successful(())
+  val ClosedChannelException = Future.failed(Command.EOF)
+  val BufferLimit = 32*1024
 }
