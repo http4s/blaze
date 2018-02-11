@@ -11,6 +11,16 @@ import org.http4s.blaze.http.http2.server.ServerSelector
 import org.http4s.blaze.pipeline.TrunkBuilder
 import org.http4s.blaze.pipeline.stages.SSLStage
 
+/** Basic HTTP/2 server example
+  *
+  * The server is capable of serving traffic over both HTTP/1.x and HTTP/2
+  * using TLS.
+  *
+  * @note the Jetty ALPN boot library must have been loaded in order for
+  *       ALPN negotiation to happen. See the Jetty docs at
+  *       https://www.eclipse.org/jetty/documentation/9.3.x/alpn-chapter.html
+  *       for more information.
+  */
 class Http2ServerExample(port: Int) {
   private val sslContext = ExampleKeystore.sslContext()
 
