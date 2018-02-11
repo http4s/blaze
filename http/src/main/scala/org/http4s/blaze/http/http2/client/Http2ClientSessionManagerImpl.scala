@@ -109,7 +109,7 @@ private[http] class Http2ClientSessionManagerImpl(
     factory.connect(url.getAddress).flatMap(initialPipeline)(Execution.directec)
   }
 
-  private[this] def initialPipeline(head: HeadStage[ByteBuffer]): Future[Http2ClientSession] = {
+  protected def initialPipeline(head: HeadStage[ByteBuffer]): Future[Http2ClientSession] = {
     val p = Promise[Http2ClientSession]
 
     def buildConnection(s: String): LeafBuilder[ByteBuffer] = {
