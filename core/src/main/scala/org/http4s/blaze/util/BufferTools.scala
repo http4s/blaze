@@ -41,13 +41,13 @@ object BufferTools {
   }
 
   /** Get the `String` representation of the `ByteBuffer` */
-  def bufferToString(buffer: ByteBuffer): String = {
-    if (buffer.hasRemaining) {
+  def bufferToString(buffer: ByteBuffer, charset: Charset = StandardCharsets.UTF_8): String = {
+    if (!buffer.hasRemaining) ""
+    else {
       val arr = new Array[Byte](buffer.remaining())
       buffer.get(arr)
-      new String(arr)
+      new String(arr, charset)
     }
-    else ""
   }
 
   /** Join the two buffers into a single ByteBuffer. This method is
@@ -219,5 +219,28 @@ object BufferTools {
     }
 
     go(0)
+  }
+
+  /** Make a String which contains the hex representation of the buffers data
+    *
+    * The passed buffer is not mutated, even temporarily.
+    *
+    * @note this is not intended to be a high performance method and should only
+    * be used for debugging purposes.
+    */
+  private[blaze] def hexString(buffer: ByteBuffer, limit: Int = Int.MaxValue): String = {
+    val sb = new StringBuilder(buffer.toString)
+    sb.append(" 0x")
+    val readOnly = buffer.asReadOnlyBuffer() // makes a read-only copy
+    @tailrec
+    def go(i: Int): Unit = {
+      if (i < limit && readOnly.hasRemaining) {
+        sb.append("%02X".format(readOnly.get()))
+        go(i + 1)
+      }
+    }
+    go(0)
+
+    sb.result()
   }
 }

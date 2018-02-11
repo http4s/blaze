@@ -84,8 +84,10 @@ object BlazePlugin extends AutoPlugin {
   lazy val http4sWebsocket     = "org.http4s"                 %% "http4s-websocket"    % "0.2.0"
   lazy val scalaXml            = "org.scala-lang.modules"     %% "scala-xml"           % "1.0.6"
   lazy val log4s               = "org.log4s"                  %% "log4s"               % "1.4.0"
+  lazy val scalacheck          = "org.scalacheck"             %% "scalacheck"          % "1.13.5"
   lazy val specs2              = "org.specs2"                 %% "specs2-core"         % "3.8.9"
   lazy val specs2Mock          = "org.specs2"                 %% "specs2-mock"         % specs2.revision
+  lazy val specs2Scalacheck    = "org.specs2"                 %% "specs2-scalacheck"   % specs2.revision
   // Needed for Http2 support until implemented in the JDK
   lazy val alpn_api            = "org.eclipse.jetty.alpn"     % "alpn-api"             % "1.1.3.v20160715"
   // Note that the alpn_boot version is JVM version specific. Check the docs if getting weird errors.

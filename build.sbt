@@ -6,7 +6,7 @@ organization in ThisBuild := "org.http4s"
 lazy val commonSettings = Seq(
   version := "0.14.0-SNAPSHOT",
   description := "NIO Framework for Scala",
-  crossScalaVersions := Seq("2.10.6", "2.11.11", scalaVersion.value),
+  crossScalaVersions := Seq("2.11.11", scalaVersion.value),
   scalacOptions in (Compile, doc) ++= Seq("-no-link-warnings") // Suppresses problems with Scaladoc @throws links
   //  as discussed in http://www.scala-archive.org/Scaladoc-2-11-quot-throws-tag-quot-cannot-find-any-member-to-link-td4641850.html
 )
@@ -15,6 +15,7 @@ lazy val commonSettings = Seq(
 lazy val blaze = project.in(file("."))
     .enablePlugins(DisablePublishingPlugin)
     .settings(cancelable in Global := true)
+    .settings(commonSettings)
     .aggregate(core, http, examples)
 
 lazy val core = Project("blaze-core", file("core"))
@@ -54,7 +55,9 @@ lazy val http = Project("blaze-http", file("http"))
     },
     // Test Dependencies
     libraryDependencies ++= Seq(
-      asyncHttpClient
+      asyncHttpClient,
+      scalacheck,
+      specs2Scalacheck
     ).map(_ % Test)
   ).dependsOn(core % "test->test;compile->compile")
 
@@ -66,6 +69,7 @@ lazy val examples = Project("blaze-examples",file("examples"))
     // necessary to add ALPN classes to boot classpath
     fork := true,
     // Adds ALPN to the boot classpath for Http2 support
+    libraryDependencies += alpn_boot,
     javaOptions in run ++= addAlpnPath((managedClasspath in Runtime).value)
 
   ).dependsOn(http)
@@ -73,11 +77,11 @@ lazy val examples = Project("blaze-examples",file("examples"))
 
 /* Helper Functions */
 
-def addAlpnPath(attList : Keys.Classpath): Seq[String] = {
+def addAlpnPath(attList: Keys.Classpath): Seq[String] = {
   for {
     file <- attList.map(_.data)
     path = file.getAbsolutePath if path.contains("jetty.alpn")
-  } yield { println(s"Alpn patth: $path"); "-Xbootclasspath/p:" + path}
+  } yield { println(s"Alpn path: $path"); "-Xbootclasspath/p:" + path}
 }
 
 addCommandAlias("validate", ";test ;mimaReportBinaryIssues")

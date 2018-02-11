@@ -95,7 +95,7 @@ class TickWheelExecutor(wheelSize: Int = 512, tick: Duration = 200.milli) {
     */
   def schedule(r: Runnable, ec: ExecutionContext, timeout: Duration): Cancellable = {
     if (alive) {
-      if (!timeout.isFinite()) {  // This will never timeout, so don't schedule it.
+      if (!timeout.isFinite) {  // This will never timeout, so don't schedule it.
         Cancellable.noopCancel
       }
       else {
