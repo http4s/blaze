@@ -9,7 +9,17 @@ import org.http4s.blaze.util.Execution
 import scala.concurrent.{ExecutionContext, Future, Promise}
 import scala.util.{Failure, Success}
 
-/** Post routing response generator */
+/** Response generator for HTTP servers
+  *
+  * The route action can be thought of as a more complex version of the lambda
+  * `(HttpResponsePrelude => Writer) => Future[Writer#Finished]`
+  *
+  * with the key difference being the addition of the type parameter that makes
+  * the type of the generic, or more importantly, the `Writer#Finished` type
+  * member generic. By doing so, the only way to satisfy the return value is to
+  * call the `Writer`s `close()` method which has the return type
+  * `Future[Writer#Finished]`, ensuring that the writer is closed.
+  */
 trait RouteAction {
   /** Generate a HTTP response using the passed continuation
     *

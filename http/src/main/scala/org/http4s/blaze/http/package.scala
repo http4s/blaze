@@ -7,6 +7,16 @@ package object http {
   type Url = String
   type Method = String
 
-  // The basic type that represents a HTTP service
+  /** The basic type that represents a HTTP service
+    *
+    * {{{
+    *   val service: HttpService = { req =>
+    *     Future.success(RouteAction.Ok("Hello, world!"))
+    *   }
+    * }}}
+    *
+    * @note When the `Future` returned by the `RouteAction` resolves, server
+    * implementations are free to forcibly close the request body.
+    */
   type HttpService = HttpRequest => Future[RouteAction]
 }
