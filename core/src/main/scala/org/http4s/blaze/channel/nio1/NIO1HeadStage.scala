@@ -22,10 +22,11 @@ private[nio1] object NIO1HeadStage {
 
 }
 
-private[nio1] abstract class NIO1HeadStage(ch: SelectableChannel,
-                                         loop: SelectorLoop,
-                                          key: SelectionKey) extends ChannelHead
-{
+private[nio1] abstract class NIO1HeadStage(
+  ch: SelectableChannel,
+  loop: SelectorLoop,
+  key: SelectionKey
+) extends ChannelHead {
   import NIO1HeadStage._
 
   override def name: String = "NIO1 ByteBuffer Head Stage"
@@ -39,11 +40,14 @@ private[nio1] abstract class NIO1HeadStage(ch: SelectableChannel,
   private var writePromise: Promise[Unit] = null
 
 
-  ///  channel reading bits //////////////////////////////////////////////
-
+  final def opsReady(scratch: ByteBuffer): Unit = {
+    val readyOps = key.readyOps
+    if ((readyOps & SelectionKey.OP_READ) != 0) readReady(scratch)
+    if ((readyOps & SelectionKey.OP_WRITE) != 0) writeReady(scratch)
+  }
 
   // Called by the selector loop when this channel has data to read
-  final def readReady(scratch: ByteBuffer): Unit = {
+  private[this] def readReady(scratch: ByteBuffer): Unit = {
     // assert(Thread.currentThread() == loop,
     //       s"Expected to be called only by SelectorLoop thread, was called by ${Thread.currentThread.getName}")
 
@@ -53,7 +57,7 @@ private[nio1] abstract class NIO1HeadStage(ch: SelectableChannel,
     // if we successfully read some data, unset the interest and
     // complete the promise, otherwise fail appropriately
     r match {
-      case Success(_)   =>
+      case Success(_) =>
         val p = readPromise
         readPromise = null
         if (p != null) {
@@ -70,34 +74,7 @@ private[nio1] abstract class NIO1HeadStage(ch: SelectableChannel,
     }
   }
 
-  final override def readRequest(size: Int): Future[ByteBuffer] = {
-    logger.trace(s"NIOHeadStage received a read request of size $size")
-    val p = Promise[ByteBuffer]
-
-    loop.executeTask(new Runnable {
-      override def run(): Unit = {
-        if (closedReason != null) {
-          p.tryFailure(closedReason)
-          ()
-        }
-        else if (readPromise == null) {
-          readPromise = p
-          setOp(SelectionKey.OP_READ)
-          ()
-        }
-        else {
-          p.tryFailure(new IllegalStateException("Cannot have more than one pending read request"))
-          ()
-        }
-      }
-    })
-    p.future
-  }
-
-  /// channel write bits /////////////////////////////////////////////////
-
-    // Called by the selector loop when this channel can be written to
-  final def writeReady(scratch: ByteBuffer): Unit = {
+  private[this] def writeReady(scratch: ByteBuffer): Unit = {
     //assert(Thread.currentThread() == loop,
     //       s"Expected to be called only by SelectorLoop thread, was called by ${Thread.currentThread.getName}")
 
@@ -124,6 +101,34 @@ private[nio1] abstract class NIO1HeadStage(ch: SelectableChannel,
         closeWithError(t)
     }
   }
+
+  ///  channel reading bits //////////////////////////////////////////////
+
+  final override def readRequest(size: Int): Future[ByteBuffer] = {
+    logger.trace(s"NIOHeadStage received a read request of size $size")
+    val p = Promise[ByteBuffer]
+
+    loop.executeTask(new Runnable {
+      override def run(): Unit = {
+        if (closedReason != null) {
+          p.tryFailure(closedReason)
+          ()
+        }
+        else if (readPromise == null) {
+          readPromise = p
+          setOp(SelectionKey.OP_READ)
+          ()
+        }
+        else {
+          p.tryFailure(new IllegalStateException("Cannot have more than one pending read request"))
+          ()
+        }
+      }
+    })
+    p.future
+  }
+
+  /// channel write bits /////////////////////////////////////////////////
 
   final override def writeRequest(data: ByteBuffer): Future[Unit] = writeRequest(data::Nil)
 
