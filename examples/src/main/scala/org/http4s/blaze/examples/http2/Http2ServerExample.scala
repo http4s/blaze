@@ -17,17 +17,21 @@ class Http2ServerExample(port: Int) {
   private val f: BufferPipelineBuilder = { _ =>
     val eng = sslContext.createSSLEngine()
     eng.setUseClientMode(false)
-    TrunkBuilder(new SSLStage(eng)).cap(ServerSelector(eng, ExampleService.service(None), HttpServerStageConfig()))
+    TrunkBuilder(new SSLStage(eng))
+      .cap(ServerSelector(eng, ExampleService.service(None), HttpServerStageConfig()))
   }
 
   private val factory = NIO1SocketServerGroup.fixedGroup(workerThreads = channel.DefaultPoolSize)
 
-  def run(): ServerChannel = factory.bind(new InetSocketAddress(port), f).getOrElse(sys.error("Failed to start server."))
+  def run(): ServerChannel =
+    factory.bind(new InetSocketAddress(port), f)
+      .getOrElse(sys.error("Failed to start server."))
 }
 
 object Http2ServerExample {
   def main(args: Array[String]): Unit = {
-    println("Hello world!")
-    new Http2ServerExample(8443).run().join()
+    val port = 8443
+    println(s"Starting HTTP/2 compatible server on port $port")
+    new Http2ServerExample(port).run().join()
   }
 }

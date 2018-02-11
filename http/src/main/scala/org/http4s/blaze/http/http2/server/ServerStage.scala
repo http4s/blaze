@@ -6,7 +6,7 @@ import java.util.Locale
 import org.http4s.blaze.http._
 import org.http4s.blaze.http.http2.Http2Exception._
 import org.http4s.blaze.http.http2.StageTools._
-import org.http4s.blaze.http.http2.{HeadersFrame, StreamMessage}
+import org.http4s.blaze.http.http2.{HeadersFrame, StageTools, StreamMessage}
 import org.http4s.blaze.http.util.ServiceTimeoutFilter
 import org.http4s.blaze.pipeline.{TailStage, Command => Cmd}
 import org.http4s.blaze.util.{BufferTools, Execution}
@@ -89,18 +89,22 @@ private[http] class ServerStage(
 
   private[this] def renderResponse(method: String, response: Try[RouteAction]): Unit = response match {
     case Success(builder) =>
-      builder.handle(getWriter(method == "HEAD", _))
+      builder.handle(getWriter(method, _))
         .onComplete(onComplete)(Execution.directec)
 
     case Failure(t) => shutdownWithCommand(Cmd.Error(t))
   }
 
-  private[this] def getWriter(isHeadRequest: Boolean, prelude: HttpResponsePrelude): BodyWriter = {
-    val hs = new ArrayBuffer[(String, String)](prelude.headers match {case b: IndexedSeq[_] => b.size + 1; case _ => 16 })
+  private[this] def getWriter(method: String, prelude: HttpResponsePrelude): BodyWriter = {
+    val sizeHint = prelude.headers match {case b: IndexedSeq[_] => b.size + 1; case _ => 16 }
+    val hs = new ArrayBuffer[(String, String)](sizeHint)
     hs += ((Status, Integer.toString(prelude.code)))
-    prelude.headers.foreach{ case (k, v) => hs += ((k.toLowerCase(Locale.ROOT), v)) }
 
-    if (isHeadRequest) new NoopWriter(hs)
+    StageTools.copyHeaders(prelude.headers, hs)
+    // HEAD requests must not have a response body, so we ensure
+    // that by using the `NoopWriter`, which only flushes the headers
+    // and fails with an EOF for the `flush` and `write` operations.
+    if (method == "HEAD") new NoopWriter(hs)
     else new StandardWriter(hs)
   }
 
