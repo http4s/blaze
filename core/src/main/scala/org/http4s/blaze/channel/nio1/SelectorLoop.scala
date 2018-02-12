@@ -5,14 +5,13 @@ import org.http4s.blaze.pipeline.{Command => Cmd}
 import org.http4s.blaze.pipeline._
 import org.http4s.blaze.channel.BufferPipelineBuilder
 
-import scala.annotation.tailrec
-import scala.util.control.NonFatal
+import scala.util.control.{ControlThrowable, NonFatal}
 import java.nio.channels._
 import java.io.IOException
 import java.nio.ByteBuffer
-import java.util.concurrent.atomic.AtomicReference
 import java.util.concurrent.{Executor, RejectedExecutionException}
 
+import org.http4s.blaze.util.TaskQueue
 import org.log4s.getLogger
 
 import scala.concurrent.ExecutionContext
@@ -29,23 +28,16 @@ final class SelectorLoop(
   bufferSize: Int
 ) extends Thread(id) with Executor with ExecutionContext {
 
-  // a node in the task queue with a reference to the next task
-  private[this] class Node(val runnable: Runnable) extends AtomicReference[Node]
-
   private[this] val logger = getLogger
-
-  // a reference to the latest added Node
-  private[this] val queueHead = new AtomicReference[Node](null)
-  // a reference to the first added Node
-  private[this] val queueTail = new AtomicReference[Node](null)
+  private[this] val taskQueue = new TaskQueue
 
   @volatile
   private[this] var _isClosed = false
 
   /** Signal to the [[SelectorLoop]] that it should close */
   def close(): Unit = {
-    logger.info(s"Shutting down SelectorLoop ${getName()}")
     _isClosed = true
+    logger.info(s"Shutting down SelectorLoop ${getName()}")
     selector.wakeup()
     ()
   }
@@ -75,16 +67,16 @@ final class SelectorLoop(
     *     later otherwise.
     */
   def enqueueTask(runnable: Runnable): Unit = {
-    // TODO: there is a risk of scheduling the task but the thread being closed
-    if (_isClosed) throw new RejectedExecutionException("This SelectorLoop is closed.")
+    taskQueue.enqueueTask(runnable) match {
+      case TaskQueue.Enqueued =>
+        ()// nop
 
-    val node = new Node(runnable)
-    val head = queueHead.getAndSet(node)
-    if (head eq null) {
-      queueTail.set(node)
-      selector.wakeup()
-      ()
-    } else head.lazySet(node)
+      case TaskQueue.FirstEnqueued =>
+        selector.wakeup()
+
+      case TaskQueue.Closed =>
+        throw new RejectedExecutionException("This SelectorLoop is closed.")
+    }
   }
 
   override def execute(runnable: Runnable): Unit = enqueueTask(runnable)
@@ -115,8 +107,8 @@ final class SelectorLoop(
           head.inboundCommand(Command.Connected)
           logger.debug("Started channel.")
         } catch {
-          case NonFatal(e) =>
-            logger.error(e)("Caught error during channel init.")
+          case t @ (NonFatal(_) | _: ControlThrowable) =>
+            logger.error(t)("Caught error during channel init.")
             key.attach(null)
             key.cancel()
             ch.close()
@@ -131,10 +123,12 @@ final class SelectorLoop(
     val scratch = ByteBuffer.allocateDirect(bufferSize)
 
     try while(!_isClosed) {
-      // Run any pending tasks. These may set interest ops, just compute something, etc.
-      runTasks()
+      // Run any pending tasks. These may set interest ops,
+      // just compute something, etc.
+      taskQueue.executeTasks()
 
-      // Block here until some IO event happens or someone adds a task to run and wakes the loop
+      // Block here until some IO event happens or someone adds
+      // a task to run and wakes the loop
       if (0 < selector.select()) {
         // We have some new IO operations waiting for us. Process them
         val it = selector.selectedKeys().iterator()
@@ -153,33 +147,7 @@ final class SelectorLoop(
 
     // If we've made it to here, we've exited the run loop and we need to shut down
     killSelector()
-  }
-
-  private[this] def runTasks(): Unit = {
-    @tailrec def spin(n: Node): Node = {
-      val next = n.get()
-      if (next ne null) next
-      else spin(n)
-    }
-
-    @tailrec
-    def go(n: Node): Unit = {
-      try n.runnable.run()
-      catch { case t: Exception => logger.error(t)("Caught exception in queued task") }
-      val next = n.get()
-      if (next eq null) {
-        // If we are not the last cell, we will spin until the cons resolves and continue
-        if (!queueHead.compareAndSet(n, null)) go(spin(n))
-        //else () // Finished the last node. All done.
-      }
-      else go(next)
-    }
-
-    val t = queueTail.get()
-    if (t ne null) {
-      queueTail.lazySet(null)
-      go(t)
-    }
+    taskQueue.close()
   }
 
   private[this] def processKeys(scratch: ByteBuffer, it: java.util.Iterator[SelectionKey]): Unit = {
@@ -207,8 +175,8 @@ final class SelectorLoop(
             val head = k.attachment.asInstanceOf[NIO1HeadStage]
             head.closeWithError(t)
           } catch {
-            case NonFatal(_) => /* NOOP */
-            case t: Throwable => logger.error(t)("Fatal error shutting down pipeline")
+            case t @ (NonFatal(_) | _: ControlThrowable) =>
+              logger.error(t)("Fatal error shutting down pipeline")
           }
           k.attach(null)
           k.cancel()
@@ -219,20 +187,23 @@ final class SelectorLoop(
   private[this] def killSelector(): Unit = {
     import scala.collection.JavaConverters._
     try {
-      selector.keys().asScala.foreach { k =>
+      selector.keys.asScala.foreach { k =>
         try {
-          val head = k.attachment()
+          val head = k.attachment
           if (head != null) {
             val stage = head.asInstanceOf[NIO1HeadStage]
             stage.sendInboundCommand(Cmd.Disconnected)
             stage.closeWithError(Cmd.EOF)
           }
-          k.channel().close()
+          k.channel.close()
           k.attach(null)
         } catch { case _: IOException => /* NOOP */ }
       }
 
       selector.close()
-    } catch { case t: Throwable => logger.warn(t)("Killing selector resulted in an exception") }
+    } catch {
+      case t @ (NonFatal(_) | _: ControlThrowable) =>
+        logger.warn(t)("Killing selector resulted in an exception")
+    }
   }
 }
