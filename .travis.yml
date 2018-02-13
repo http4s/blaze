@@ -24,13 +24,3 @@ before_cache:
   - find $HOME/.sbt -name "*.lock" -type f -delete
   - find $HOME/.ivy2/cache -name "ivydata-*.properties" -type f -delete
 
-jobs:
-  include:
-    - &publish
-      stage: Publish
-      scala: 2.12.3
-      script: ./travis-scripts/deploy.sh
-    - <<: *publish
-      scala: 2.11.11
-      script: ./travis-scripts/deploy.sh
-    - <<: *publish
