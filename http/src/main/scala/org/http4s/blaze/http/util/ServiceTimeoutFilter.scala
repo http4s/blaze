@@ -1,6 +1,6 @@
 package org.http4s.blaze.http.util
 
-import org.http4s.blaze.http.{HttpService, RouteAction}
+import org.http4s.blaze.http.{HeaderNames, HttpService, RouteAction}
 import org.http4s.blaze.util.Execution
 
 import scala.concurrent.duration.Duration

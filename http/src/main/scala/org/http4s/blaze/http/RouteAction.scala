@@ -3,7 +3,6 @@ package org.http4s.blaze.http
 import java.nio.ByteBuffer
 import java.nio.charset.StandardCharsets
 
-import org.http4s.blaze.http.util.HeaderNames
 import org.http4s.blaze.util.Execution
 
 import scala.concurrent.{ExecutionContext, Future, Promise}

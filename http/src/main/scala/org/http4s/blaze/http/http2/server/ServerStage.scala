@@ -1,12 +1,10 @@
 package org.http4s.blaze.http.http2.server
 
 import java.nio.ByteBuffer
-import java.util.Locale
 
 import org.http4s.blaze.http._
 import org.http4s.blaze.http.http2.Http2Exception._
-import org.http4s.blaze.http.http2.StageTools._
-import org.http4s.blaze.http.http2.{HeadersFrame, StageTools, StreamFrame}
+import org.http4s.blaze.http.http2.{HeadersFrame, PseudoHeaders, StageTools, StreamFrame}
 import org.http4s.blaze.http.util.ServiceTimeoutFilter
 import org.http4s.blaze.pipeline.{TailStage, Command => Cmd}
 import org.http4s.blaze.util.{BufferTools, Execution}
@@ -63,7 +61,7 @@ private[http] class ServerStage(
 
   private[this] def getBodyReader(hs: Headers): Unit = {
     val length: Option[Try[Long]] = hs.collectFirst {
-      case (ContentLength, v) =>
+      case (HeaderNames.ContentLength, v) =>
         try Success(java.lang.Long.valueOf(v))
         catch { case t: NumberFormatException =>
            Failure(PROTOCOL_ERROR.rst(streamId, s"Invalid content-length: $v."))
@@ -98,7 +96,7 @@ private[http] class ServerStage(
   private[this] def getWriter(method: String, prelude: HttpResponsePrelude): BodyWriter = {
     val sizeHint = prelude.headers match {case b: IndexedSeq[_] => b.size + 1; case _ => 16 }
     val hs = new ArrayBuffer[(String, String)](sizeHint)
-    hs += ((Status, Integer.toString(prelude.code)))
+    hs += PseudoHeaders.Status -> Integer.toString(prelude.code)
 
     StageTools.copyHeaders(prelude.headers, hs)
     // HEAD requests must not have a response body, so we ensure

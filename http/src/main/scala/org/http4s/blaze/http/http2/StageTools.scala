@@ -2,25 +2,11 @@ package org.http4s.blaze.http.http2
 
 import java.util.Locale
 
-import org.http4s.blaze.http.util.HeaderNames
-
 import scala.annotation.tailrec
 import scala.collection.generic.Growable
 import scala.collection.BitSet
 
-
 private object StageTools {
-  // Request pseudo headers
-  val Method = ":method"
-  val Scheme = ":scheme"
-  val Path   = ":path"
-  val Authority = ":authority"
-
-  // Response pseudo header
-  val Status = ":status"
-  val TE = "te"
-  val Connection = HeaderNames.Connection
-  val ContentLength = HeaderNames.ContentLength
 
   /** Copy HTTP headers from `source` to dest
     *

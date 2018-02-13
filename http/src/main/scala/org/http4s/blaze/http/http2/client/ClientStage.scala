@@ -1,7 +1,6 @@
 package org.http4s.blaze.http.http2.client
 
 import java.nio.ByteBuffer
-import java.util.Locale
 
 import org.http4s.blaze.http.{ClientResponse, _}
 import org.http4s.blaze.http.HttpClientSession.ReleaseableResponse
@@ -17,6 +16,7 @@ import scala.util.{Failure, Success, Try}
 
 private class ClientStage(request: HttpRequest) extends TailStage[StreamFrame] {
   import ClientStage._
+  import PseudoHeaders.Status
 
   private[this] val lock: Object = this
 
@@ -145,7 +145,7 @@ private class ClientStage(request: HttpRequest) extends TailStage[StreamFrame] {
         return Failure(new Exception("Pseudo headers were not contiguous"))
       } else k match {
           // Matching on pseudo headers now
-        case StageTools.Status =>
+        case Status =>
           if (statusCode != -1)
             return Failure(new Exception("Multiple status code HTTP2 pseudo headers detected in response"))
 
@@ -176,15 +176,17 @@ private class ClientStage(request: HttpRequest) extends TailStage[StreamFrame] {
 }
 
 private object ClientStage {
+  import PseudoHeaders._
+
   private[client] def makeHeaders(request: HttpRequest): Try[Vector[(String, String)]] = {
     UrlComposition(request.url).map { breakdown =>
       val hs = new VectorBuilder[(String, String)]
 
       // h2 pseudo headers
-      hs += StageTools.Method -> request.method.toUpperCase
-      hs += StageTools.Scheme -> breakdown.scheme
-      hs += StageTools.Authority -> breakdown.authority
-      hs += StageTools.Path -> breakdown.fullPath
+      hs += Method -> request.method.toUpperCase
+      hs += Scheme -> breakdown.scheme
+      hs += Authority -> breakdown.authority
+      hs += Path -> breakdown.fullPath
 
       StageTools.copyHeaders(request.headers, hs)
 

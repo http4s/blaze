@@ -11,7 +11,7 @@ import org.http4s.blaze.util.{BufferTools, Execution, StageTools}
 import scala.concurrent.Future
 import scala.util.Failure
 
-private[http] class ServerPriorKnowledgeHandshaker(
+final class ServerPriorKnowledgeHandshaker(
     localSettings: ImmutableHttp2Settings,
     flowStrategy: FlowStrategy,
     nodeBuilder: Int => LeafBuilder[StreamFrame])

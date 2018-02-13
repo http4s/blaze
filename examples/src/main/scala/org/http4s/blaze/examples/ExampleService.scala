@@ -5,7 +5,6 @@ import java.nio.charset.StandardCharsets
 import java.util.concurrent.atomic.AtomicReference
 
 import org.http4s.blaze.channel.ServerChannel
-import org.http4s.blaze.http.util.HeaderNames
 import org.http4s.blaze.http._
 import org.http4s.blaze.pipeline.stages.monitors.IntervalConnectionMonitor
 import org.http4s.blaze.util.{BufferTools, Execution}
