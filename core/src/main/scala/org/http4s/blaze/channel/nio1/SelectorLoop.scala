@@ -129,7 +129,7 @@ final class SelectorLoop(
 
       // Block here until some IO event happens or someone adds
       // a task to run and wakes the loop
-      if (0 < selector.select()) {
+      if (selector.select() > 0) {
         // We have some new IO operations waiting for us. Process them
         val it = selector.selectedKeys().iterator()
         processKeys(scratch, it)
