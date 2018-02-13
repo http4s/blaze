@@ -6,12 +6,13 @@ import org.http4s.blaze.http.http2._
 import org.http4s.blaze.http.http2.mocks.MockHeadStage
 import org.http4s.blaze.http.{BodyReader, HttpRequest}
 import org.http4s.blaze.pipeline.{Command, LeafBuilder}
-import org.http4s.blaze.util.{BufferTools, Execution}
+import org.http4s.blaze.util.BufferTools
 import org.specs2.mutable.Specification
 
 import scala.util.{Failure, Success, Try}
 
 class ClientStageSpec extends Specification {
+  import PseudoHeaders._
 
   private val request = HttpRequest(
     method = "GET",
@@ -25,16 +26,16 @@ class ClientStageSpec extends Specification {
   private val resp = HeadersFrame(
     priority = Priority.NoPriority,
     endStream = true,
-    headers = Seq(StageTools.Status -> "200")
+    headers = Seq(Status -> "200")
   )
 
   "ClientStage" >> {
     "make appropriate pseudo headers" >> {
       ClientStage.makeHeaders(request) must_== Try(Vector(
-        StageTools.Method -> "GET",
-        StageTools.Scheme -> "https",
-        StageTools.Authority -> "foo.com",
-        StageTools.Path -> "/Foo?Bar",
+        Method -> "GET",
+        Scheme -> "https",
+        Authority -> "foo.com",
+        Path -> "/Foo?Bar",
         "not-lower-case" -> "Value"
       ))
     }

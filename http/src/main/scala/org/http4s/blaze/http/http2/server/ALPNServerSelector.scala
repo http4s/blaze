@@ -13,12 +13,15 @@ import scala.util.{Failure, Success}
 /** Dynamically inject an appropriate pipeline using ALPN
   *
   * @param engine the `SSLEngine` in use for the connection
-  * @param selector selects the preferred protocol from the seq of supported clients. May get an empty sequence.
+  * @param selector selects the preferred protocol from the seq of supported
+  *                 clients. May get an empty sequence.
   * @param builder builds the appropriate pipeline based on the
   */
-private[http] class ALPNServerSelector(engine: SSLEngine,
-                         selector: Set[String] => String,
-                         builder: String => LeafBuilder[ByteBuffer]) extends TailStage[ByteBuffer] {
+final class ALPNServerSelector(
+  engine: SSLEngine,
+  selector: Set[String] => String,
+  builder: String => LeafBuilder[ByteBuffer]
+) extends TailStage[ByteBuffer] {
 
   ALPN.put(engine, new ServerProvider)
 

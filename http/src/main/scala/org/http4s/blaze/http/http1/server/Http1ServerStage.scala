@@ -2,7 +2,7 @@ package org.http4s.blaze.http.http1.server
 
 import java.nio.ByteBuffer
 
-import org.http4s.blaze.http.util.{HeaderNames, ServiceTimeoutFilter}
+import org.http4s.blaze.http.util.ServiceTimeoutFilter
 import org.http4s.blaze.http.{HttpRequest, HttpServerStageConfig, RouteAction, _}
 import org.http4s.blaze.pipeline.Command.EOF
 import org.http4s.blaze.pipeline.{Command => Cmd, _}

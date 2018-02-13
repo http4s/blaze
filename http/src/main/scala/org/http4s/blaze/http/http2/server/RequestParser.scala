@@ -1,14 +1,15 @@
 package org.http4s.blaze.http.http2.server
 
-import org.http4s.blaze.http.http2.StageTools._
 import org.http4s.blaze.http.{BodyReader, HttpRequest, _}
+import org.http4s.blaze.http.http2.PseudoHeaders._
+import org.http4s.blaze.http.http2.StageTools._
 
 import scala.collection.mutable.ArrayBuffer
 
 /** Tool for turning a HEADERS frame into a request */
 private object RequestParser {
-  def makeRequest(hs: Headers, body: BodyReader): Either[String, HttpRequest] = {
 
+  def makeRequest(hs: Headers, body: BodyReader): Either[String, HttpRequest] = {
     val normalHeaders = new ArrayBuffer[(String, String)](math.max(0, hs.size - 3))
     var method: String = null
     var scheme: String = null
@@ -47,10 +48,10 @@ private object RequestParser {
       case h@(k, v) => // Non pseudo headers
         pseudoDone = true
         k match {
-          case Connection =>
+          case HeaderNames.Connection =>
             error += s"HTTP/2.0 forbids connection specific headers: $h. "
 
-          case TE =>
+          case HeaderNames.TE =>
             if (!v.equalsIgnoreCase("trailers")) error += "HTTP/2.0 forbids TE header values other than 'trailers'. "
           // ignore otherwise
 
