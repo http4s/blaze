@@ -4,7 +4,7 @@ import java.nio.ByteBuffer
 
 import org.http4s.blaze.pipeline.HeadStage
 
-private trait StreamState extends HeadStage[StreamMessage] with WriteInterest {
+private trait StreamState extends HeadStage[StreamFrame] with WriteInterest {
 
   /** Stream ID associated with this stream */
   def streamId: Int

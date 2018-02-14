@@ -41,7 +41,7 @@ class ClientStageSpec extends Specification {
 
     "Mark the first HEADERS frame as EOS if there isn't a body" >> {
       val cs = new ClientStage(request)
-      val head = new MockHeadStage[StreamMessage]
+      val head = new MockHeadStage[StreamFrame]
       LeafBuilder(cs).base(head)
 
       head.sendInboundCommand(Command.Connected)
@@ -53,7 +53,7 @@ class ClientStageSpec extends Specification {
     "Not mark the first HEADERS frame EOS if there is a body" >> {
       val body = BodyReader.singleBuffer(ByteBuffer.allocate(1))
       val cs = new ClientStage(request.copy(body = body))
-      val head = new MockHeadStage[StreamMessage]
+      val head = new MockHeadStage[StreamFrame]
       LeafBuilder(cs).base(head)
 
       head.sendInboundCommand(Command.Connected)
@@ -66,7 +66,7 @@ class ClientStageSpec extends Specification {
       val d = ByteBuffer.allocate(1)
       val body = BodyReader.singleBuffer(d)
       val cs = new ClientStage(request.copy(body = body))
-      val head = new MockHeadStage[StreamMessage]
+      val head = new MockHeadStage[StreamFrame]
       LeafBuilder(cs).base(head)
 
       head.sendInboundCommand(Command.Connected)
@@ -79,7 +79,7 @@ class ClientStageSpec extends Specification {
 
     "Response will have an empty body if the first inbound frame is marked EOS" >> {
       val cs = new ClientStage(request)
-      val head = new MockHeadStage[StreamMessage]
+      val head = new MockHeadStage[StreamFrame]
       LeafBuilder(cs).base(head)
 
       head.sendInboundCommand(Command.Connected)
@@ -94,7 +94,7 @@ class ClientStageSpec extends Specification {
 
     "Responses with a body can have the body available through the reader" >> {
       val cs = new ClientStage(request)
-      val head = new MockHeadStage[StreamMessage]
+      val head = new MockHeadStage[StreamFrame]
       LeafBuilder(cs).base(head)
 
       head.sendInboundCommand(Command.Connected)
@@ -119,7 +119,7 @@ class ClientStageSpec extends Specification {
 
     "Releasing the response will send a disconnect message" >> {
       val cs = new ClientStage(request)
-      val head = new MockHeadStage[StreamMessage]
+      val head = new MockHeadStage[StreamFrame]
       LeafBuilder(cs).base(head)
 
       head.sendInboundCommand(Command.Connected)
@@ -134,7 +134,7 @@ class ClientStageSpec extends Specification {
 
     "Failure of writing the request prelude results in a disconnect" >> {
       val cs = new ClientStage(request)
-      val head = new MockHeadStage[StreamMessage]
+      val head = new MockHeadStage[StreamFrame]
       LeafBuilder(cs).base(head)
 
       head.sendInboundCommand(Command.Connected)
@@ -149,7 +149,7 @@ class ClientStageSpec extends Specification {
 
     "Failure to read the response results in a disconnect" >> {
       val cs = new ClientStage(request)
-      val head = new MockHeadStage[StreamMessage]
+      val head = new MockHeadStage[StreamFrame]
       LeafBuilder(cs).base(head)
 
       head.sendInboundCommand(Command.Connected)

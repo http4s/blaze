@@ -2,7 +2,7 @@ package org.http4s.blaze.http.http2.server
 
 import java.nio.ByteBuffer
 
-import org.http4s.blaze.http.http2.{DataFrame, HeadersFrame, Priority, StreamMessage}
+import org.http4s.blaze.http.http2.{DataFrame, HeadersFrame, Priority, StreamFrame}
 import org.http4s.blaze.http.{BodyWriter, Headers, InternalWriter}
 import org.http4s.blaze.util.BufferTools
 
@@ -21,9 +21,9 @@ private abstract class AbstractBodyWriter(private var hs: Headers) extends BodyW
     taken
   }
 
-  protected def flushMessage(msg: StreamMessage): Future[Unit]
+  protected def flushMessage(msg: StreamFrame): Future[Unit]
 
-  protected def flushMessage(msg: Seq[StreamMessage]): Future[Unit]
+  protected def flushMessage(msg: Seq[StreamFrame]): Future[Unit]
 
   final override def write(buffer: ByteBuffer): Future[Unit] = {
     var hsToFlush: Headers = null

@@ -25,12 +25,12 @@ import scala.concurrent.{Future, Promise}
 private abstract class StreamStateImpl(session: SessionCore) extends StreamState {
 
   // State associated with the streams inbound data flow
-  private[this] val pendingInboundMessages = new util.ArrayDeque[StreamMessage](1)
-  private[this] var pendingRead: Promise[StreamMessage] = null
+  private[this] val pendingInboundMessages = new util.ArrayDeque[StreamFrame](1)
+  private[this] var pendingRead: Promise[StreamFrame] = null
 
   // State associated with the streams outbound data flow
   private[this] var writePromise: Promise[Unit] = null
-  private[this] var pendingOutboundFrame: StreamMessage = null
+  private[this] var pendingOutboundFrame: StreamFrame = null
   private[this] var interestRegistered = false
 
   // Guards against registering itself multiple times with the write controller
@@ -56,8 +56,8 @@ private abstract class StreamStateImpl(session: SessionCore) extends StreamState
   // peer can no longer send frames other than WINDOW_UPDATE, PRIORITY, and RST_STREAM
   private[this] var receivedEndStream: Boolean = false
 
-  override def readRequest(size: Int): Future[StreamMessage] = {
-    val p = Promise[StreamMessage]
+  override def readRequest(size: Int): Future[StreamFrame] = {
+    val p = Promise[StreamFrame]
     // Move the work into the session executor
     session.serialExecutor.execute(new Runnable {
       override def run(): Unit = invokeStreamRead(size, p)
@@ -66,7 +66,7 @@ private abstract class StreamStateImpl(session: SessionCore) extends StreamState
     p.future
   }
 
-  private[this] def invokeStreamRead(size: Int, p: Promise[StreamMessage]): Unit = {
+  private[this] def invokeStreamRead(size: Int, p: Promise[StreamFrame]): Unit = {
     if (pendingRead != null) {
       closeWithError(Some(INTERNAL_ERROR.rst(streamId)))
       p.failure(new IllegalStateException(
@@ -94,7 +94,7 @@ private abstract class StreamStateImpl(session: SessionCore) extends StreamState
     }
   }
 
-  final override def writeRequest(msg: StreamMessage): Future[Unit] = {
+  final override def writeRequest(msg: StreamFrame): Future[Unit] = {
     val p = Promise[Unit]
     // Move the work into the session executor
     session.serialExecutor.execute(new Runnable {
@@ -105,7 +105,7 @@ private abstract class StreamStateImpl(session: SessionCore) extends StreamState
   }
 
   // Invoke methods are intended to only be called from within the context of the session
-  protected def invokeStreamWrite(msg: StreamMessage, p: Promise[Unit]): Unit = {
+  protected def invokeStreamWrite(msg: StreamFrame, p: Promise[Unit]): Unit = {
     if (writePromise != null) {
       closeWithError(Some(INTERNAL_ERROR.rst(streamId)))
       p.failure(new IllegalStateException(s"Already a pending write on this stream ($streamId)"))
@@ -309,7 +309,7 @@ private abstract class StreamStateImpl(session: SessionCore) extends StreamState
 
   // handle the inbound message.
   // Returns `true` if the message was handled by a stream. Otherwise, it was queued and returns `false`.
-  private[this] def queueMessage(msg: StreamMessage): Boolean = {
+  private[this] def queueMessage(msg: StreamFrame): Boolean = {
     if (pendingRead == null) {
       pendingInboundMessages.offer(msg)
       false

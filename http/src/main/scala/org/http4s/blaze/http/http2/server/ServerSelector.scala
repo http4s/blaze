@@ -6,7 +6,7 @@ import javax.net.ssl.SSLEngine
 import org.http4s.blaze.http._
 import org.http4s.blaze.http.ALPNTokens._
 import org.http4s.blaze.http.http1.server.Http1ServerStage
-import org.http4s.blaze.http.http2.{DefaultFlowStrategy, Http2Settings, StreamMessage}
+import org.http4s.blaze.http.http2.{DefaultFlowStrategy, Http2Settings, StreamFrame}
 import org.http4s.blaze.pipeline.{LeafBuilder, TailStage}
 import org.log4s.getLogger
 
@@ -38,7 +38,7 @@ object ServerSelector {
   private def http2Stage(service: HttpService, config: HttpServerStageConfig): TailStage[ByteBuffer] = {
     logger.debug("Selected HTTP2")
 
-    def newNode(streamId: Int): LeafBuilder[StreamMessage] =
+    def newNode(streamId: Int): LeafBuilder[StreamFrame] =
       LeafBuilder(new ServerStage(streamId, service, config))
 
     val localSettings =

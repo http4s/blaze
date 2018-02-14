@@ -32,7 +32,7 @@ class ConnectionImplSpec extends Specification {
 
     lazy val flowStrategy = new DefaultFlowStrategy(localSettings)
 
-    lazy val streamBuilder: Option[Int => LeafBuilder[StreamMessage]] = None
+    lazy val streamBuilder: Option[Int => LeafBuilder[StreamFrame]] = None
 
     lazy val connection = new ConnectionImpl(
       tailStage = tailStage,
@@ -85,7 +85,7 @@ class ConnectionImplSpec extends Specification {
 
         // need to use the stream before it actually counts
         val stream = connection.newOutboundStream()
-        val tail = new BasicTail[StreamMessage]("tail")
+        val tail = new BasicTail[StreamFrame]("tail")
         LeafBuilder(tail).base(stream)
         tail.channelWrite(HeadersFrame(Priority.NoPriority, true, Seq.empty))
 
@@ -176,7 +176,7 @@ class ConnectionImplSpec extends Specification {
         import ctx._
 
         val stage = connection.newOutboundStream()
-        val basicStage = new BasicTail[StreamMessage]("")
+        val basicStage = new BasicTail[StreamFrame]("")
         LeafBuilder(basicStage).base(stage)
 
         val w1 = basicStage.channelWrite(HeadersFrame(Priority.NoPriority, endStream = true, Seq.empty))
@@ -198,7 +198,7 @@ class ConnectionImplSpec extends Specification {
         import ctx._
 
         val stage = connection.newOutboundStream()
-        val basicStage = new BasicTail[StreamMessage]("")
+        val basicStage = new BasicTail[StreamFrame]("")
         LeafBuilder(basicStage).base(stage)
 
         val w1 = basicStage.channelWrite(HeadersFrame(Priority.NoPriority, endStream = false, Seq.empty))
@@ -220,7 +220,7 @@ class ConnectionImplSpec extends Specification {
         connection.invokeDrain(4.seconds)
 
         val stage = connection.newOutboundStream()
-        val basicStage = new BasicTail[StreamMessage]("")
+        val basicStage = new BasicTail[StreamFrame]("")
         LeafBuilder(basicStage).base(stage)
         val f = basicStage.channelWrite(HeadersFrame(Priority.NoPriority, true, Seq.empty))
         f.value must beLike {
@@ -246,7 +246,7 @@ class ConnectionImplSpec extends Specification {
         import ctx._
 
         val stage = connection.newOutboundStream()
-        val basicStage = new BasicTail[StreamMessage]("")
+        val basicStage = new BasicTail[StreamFrame]("")
         LeafBuilder(basicStage).base(stage)
 
         val w1 = basicStage.channelWrite(HeadersFrame(Priority.NoPriority, endStream = false, Seq.empty))
@@ -267,7 +267,7 @@ class ConnectionImplSpec extends Specification {
         connection.invokeDrain(4.seconds)
 
         val stage = connection.newOutboundStream()
-        val basicStage = new BasicTail[StreamMessage]("")
+        val basicStage = new BasicTail[StreamFrame]("")
         LeafBuilder(basicStage).base(stage)
         val f = basicStage.channelWrite(HeadersFrame(Priority.NoPriority, true, Seq.empty))
         f.value must beLike {

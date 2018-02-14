@@ -16,7 +16,7 @@ class StreamManagerImplSpec extends Specification {
 
     var connects: Int = 0
 
-    lazy val tail = new TailStage[StreamMessage] {
+    lazy val tail = new TailStage[StreamFrame] {
       override def name: String = "name"
       override def inboundCommand(cmd: Command.InboundCommand): Unit = {
         if (cmd == Command.Connected) { connects += 1 }

@@ -53,7 +53,7 @@ private trait Connection {
     * not guaranteed to succeed.
     */
   // TODO: right now this only benefits the client. We need to get the push-promise support for the server side
-  def newOutboundStream(): HeadStage[StreamMessage]
+  def newOutboundStream(): HeadStage[StreamFrame]
 
   /** Hook into the shutdown events of the connection */
   def onClose: Future[Unit]

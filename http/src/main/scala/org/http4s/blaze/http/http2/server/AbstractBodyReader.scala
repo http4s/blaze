@@ -3,7 +3,7 @@ package org.http4s.blaze.http.http2.server
 import java.nio.ByteBuffer
 
 import org.http4s.blaze.http.BodyReader
-import org.http4s.blaze.http.http2.{DataFrame, HeadersFrame, StreamMessage}
+import org.http4s.blaze.http.http2.{DataFrame, HeadersFrame, StreamFrame}
 import org.http4s.blaze.http.http2.Http2Exception._
 import org.http4s.blaze.util.{BufferTools, Execution}
 import org.log4s.getLogger
@@ -25,7 +25,7 @@ private abstract class AbstractBodyReader(streamId: Int, length: Long) extends B
 
   private[this] val logger = getLogger
 
-  protected def channelRead(): Future[StreamMessage]
+  protected def channelRead(): Future[StreamFrame]
 
   protected def failed(ex: Throwable): Unit
 

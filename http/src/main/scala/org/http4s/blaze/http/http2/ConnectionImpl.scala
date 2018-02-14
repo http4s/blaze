@@ -23,7 +23,7 @@ private final class ConnectionImpl(
   val localSettings: Http2Settings,
   val remoteSettings: MutableHttp2Settings,
   flowStrategy: FlowStrategy,
-  inboundStreamBuilder: Option[Int => LeafBuilder[StreamMessage]],
+  inboundStreamBuilder: Option[Int => LeafBuilder[StreamFrame]],
   parentExecutor: ExecutionContext
 ) extends SessionCore with Connection {
 
@@ -144,7 +144,7 @@ private final class ConnectionImpl(
     onClose
   }
 
-  override def newOutboundStream(): HeadStage[StreamMessage] =
+  override def newOutboundStream(): HeadStage[StreamFrame] =
     streamManager.newOutboundStream()
 
   override def onClose: Future[Unit] = closedPromise.future

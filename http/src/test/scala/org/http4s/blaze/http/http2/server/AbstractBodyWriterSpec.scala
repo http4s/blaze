@@ -3,7 +3,7 @@ package org.http4s.blaze.http.http2.server
 import java.io.IOException
 import java.nio.ByteBuffer
 
-import org.http4s.blaze.http.http2.{DataFrame, HeadersFrame, Priority, StreamMessage}
+import org.http4s.blaze.http.http2.{DataFrame, HeadersFrame, Priority, StreamFrame}
 import org.http4s.blaze.pipeline.Command
 import org.http4s.blaze.util.BufferTools
 import org.specs2.mutable.Specification
@@ -33,11 +33,11 @@ class AbstractBodyWriterSpec extends Specification {
 
   private class WriterImpl extends AbstractBodyWriter(hs) {
 
-    var flushed: Option[Seq[StreamMessage]] = None
+    var flushed: Option[Seq[StreamFrame]] = None
 
-    override protected def flushMessage(msg: StreamMessage): Future[Unit] = flushMessage(msg::Nil)
+    override protected def flushMessage(msg: StreamFrame): Future[Unit] = flushMessage(msg::Nil)
 
-    override protected def flushMessage(msg: Seq[StreamMessage]): Future[Unit] = {
+    override protected def flushMessage(msg: Seq[StreamFrame]): Future[Unit] = {
       assert(flushed.isEmpty)
       flushed = Some(msg)
       Future.successful(())
