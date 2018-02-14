@@ -138,26 +138,26 @@ private final class Http1ServerCodec(maxNonBodyBytes: Int, pipeline: TailStage[B
     }
   }
 
-  // Must be called from within a `lock.synchronized` block
   private[this] def readAndGetRequest(p: Promise[HttpRequest]): Unit = {
     // we need to get more data
     pipeline.channelRead().onComplete {
       case Success(buff) =>
-        lock.synchronized {
-          try {
+        try {
+          val httpRequest = lock.synchronized {
             buffered = BufferTools.concatBuffers(buffered, buff)
-            val httpRequest = maybeGetRequest()
-            if (httpRequest != null) {
-              p.trySuccess(httpRequest)
-            }
-            else {
-              readAndGetRequest(p)
-            }
-          } catch {
-            case t: Throwable =>
-              shutdown()
-              p.tryFailure(t)
+            maybeGetRequest()
           }
+
+          if (httpRequest == null) {
+            readAndGetRequest(p)
+          } else {
+            p.success(httpRequest)
+            ()
+          }
+        } catch {
+          case t: Throwable =>
+            shutdown()
+            p.tryFailure(t)
         }
 
       case Failure(e) =>
