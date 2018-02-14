@@ -11,45 +11,47 @@ public abstract class Http1ServerParser extends BodyAndHeaderParser {
         START,
         METHOD,
         SPACE1,
-        URI,
+        PATH,
         SPACE2,
-        REQUEST_VERSION,
+        VERSION,
         END,
     }
 
-
-
     private final int maxRequestLineSize;
-
-
-    /* ------------------------------------------------------------------- */
-
-    private LineState _lineState = LineState.START;
-
-    private String _methodString;
-    private String _uriString;
-
-
-    /* ------------------------------------------------------------------ */
+    private LineState lineState = LineState.START;
+    private String method;
+    private String path;
 
     /**
      * This is the method called by parser when the HTTP request line is parsed
      * @param methodString The method as a string
-     * @param uri The raw bytes of the URI.  These are copied into a ByteBuffer that will not be changed until this parser is reset and reused.
-     * @param majorversion major version
-     * @param minorversion minor version
+     * @param path The raw bytes of the PATH.  These are copied into a ByteBuffer that
+     *           will not be changed until this parser is reset and reused.
+     * @param scheme the scheme of the request, either .http' or 'https'. Note that
+     *               this doesn't necessarily correlate with using SSL/TLS.
+     * @param majorVersion major version
+     * @param minorVersion minor version
      * @return true if handling parsing should return.
      */
-    public abstract boolean submitRequestLine(String methodString, String uri, String scheme, int majorversion, int minorversion);
+    public abstract boolean submitRequestLine(
+        String methodString,
+        String path,
+        String scheme,
+        int majorVersion,
+        int minorVersion
+    );
 
     /* ------------------------------------------------------------------ */
 
     public final boolean requestLineComplete() {
-        return _lineState == LineState.END;
+        return lineState == LineState.END;
     }
 
+    /**
+     * Whether the parser is in the initial state.
+     */
     public final boolean isStart() {
-        return _lineState == LineState.START;
+        return lineState == LineState.START;
     }
 
     /* ------------------------------------------------------------------ */
@@ -57,11 +59,11 @@ public abstract class Http1ServerParser extends BodyAndHeaderParser {
     @Override
     public void reset() {
         super.reset();
-        _internalReset();
+        internalReset();
     }
 
-    private void _internalReset() {
-        _lineState = LineState.START;
+    private void internalReset() {
+        lineState = LineState.START;
     }
 
     /* ------------------------------------------------------------------ */
@@ -69,7 +71,7 @@ public abstract class Http1ServerParser extends BodyAndHeaderParser {
     @Override
     public void shutdownParser() {
         super.shutdownParser();
-        _lineState = LineState.END;
+        lineState = LineState.END;
     }
 
     /* ------------------------------------------------------------------ */
@@ -79,7 +81,7 @@ public abstract class Http1ServerParser extends BodyAndHeaderParser {
         super(initialBufferSize, maxHeaderLength, maxChunkSize, false);
 
         this.maxRequestLineSize = maxReqLen;
-        _internalReset();
+        internalReset();
     }
 
     public Http1ServerParser(int maxReqLen, int maxHeaderLength, int initialBufferSize) {
@@ -107,9 +109,9 @@ public abstract class Http1ServerParser extends BodyAndHeaderParser {
     protected final boolean parseRequestLine(ByteBuffer in) throws InvalidState, BadMessage {
         lineLoop: while(true) {
             char ch;
-            switch (_lineState) {
+            switch (lineState) {
                 case START:
-                    _lineState = LineState.METHOD;
+                    lineState = LineState.METHOD;
                     resetLimit(maxRequestLineSize);
 
                 case METHOD:
@@ -119,17 +121,17 @@ public abstract class Http1ServerParser extends BodyAndHeaderParser {
 
                     if (ch == HttpTokens.EMPTY_BUFF) return false;
 
-                    _methodString = getString();
+                    method = getString();
                     clearBuffer();
 
 
                     if (!HttpTokens.isWhiteSpace(ch)) {
-                        String badmethod = _methodString + (char)ch;
+                        String badmethod = method + (char)ch;
                         shutdownParser();
                         throw new BadMessage("Invalid request method: '" + badmethod + "'");
                     }
 
-                   _lineState = LineState.SPACE1;
+                   lineState = LineState.SPACE1;
 
                 case SPACE1:
                     // Eat whitespace
@@ -138,18 +140,18 @@ public abstract class Http1ServerParser extends BodyAndHeaderParser {
                     if (ch == HttpTokens.EMPTY_BUFF) return false;
 
                     putChar(ch);
-                    _lineState = LineState.URI;
+                    lineState = LineState.PATH;
 
-                case URI:
+                case PATH:
                     for(ch = next(in, false); ch != HttpTokens.SPACE && ch != HttpTokens.TAB; ch = next(in, false)) {
                         if (ch == HttpTokens.EMPTY_BUFF) return false;
                         putChar(ch);
                     }
 
-                    _uriString = getString();
+                    path = getString();
                     clearBuffer();
 
-                    _lineState = LineState.SPACE2;
+                    lineState = LineState.SPACE2;
 
                 case SPACE2:
                     // Eat whitespace
@@ -163,42 +165,51 @@ public abstract class Http1ServerParser extends BodyAndHeaderParser {
                     }
 
                     putChar(ch);
-                    _lineState = LineState.REQUEST_VERSION;
+                    lineState = LineState.VERSION;
 
-                case REQUEST_VERSION:
+                case VERSION:
                     for(ch = next(in, false); ch != HttpTokens.LF; ch = next(in, false)) {
                         if (ch == HttpTokens.EMPTY_BUFF) return false;
                         putChar(ch);
                     }
 
-                    int _majorversion = 1;
-                    int _minorversion = 1;
+                    int majorVersion;
+                    int minorVersion;
+                    String scheme;
 
-                    if (arrayMatches(HTTP11Bytes) || arrayMatches(HTTPS11Bytes)) {
-                    // NOOP, already set to this
-//                        _majorversion = 1;
-//                        _minorversion = 1;
-                    }
-                    else if (arrayMatches(HTTP10Bytes) || arrayMatches(HTTPS10Bytes)) {
-                        _minorversion = 0;
-                    }
-                    else {
+                    if (arrayMatches(HTTP11Bytes)) {
+                        majorVersion = 1;
+                        minorVersion = 1;
+                        scheme = "http";
+                    } else if (arrayMatches(HTTPS11Bytes)) {
+                        majorVersion = 1;
+                        minorVersion = 1;
+                        scheme = "https";
+                    } else if (arrayMatches(HTTP10Bytes)) {
+                        majorVersion = 1;
+                        minorVersion = 0;
+                        scheme = "http";
+                    } else if (arrayMatches(HTTPS10Bytes)) {
+                        majorVersion = 1;
+                        minorVersion = 0;
+                        scheme = "https";
+                    } else {
                         String reason =  "Bad HTTP version: " + getString();
                         clearBuffer();
                         shutdownParser();
                         throw new BadMessage(reason);
                     }
 
-                    String scheme = getString(bufferPosition() - 4);
                     clearBuffer();
 
                     // We are through parsing the request line
-                    _lineState = LineState.END;
-                    return !submitRequestLine(_methodString, _uriString, scheme, _majorversion, _minorversion);
+                    lineState = LineState.END;
+                    return !submitRequestLine(method, path, scheme, majorVersion, minorVersion);
 
                 default:
-                    throw new InvalidState("Attempted to parse Request line when already complete." +
-                                                  "LineState: '" + _lineState + "'");
+                    throw new InvalidState(
+                            "Attempted to parse Request line when already " +
+                                    "complete. LineState: '" + lineState + "'");
             }    // switch
         }        // while loop
     }
