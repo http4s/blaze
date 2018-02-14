@@ -6,7 +6,7 @@ import java.util.Locale
 import org.http4s.blaze.http._
 import org.http4s.blaze.http.http2.Http2Exception._
 import org.http4s.blaze.http.http2.StageTools._
-import org.http4s.blaze.http.http2.{HeadersFrame, StageTools, StreamMessage}
+import org.http4s.blaze.http.http2.{HeadersFrame, StageTools, StreamFrame}
 import org.http4s.blaze.http.util.ServiceTimeoutFilter
 import org.http4s.blaze.pipeline.{TailStage, Command => Cmd}
 import org.http4s.blaze.util.{BufferTools, Execution}
@@ -20,7 +20,7 @@ private[http] class ServerStage(
   streamId: Int,
   service: HttpService,
   config: HttpServerStageConfig
-) extends TailStage[StreamMessage] {
+) extends TailStage[StreamFrame] {
 
   private implicit def _ec = Execution.trampoline // for all the onComplete calls
 
@@ -111,10 +111,10 @@ private[http] class ServerStage(
   ///////// BodyWriter's /////////////////////////////
 
   private class StandardWriter(hs: Headers) extends AbstractBodyWriter(hs) {
-    override protected def flushMessage(msg: StreamMessage): Future[Unit] =
+    override protected def flushMessage(msg: StreamFrame): Future[Unit] =
       channelWrite(msg)
 
-    override protected def flushMessage(msg: Seq[StreamMessage]): Future[Unit] =
+    override protected def flushMessage(msg: Seq[StreamFrame]): Future[Unit] =
       channelWrite(msg)
   }
 
@@ -142,7 +142,7 @@ private[http] class ServerStage(
   }
 
   private class BodyReaderImpl(length: Long) extends AbstractBodyReader(streamId, length) {
-    override protected def channelRead(): Future[StreamMessage] = ServerStage.this.channelRead()
+    override protected def channelRead(): Future[StreamFrame] = ServerStage.this.channelRead()
     override protected def failed(ex: Throwable): Unit = sendOutboundCommand(Cmd.Error(ex))
   }
 }

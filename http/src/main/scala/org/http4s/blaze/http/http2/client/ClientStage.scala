@@ -15,7 +15,7 @@ import scala.collection.immutable.VectorBuilder
 import scala.concurrent.{Future, Promise}
 import scala.util.{Failure, Success, Try}
 
-private class ClientStage(request: HttpRequest) extends TailStage[StreamMessage] {
+private class ClientStage(request: HttpRequest) extends TailStage[StreamFrame] {
   import ClientStage._
 
   private[this] val lock: Object = this

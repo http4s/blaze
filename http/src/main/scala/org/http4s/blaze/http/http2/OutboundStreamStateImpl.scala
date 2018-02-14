@@ -33,7 +33,7 @@ private abstract class OutboundStreamStateImpl(session: SessionCore)
   }
 
   // We need to establish whether the stream has been initialized yet and try to acquire a new ID if not
-  final override protected def invokeStreamWrite(msg: StreamMessage, p: Promise[Unit]): Unit = {
+  final override protected def invokeStreamWrite(msg: StreamFrame, p: Promise[Unit]): Unit = {
     if (initialized) {
       super.invokeStreamWrite(msg, p)
     } else if (session.state.closing) {

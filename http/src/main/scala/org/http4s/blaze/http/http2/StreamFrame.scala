@@ -4,7 +4,7 @@ import java.nio.ByteBuffer
 
 /** Types that will be sent down to the Nodes of the Http2 session */
 
-sealed trait StreamMessage {
+sealed trait StreamFrame {
   def endStream: Boolean
   def flowBytes: Int
 }
@@ -16,7 +16,7 @@ sealed trait StreamMessage {
   *             The `ByteBuffer` indexes are considered owned by this DataFrame, but its
   *             data must not be modified.
   */
-case class DataFrame(endStream: Boolean, data: ByteBuffer) extends StreamMessage {
+case class DataFrame(endStream: Boolean, data: ByteBuffer) extends StreamFrame {
   def flowBytes = data.remaining()
 }
 
@@ -28,6 +28,6 @@ case class DataFrame(endStream: Boolean, data: ByteBuffer) extends StreamMessage
   */
 case class HeadersFrame(priority: Priority,
                        endStream: Boolean,
-                         headers: Seq[(String,String)]) extends StreamMessage {
+                         headers: Seq[(String,String)]) extends StreamFrame {
   override def flowBytes: Int = 0
 }

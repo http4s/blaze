@@ -28,12 +28,12 @@ class AbstractBodyReaderSpec extends Specification {
     b
   }
 
-  private class TestBodyReader(length: Long, data: Seq[StreamMessage]) extends AbstractBodyReader(1, length) {
+  private class TestBodyReader(length: Long, data: Seq[StreamFrame]) extends AbstractBodyReader(1, length) {
     var failedReason: Option[Throwable] = None
-    val reads = new mutable.Queue[StreamMessage]
+    val reads = new mutable.Queue[StreamFrame]
     reads ++= data
 
-    override protected def channelRead(): Future[StreamMessage] =
+    override protected def channelRead(): Future[StreamFrame] =
       Future.successful(reads.dequeue())
 
     override protected def failed(ex: Throwable): Unit = {

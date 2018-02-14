@@ -14,7 +14,7 @@ import scala.util.Failure
 private[http] class ServerPriorKnowledgeHandshaker(
     localSettings: ImmutableHttp2Settings,
     flowStrategy: FlowStrategy,
-    nodeBuilder: Int => LeafBuilder[StreamMessage])
+    nodeBuilder: Int => LeafBuilder[StreamFrame])
   extends PriorKnowledgeHandshaker[Unit](localSettings) {
 
   override protected def stageStartup(): Unit = synchronized {

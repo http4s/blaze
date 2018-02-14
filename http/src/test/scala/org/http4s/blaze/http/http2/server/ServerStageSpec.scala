@@ -32,7 +32,7 @@ class ServerStageSpec extends Specification {
 
     lazy val config = HttpServerStageConfig()
 
-    lazy val head = new MockHeadStage[StreamMessage]
+    lazy val head = new MockHeadStage[StreamFrame]
 
     lazy val stage: ServerStage = new ServerStage(1, service, config)
 
