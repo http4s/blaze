@@ -2,7 +2,6 @@ package org.http4s.blaze.http.http2.server
 
 import org.http4s.blaze.http.{BodyReader, HttpRequest, _}
 import org.http4s.blaze.http.http2.PseudoHeaders._
-import org.http4s.blaze.http.http2.StageTools._
 
 import scala.collection.mutable.ArrayBuffer
 
@@ -58,7 +57,7 @@ private object RequestParser {
               error += "HTTP/2.0 forbids TE header values other than 'trailers'. "
           // ignore otherwise
 
-          case _ if !validHeaderName(k) =>
+          case _ if !HeaderNames.validH2HeaderKey(k) =>
             error += s"Invalid header key: $k. "
 
           case header =>
