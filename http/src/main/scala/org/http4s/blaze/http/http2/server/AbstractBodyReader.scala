@@ -83,5 +83,5 @@ private abstract class AbstractBodyReader(streamId: Int, length: Long) extends B
 }
 
 private object AbstractBodyReader {
-  val UnknownLength: Long = -1l
+  val UnknownLength: Long = -1L
 }

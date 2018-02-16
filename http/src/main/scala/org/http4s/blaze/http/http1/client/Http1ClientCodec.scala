@@ -121,7 +121,7 @@ private object Http1ClientCodec {
     }
   }
 
-  // returns `true` if using chunked-transfer encoding, `false` otherwise
+  // Returns `true` if using chunked-transfer encoding, `false` otherwise.
   private def appendHeaders(
     sb: StringBuilder,
     uri: java.net.URI,

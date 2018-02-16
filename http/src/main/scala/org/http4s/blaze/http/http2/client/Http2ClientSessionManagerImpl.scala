@@ -113,8 +113,9 @@ private[http] class Http2ClientSessionManagerImpl(
     val p = Promise[Http2ClientSession]
 
     def buildConnection(s: String): LeafBuilder[ByteBuffer] = {
-      if (s != H2 && s != H2_14)
+      if (s != H2 && s != H2_14) {
         logger.error(s"Failed to negotiate H2. Using H2 protocol anyway.")
+      }
 
       val f = new DefaultFlowStrategy(initialSettings)
       val handShaker = new ClientPriorKnowledgeHandshaker(initialSettings, f, Execution.trampoline)

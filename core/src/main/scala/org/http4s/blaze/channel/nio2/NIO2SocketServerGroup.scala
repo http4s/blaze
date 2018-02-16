@@ -34,7 +34,7 @@ object NIO2SocketServerGroup {
         t
       }
     }
-    
+
     val group = AsynchronousChannelGroup.withFixedThreadPool(workerThreads, factory)
     apply(bufferSize, Some(group), channelOptions)
   }

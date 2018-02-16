@@ -89,8 +89,9 @@ object BufferTools {
     */
   def takeSlice(buffer: ByteBuffer, size: Int): ByteBuffer = {
 
-    if (size < 0 || size > buffer.remaining())
+    if (size < 0 || size > buffer.remaining()) {
       throw new IllegalArgumentException(s"Invalid size: $size. buffer: $buffer")
+    }
 
     val currentLimit = buffer.limit()
     buffer.limit(buffer.position() + size)

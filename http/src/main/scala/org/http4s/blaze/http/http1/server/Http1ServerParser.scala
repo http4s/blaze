@@ -64,15 +64,9 @@ private[blaze] final class BlazeServerParser[Header](maxNonBody: Int)(implicit h
 
   // Return value of `true` means the prelude is complete
   def parsePrelude(buffer: ByteBuffer): Boolean = {
-    if (!requestLineComplete() && !parseRequestLine(buffer)) {
-      return false
-    }
-
-    if (!headersComplete() && !parseHeaders(buffer)) {
-      return false
-    }
-
-    true
+    if (!requestLineComplete() && !parseRequestLine(buffer)) false
+    else if (!headersComplete() && !parseHeaders(buffer)) false
+    else true
   }
 
   /**

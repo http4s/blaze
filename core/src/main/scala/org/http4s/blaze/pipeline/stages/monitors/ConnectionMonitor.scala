@@ -15,14 +15,14 @@ abstract class ConnectionMonitor {
 
   def wrapBuilder(factory: BufferPipelineBuilder): BufferPipelineBuilder =
     factory.andThen(_.prepend(new ServerStatusStage))
-  
+
   protected def connectionAccepted(): Unit
   protected def connectionClosed(): Unit
 
   protected def bytesInbound(n: Long): Unit
   protected def bytesOutBound(n: Long): Unit
 
-  private class ServerStatusStage extends MidStage[ByteBuffer, ByteBuffer] {
+  private[this] class ServerStatusStage extends MidStage[ByteBuffer, ByteBuffer] {
     val name = "ServerStatusStage"
 
     private val cleaned = new AtomicBoolean(false)
@@ -42,11 +42,6 @@ abstract class ConnectionMonitor {
       super.stageShutdown()
     }
 
-    override def finalize(): Unit = {
-      clearCount()
-      super.finalize()
-    }
-
     def writeRequest(data: ByteBuffer): Future[Unit] = {
       bytesOutBound(data.remaining.toLong)
       channelWrite(data)
@@ -61,6 +56,3 @@ abstract class ConnectionMonitor {
       channelRead(size).map { b => bytesInbound(b.remaining.toLong); b}(directec)
   }
 }
-
-
-

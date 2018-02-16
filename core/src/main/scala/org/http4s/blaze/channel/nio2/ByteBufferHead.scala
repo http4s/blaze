@@ -25,30 +25,29 @@ private[nio2] final class ByteBufferHead(channel: AsynchronousSocketChannel, buf
     if (!data.hasRemaining() && data.position > 0) {
       logger.warn("Received write request with non-zero position but ZERO available" +
                  s"bytes at ${new Date} on org.http4s.blaze.channel $channel: $data")
-      return Future.successful(())
+      Future.successful(())
+    } else {
+      val p = Promise[Unit]
+      def go(i: Int): Unit = {
+        channel.write(data, null: Null, new CompletionHandler[Integer, Null] {
+          def failed(exc: Throwable, attachment: Null): Unit = {
+            val e = checkError(exc)
+            sendInboundCommand(Disconnected)
+            closeWithError(e)
+            p.tryFailure(e)
+            ()
+          }
+
+          def completed(result: Integer, attachment: Null): Unit = {
+            if (result.intValue < i) go(i - result.intValue)  // try to write again
+            else p.trySuccess(()); ()      // All done
+          }
+        })
+      }
+      go(data.remaining())
+
+      p.future
     }
-
-    val p = Promise[Unit]
-
-    def go(i: Int): Unit = {
-      channel.write(data, null: Null, new CompletionHandler[Integer, Null] {
-        def failed(exc: Throwable, attachment: Null): Unit = {
-          val e = checkError(exc)
-          sendInboundCommand(Disconnected)
-          closeWithError(e)
-          p.tryFailure(e)
-          ()
-        }
-
-        def completed(result: Integer, attachment: Null): Unit = {
-          if (result.intValue < i) go(i - result.intValue)  // try to write again
-          else p.trySuccess(()); ()      // All done
-        }
-      })
-    }
-    go(data.remaining())
-
-    p.future
   }
 
   override def writeRequest(data: Seq[ByteBuffer]): Future[Unit] = {
@@ -80,13 +79,12 @@ private[nio2] final class ByteBufferHead(channel: AsynchronousSocketChannel, buf
   }
 
   def readRequest(size: Int): Future[ByteBuffer] = {
-      
     val p = Promise[ByteBuffer]
-
     buffer.clear()
 
-    if (size >= 0 && size < bufferSize)
+    if (size >= 0 && size < bufferSize) {
       buffer.limit(size)
+    }
 
     channel.read(buffer, null: Null, new CompletionHandler[Integer, Null] {
       def failed(exc: Throwable, attachment: Null): Unit = {
@@ -112,7 +110,6 @@ private[nio2] final class ByteBufferHead(channel: AsynchronousSocketChannel, buf
         }
       }
     })
-    
     p.future
   }
 
@@ -134,15 +131,5 @@ private[nio2] final class ByteBufferHead(channel: AsynchronousSocketChannel, buf
 
     try channel.close()
     catch { case e: IOException => /* Don't care */ }
-  }
-
-  override protected def finalize(): Unit = {
-    if (channel.isOpen) {
-      logger.warn("ByteBufferHead hasn't been shutdown before going " +
-                  "out of scope, potentially leaking a file descriptor.")
-      try channel.close()
-      catch { case e: IOException => /* Don't care */ }
-    }
-    super.finalize()
   }
 }

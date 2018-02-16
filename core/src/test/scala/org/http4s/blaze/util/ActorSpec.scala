@@ -125,14 +125,5 @@ class ActorSpec extends Specification {
 
       latch.await(10, TimeUnit.SECONDS) must beTrue
     }
-
-    "Deal with exceptions in the exception handling code" in {
-      val latch = new CountDownLatch(1)
-      val a = actor(_ => sys.error("error"), global) // this will fail the onError
-      a ! OptMsg(Some(-1))  // fail the evaluation
-      a ! Continuation(_ => latch.countDown())  // If all is ok, the actor will continue
-
-      latch.await(10, TimeUnit.SECONDS) must beTrue
-    }
   }
 }
