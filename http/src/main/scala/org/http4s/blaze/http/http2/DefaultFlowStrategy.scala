@@ -4,12 +4,11 @@ import org.http4s.blaze.http.http2.FlowStrategy.Increment
 
 final class DefaultFlowStrategy(localSettings: Http2Settings) extends FlowStrategy {
 
-  override def checkSession(session: SessionFlowControl): Int = {
+  override def checkSession(session: SessionFlowControl): Int =
     check(
       localSettings.initialWindowSize,
       session.sessionInboundWindow,
       session.sessionUnconsumedBytes)
-  }
 
   override def checkStream(stream: StreamFlowWindow): Increment = {
     val sessionAck = checkSession(stream.sessionFlowControl)

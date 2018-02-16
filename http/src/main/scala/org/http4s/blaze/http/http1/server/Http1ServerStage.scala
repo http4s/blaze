@@ -21,14 +21,15 @@ import scala.util.{Failure, Success}
   * which examines the http version, and `connection`, `content-length`, and `transfer-encoding`
   * headers to determine if the connection can be reused for a subsequent dispatch.
   */
-class Http1ServerStage(service: HttpService, config: HttpServerStageConfig) extends TailStage[ByteBuffer] {
+class Http1ServerStage(service: HttpService, config: HttpServerStageConfig)
+    extends TailStage[ByteBuffer] {
   import Http1ServerStage._
 
   private implicit def implicitEC = Execution.trampoline
   val name = "HTTP/1.1_Stage"
 
   // The codec is responsible for reading data from `this` TailStage.
-  private[this] val codec = new  Http1ServerCodec(config.maxNonBodyBytes, this)
+  private[this] val codec = new Http1ServerCodec(config.maxNonBodyBytes, this)
 
   /////////////////////////////////////////////////////////////////////////////////////////
 
@@ -43,30 +44,34 @@ class Http1ServerStage(service: HttpService, config: HttpServerStageConfig) exte
     // Apply any service level timeout
     val timeoutService = ServiceTimeoutFilter(config.serviceTimeout)(service)
 
-    req: HttpRequest => timeoutService(req).map { resp =>
-      resp -> requestRequiresClose(req)
-    }(Execution.directec)
+    req: HttpRequest =>
+      timeoutService(req).map { resp =>
+        resp -> requestRequiresClose(req)
+      }(Execution.directec)
   }
 
-  private def dispatchLoop(): Unit = {
-     /* TODO: how can we do smart timeouts? What are the situations where one would want to do timeouts?
-      * - Waiting for the request prelude
-      *   - Probably needs to be done in the dispatch loop
-      * - Waiting for the service
-      *   - Can be a service middleware that races the service with a timeout
-      * - Waiting for an entire body
-      *   - Maybe this could be attached to the readers and writers
-      * - Long durations of network silence when reading or rendering a body
-      *   - These could probably be done by wrapping readers and writers
-      */
-    Execution.withTimeout(config.requestPreludeTimeout, TryRequestTimeoutExec)(codec.getRequest())
+  private def dispatchLoop(): Unit =
+    /* TODO: how can we do smart timeouts? What are the situations where one would want to do timeouts?
+     * - Waiting for the request prelude
+     *   - Probably needs to be done in the dispatch loop
+     * - Waiting for the service
+     *   - Can be a service middleware that races the service with a timeout
+     * - Waiting for an entire body
+     *   - Maybe this could be attached to the readers and writers
+     * - Long durations of network silence when reading or rendering a body
+     *   - These could probably be done by wrapping readers and writers
+     */
+    Execution
+      .withTimeout(config.requestPreludeTimeout, TryRequestTimeoutExec)(codec.getRequest())
       .flatMap(checkCloseService)(config.serviceExecutor)
-      .recover { case RequestTimeoutException => newRequestTimeoutResponse() }  // handle request timeouts
+      .recover { case RequestTimeoutException => newRequestTimeoutResponse() } // handle request timeouts
       .onComplete {
         case Success((resp, requireClose)) =>
           codec.renderResponse(resp, requireClose).onComplete {
-            case Success(Http1ServerCodec.Reload) => dispatchLoop()  // continue the loop
-            case Success(Http1ServerCodec.Close) => sendOutboundCommand(Cmd.Disconnect) // not able to server another on this session
+            case Success(Http1ServerCodec.Reload) =>
+              dispatchLoop() // continue the loop
+            case Success(Http1ServerCodec.Close) =>
+              sendOutboundCommand(Cmd.Disconnect) // not able to server another on this session
 
             case Failure(EOF) => /* NOOP socket should now be closed */
             case Failure(ex) =>
@@ -77,10 +82,10 @@ class Http1ServerStage(service: HttpService, config: HttpServerStageConfig) exte
         case Failure(EOF) => /* NOOP */
         case Failure(ex) =>
           logger.error(ex)("Failed to service request. Sending 500 response.")
-          codec.renderResponse(RouteAction.InternalServerError(), forceClose = true)
+          codec
+            .renderResponse(RouteAction.InternalServerError(), forceClose = true)
             .onComplete(_ => shutdownWithCommand(Cmd.Error(ex)))
       }
-  }
 
   private def shutdownWithCommand(cmd: Cmd.OutboundCommand): Unit = {
     stageShutdown()
@@ -89,10 +94,12 @@ class Http1ServerStage(service: HttpService, config: HttpServerStageConfig) exte
 
   // Determine if this request requires the connection be closed
   private def requestRequiresClose(request: HttpRequest): Boolean = {
-    val connHeader = request.headers.find { case (k, _) => k.equalsIgnoreCase(HeaderNames.Connection) }
+    val connHeader = request.headers.find {
+      case (k, _) => k.equalsIgnoreCase(HeaderNames.Connection)
+    }
     if (request.minorVersion == 0) {
       connHeader match {
-        case Some((_,v)) => !v.equalsIgnoreCase("keep-alive")
+        case Some((_, v)) => !v.equalsIgnoreCase("keep-alive")
         case None => true
       }
     } else {

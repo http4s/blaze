@@ -3,9 +3,12 @@ package org.http4s.build
 import sbt._
 import Keys._
 
+import com.lucidchart.sbt.scalafmt.ScalafmtCorePlugin
+import com.lucidchart.sbt.scalafmt.ScalafmtCorePlugin.autoImport._
+import com.typesafe.tools.mima.plugin.MimaPlugin, MimaPlugin.autoImport._
+
 import sbtrelease._
 import sbtrelease.ReleasePlugin.autoImport._
-import com.typesafe.tools.mima.plugin.MimaPlugin, MimaPlugin.autoImport._
 import verizon.build.RigPlugin
 
 
@@ -36,7 +39,17 @@ object BlazePlugin extends AutoPlugin {
     // Setting Key To Show Mima Version Checked
     blazeMimaVersion := mimaPreviousVersion(version.value),
 
-
+    scalafmtVersion := "1.4.0",
+    scalafmt in Test := {
+      (scalafmt in Compile).value
+      (scalafmt in Test).value
+      ()
+    },
+    test in (Test, scalafmt) := {
+      (test in (Compile, scalafmt)).value
+      (test in (Test, scalafmt)).value
+      ()
+    },
     scalacOptions in Compile ++= Seq(
       "-Yno-adapted-args" // Curiously missing from RigPlugin
     ) ++ {

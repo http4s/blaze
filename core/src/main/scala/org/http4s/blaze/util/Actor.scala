@@ -12,7 +12,6 @@ import org.http4s.blaze.util.Actor.MaxIterations
   * scalaz actors would have been a good fit except a heavyweight dependency
   * is very undesirable for this library.
   */
-
 private[blaze] abstract class Actor[M](ec: ExecutionContext) {
 
   // Keep the tail of the chain
@@ -37,18 +36,17 @@ private[blaze] abstract class Actor[M](ec: ExecutionContext) {
   final def !(msg: M): Unit = {
     val n = new Node(msg)
     val tail = tailNode.getAndSet(n)
-    if (tail eq null) {   // Execute
+    if (tail eq null) { // Execute
       runner.start = n
       ec.execute(runner)
-    }
-    else tail.lazySet(n)
+    } else tail.lazySet(n)
   }
 
   private[this] class Node(val m: M) extends AtomicReference[Node]
   private[this] class RecycleableRunnable(@volatile var start: Node) extends Runnable {
     override def run(): Unit = {
       @tailrec
-      def go(i: Int, next: Node): Unit = {
+      def go(i: Int, next: Node): Unit =
         if (i >= MaxIterations) reSchedule(next)
         else {
           val m = next.m
@@ -65,7 +63,6 @@ private[blaze] abstract class Actor[M](ec: ExecutionContext) {
             }
           }
         }
-      }
       val next = start
       start = null
       go(0, next)

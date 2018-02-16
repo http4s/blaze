@@ -3,7 +3,7 @@ package org.http4s.blaze.http.http2
 private object StreamIdManager {
 
   /** Create a new [[StreamIdManager]] */
-  def apply(isClient: Boolean): StreamIdManager= create(isClient, 0)
+  def apply(isClient: Boolean): StreamIdManager = create(isClient, 0)
 
   // Exposed internally for testing overflow behavior
   private[http2] def create(isClient: Boolean, startingId: Int): StreamIdManager = {
@@ -16,7 +16,7 @@ private object StreamIdManager {
 }
 
 /** Tool for tracking stream ids */
-private final class StreamIdManager private(
+private final class StreamIdManager private (
     isClient: Boolean,
     private var nextInbound: Int,
     private var nextOutbound: Int) {
@@ -43,21 +43,18 @@ private final class StreamIdManager private(
 
   /** Determine if the stream id is both an inbound id and is idle */
   def isIdleInboundId(id: Int): Boolean =
-    isInboundId(id) && id >= nextInbound &&  nextInbound > 0 // make sure we didn't overflow
+    isInboundId(id) && id >= nextInbound && nextInbound > 0 // make sure we didn't overflow
 
   /** Determine if the stream id is both an outbound id and is idle */
-  def isIdleOutboundId(id: Int): Boolean = {
+  def isIdleOutboundId(id: Int): Boolean =
     isOutboundId(id) && id >= nextOutbound && nextOutbound > 0 // make sure we didn't overflow
-  }
 
   /** Determine if the client ID is valid based on the stream history */
-  def validateNewInboundId(id: Int): Boolean = {
+  def validateNewInboundId(id: Int): Boolean =
     if (isInboundId(id) && id >= nextInbound) {
       nextInbound = id + 2
       true
-    }
-    else false
-  }
+    } else false
 
   /** Mark the stream id non-idle, and any idle inbound streams with lower ids
     *
@@ -67,26 +64,24 @@ private final class StreamIdManager private(
     * @param id stream id to observe
     * @return `true` if observed, `false` otherwise.
     */
-  def observeInboundId(id: Int): Boolean = {
+  def observeInboundId(id: Int): Boolean =
     if (!isIdleInboundId(id)) false
     else {
       nextInbound = id + 2
       true
     }
-  }
 
   /** Acquire the next outbound stream id
     *
     * @return the next streamId wrapped in `Some` if it exists, `None` otherwise.
     */
-  def takeOutboundId(): Option[Int] = {
+  def takeOutboundId(): Option[Int] =
     // Returns `None` if the stream id overflows, which is when a signed Int overflows
     if (unusedOutboundStreams) {
       val result = Some(nextOutbound)
       nextOutbound += 2
       result
     } else None
-  }
 
   def unusedOutboundStreams: Boolean = nextOutbound > 0
 }

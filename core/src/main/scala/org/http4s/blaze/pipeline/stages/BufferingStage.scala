@@ -8,7 +8,7 @@ import scala.collection.immutable.VectorBuilder
 import org.http4s.blaze.pipeline.Command.OutboundCommand
 
 abstract class BufferingStage[T](bufferSize: Int, val name: String = "BufferingStage")
-                                                               extends MidStage[T, T] {
+    extends MidStage[T, T] {
 
   private val buffer = new VectorBuilder[T]
   private var size = 0
@@ -43,10 +43,10 @@ abstract class BufferingStage[T](bufferSize: Int, val name: String = "BufferingS
     super.stageShutdown()
   }
 
-  override def outboundCommand(cmd: OutboundCommand): Unit = {
+  override def outboundCommand(cmd: OutboundCommand): Unit =
     cmd match {
-      case Command.Flush => flush().onComplete(_ => super.outboundCommand(cmd))(directec)
+      case Command.Flush =>
+        flush().onComplete(_ => super.outboundCommand(cmd))(directec)
       case cmd => super.outboundCommand(cmd)
     }
-  }
 }

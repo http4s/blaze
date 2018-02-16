@@ -15,11 +15,14 @@ object ExampleService {
 
   private implicit val ec = Execution.trampoline
 
-  def service(status: Option[IntervalConnectionMonitor], channel: Option[AtomicReference[ServerChannel]] = None)
-             (request: HttpRequest): Future[RouteAction] = {
+  def service(
+      status: Option[IntervalConnectionMonitor],
+      channel: Option[AtomicReference[ServerChannel]] = None)(
+      request: HttpRequest): Future[RouteAction] =
     Future.successful {
       request.url match {
-        case "/plaintext" => RouteAction.Ok(helloWorld, (HeaderNames.ContentType -> "text/plain")::Nil)
+        case "/plaintext" =>
+          RouteAction.Ok(helloWorld, (HeaderNames.ContentType -> "text/plain") :: Nil)
         case "/ping" => RouteAction.Ok("pong")
         case "/bigstring" => RouteAction.Ok(bigstring)
 
@@ -31,8 +34,7 @@ object ExampleService {
               if (i < 1000) {
                 i += 1
                 ByteBuffer.wrap(s"i: $i\n".getBytes(StandardCharsets.UTF_8))
-              }
-              else BufferTools.emptyBuffer
+              } else BufferTools.emptyBuffer
             }
           }
 
@@ -45,8 +47,8 @@ object ExampleService {
 
         case "/echo" if request.method == "POST" =>
           val hs = request.headers.collect {
-            case h@(k, _) if k.equalsIgnoreCase("content-type") => h
-            case h@(k, _) if k.equalsIgnoreCase("content-length") => h
+            case h @ (k, _) if k.equalsIgnoreCase("content-type") => h
+            case h @ (k, _) if k.equalsIgnoreCase("content-length") => h
           }
 
           RouteAction.Streaming(200, "OK", hs) {
@@ -56,17 +58,19 @@ object ExampleService {
         case uri =>
           val sb = new StringBuilder
           sb.append("Hello world!\n")
-            .append("Path: ").append(uri)
+            .append("Path: ")
+            .append(uri)
             .append("\nHeaders\n")
-          request.headers.map { case (k, v) => "[\"" + k + "\", \"" + v + "\"]\n" }
+          request.headers
+            .map { case (k, v) => "[\"" + k + "\", \"" + v + "\"]\n" }
             .addString(sb)
 
           val body = sb.result()
           RouteAction.Ok(body)
       }
     }
-  }
 
-  private val bigstring = StandardCharsets.UTF_8.encode((0 to 1024*20).mkString("\n", "\n", ""))
+  private val bigstring =
+    StandardCharsets.UTF_8.encode((0 to 1024 * 20).mkString("\n", "\n", ""))
   private val helloWorld = StandardCharsets.UTF_8.encode("Hello, world!")
 }

@@ -1,6 +1,7 @@
 package org.http4s.blaze.util
 
 object Cancellable {
+
   /** Cancellable which does nothing */
   val NoopCancel = new Cancellable {
     def cancel(): Unit = ()

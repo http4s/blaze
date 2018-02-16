@@ -14,28 +14,32 @@ object ServerSelector {
 
   private val logger = getLogger
 
-  def apply(engine: SSLEngine,
-           service: HttpService,
-            config: HttpServerStageConfig): ALPNServerSelector = {
+  def apply(
+      engine: SSLEngine,
+      service: HttpService,
+      config: HttpServerStageConfig): ALPNServerSelector = {
 
     def builder(s: String): LeafBuilder[ByteBuffer] = s match {
       case H2 | H2_14 => LeafBuilder(http2Stage(service, config))
-      case _          => LeafBuilder(http1xStage(service, config))
+      case _ => LeafBuilder(http1xStage(service, config))
     }
 
-    def selector(protocols: Set[String]): String = {
+    def selector(protocols: Set[String]): String =
       if (protocols(H2)) H2
       else if (protocols(H2_14)) H2_14
       else HTTP_1_1
-    }
 
     new ALPNServerSelector(engine, selector, builder)
   }
 
-  private def http1xStage(service: HttpService, config: HttpServerStageConfig): TailStage[ByteBuffer] =
+  private def http1xStage(
+      service: HttpService,
+      config: HttpServerStageConfig): TailStage[ByteBuffer] =
     new Http1ServerStage(service, config)
 
-  private def http2Stage(service: HttpService, config: HttpServerStageConfig): TailStage[ByteBuffer] = {
+  private def http2Stage(
+      service: HttpService,
+      config: HttpServerStageConfig): TailStage[ByteBuffer] = {
     logger.debug("Selected HTTP2")
 
     def newNode(streamId: Int): LeafBuilder[StreamFrame] =

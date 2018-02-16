@@ -5,7 +5,7 @@ object PseudoHeaders {
   // Request pseudo headers
   val Method = ":method"
   val Scheme = ":scheme"
-  val Path   = ":path"
+  val Path = ":path"
   val Authority = ":authority"
 
   // Response pseudo header

@@ -2,12 +2,13 @@ package org.http4s.blaze.pipeline.stages.monitors
 
 import scala.concurrent.duration.Duration
 
-
 class IntervalConnectionMonitor(val interval: Duration) extends ConnectionMonitor {
 
-  require(interval.isFinite() && interval.toNanos > 1, "Duration must be Finite and greater than 1 ns")
+  require(
+    interval.isFinite() && interval.toNanos > 1,
+    "Duration must be Finite and greater than 1 ns")
 
-  private val alpha = 1.0/(interval.toNanos + 1).toDouble
+  private val alpha = 1.0 / (interval.toNanos + 1).toDouble
 
   private val inbound = new MeanTracker
   private val outbound = new MeanTracker
@@ -19,7 +20,7 @@ class IntervalConnectionMonitor(val interval: Duration) extends ConnectionMonito
     private var lastupdate = System.nanoTime()
     private var total = 0L
 
-    def getMean(): Double = currentMean*1e9 // bytes/sec
+    def getMean(): Double = currentMean * 1e9 // bytes/sec
     def getTotal(): Long = total
 
     def update(c: Long): Unit = this.synchronized {
@@ -27,7 +28,8 @@ class IntervalConnectionMonitor(val interval: Duration) extends ConnectionMonito
       val currentTime = System.nanoTime()
       val ticks = currentTime - lastupdate
       lastupdate = currentTime
-      currentMean = currentMean*math.pow(1.0-alpha, ticks.toDouble) + c.toDouble*alpha
+      currentMean = currentMean * math
+        .pow(1.0 - alpha, ticks.toDouble) + c.toDouble * alpha
     }
   }
 
@@ -47,13 +49,21 @@ class IntervalConnectionMonitor(val interval: Duration) extends ConnectionMonito
     }
   }
 
-  case class Stats(imean: Double, itotal: Long,
-                   omean: Double, ototal: Long,
-                   connmean: Double, conntotal: Long, connlive: Long) {
+  case class Stats(
+      imean: Double,
+      itotal: Long,
+      omean: Double,
+      ototal: Long,
+      connmean: Double,
+      conntotal: Long,
+      connlive: Long) {
     override def toString: String = {
-      val mb = (1024*1024).toDouble
-      val (f1, unit1) = if (math.max(imean, omean) > mb) (mb, "MB") else (1024.0, "kB")
-      val (f2, unit2) = if (math.max(itotal, ototal) > 1024.0*mb) (1024.0*mb, "GB") else (mb, "MB")
+      val mb = (1024 * 1024).toDouble
+      val (f1, unit1) =
+        if (math.max(imean, omean) > mb) (mb, "MB") else (1024.0, "kB")
+      val (f2, unit2) =
+        if (math.max(itotal, ototal) > 1024.0 * mb) (1024.0 * mb, "GB")
+        else (mb, "MB")
 
       s"""                 Mean (%s/s)     Total (%s)
          |Inbound bytes    %11.3f     %10.3f
@@ -62,15 +72,30 @@ class IntervalConnectionMonitor(val interval: Duration) extends ConnectionMonito
          |Connections      %-10.6f      %10d
          |
          |Live Connections: %d
-       """.stripMargin.format(unit1, unit2, imean/f1, itotal/f2, omean/f1, ototal/f2, connmean, conntotal, connlive)
+       """.stripMargin.format(
+        unit1,
+        unit2,
+        imean / f1,
+        itotal / f2,
+        omean / f1,
+        ototal / f2,
+        connmean,
+        conntotal,
+        connlive)
     }
   }
 
-  def getStats(): Stats = inbound.synchronized(outbound.synchronized(conns.synchronized {
-    Stats(inbound.getMean(), inbound.getTotal(),
-          outbound.getMean(), outbound.getTotal(),
-          conns.getMean(), conns.getTotal, conns.getLive())
-  }))
+  def getStats(): Stats =
+    inbound.synchronized(outbound.synchronized(conns.synchronized {
+      Stats(
+        inbound.getMean(),
+        inbound.getTotal(),
+        outbound.getMean(),
+        outbound.getTotal(),
+        conns.getMean(),
+        conns.getTotal,
+        conns.getLive())
+    }))
 
   override protected def connectionAccepted(): Unit = conns.update(1)
   override protected def bytesInbound(n: Long): Unit = inbound.update(n)

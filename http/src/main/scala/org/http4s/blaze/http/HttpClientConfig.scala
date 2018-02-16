@@ -14,13 +14,14 @@ import org.http4s.blaze.util.GenericSSLContext
   * @param sslContext `SSLContext` to use for secure connections
   */
 case class HttpClientConfig(
-    maxResponseLineLength: Int = 2*1048,
-    maxHeadersLength: Int = 8*1024,
+    maxResponseLineLength: Int = 2 * 1048,
+    maxHeadersLength: Int = 8 * 1024,
     lenientParser: Boolean = false,
     channelGroup: Option[AsynchronousChannelGroup] = None,
     sslContext: Option[SSLContext] = None) {
 
-  private lazy val theSslContext = sslContext.getOrElse(GenericSSLContext.clientSSLContext())
+  private lazy val theSslContext =
+    sslContext.getOrElse(GenericSSLContext.clientSSLContext())
 
   /** Get a new SSlEngine set to ClientMode.
     *

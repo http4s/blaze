@@ -11,10 +11,9 @@ import scala.util.Success
   */
 private[blaze] object ServiceTimeoutFilter {
 
-  def apply(timeout: Duration, timeoutResult: => RouteAction)(service: HttpService): HttpService = {
+  def apply(timeout: Duration, timeoutResult: => RouteAction)(service: HttpService): HttpService =
     if (!timeout.isFinite()) service
     else service.andThen(Execution.withTimeout(timeout, Success(timeoutResult)))
-  }
 
   def apply(timeout: Duration)(service: HttpService): HttpService =
     apply(timeout, newServiceTimeoutResponse(timeout))(service)

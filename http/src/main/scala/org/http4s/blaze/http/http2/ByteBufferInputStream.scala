@@ -11,15 +11,13 @@ private final class ByteBufferInputStream(buffer: ByteBuffer) extends InputStrea
 
   private[this] var markSize = -1
 
-  override def read(): Int = {
+  override def read(): Int =
     if (buffer.hasRemaining) {
       markSize -= 1
       buffer.get() & 0xff
-    }
-    else -1
-  }
+    } else -1
 
-  override def read(b: Array[Byte], off: Int, len: Int): Int = {
+  override def read(b: Array[Byte], off: Int, len: Int): Int =
     if (!buffer.hasRemaining) -1
     else {
       val readSize = math.min(len, buffer.remaining)
@@ -28,7 +26,6 @@ private final class ByteBufferInputStream(buffer: ByteBuffer) extends InputStrea
       buffer.get(b, off, readSize)
       readSize
     }
-  }
 
   override def available(): Int = buffer.remaining
 
@@ -38,14 +35,12 @@ private final class ByteBufferInputStream(buffer: ByteBuffer) extends InputStrea
     ()
   }
 
-  override def reset(): Unit = {
+  override def reset(): Unit =
     if (markSize >= 0) {
       markSize = -1
       buffer.reset()
       ()
-    }
-    else throw new IOException("Invalid mark")
-  }
+    } else throw new IOException("Invalid mark")
 
   override def markSupported(): Boolean = true
 }

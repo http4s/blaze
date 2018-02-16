@@ -9,5 +9,4 @@ package org.http4s.blaze.http.http2
   *
   * @note this is a marker trait
   */
-
 private trait OutboundStreamState extends StreamState

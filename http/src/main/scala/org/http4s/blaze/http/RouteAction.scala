@@ -20,6 +20,7 @@ import scala.util.{Failure, Success}
   * `Future[Writer#Finished]`, ensuring that the writer is closed.
   */
 trait RouteAction {
+
   /** Generate a HTTP response using the passed continuation
     *
     * @param commit function which commits the response prelude and provides an appropriate [[BodyWriter]]
@@ -31,17 +32,18 @@ trait RouteAction {
 }
 
 object RouteAction {
+
   /** generate a streaming HTTP response
     *
     * @param body each invocation should generate the __next__ body chunk. Each chunk will be written
     *             before requesting another chunk. Termination is signaled by an __empty__ `ByteBuffer` as
     *             defined by the return value of `ByteBuffer.hasRemaining()`.
     */
-  def Streaming(code: Int, status: String, headers: Headers)
-               (body: => Future[ByteBuffer])
-               (implicit ec: ExecutionContext = Execution.trampoline): RouteAction =
+  def Streaming(code: Int, status: String, headers: Headers)(body: => Future[ByteBuffer])(
+      implicit ec: ExecutionContext = Execution.trampoline): RouteAction =
     new RouteAction {
-      override def handle[T <: BodyWriter](responder: (HttpResponsePrelude) => T): Future[T#Finished] = {
+      override def handle[T <: BodyWriter](
+          responder: (HttpResponsePrelude) => T): Future[T#Finished] = {
         val writer = responder(HttpResponsePrelude(code, status, headers))
 
 //        // Not safe to do in scala 2.11 or lower :(
@@ -57,10 +59,11 @@ object RouteAction {
           case Failure(t) => p.tryFailure(t)
           case Success(buff) =>
             if (!buff.hasRemaining) p.completeWith(writer.close())
-            else writer.write(buff).onComplete {
-              case Success(_) => go()
-              case Failure(t) => p.tryFailure(t)
-            }
+            else
+              writer.write(buff).onComplete {
+                case Success(_) => go()
+                case Failure(t) => p.tryFailure(t)
+              }
         }
 
         // Start our loop in the EC
@@ -80,12 +83,15 @@ object RouteAction {
     */
   def Buffer(code: Int, status: String, body: ByteBuffer, headers: Headers): RouteAction =
     new RouteAction {
-      override def handle[T <: BodyWriter](responder: (HttpResponsePrelude) => T): Future[T#Finished] = {
+      override def handle[T <: BodyWriter](
+          responder: (HttpResponsePrelude) => T): Future[T#Finished] = {
         val finalHeaders = (HeaderNames.ContentLength, body.remaining().toString) +: headers
         val prelude = HttpResponsePrelude(code, status, finalHeaders)
         val writer = responder(prelude)
 
-        writer.write(body.asReadOnlyBuffer()).flatMap(_ => writer.close())(Execution.directec)
+        writer
+          .write(body.asReadOnlyBuffer())
+          .flatMap(_ => writer.close())(Execution.directec)
       }
     }
 
@@ -120,7 +126,9 @@ object RouteAction {
     String(s"Request Entity Too Large", 413, "Request Entity Too Large", Nil)
 
   /** Generate a 500 'Internal Server Error' with the specified message */
-  def InternalServerError(msg: String = "Internal Server Error", headers: Headers = Nil): RouteAction =
+  def InternalServerError(
+      msg: String = "Internal Server Error",
+      headers: Headers = Nil): RouteAction =
     String(msg, 500, "Internal Server Error", headers)
 
   private val Utf8StringHeader = "content-type" -> "text/plain; charset=utf-8"

@@ -58,7 +58,8 @@ object BodyReader {
   }
 
   final class BodyReaderOverflowException(val max: Int, val accumulated: Long)
-    extends Exception(s"Message body overflowed. Maximum permitted: $max, accumulated: $accumulated")
+      extends Exception(
+        s"Message body overflowed. Maximum permitted: $max, accumulated: $accumulated")
 
   /** The canonical empty [[BodyReader]]
     *
@@ -78,27 +79,28 @@ object BodyReader {
     *
     * @note if the passed buffer is empty, the `EmptyBodyReader` is returned.
     */
-  def singleBuffer(buffer: ByteBuffer): BodyReader = {
+  def singleBuffer(buffer: ByteBuffer): BodyReader =
     if (!buffer.hasRemaining) EmptyBodyReader
-    else new BodyReader {
-      private[this] var buff = buffer
+    else
+      new BodyReader {
+        private[this] var buff = buffer
 
-      override def discard(): Unit = this.synchronized {
-        buff = BufferTools.emptyBuffer
-      }
-
-      override def isExhausted: Boolean = this.synchronized { !buff.hasRemaining }
-
-      override def apply(): Future[ByteBuffer] = this.synchronized {
-        if (buff.hasRemaining) {
-          val b = buff
+        override def discard(): Unit = this.synchronized {
           buff = BufferTools.emptyBuffer
-          Future.successful(b)
         }
-        else BufferTools.emptyFutureBuffer
+
+        override def isExhausted: Boolean = this.synchronized {
+          !buff.hasRemaining
+        }
+
+        override def apply(): Future[ByteBuffer] = this.synchronized {
+          if (buff.hasRemaining) {
+            val b = buff
+            buff = BufferTools.emptyBuffer
+            Future.successful(b)
+          } else BufferTools.emptyFutureBuffer
+        }
       }
-    }
-  }
 
   /** The remainder of the message body will be accumulated into a single buffer. If no data remains,
     * the `ByteBuffer` will be empty as defined by `ByteBuffer.hasRemaining()`
@@ -109,22 +111,20 @@ object BodyReader {
     val acc = new ArrayBuffer[ByteBuffer]
     val p = Promise[ByteBuffer]
 
-    def go(bytes: Long): Unit = {
+    def go(bytes: Long): Unit =
       body().onComplete {
         case Success(buff) if buff.hasRemaining() =>
           val accumulated = bytes + buff.remaining()
           if (accumulated <= max) {
             acc += buff
             go(accumulated)
-          }
-          else p.tryFailure(new BodyReaderOverflowException(max, accumulated))
+          } else p.tryFailure(new BodyReaderOverflowException(max, accumulated))
 
         case Success(_) =>
           p.trySuccess(BufferTools.joinBuffers(acc))
 
-        case f@Failure(_) => p.tryComplete(f)
+        case f @ Failure(_) => p.tryComplete(f)
       }(Execution.trampoline)
-    }
     go(0)
 
     p.future

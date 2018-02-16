@@ -72,12 +72,13 @@ sealed abstract class Http2Settings {
 
 /** Immutable representation of [[Http2Settings]] for configuring clients and servers */
 case class ImmutableHttp2Settings(
-                                   headerTableSize: Int,
-                                   initialWindowSize: Int,
-                                   pushEnabled: Boolean,
-                                   maxConcurrentStreams: Int,
-                                   maxFrameSize: Int,
-                                   maxHeaderListSize: Int) extends Http2Settings
+    headerTableSize: Int,
+    initialWindowSize: Int,
+    pushEnabled: Boolean,
+    maxConcurrentStreams: Int,
+    maxFrameSize: Int,
+    maxHeaderListSize: Int)
+    extends Http2Settings
 
 object Http2Settings {
 
@@ -85,12 +86,12 @@ object Http2Settings {
 
   object DefaultSettings {
     // https://tools.ietf.org/html/rfc7540#section-6.5.2
-    val HEADER_TABLE_SIZE = 4096                   // octets
-    val ENABLE_PUSH = true                         // 1
+    val HEADER_TABLE_SIZE = 4096 // octets
+    val ENABLE_PUSH = true // 1
     val MAX_CONCURRENT_STREAMS = Integer.MAX_VALUE // (infinite)
-    val INITIAL_WINDOW_SIZE = 65535                // octets (2^16)
-    val MAX_FRAME_SIZE = 16384                     // octets (2^14)
-    val MAX_HEADER_LIST_SIZE = Integer.MAX_VALUE   // octets (infinite)
+    val INITIAL_WINDOW_SIZE = 65535 // octets (2^16)
+    val MAX_FRAME_SIZE = 16384 // octets (2^14)
+    val MAX_HEADER_LIST_SIZE = Integer.MAX_VALUE // octets (infinite)
   }
 
   final case class Setting(code: Int, value: SettingValue) {
@@ -101,7 +102,8 @@ object Http2Settings {
     /** Get the human readable name of this setting */
     def name: String = key.name
 
-    override def toString: String = s"$name(0x${Integer.toHexString(code)}, $value"
+    override def toString: String =
+      s"$name(0x${Integer.toHexString(code)}, $value"
   }
 
   /** Create a new [[Http2Settings]] initialized with the protocol defaults */
@@ -139,7 +141,9 @@ object Http2Settings {
         Some(Http2Exception.PROTOCOL_ERROR.goaway(s"Invalid MAX_FRAME_SIZE: $size"))
 
       case Setting(code, value) if value < 0 =>
-        Some(Http2Exception.PROTOCOL_ERROR.goaway(s"Integer overflow for setting ${setting.name}: ${value}"))
+        Some(
+          Http2Exception.PROTOCOL_ERROR.goaway(
+            s"Integer overflow for setting ${setting.name}: ${value}"))
 
       case _ => None
     }
@@ -162,22 +166,25 @@ object Http2Settings {
       else None
   }
 
-  val HEADER_TABLE_SIZE: SettingKey      = makeKey(0x1, "SETTINGS_HEADER_TABLE_SIZE")
-  val ENABLE_PUSH: SettingKey            = makeKey(0x2, "SETTINGS_ENABLE_PUSH")
-  val MAX_CONCURRENT_STREAMS: SettingKey = makeKey(0x3, "SETTINGS_MAX_CONCURRENT_STREAMS")
-  val INITIAL_WINDOW_SIZE: SettingKey    = makeKey(0x4, "SETTINGS_INITIAL_WINDOW_SIZE")
-  val MAX_FRAME_SIZE: SettingKey         = makeKey(0x5, "SETTINGS_MAX_FRAME_SIZE")
-  val MAX_HEADER_LIST_SIZE: SettingKey   = makeKey(0x6, "SETTINGS_MAX_HEADER_LIST_SIZE")
+  val HEADER_TABLE_SIZE: SettingKey = makeKey(0x1, "SETTINGS_HEADER_TABLE_SIZE")
+  val ENABLE_PUSH: SettingKey = makeKey(0x2, "SETTINGS_ENABLE_PUSH")
+  val MAX_CONCURRENT_STREAMS: SettingKey =
+    makeKey(0x3, "SETTINGS_MAX_CONCURRENT_STREAMS")
+  val INITIAL_WINDOW_SIZE: SettingKey =
+    makeKey(0x4, "SETTINGS_INITIAL_WINDOW_SIZE")
+  val MAX_FRAME_SIZE: SettingKey = makeKey(0x5, "SETTINGS_MAX_FRAME_SIZE")
+  val MAX_HEADER_LIST_SIZE: SettingKey =
+    makeKey(0x6, "SETTINGS_MAX_HEADER_LIST_SIZE")
 }
 
 /** Internal mutable representation of the [[Http2Settings]] */
-private final class MutableHttp2Settings private(
-  var headerTableSize: Int,
-  var initialWindowSize: Int,
-  var pushEnabled: Boolean,
-  var maxConcurrentStreams: Int,
-  var maxFrameSize: Int,
-  var maxHeaderListSize: Int
+private final class MutableHttp2Settings private (
+    var headerTableSize: Int,
+    var initialWindowSize: Int,
+    var pushEnabled: Boolean,
+    var maxConcurrentStreams: Int,
+    var maxFrameSize: Int,
+    var maxHeaderListSize: Int
 ) extends Http2Settings { // initially unbounded
   import MutableHttp2Settings._
 
@@ -192,12 +199,12 @@ private final class MutableHttp2Settings private(
 
     // If we didn't detect an invalid setting we can update ourselves
     if (invalidSettingError.isEmpty) newSettings.foreach {
-      case HEADER_TABLE_SIZE(size)      => headerTableSize = size.toInt
+      case HEADER_TABLE_SIZE(size) => headerTableSize = size.toInt
       case ENABLE_PUSH(v) => pushEnabled = v != 0
-      case MAX_CONCURRENT_STREAMS(max)  => maxConcurrentStreams = max.toInt
-      case INITIAL_WINDOW_SIZE(size)    => initialWindowSize = size.toInt
-      case MAX_FRAME_SIZE(size)         => maxFrameSize = size.toInt
-      case MAX_HEADER_LIST_SIZE(size)   => maxHeaderListSize = size.toInt
+      case MAX_CONCURRENT_STREAMS(max) => maxConcurrentStreams = max.toInt
+      case INITIAL_WINDOW_SIZE(size) => initialWindowSize = size.toInt
+      case MAX_FRAME_SIZE(size) => maxFrameSize = size.toInt
+      case MAX_HEADER_LIST_SIZE(size) => maxHeaderListSize = size.toInt
       case setting =>
         logger.info(s"Received setting $setting which we don't know what to do with. Ignoring.")
     }
@@ -224,5 +231,6 @@ private object MutableHttp2Settings {
     )
 
   /** Create a new [[MutableHttp2Settings]] using the HTTP2 defaults */
-  def default(): MutableHttp2Settings = MutableHttp2Settings(Http2Settings.default)
+  def default(): MutableHttp2Settings =
+    MutableHttp2Settings(Http2Settings.default)
 }

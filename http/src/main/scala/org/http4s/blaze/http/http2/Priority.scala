@@ -5,12 +5,14 @@ sealed trait Priority {
 }
 
 object Priority {
+
   /** object representing the contents of a PRIORITY frame
     *
     * This is also used for the HEADERS frame which is logically
     * a series of headers with a possible PRIORITY frame
     */
-  final case class Dependent(dependentStreamId: Int, exclusive: Boolean, priority: Int) extends Priority {
+  final case class Dependent(dependentStreamId: Int, exclusive: Boolean, priority: Int)
+      extends Priority {
     require(0 <= dependentStreamId, "Invalid stream dependency")
     require(0 < priority && priority <= 256, "Weight must be 1 to 256")
 

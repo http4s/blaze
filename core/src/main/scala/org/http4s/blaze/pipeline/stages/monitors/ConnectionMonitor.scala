@@ -9,7 +9,6 @@ import org.http4s.blaze.util.Execution.directec
 
 import scala.concurrent.Future
 
-
 /** Facilitates injecting some monitoring tools into the pipeline */
 abstract class ConnectionMonitor {
 
@@ -53,6 +52,8 @@ abstract class ConnectionMonitor {
     }
 
     def readRequest(size: Int): Future[ByteBuffer] =
-      channelRead(size).map { b => bytesInbound(b.remaining.toLong); b}(directec)
+      channelRead(size).map { b =>
+        bytesInbound(b.remaining.toLong); b
+      }(directec)
   }
 }

@@ -17,7 +17,8 @@ import scala.util.{Failure, Success, Try}
 
 // TODO: we're totally logging all sorts of headers in here, which is bad for security
 private[http] class Http1ClientStage(config: HttpClientConfig)
-  extends TailStage[ByteBuffer] with Http1ClientSession {
+    extends TailStage[ByteBuffer]
+    with Http1ClientSession {
   import Http1ClientStage._
 
   def name: String = "Http1ClientStage"
@@ -26,7 +27,7 @@ private[http] class Http1ClientStage(config: HttpClientConfig)
 
   private[this] implicit def ec = Execution.trampoline
   private[this] val codec = new Http1ClientCodec(config)
-  private[this] val stageLock: Object = codec  // No need for another object to lock on...
+  private[this] val stageLock: Object = codec // No need for another object to lock on...
 
   // the dispatchId identifies each dispatch so that if the reader of the response is stored
   // and attempted to use later, the `dispatchId` will be different and the read call can return
@@ -64,8 +65,7 @@ private[http] class Http1ClientStage(config: HttpClientConfig)
     if (state == Unconnected) {
       super.stageStartup()
       state = Running(true, true)
-    }
-    else illegalState("stageStartup", state)
+    } else illegalState("stageStartup", state)
   }
 
   override protected def stageShutdown(): Unit = stageLock.synchronized {
@@ -75,48 +75,55 @@ private[http] class Http1ClientStage(config: HttpClientConfig)
     }
   }
 
-  override def dispatch(request: HttpRequest): Future[ReleaseableResponse] = stageLock.synchronized {
-    state match {
-      case r@Running(true, true) =>
-        logger.debug("Initiating dispatch cycle")
+  override def dispatch(request: HttpRequest): Future[ReleaseableResponse] =
+    stageLock.synchronized {
+      state match {
+        case r @ Running(true, true) =>
+          logger.debug("Initiating dispatch cycle")
 
-        codec.reset()
-        dispatchId += 1
+          codec.reset()
+          dispatchId += 1
 
-        r.readChannelClear = false  // we are no longer idle, and the read/write channels
-        r.writeChannelClear = false // must be considered contaminated.
+          r.readChannelClear = false // we are no longer idle, and the read/write channels
+          r.writeChannelClear = false // must be considered contaminated.
 
-        // Remember which dispatch we are in
-        val thisDispatchId = dispatchId
+          // Remember which dispatch we are in
+          val thisDispatchId = dispatchId
 
-        // Write the request to the wire
-        launchWriteRequest(request).onComplete {
-          case Success(_) => stageLock.synchronized {
-            state match {
-              case r@Running(_, _) if dispatchId == thisDispatchId =>
-                logger.debug(s"Successfully finished writing request $request")
-                r.writeChannelClear = true
+          // Write the request to the wire
+          launchWriteRequest(request).onComplete {
+            case Success(_) =>
+              stageLock.synchronized {
+                state match {
+                  case r @ Running(_, _) if dispatchId == thisDispatchId =>
+                    logger.debug(s"Successfully finished writing request $request")
+                    r.writeChannelClear = true
 
-              case _ => // nop
-            }
+                  case _ => // nop
+                }
+              }
+
+            case Failure(ex) =>
+              logger.debug(ex)(s"Failed to write request $request")
+              handleError("initial request write", ex)
           }
 
-          case Failure(ex) =>
-            logger.debug(ex)(s"Failed to write request $request")
-            handleError("initial request write", ex)
-        }
+          val p = Promise[ReleaseableResponse]
+          receiveResponse(BufferTools.emptyBuffer, p)
+          p.future
 
-        val p = Promise[ReleaseableResponse]
-        receiveResponse(BufferTools.emptyBuffer, p)
-        p.future
-
-      case state =>
-        illegalState("initial dispatch", state)
+        case state =>
+          illegalState("initial dispatch", state)
+      }
     }
-  }
 
-  private[this] class ReleaseableResponseImpl(code: Int, status: String, headers: Headers, body: BodyReader)
-    extends ClientResponse(code, status, headers, body) with ReleaseableResponse {
+  private[this] class ReleaseableResponseImpl(
+      code: Int,
+      status: String,
+      headers: Headers,
+      body: BodyReader)
+      extends ClientResponse(code, status, headers, body)
+      with ReleaseableResponse {
     override def release(): Unit = body.discard()
   }
 
@@ -133,13 +140,16 @@ private[http] class Http1ClientStage(config: HttpClientConfig)
         val body = getBodyReader(buffer)
         new ReleaseableResponseImpl(prelude.code, prelude.status, prelude.headers, body)
       } else {
-        logger.debug(s"State: $buffer, ${codec.preludeComplete}, ${codec.responseLineComplete}, ${codec.headersComplete}")
+        logger.debug(
+          s"State: $buffer, ${codec.preludeComplete}, ${codec.responseLineComplete}, ${codec.headersComplete}")
         channelReadThenReceive(p)
         null
       }
     } catch {
       case NonFatal(t) =>
-        closeNow().onComplete { _ => p.tryFailure(t) }
+        closeNow().onComplete { _ =>
+          p.tryFailure(t)
+        }
         null
     }
 
@@ -150,19 +160,19 @@ private[http] class Http1ClientStage(config: HttpClientConfig)
   }
 
   // Must be called from within the stage lock
-  private[this] def channelReadThenReceive(p: Promise[ReleaseableResponse]): Unit = {
+  private[this] def channelReadThenReceive(p: Promise[ReleaseableResponse]): Unit =
     state match {
-      case Running(_, false) => channelRead().onComplete {
-        case Success(buffer) => receiveResponse(buffer, p)
-        case Failure(ex) =>
-          handleError("channelReadThenReceive", ex)
-          p.tryFailure(ex)
-      }
+      case Running(_, false) =>
+        channelRead().onComplete {
+          case Success(buffer) => receiveResponse(buffer, p)
+          case Failure(ex) =>
+            handleError("channelReadThenReceive", ex)
+            p.tryFailure(ex)
+        }
 
       case Closed(ex) => p.tryFailure(ex); ()
       case state => illegalState("channelReadThenReceive", state)
     }
-  }
 
   // BodyReader //////////////////////////////////////////////////////////////////////////
 
@@ -214,7 +224,7 @@ private[http] class Http1ClientStage(config: HttpClientConfig)
       }
     }
 
-    private[this] def readAndParseBody(p: Promise[ByteBuffer]): Unit = {
+    private[this] def readAndParseBody(p: Promise[ByteBuffer]): Unit =
       channelRead().onComplete {
         case Success(b) =>
           stageLock.synchronized {
@@ -229,11 +239,10 @@ private[http] class Http1ClientStage(config: HttpClientConfig)
 
           p.failure(ex)
       }
-    }
 
     // WARNING: will emit `null` to signal 'needs more data'
     // Attempts to parse data kept in the `buffer` field into a body chunk
-    private[this] def tryParseBuffer(): Try[ByteBuffer] = {
+    private[this] def tryParseBuffer(): Try[ByteBuffer] =
       try stageLock.synchronized {
         if (closedException == EOF) {
           Success(BufferTools.emptyBuffer)
@@ -245,48 +254,48 @@ private[http] class Http1ClientStage(config: HttpClientConfig)
               s"complete: ${codec.contentComplete()}, buffer: $buffer, state: $state]")
 
           if (!validDispatch) Failure(EOF)
-          else state match {
-            case Closed(ex) => Failure(ex)
-            case Running(_, false) =>
-              val out = codec.parseData(buffer)
-              // We check if we're done and shut down if appropriate
-              // If we're not done, we need to guard against sending
-              // an empty `ByteBuffer` since that is our 'EOF' signal.
-              if (codec.contentComplete()) {
-                discard() // closes down our parser
-                if (!buffer.hasRemaining) Success(out)
-                else {
-                  // We're not in a good state if we have finished parsing the response
-                  // but still have some data. That is a sign that our session is probably
-                  // corrupt so we should fail the BodyReader even though we technically
-                  // have enough data.
-                  closeNow()
-                  Failure(new IllegalStateException(
-                    s"HTTP1 client parser found in corrupt state: still have ${buffer.remaining()} data " +
-                      s"after complete dispatch"
-                  ))
-                }
-              }
-              else if (out.hasRemaining) Success(out)
-              else null // need more data
+          else
+            state match {
+              case Closed(ex) => Failure(ex)
+              case Running(_, false) =>
+                val out = codec.parseData(buffer)
+                // We check if we're done and shut down if appropriate
+                // If we're not done, we need to guard against sending
+                // an empty `ByteBuffer` since that is our 'EOF' signal.
+                if (codec.contentComplete()) {
+                  discard() // closes down our parser
+                  if (!buffer.hasRemaining) Success(out)
+                  else {
+                    // We're not in a good state if we have finished parsing the response
+                    // but still have some data. That is a sign that our session is probably
+                    // corrupt so we should fail the BodyReader even though we technically
+                    // have enough data.
+                    closeNow()
+                    Failure(new IllegalStateException(
+                      s"HTTP1 client parser found in corrupt state: still have ${buffer.remaining()} data " +
+                        s"after complete dispatch"
+                    ))
+                  }
+                } else if (out.hasRemaining) Success(out)
+                else null // need more data
 
-            case state => illegalState("parseBody", state)
-          }
+              case state => illegalState("parseBody", state)
+            }
         }
-      } catch { case NonFatal(t) =>
-        closeNow()
-        Failure(t)
+      } catch {
+        case NonFatal(t) =>
+          closeNow()
+          Failure(t)
       }
-    }
   }
 
   // BodyReader //////////////////////////////////////////////////////////////////////////
 
   // Must be called from within the lock
-  private[this] def getBodyReader(buffer: ByteBuffer): BodyReader = {
+  private[this] def getBodyReader(buffer: ByteBuffer): BodyReader =
     if (codec.contentComplete()) {
       state match {
-        case r@Running(_, false) => r.readChannelClear = true
+        case r @ Running(_, false) => r.readChannelClear = true
         case _ => () // NOOP
       }
       BodyReader.EmptyBodyReader
@@ -294,13 +303,12 @@ private[http] class Http1ClientStage(config: HttpClientConfig)
       logger.debug("Content is not complete. Getting body reader.")
       new ClientBodyReader(buffer)
     }
-  }
 
   /** The returned Future is satisfied once the entire request has been written
     * to the wire. Any errors that occur during the write process, including those
     * that come from the request body, will result in the failed Future.
     */
-  private[this] def launchWriteRequest(request: HttpRequest): Future[Unit] = {
+  private[this] def launchWriteRequest(request: HttpRequest): Future[Unit] =
     request.body().flatMap { firstChunk =>
       val hasBody = firstChunk.hasRemaining
       val EncodedPrelude(requestBuffer, encoder) = stageLock.synchronized {
@@ -323,15 +331,17 @@ private[http] class Http1ClientStage(config: HttpClientConfig)
       }
       p.future
     }
-  }
 
-  private[this] def encodeWithBody(firstChunk: ByteBuffer, body: BodyReader, encoder: Http1BodyEncoder): Future[Unit] = {
+  private[this] def encodeWithBody(
+      firstChunk: ByteBuffer,
+      body: BodyReader,
+      encoder: Http1BodyEncoder): Future[Unit] = {
 
     // This would be much nicer as a tail recursive loop, but that would
     // cause issues on Scala < 2.12 since it's Future impl isn't tail rec.
     val p = Promise[Unit]
 
-    def writeLoop(): Unit = {
+    def writeLoop(): Unit =
       body().onComplete {
         case Success(b) if !b.hasRemaining =>
           val last = encoder.finish()
@@ -349,9 +359,8 @@ private[http] class Http1ClientStage(config: HttpClientConfig)
                 ()
               }
           }
-        case Failure(err) =>  p.tryFailure(err)
+        case Failure(err) => p.tryFailure(err)
       }
-    }
 
     channelWrite(encoder.encode(firstChunk))
       .onComplete {
@@ -369,11 +378,12 @@ private[http] class Http1ClientStage(config: HttpClientConfig)
   }
 
   // Generally shuts things down. These may be normal errors
-  private def handleError(phase: String, err: Throwable): Unit = stageLock.synchronized {
-    logger.debug(err)(s"Phase $phase resulted in an error. Current state: $state")
-    state = Closed(err)
-    stageShutdown()
-  }
+  private def handleError(phase: String, err: Throwable): Unit =
+    stageLock.synchronized {
+      logger.debug(err)(s"Phase $phase resulted in an error. Current state: $state")
+      state = Closed(err)
+      stageShutdown()
+    }
 
   private def illegalState(phase: String, state: State): Nothing = {
     val ex = new IllegalStateException(s"Found illegal state $state in phase $phase")

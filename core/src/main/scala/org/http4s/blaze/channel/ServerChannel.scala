@@ -61,7 +61,8 @@ abstract class ServerChannel extends Closeable { self =>
     * @param f hook to execute on shutdown
     * @return true if the hook was successfully registered, false otherwise.
     */
-  final def addShutdownHook(f: () => Unit)(implicit ec: ExecutionContext = Execution.directec): Boolean = {
+  final def addShutdownHook(f: () => Unit)(
+      implicit ec: ExecutionContext = Execution.directec): Boolean =
     shutdownHooks.synchronized {
       if (state != Open) false
       else {
@@ -69,10 +70,9 @@ abstract class ServerChannel extends Closeable { self =>
         true
       }
     }
-  }
 
   // Schedules all the shutdown hooks.
-  private[this] def scheduleHooks(hooks: Vector[Hook]): Unit = {
+  private[this] def scheduleHooks(hooks: Vector[Hook]): Unit =
     // Its important that this calls `closeAndNotify` even if
     // there are no hooks to execute.
     if (hooks.isEmpty) closeAndNotify()
@@ -82,7 +82,6 @@ abstract class ServerChannel extends Closeable { self =>
         hook.ec.execute(new HookRunnable(countdown, hook.task))
       }
     }
-  }
 
   // set the terminal state and notify any callers of `join`.
   // This method should be idempotent.
@@ -95,19 +94,17 @@ abstract class ServerChannel extends Closeable { self =>
 
   // Bundles the task of executing a hook and scheduling the next hook
   private[this] class HookRunnable(countdown: AtomicInteger, hook: () => Unit) extends Runnable {
-    override def run(): Unit = {
+    override def run(): Unit =
       try hook()
       catch {
         case NonFatal(t) =>
           logger.error(t)(s"Exception occurred during Channel shutdown.")
-      }
-      finally {
+      } finally {
         // If we're the last hook to run, we notify any listeners
         if (countdown.decrementAndGet() == 0) {
           closeAndNotify()
         }
       }
-    }
   }
 }
 

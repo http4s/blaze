@@ -9,7 +9,8 @@ import org.http4s.blaze.util.{BufferTools, Execution}
 import scala.concurrent.Future
 
 /** Base type for performing the HTTP/2 prior knowledge handshake */
-abstract class PriorKnowledgeHandshaker[T](localSettings: ImmutableHttp2Settings) extends TailStage[ByteBuffer] {
+abstract class PriorKnowledgeHandshaker[T](localSettings: ImmutableHttp2Settings)
+    extends TailStage[ByteBuffer] {
 
   final protected implicit def ec = Execution.trampoline
 
@@ -33,14 +34,16 @@ abstract class PriorKnowledgeHandshaker[T](localSettings: ImmutableHttp2Settings
     logger.debug("Beginning handshake.")
     handlePreface()
       .flatMap(handleSettings)
-      .flatMap { case (settings, acc) =>
-        handshakeComplete(settings, acc)
+      .flatMap {
+        case (settings, acc) =>
+          handshakeComplete(settings, acc)
       }
   }
 
-  private[this] def handleSettings(bytes: ByteBuffer): Future[(MutableHttp2Settings, ByteBuffer)] = {
-    sendSettings().flatMap { _ => readSettings(bytes) }
-  }
+  private[this] def handleSettings(bytes: ByteBuffer): Future[(MutableHttp2Settings, ByteBuffer)] =
+    sendSettings().flatMap { _ =>
+      readSettings(bytes)
+    }
 
   private[this] def sendSettings(): Future[Unit] = {
     val settingsBuffer = FrameSerializer.mkSettingsFrame(localSettings.toSeq)
@@ -63,8 +66,9 @@ abstract class PriorKnowledgeHandshaker[T](localSettings: ImmutableHttp2Settings
 
       // still need more data
       case frameSize if needsMoreData(acc.remaining, frameSize) =>
-        logger.debug(s"Insufficient data. Current representation: " +
-          BufferTools.hexString(acc, 256))
+        logger.debug(
+          s"Insufficient data. Current representation: " +
+            BufferTools.hexString(acc, 256))
 
         channelRead().flatMap { buff =>
           readSettings(BufferTools.concatBuffers(acc, buff))
@@ -78,9 +82,12 @@ abstract class PriorKnowledgeHandshaker[T](localSettings: ImmutableHttp2Settings
             val remoteSettings = MutableHttp2Settings.default()
             remoteSettings.updateSettings(newSettings) match {
               case None =>
-                logger.debug(s"Successfully received settings frame. Current " +
-                  s"remote settings: $remoteSettings")
-                sendSettingsAck().map { _ => remoteSettings -> acc }
+                logger.debug(
+                  s"Successfully received settings frame. Current " +
+                    s"remote settings: $remoteSettings")
+                sendSettingsAck().map { _ =>
+                  remoteSettings -> acc
+                }
 
               case Some(ex) =>
                 logger.info(ex)(s"Received SETTINGS frame but failed to update.")
@@ -95,16 +102,16 @@ abstract class PriorKnowledgeHandshaker[T](localSettings: ImmutableHttp2Settings
               "Received a SETTINGS ack before receiving remote settings")
             sendGoAway(ex)
 
-
           case Left(http2Exception) => sendGoAway(http2Exception)
         }
     }
   }
 
-  private[this] def needsMoreData(have: Int, size: Option[Int]): Boolean = size match {
-    case None => true // didn't have enough data for even the header
-    case Some(size) => have < size // Have the header byt not a complete frame
-  }
+  private[this] def needsMoreData(have: Int, size: Option[Int]): Boolean =
+    size match {
+      case None => true // didn't have enough data for even the header
+      case Some(size) => have < size // Have the header byt not a complete frame
+    }
 
   private[this] def sendGoAway(http2Exception: Http2Exception): Future[Nothing] = {
     val reply = FrameSerializer.mkGoAwayFrame(0, http2Exception)
@@ -126,7 +133,7 @@ abstract class PriorKnowledgeHandshaker[T](localSettings: ImmutableHttp2Settings
 
   // Read the frame size from the buffer, and includes the header size (9 bytes).
   // If there isn't enough data for the frame header, `None` is returned.
-  private[this] def getFrameSize(buffer: ByteBuffer): Option[Int] = {
+  private[this] def getFrameSize(buffer: ByteBuffer): Option[Int] =
     if (buffer.remaining < bits.HeaderSize) None
     else {
       buffer.mark()
@@ -136,5 +143,4 @@ abstract class PriorKnowledgeHandshaker[T](localSettings: ImmutableHttp2Settings
       if (len == -1) None
       else Some(len + bits.HeaderSize)
     }
-  }
 }

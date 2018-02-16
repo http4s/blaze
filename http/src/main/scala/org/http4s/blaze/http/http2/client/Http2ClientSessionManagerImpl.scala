@@ -21,8 +21,8 @@ import scala.util.{Failure, Success}
 
 object Http2ClientSessionManagerImpl {
   def apply(
-    config: HttpClientConfig,
-    initialSettings: ImmutableHttp2Settings
+      config: HttpClientConfig,
+      initialSettings: ImmutableHttp2Settings
   ): Http2ClientSessionManagerImpl =
     new Http2ClientSessionManagerImpl(
       config = config,
@@ -34,7 +34,7 @@ private[http] class Http2ClientSessionManagerImpl(
     config: HttpClientConfig,
     initialSettings: ImmutableHttp2Settings,
     sessionCache: mutable.Map[String, Future[Http2ClientSession]])
-  extends ClientSessionManager {
+    extends ClientSessionManager {
 
   private[this] val logger = getLogger
   private[this] val factory = new ClientChannelFactory(group = config.channelGroup)
@@ -52,21 +52,22 @@ private[http] class Http2ClientSessionManagerImpl(
         sessionCache.synchronized {
           sessionCache.get(composition.authority) match {
             case Some(session) =>
-              session.flatMap { s =>
-                if (s.status == Ready) session
-                else makeAndStoreSession(composition)
-              }(Execution.trampoline).recoverWith {
-                case err =>
-                  logger.info(err)(s"Found bad session. Replacing.")
-                  makeAndStoreSession(composition)
-              }(Execution.trampoline)
+              session
+                .flatMap { s =>
+                  if (s.status == Ready) session
+                  else makeAndStoreSession(composition)
+                }(Execution.trampoline)
+                .recoverWith {
+                  case err =>
+                    logger.info(err)(s"Found bad session. Replacing.")
+                    makeAndStoreSession(composition)
+                }(Execution.trampoline)
 
             case None =>
               makeAndStoreSession(composition)
           }
         }
     }
-
 
   /** Close the `SessionManager` and free any resources */
   override def close(): Future[Unit] = {
@@ -76,7 +77,7 @@ private[http] class Http2ClientSessionManagerImpl(
       sessions
     }
 
-    sessions.foldLeft(Future.successful(())){ (acc, s) =>
+    sessions.foldLeft(Future.successful(())) { (acc, s) =>
       // we turn it into a Future outside of the Future.flatMap
       // to ensure that closeNow is called on each session
       val f = s.flatMap(_.closeNow())(Execution.directec)

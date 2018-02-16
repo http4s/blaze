@@ -1,6 +1,5 @@
 package org.http4s.blaze.channel.nio1
 
-
 import org.http4s.blaze.pipeline.{Command => Cmd}
 import org.http4s.blaze.pipeline._
 import org.http4s.blaze.channel.BufferPipelineBuilder
@@ -23,10 +22,12 @@ import scala.concurrent.ExecutionContext
   * @param bufferSize size of the scratch buffer instantiated for this thread
   */
 final class SelectorLoop(
-  id: String,
-  selector: Selector,
-  bufferSize: Int
-) extends Thread(id) with Executor with ExecutionContext {
+    id: String,
+    selector: Selector,
+    bufferSize: Int
+) extends Thread(id)
+    with Executor
+    with ExecutionContext {
 
   private[this] val logger = getLogger
   private[this] val taskQueue = new TaskQueue
@@ -49,13 +50,12 @@ final class SelectorLoop(
     * the `SelectorLoop` thread later.
     */
   @inline
-  def executeTask(runnable: Runnable): Unit =  {
+  def executeTask(runnable: Runnable): Unit =
     if (Thread.currentThread() != this) enqueueTask(runnable)
     else {
       try runnable.run()
       catch { case NonFatal(t) => reportFailure(t) }
     }
-  }
 
   /** Schedule to provided `Runnable` for execution later
     *
@@ -66,10 +66,10 @@ final class SelectorLoop(
     *     the calling thread is `this` `SelectorLoop`, or schedule it for
     *     later otherwise.
     */
-  def enqueueTask(runnable: Runnable): Unit = {
+  def enqueueTask(runnable: Runnable): Unit =
     taskQueue.enqueueTask(runnable) match {
       case TaskQueue.Enqueued =>
-        ()// nop
+        () // nop
 
       case TaskQueue.FirstEnqueued =>
         selector.wakeup()
@@ -77,13 +77,11 @@ final class SelectorLoop(
       case TaskQueue.Closed =>
         throw new RejectedExecutionException("This SelectorLoop is closed.")
     }
-  }
 
   override def execute(runnable: Runnable): Unit = enqueueTask(runnable)
 
-  override def reportFailure(cause: Throwable): Unit = {
+  override def reportFailure(cause: Throwable): Unit =
     logger.info(cause)(s"Exception executing task in selector look $id")
-  }
 
   /** Initialize a new `Selectable` channel
     *
@@ -91,11 +89,11 @@ final class SelectorLoop(
     * the pipeline is constructed using the resultant `SelectionKey`
     */
   def initChannel(
-    builder: BufferPipelineBuilder,
-    ch: SelectableChannel,
-    mkStage: SelectionKey => NIO1HeadStage
-  ): Unit = {
-    enqueueTask( new Runnable {
+      builder: BufferPipelineBuilder,
+      ch: SelectableChannel,
+      mkStage: SelectionKey => NIO1HeadStage
+  ): Unit =
+    enqueueTask(new Runnable {
       def run(): Unit = {
         ch.configureBlocking(false)
         val key = ch.register(selector, 0)
@@ -115,14 +113,13 @@ final class SelectorLoop(
         }
       }
     })
-  }
 
   // Main thread method. The loop will break if the Selector loop is closed
   override def run(): Unit = {
     // The scratch buffer is a direct buffer as this will often be used for I/O
     val scratch = ByteBuffer.allocateDirect(bufferSize)
 
-    try while(!_isClosed) {
+    try while (!_isClosed) {
       // Run any pending tasks. These may set interest ops,
       // just compute something, etc.
       taskQueue.executeTasks()
@@ -150,8 +147,8 @@ final class SelectorLoop(
     taskQueue.close()
   }
 
-  private[this] def processKeys(scratch: ByteBuffer, it: java.util.Iterator[SelectionKey]): Unit = {
-    while(it.hasNext) {
+  private[this] def processKeys(scratch: ByteBuffer, it: java.util.Iterator[SelectionKey]): Unit =
+    while (it.hasNext) {
       val k = it.next()
       it.remove()
 
@@ -167,7 +164,8 @@ final class SelectorLoop(
       } catch {
         case t: Throwable =>
           logger.error(t) {
-            if (t.isInstanceOf[IOException]) "IOException while performing channel operations. Closing channel."
+            if (t.isInstanceOf[IOException])
+              "IOException while performing channel operations. Closing channel."
             else "Error performing channel operations. Closing channel."
           }
 
@@ -182,7 +180,6 @@ final class SelectorLoop(
           k.cancel()
       }
     }
-  }
 
   private[this] def killSelector(): Unit = {
     import scala.collection.JavaConverters._

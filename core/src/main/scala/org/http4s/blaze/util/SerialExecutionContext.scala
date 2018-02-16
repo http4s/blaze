@@ -7,8 +7,7 @@ import scala.concurrent.ExecutionContext
   * @param parent `ExecutionContext` with which to perform the work. This may execute
   *               work however it sees fit.
   */
-private[blaze] class SerialExecutionContext(parent: ExecutionContext)
-  extends ExecutionContext {
+private[blaze] class SerialExecutionContext(parent: ExecutionContext) extends ExecutionContext {
 
   private[this] val actor = new Actor[Runnable](parent) {
     override protected def act(work: Runnable): Unit = work.run()

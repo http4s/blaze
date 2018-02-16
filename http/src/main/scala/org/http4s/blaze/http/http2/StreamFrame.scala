@@ -3,7 +3,6 @@ package org.http4s.blaze.http.http2
 import java.nio.ByteBuffer
 
 /** Types that will be sent down to the Nodes of the Http2 session */
-
 sealed trait StreamFrame {
   def endStream: Boolean
   def flowBytes: Int
@@ -26,8 +25,7 @@ case class DataFrame(endStream: Boolean, data: ByteBuffer) extends StreamFrame {
   * @param endStream signal if this is the last frame of the stream
   * @param headers attached headers
   */
-case class HeadersFrame(priority: Priority,
-                       endStream: Boolean,
-                         headers: Seq[(String,String)]) extends StreamFrame {
+case class HeadersFrame(priority: Priority, endStream: Boolean, headers: Seq[(String, String)])
+    extends StreamFrame {
   override def flowBytes: Int = 0
 }

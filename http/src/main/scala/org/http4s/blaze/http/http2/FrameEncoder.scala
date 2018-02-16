@@ -5,9 +5,7 @@ import org.http4s.blaze.util.BufferTools
 import scala.collection.mutable.ArrayBuffer
 
 /** A more humane interface for writing HTTP messages. */
-private final class FrameEncoder(
-   remoteSettings: Http2Settings,
-   headerEncoder: HeaderEncoder) {
+private final class FrameEncoder(remoteSettings: Http2Settings, headerEncoder: HeaderEncoder) {
 
   // Just a shortcut
   private[this] def maxFrameSize: Int = remoteSettings.maxFrameSize
@@ -43,11 +41,13 @@ private final class FrameEncoder(
     */
   def dataFrame(streamId: Int, endStream: Boolean, data: ByteBuffer): Seq[ByteBuffer] = {
     val limit = maxFrameSize
-    if (data.remaining <= limit) FrameSerializer.mkDataFrame(streamId, endStream, padding = 0, data)
+    if (data.remaining <= limit)
+      FrameSerializer.mkDataFrame(streamId, endStream, padding = 0, data)
     else { // need to fragment
       val acc = new ArrayBuffer[ByteBuffer]
-      while(data.hasRemaining) {
-        val thisData = BufferTools.takeSlice(data, math.min(data.remaining, limit))
+      while (data.hasRemaining) {
+        val thisData =
+          BufferTools.takeSlice(data, math.min(data.remaining, limit))
         val eos = endStream && !data.hasRemaining
         acc ++= FrameSerializer.mkDataFrame(streamId, eos, padding = 0, thisData)
       }
@@ -62,10 +62,10 @@ private final class FrameEncoder(
     * CONTINUATION frames.
     */
   def headerFrame(
-    streamId: Int,
-    priority: Priority,
-    endStream: Boolean,
-    headers: Seq[(String, String)]
+      streamId: Int,
+      priority: Priority,
+      endStream: Boolean,
+      headers: Seq[(String, String)]
   ): Seq[ByteBuffer] = {
     val rawHeaders = headerEncoder.encodeHeaders(headers)
 
@@ -73,15 +73,28 @@ private final class FrameEncoder(
     val headersPrioritySize = if (priority.isDefined) 5 else 0 // priority(4) + weight(1), padding = 0
 
     if (rawHeaders.remaining() + headersPrioritySize <= limit) {
-      FrameSerializer.mkHeaderFrame(streamId, priority, endHeaders = true, endStream, padding = 0, rawHeaders)
+      FrameSerializer.mkHeaderFrame(
+        streamId,
+        priority,
+        endHeaders = true,
+        endStream,
+        padding = 0,
+        rawHeaders)
     } else {
       // need to fragment
       val acc = new ArrayBuffer[ByteBuffer]
 
-      val headersBuf = BufferTools.takeSlice(rawHeaders, limit - headersPrioritySize)
-      acc ++= FrameSerializer.mkHeaderFrame(streamId, priority, endHeaders = false, endStream, padding = 0, headersBuf)
+      val headersBuf =
+        BufferTools.takeSlice(rawHeaders, limit - headersPrioritySize)
+      acc ++= FrameSerializer.mkHeaderFrame(
+        streamId,
+        priority,
+        endHeaders = false,
+        endStream,
+        padding = 0,
+        headersBuf)
 
-      while(rawHeaders.hasRemaining) {
+      while (rawHeaders.hasRemaining) {
         val size = math.min(limit, rawHeaders.remaining)
         val continueBuf = BufferTools.takeSlice(rawHeaders, size)
         val endHeaders = !rawHeaders.hasRemaining

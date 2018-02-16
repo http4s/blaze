@@ -9,10 +9,10 @@ package org.http4s.blaze.http
   *             signaled by an __empty__ `ByteBuffer` as determined by `ByteBuffer.hasRemaining()`.
   */
 case class HttpRequest(
-  method: Method,
-  url: Url,
-  majorVersion: Int,
-  minorVersion: Int,
-  headers: Headers,
-  body: BodyReader
+    method: Method,
+    url: Url,
+    majorVersion: Int,
+    minorVersion: Int,
+    headers: Headers,
+    body: BodyReader
 )

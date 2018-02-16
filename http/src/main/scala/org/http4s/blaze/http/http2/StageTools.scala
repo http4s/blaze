@@ -13,13 +13,13 @@ private object StageTools {
     * The keys of `source` are converted to lower case to conform with the HTTP/2 spec.
     * https://tools.ietf.org/html/rfc7540#section-8.1.2
     */
-  def copyHeaders(source: Iterable[(String, String)], dest: Growable[(String, String)]): Unit = {
-    source.foreach { case p @ (k, v) =>
-      val lowerKey = k.toLowerCase(Locale.ENGLISH)
-      if (lowerKey eq k) dest += p // don't need to make a new Tuple2
-      else dest += lowerKey -> v
+  def copyHeaders(source: Iterable[(String, String)], dest: Growable[(String, String)]): Unit =
+    source.foreach {
+      case p @ (k, v) =>
+        val lowerKey = k.toLowerCase(Locale.ENGLISH)
+        if (lowerKey eq k) dest += p // don't need to make a new Tuple2
+        else dest += lowerKey -> v
     }
-  }
 
   /** Check of the header name is a valid http2 header name.
     * Pseudo headers are considered invalid and should be screened before hand.
@@ -27,10 +27,9 @@ private object StageTools {
   def validHeaderName(str: String): Boolean = {
     val s = str.length()
     @tailrec
-    def go(i: Int): Boolean = {
-      if (i < s) validChars(str.charAt(i).asInstanceOf[Int]) && go (i + 1)
+    def go(i: Int): Boolean =
+      if (i < s) validChars(str.charAt(i).asInstanceOf[Int]) && go(i + 1)
       else true
-    }
 
     s > 0 && go(0)
   }
@@ -53,5 +52,6 @@ private object StageTools {
                     ; any VCHAR, except delimiters
 
    */
-  private val validChars = BitSet((('0' to '9') ++ ('a' to 'z') ++ "!#$%&'*+-.^_`|~").map(_.toInt):_*)
+  private val validChars = BitSet(
+    (('0' to '9') ++ ('a' to 'z') ++ "!#$%&'*+-.^_`|~").map(_.toInt): _*)
 }

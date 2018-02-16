@@ -20,7 +20,7 @@ private[blaze] class ReadPool[T] {
 
   final def closed: Boolean = closeT != null
 
-  final def readInto(p: Promise[T]): Unit = {
+  final def readInto(p: Promise[T]): Unit =
     if (readP != null) {
       p.tryFailure(new IllegalStateException("Multiple pending read requests"))
       ()
@@ -33,9 +33,8 @@ private[blaze] class ReadPool[T] {
       p.tryFailure(closeT)
       ()
     } else readP = p
-  }
 
-  final def read(): Future[T] = {
+  final def read(): Future[T] =
     // optimization for the case of existing data
     if (!offerQ.isEmpty) {
       val m = offerQ.poll()
@@ -46,9 +45,8 @@ private[blaze] class ReadPool[T] {
       readInto(p)
       p.future
     }
-  }
 
-  final def close(t: Throwable = EOF): Unit = {
+  final def close(t: Throwable = EOF): Unit =
     if (closeT == null) {
       closeT = t
       if (readP != null) {
@@ -58,7 +56,6 @@ private[blaze] class ReadPool[T] {
         ()
       }
     }
-  }
 
   final def closeAndClear(t: Throwable = EOF): Seq[T] = {
     val b = new ListBuffer[T]
@@ -69,14 +66,12 @@ private[blaze] class ReadPool[T] {
     b.result()
   }
 
-  final def offer(t: T): Boolean = {
+  final def offer(t: T): Boolean =
     if (closeT != null) false
     else if (readP != null) {
       val p = readP
       readP = null
       messageConsumed(t)
       p.trySuccess(t)
-    }
-    else offerQ.offer(t)
-  }
+    } else offerQ.offer(t)
 }

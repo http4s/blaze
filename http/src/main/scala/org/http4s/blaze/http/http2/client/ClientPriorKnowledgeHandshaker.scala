@@ -28,7 +28,7 @@ private[http] class ClientPriorKnowledgeHandshaker(
     localSettings: ImmutableHttp2Settings,
     flowStrategy: FlowStrategy,
     executor: ExecutionContext)
-  extends PriorKnowledgeHandshaker[Http2ClientSession](localSettings) {
+    extends PriorKnowledgeHandshaker[Http2ClientSession](localSettings) {
 
   private[this] val session = Promise[Http2ClientSession]
 
@@ -42,13 +42,14 @@ private[http] class ClientPriorKnowledgeHandshaker(
 
   override protected def handlePreface(): Future[ByteBuffer] = {
     sendOutboundCommand(Command.Connect) // establish the pipeline
-    channelWrite(bits.getPrefaceBuffer()).map { _ => BufferTools.emptyBuffer }
+    channelWrite(bits.getPrefaceBuffer()).map { _ =>
+      BufferTools.emptyBuffer
+    }
   }
 
-
   override protected def handshakeComplete(
-    remoteSettings: MutableHttp2Settings,
-    data: ByteBuffer
+      remoteSettings: MutableHttp2Settings,
+      data: ByteBuffer
   ): Future[Http2ClientSession] = {
 
     val tailStage = new BasicTail[ByteBuffer]("http2cClientTail")

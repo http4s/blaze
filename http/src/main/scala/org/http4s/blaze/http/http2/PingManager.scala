@@ -45,20 +45,22 @@ private class PingManager(session: SessionCore) {
     }
   }
 
-  def pingAckReceived(data: Array[Byte]): Unit = {
+  def pingAckReceived(data: Array[Byte]): Unit =
     state match {
       case Pinging(sent, continuation) =>
         state = Idle
 
-        if (ByteBuffer.wrap(data).getLong != sent) { // data guaranteed to be 8 bytes
+        if (ByteBuffer
+            .wrap(data)
+            .getLong != sent) { // data guaranteed to be 8 bytes
           val msg = "Received ping response with unknown data."
           val ex = new Exception(msg)
           logger.warn(ex)(msg)
           continuation.tryFailure(ex)
           ()
         } else {
-          val duration = Duration.create(
-            math.max(0, System.currentTimeMillis - sent), TimeUnit.MILLISECONDS)
+          val duration =
+            Duration.create(math.max(0, System.currentTimeMillis - sent), TimeUnit.MILLISECONDS)
           logger.debug(s"Ping duration: $duration")
           continuation.trySuccess(duration)
           ()
@@ -67,11 +69,10 @@ private class PingManager(session: SessionCore) {
       case other => // nop
         logger.debug(s"Ping ACKed in state $other")
     }
-  }
 
   def close(): Unit = state match {
     case Closed(_) =>
-      ()// nop
+      () // nop
 
     case Idle =>
       state = GracefulClosed

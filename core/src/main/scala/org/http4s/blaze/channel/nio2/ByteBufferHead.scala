@@ -1,11 +1,10 @@
 package org.http4s.blaze.channel.nio2
 
-
 import org.http4s.blaze.channel.ChannelHead
 import org.http4s.blaze.pipeline.Command._
 import org.http4s.blaze.util.BufferTools
 
-import scala.concurrent.{Promise, Future}
+import scala.concurrent.{Future, Promise}
 
 import java.nio.channels._
 import java.nio.ByteBuffer
@@ -14,69 +13,78 @@ import java.util.Date
 import java.util.concurrent.TimeUnit
 import java.lang.{Long => JLong}
 
-private[nio2] final class ByteBufferHead(channel: AsynchronousSocketChannel, bufferSize: Int) extends ChannelHead {
+private[nio2] final class ByteBufferHead(channel: AsynchronousSocketChannel, bufferSize: Int)
+    extends ChannelHead {
 
   def name: String = "ByteBufferHeadStage"
 
   private val buffer = ByteBuffer.allocateDirect(bufferSize)
 
-  override def writeRequest(data: ByteBuffer): Future[Unit] = {
-
+  override def writeRequest(data: ByteBuffer): Future[Unit] =
     if (!data.hasRemaining() && data.position > 0) {
-      logger.warn("Received write request with non-zero position but ZERO available" +
-                 s"bytes at ${new Date} on org.http4s.blaze.channel $channel: $data")
+      logger.warn(
+        "Received write request with non-zero position but ZERO available" +
+          s"bytes at ${new Date} on org.http4s.blaze.channel $channel: $data")
       Future.successful(())
     } else {
       val p = Promise[Unit]
-      def go(i: Int): Unit = {
-        channel.write(data, null: Null, new CompletionHandler[Integer, Null] {
-          def failed(exc: Throwable, attachment: Null): Unit = {
-            val e = checkError(exc)
-            sendInboundCommand(Disconnected)
-            closeWithError(e)
-            p.tryFailure(e)
-            ()
-          }
+      def go(i: Int): Unit =
+        channel.write(
+          data,
+          null: Null,
+          new CompletionHandler[Integer, Null] {
+            def failed(exc: Throwable, attachment: Null): Unit = {
+              val e = checkError(exc)
+              sendInboundCommand(Disconnected)
+              closeWithError(e)
+              p.tryFailure(e)
+              ()
+            }
 
-          def completed(result: Integer, attachment: Null): Unit = {
-            if (result.intValue < i) go(i - result.intValue)  // try to write again
-            else p.trySuccess(()); ()      // All done
+            def completed(result: Integer, attachment: Null): Unit = {
+              if (result.intValue < i)
+                go(i - result.intValue) // try to write again
+              else p.trySuccess(()); () // All done
+            }
           }
-        })
-      }
+        )
       go(data.remaining())
 
       p.future
     }
-  }
 
-  override def writeRequest(data: Seq[ByteBuffer]): Future[Unit] = {
+  override def writeRequest(data: Seq[ByteBuffer]): Future[Unit] =
     if (data.isEmpty) Future.successful(())
     else {
       val p = Promise[Unit]
       val srcs = data.toArray
 
-      def go(index: Int): Unit = {
-        channel.write[Null](srcs, index, srcs.length - index, -1L, TimeUnit.MILLISECONDS, null: Null, new CompletionHandler[JLong, Null] {
-          def failed(exc: Throwable, attachment: Null): Unit = {
-            val e = checkError(exc)
-            sendInboundCommand(Disconnected)
-            closeWithError(e)
-            p.tryFailure(e)
-            ()
-          }
+      def go(index: Int): Unit =
+        channel.write[Null](
+          srcs,
+          index,
+          srcs.length - index,
+          -1L,
+          TimeUnit.MILLISECONDS,
+          null: Null,
+          new CompletionHandler[JLong, Null] {
+            def failed(exc: Throwable, attachment: Null): Unit = {
+              val e = checkError(exc)
+              sendInboundCommand(Disconnected)
+              closeWithError(e)
+              p.tryFailure(e)
+              ()
+            }
 
-          def completed(result: JLong, attachment: Null): Unit = {
-            if (BufferTools.checkEmpty(srcs)){ p.trySuccess(()); () }
-            else go(BufferTools.dropEmpty(srcs))
+            def completed(result: JLong, attachment: Null): Unit =
+              if (BufferTools.checkEmpty(srcs)) { p.trySuccess(()); () } else
+                go(BufferTools.dropEmpty(srcs))
           }
-        })
-      }
+        )
       go(0)
 
       p.future
     }
-  }
 
   def readRequest(size: Int): Future[ByteBuffer] = {
     val p = Promise[ByteBuffer]
@@ -86,30 +94,33 @@ private[nio2] final class ByteBufferHead(channel: AsynchronousSocketChannel, buf
       buffer.limit(size)
     }
 
-    channel.read(buffer, null: Null, new CompletionHandler[Integer, Null] {
-      def failed(exc: Throwable, attachment: Null): Unit = {
-        val e = checkError(exc)
-        sendInboundCommand(Disconnected)
-        closeWithError(e)
-        p.tryFailure(e)
-        ()
-      }
-
-      def completed(i: Integer, attachment: Null): Unit = {
-        if (i.intValue() >= 0) {
-          buffer.flip()
-          val b = ByteBuffer.allocate(buffer.remaining())
-          b.put(buffer).flip()
-          p.trySuccess(b)
-          ()
-        } else {   // must be end of stream
+    channel.read(
+      buffer,
+      null: Null,
+      new CompletionHandler[Integer, Null] {
+        def failed(exc: Throwable, attachment: Null): Unit = {
+          val e = checkError(exc)
           sendInboundCommand(Disconnected)
-          closeWithError(EOF)
-          p.tryFailure(EOF)
+          closeWithError(e)
+          p.tryFailure(e)
           ()
         }
+
+        def completed(i: Integer, attachment: Null): Unit =
+          if (i.intValue() >= 0) {
+            buffer.flip()
+            val b = ByteBuffer.allocate(buffer.remaining())
+            b.put(buffer).flip()
+            p.trySuccess(b)
+            ()
+          } else { // must be end of stream
+            sendInboundCommand(Disconnected)
+            closeWithError(EOF)
+            p.tryFailure(EOF)
+            ()
+          }
       }
-    })
+    )
     p.future
   }
 
@@ -126,7 +137,7 @@ private[nio2] final class ByteBufferHead(channel: AsynchronousSocketChannel, buf
   override protected def closeWithError(t: Throwable): Unit = {
     t match {
       case EOF => logger.debug(s"closeWithError(EOF)")
-      case t   => logger.error(t)("NIO2 channel closed with an unexpected error")
+      case t => logger.error(t)("NIO2 channel closed with an unexpected error")
     }
 
     try channel.close()

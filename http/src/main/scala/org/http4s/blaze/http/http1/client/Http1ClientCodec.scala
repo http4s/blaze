@@ -7,9 +7,13 @@ import org.http4s.blaze.http._
 import org.http4s.blaze.http.parser.Http1ClientParser
 import org.http4s.blaze.util.BufferTools
 
-
 private final class Http1ClientCodec(config: HttpClientConfig)
-  extends Http1ClientParser(config.maxResponseLineLength, config.maxHeadersLength, 1024, Int.MaxValue, config.lenientParser) {
+    extends Http1ClientParser(
+      config.maxResponseLineLength,
+      config.maxHeadersLength,
+      1024,
+      Int.MaxValue,
+      config.lenientParser) {
 
   import Http1ClientCodec._
 
@@ -20,7 +24,12 @@ private final class Http1ClientCodec(config: HttpClientConfig)
   private[this] var majorVersion = -1
   private[this] var minorVersion = -1
 
-  protected def submitResponseLine(code: Int, reason: String, scheme: String, majorversion: Int, minorversion: Int): Unit = {
+  protected def submitResponseLine(
+      code: Int,
+      reason: String,
+      scheme: String,
+      majorversion: Int,
+      minorversion: Int): Unit = {
     this.code = code
     this.reason = reason
     this.scheme = scheme
@@ -33,7 +42,6 @@ private final class Http1ClientCodec(config: HttpClientConfig)
     false
   }
 
-
   override def reset(): Unit = {
     super.reset()
     // Internal reset
@@ -45,7 +53,8 @@ private final class Http1ClientCodec(config: HttpClientConfig)
     minorVersion = -1
   }
 
-  def getResponsePrelude: HttpResponsePrelude = HttpResponsePrelude(this.code, this.reason, headers.result())
+  def getResponsePrelude: HttpResponsePrelude =
+    HttpResponsePrelude(this.code, this.reason, headers.result())
 
   def preludeComplete(): Boolean = headersComplete
 
@@ -53,23 +62,22 @@ private final class Http1ClientCodec(config: HttpClientConfig)
     *
     * Returns `true` once the prelude is complete.
     */
-  def parsePrelude(buffer: ByteBuffer): Boolean = {
+  def parsePrelude(buffer: ByteBuffer): Boolean =
     if (!responseLineComplete && !parseResponseLine(buffer)) false
     else if (!headersComplete && !parseHeaders(buffer)) false
     else true
-  }
 
   /** Parse the body of the response
     *
     * If The content is complete or more input is required, an empty buffer is returned.
     */
-  def parseData(buffer: ByteBuffer): ByteBuffer = {
+  def parseData(buffer: ByteBuffer): ByteBuffer =
     if (contentComplete()) BufferTools.emptyBuffer
-    else parseContent(buffer) match {
-      case null => BufferTools.emptyBuffer
-      case other => other
-    }
-  }
+    else
+      parseContent(buffer) match {
+        case null => BufferTools.emptyBuffer
+        case other => other
+      }
 
   /** Encode the request prelude into a `ByteBuffer`
     *
@@ -87,16 +95,19 @@ private final class Http1ClientCodec(config: HttpClientConfig)
 
     sb.append(request.method).append(' ')
     appendPath(sb, uri)
-    sb.append(' ').append("HTTP/")
+    sb.append(' ')
+      .append("HTTP/")
       .append(request.majorVersion)
       .append('.')
       .append(request.minorVersion)
       .append("\r\n")
     val requiresHost = !(request.majorVersion == 1 && request.minorVersion == 0)
-    val isChunked = appendHeaders(sb, uri, request.headers, hasBody, requiresHost)
+    val isChunked =
+      appendHeaders(sb, uri, request.headers, hasBody, requiresHost)
     sb.append("\r\n")
 
-    val data = ByteBuffer.wrap(sb.result().getBytes(StandardCharsets.ISO_8859_1))
+    val data =
+      ByteBuffer.wrap(sb.result().getBytes(StandardCharsets.ISO_8859_1))
     val encoder =
       if (isChunked) Http1BodyEncoder.ChunkedTransferEncoder
       else Http1BodyEncoder.IdentityEncoder
@@ -123,31 +134,32 @@ private object Http1ClientCodec {
 
   // Returns `true` if using chunked-transfer encoding, `false` otherwise.
   private def appendHeaders(
-    sb: StringBuilder,
-    uri: java.net.URI,
-    hs: Headers,
-    hasBody: Boolean,
-    requireHost: Boolean
+      sb: StringBuilder,
+      uri: java.net.URI,
+      hs: Headers,
+      hasBody: Boolean,
+      requireHost: Boolean
   ): Boolean = {
     var hasHostHeader: Boolean = false
     var hasContentLength: Boolean = false
     var hasChunkedEncoding: Boolean = false
 
-    hs.foreach { case (k, v) =>
-      if (requireHost && !hasHostHeader && k.equalsIgnoreCase("Host")) {
-        hasHostHeader = true
-      }
-      if (hasBody && !hasContentLength && k.equalsIgnoreCase("Content-Length")) {
-        hasContentLength = true
-      }
-      if (hasBody && !hasChunkedEncoding &&
-        k.equalsIgnoreCase("Transfer-Encoding") && v == "chunked") {
-        hasChunkedEncoding = true
-      }
-      sb.append(k)
-        .append(':')
-        .append(v)
-        .append("\r\n")
+    hs.foreach {
+      case (k, v) =>
+        if (requireHost && !hasHostHeader && k.equalsIgnoreCase("Host")) {
+          hasHostHeader = true
+        }
+        if (hasBody && !hasContentLength && k.equalsIgnoreCase("Content-Length")) {
+          hasContentLength = true
+        }
+        if (hasBody && !hasChunkedEncoding &&
+          k.equalsIgnoreCase("Transfer-Encoding") && v == "chunked") {
+          hasChunkedEncoding = true
+        }
+        sb.append(k)
+          .append(':')
+          .append(v)
+          .append("\r\n")
     }
 
     if (requireHost && !hasHostHeader) {

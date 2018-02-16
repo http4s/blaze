@@ -7,6 +7,7 @@ import org.http4s.blaze.http.http2.FlowStrategy.Increment
   * A `FlowStrategy` will be shared among many sessions.
   */
 trait FlowStrategy {
+
   /** Decide if the session window needs to send a WINDOW_UPDATE frame
     *
     * @note This must not mutate the [[SessionFlowControl]] in any way.
@@ -36,17 +37,15 @@ object FlowStrategy {
   private object Increment {
     private[this] val Empty = new Increment(0, 0)
 
-    def make(session: Int, stream: Int): Increment = {
+    def make(session: Int, stream: Int): Increment =
       if (session == 0 && stream == 0) Empty
       else new Increment(session, stream)
-    }
   }
 
   /** Representation of the flow window increments to send to the remote peer */
-  final case class Increment private(session: Int, stream: Int)
+  final case class Increment private (session: Int, stream: Int)
 
   // Cached version for avoiding allocations in the common case
-
 
   /** Construct an `Increment`, using a cached version if possible */
   def increment(session: Int, stream: Int): Increment =

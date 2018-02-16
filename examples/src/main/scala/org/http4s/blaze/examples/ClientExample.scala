@@ -20,7 +20,7 @@ object ClientExample {
   def main(args: Array[String]): Unit = {
 
     val fs = (requests ++ requests).map { url =>
-      val r = client.GET(url){ response =>
+      val r = client.GET(url) { response =>
         println(s"Status: ${response.status}")
         ClientResponse.stringBody(response)
       }

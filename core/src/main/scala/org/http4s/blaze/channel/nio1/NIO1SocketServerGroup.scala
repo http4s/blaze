@@ -22,20 +22,20 @@ import scala.util.control.NonFatal
 object NIO1SocketServerGroup {
 
   /** Default size of buffer to use in a [[SelectorLoop]] */
-  private val DefaultBufferSize: Int = 64*1024
+  private val DefaultBufferSize: Int = 64 * 1024
 
   /** Create a new [[NIO1SocketServerGroup]] from the [[SelectorLoopPool]]. */
   def apply(
-    pool: SelectorLoopPool,
-    channelOptions: ChannelOptions = ChannelOptions.DefaultOptions
+      pool: SelectorLoopPool,
+      channelOptions: ChannelOptions = ChannelOptions.DefaultOptions
   ): NIO1SocketServerGroup =
     new NIO1SocketServerGroup(pool, channelOptions)
 
   /** Create a new [[NIO1SocketServerGroup]] with a fresh [[FixedSelectorPool]] */
   def fixedGroup(
-    workerThreads: Int = DefaultPoolSize,
-    bufferSize: Int = DefaultBufferSize,
-    channelOptions: ChannelOptions = ChannelOptions.DefaultOptions
+      workerThreads: Int = DefaultPoolSize,
+      bufferSize: Int = DefaultBufferSize,
+      channelOptions: ChannelOptions = ChannelOptions.DefaultOptions
   ): NIO1SocketServerGroup = {
     val pool = new FixedSelectorPool(workerThreads, bufferSize)
     apply(pool, channelOptions)
@@ -48,9 +48,8 @@ object NIO1SocketServerGroup {
   *            for shutting it down. Shutting down the pool after giving it to this group will result
   *            in undefined behavior.
   */
-final class NIO1SocketServerGroup private(
-    pool: SelectorLoopPool,
-    channelOptions: ChannelOptions) extends ServerChannelGroup {
+final class NIO1SocketServerGroup private (pool: SelectorLoopPool, channelOptions: ChannelOptions)
+    extends ServerChannelGroup {
   private[this] val logger = getLogger
 
   @volatile private var isClosed = false
@@ -76,9 +75,10 @@ final class NIO1SocketServerGroup private(
     }
   }
 
-
   /** Create a [[ServerChannel]] that will serve the services on the requisite sockets */
-  override def bind(address: InetSocketAddress, service: BufferPipelineBuilder): Try[ServerChannel] = {
+  override def bind(
+      address: InetSocketAddress,
+      service: BufferPipelineBuilder): Try[ServerChannel] =
     Try {
       val ch = ServerSocketChannel.open().bind(address)
       val serverChannel = new NIO1ServerChannel(ch, service)
@@ -87,8 +87,6 @@ final class NIO1SocketServerGroup private(
       logger.info("Service bound to address " + ch.getLocalAddress)
       serverChannel
     }
-  }
-
 
   private class AcceptThread extends Thread("blaze-nio1-acceptor") {
     setDaemon(true)
@@ -98,9 +96,13 @@ final class NIO1SocketServerGroup private(
     /** Add a channel to the selector loop */
     def listenOnChannel(channel: NIO1ServerChannel): Unit = {
       def go(): Unit = queue.get() match {
-        case null                                    => channel.close() // Queue is closed.
-        case q if queue.compareAndSet(q, channel::q) => s.wakeup(); ()     // Successful set. Wake the loop.
-        case _                                       => go()            // Lost race. Try again.
+        case null => channel.close() // Queue is closed.
+        case q if queue.compareAndSet(q, channel :: q) =>
+          // Successful set. Wake the loop.
+          s.wakeup()
+          ()
+        case _ =>
+          go() // Lost race. Try again.
       }
 
       go()
@@ -108,7 +110,7 @@ final class NIO1SocketServerGroup private(
 
     override def run(): Unit = {
       while (!isClosed) {
-        s.select()      // wait for connections to come in
+        s.select() // wait for connections to come in
 
         // Add any new connections
         val q = queue.getAndSet(Nil)
@@ -120,9 +122,14 @@ final class NIO1SocketServerGroup private(
 
           } catch {
             case NonFatal(t) =>
-              logger.error(t)("Error during channel registration: " + ch.channel.getLocalAddress())
+              logger.error(t)(
+                "Error during channel registration: " +
+                  ch.channel.getLocalAddress())
               try ch.close()
-              catch { case NonFatal(t) => logger.debug(t)("Failure during channel close") }
+              catch {
+                case NonFatal(t) =>
+                  logger.debug(t)("Failure during channel close")
+              }
           }
         }
 
@@ -140,25 +147,28 @@ final class NIO1SocketServerGroup private(
           try {
             val clientChannel = serverChannel.accept()
 
-            if (clientChannel != null) {                       // This should never be `null`
-              val address = clientChannel.getRemoteAddress().asInstanceOf[InetSocketAddress]
+            if (clientChannel != null) { // This should never be `null`
+              val address =
+                clientChannel.getRemoteAddress().asInstanceOf[InetSocketAddress]
 
               // check to see if we want to keep this connection
               if (acceptConnection(address)) {
                 channelOptions.applyToChannel(clientChannel)
-                loop.initChannel(service, clientChannel, key => new SocketChannelHead(clientChannel, loop, key))
-              }
-              else clientChannel.close()
+                loop.initChannel(
+                  service,
+                  clientChannel,
+                  key => new SocketChannelHead(clientChannel, loop, key))
+              } else clientChannel.close()
             }
-          }
-          catch {
+          } catch {
             case NonFatal(e) =>
               val localAddress = serverChannel.getLocalAddress()
               logger.error(e)(s"Error accepting connection on address $localAddress")
 
               // If the server channel cannot go on, disconnect it.
               if (!serverChannel.isOpen()) {
-                logger.error(s"Channel bound to address $localAddress has been unexpectedly closed.")
+                logger.error(
+                  s"Channel bound to address $localAddress has been unexpectedly closed.")
                 key.cancel()
                 channel.close()
               }
@@ -186,24 +196,30 @@ final class NIO1SocketServerGroup private(
       // clear out the queue
       queue.getAndSet(null).foreach { ch =>
         try ch.close()
-        catch { case NonFatal(t) => logger.debug(t)("Failure during channel close") }
+        catch {
+          case NonFatal(t) => logger.debug(t)("Failure during channel close")
+        }
       }
 
       // Finally close the selector
       try s.close()
-      catch { case NonFatal(t) => logger.debug(t)("Failure during selector close") }
+      catch {
+        case NonFatal(t) => logger.debug(t)("Failure during selector close")
+      }
     }
   } // thread
 
-
-  private class NIO1ServerChannel(val channel: ServerSocketChannel, val service:BufferPipelineBuilder)
-    extends ServerChannel
-  {
+  private class NIO1ServerChannel(
+      val channel: ServerSocketChannel,
+      val service: BufferPipelineBuilder)
+      extends ServerChannel {
 
     override protected def closeChannel(): Unit = {
       logger.info(s"Closing NIO1 channel ${channel.getLocalAddress()} at ${new Date}")
       try channel.close()
-      catch { case NonFatal(t) => logger.debug(t)("Failure during channel close") }
+      catch {
+        case NonFatal(t) => logger.debug(t)("Failure during channel close")
+      }
     }
 
     def socketAddress: InetSocketAddress =
@@ -211,11 +227,9 @@ final class NIO1SocketServerGroup private(
   }
 
   // Implementation of the channel head that can deal explicitly with a SocketChannel
-  private class SocketChannelHead(ch: SocketChannel,
-                                  loop: SelectorLoop,
-                                  key: SelectionKey) extends NIO1HeadStage(ch, loop, key)
-  {
-    override protected def performRead(scratch: ByteBuffer): Try[ByteBuffer] = {
+  private class SocketChannelHead(ch: SocketChannel, loop: SelectorLoop, key: SelectionKey)
+      extends NIO1HeadStage(ch, loop, key) {
+    override protected def performRead(scratch: ByteBuffer): Try[ByteBuffer] =
       try {
         scratch.clear()
         val bytes = ch.read(scratch)
@@ -226,17 +240,18 @@ final class NIO1SocketServerGroup private(
           b.put(scratch)
           b.flip()
           Success(b)
-        }
-        else Failure(EOF)
+        } else Failure(EOF)
 
       } catch {
         case e: ClosedChannelException => Failure(EOF)
-        case e: IOException if brokePipeMessages.contains(e.getMessage) => Failure(EOF)
+        case e: IOException if brokePipeMessages.contains(e.getMessage) =>
+          Failure(EOF)
         case e: IOException => Failure(e)
       }
-    }
 
-    override protected def performWrite(scratch: ByteBuffer, buffers: Array[ByteBuffer]): WriteResult = {
+    override protected def performWrite(
+        scratch: ByteBuffer,
+        buffers: Array[ByteBuffer]): WriteResult =
       try {
         if (BufferTools.areDirectOrEmpty(buffers)) {
           ch.write(buffers)
@@ -275,14 +290,13 @@ final class NIO1SocketServerGroup private(
 
           writeLoop()
         }
-      }
-      catch {
+      } catch {
         case e: ClosedChannelException => WriteError(EOF)
-        case e: IOException if brokePipeMessages.contains(e.getMessage) => WriteError(EOF)
+        case e: IOException if brokePipeMessages.contains(e.getMessage) =>
+          WriteError(EOF)
         case e: IOException =>
           logger.warn(e)("Error writing to channel")
           WriteError(e)
       }
-    }
   }
 }

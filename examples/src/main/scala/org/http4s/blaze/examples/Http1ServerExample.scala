@@ -16,8 +16,8 @@ import org.http4s.blaze.pipeline.stages.monitors.IntervalConnectionMonitor
 
 import scala.concurrent.duration._
 
-class Http1ServerExample(factory: ServerChannelGroup, port: Int)
-                        (trans: LeafBuilder[ByteBuffer] => LeafBuilder[ByteBuffer] = identity(_)) {
+class Http1ServerExample(factory: ServerChannelGroup, port: Int)(
+    trans: LeafBuilder[ByteBuffer] => LeafBuilder[ByteBuffer] = identity(_)) {
   private val status = new IntervalConnectionMonitor(2.seconds)
   private val config = HttpServerStageConfig() // just the default config
 
@@ -25,12 +25,14 @@ class Http1ServerExample(factory: ServerChannelGroup, port: Int)
     val ref = new AtomicReference[ServerChannel](null)
     val f: BufferPipelineBuilder =
       status.wrapBuilder { _ =>
-        val stage = new Http1ServerStage(ExampleService.service(Some(status), Some(ref)), config)
+        val stage =
+          new Http1ServerStage(ExampleService.service(Some(status), Some(ref)), config)
         trans(LeafBuilder(stage))
       }
 
     val address = new InetSocketAddress(port)
-    val ch = factory.bind(address, f).getOrElse(sys.error("Failed to start server."))
+    val ch =
+      factory.bind(address, f).getOrElse(sys.error("Failed to start server."))
     ref.set(ch)
     ch
   }
@@ -39,7 +41,8 @@ class Http1ServerExample(factory: ServerChannelGroup, port: Int)
 /** Opens a demo server on ports 8080 */
 object NIO1HttpServer {
   def main(args: Array[String]): Unit = {
-    val f = NIO1SocketServerGroup.fixedGroup(workerThreads = channel.DefaultPoolSize)
+    val f =
+      NIO1SocketServerGroup.fixedGroup(workerThreads = channel.DefaultPoolSize)
     new Http1ServerExample(f, 8080)()
       .run()
       .join()
@@ -62,13 +65,13 @@ object NIO2HttpServer {
 object SSLHttpServer {
   def main(args: Array[String]): Unit = {
     val sslContext = ExampleKeystore.sslContext()
-    val f = NIO1SocketServerGroup.fixedGroup(workerThreads = channel.DefaultPoolSize)
+    val f =
+      NIO1SocketServerGroup.fixedGroup(workerThreads = channel.DefaultPoolSize)
     new Http1ServerExample(f, 4430)({ builder =>
       val eng = sslContext.createSSLEngine()
       eng.setUseClientMode(false)
-      builder.prepend(new SSLStage(eng, 100*1024))
-    })
-      .run()
+      builder.prepend(new SSLStage(eng, 100 * 1024))
+    }).run()
       .join()
 
     println("Finished.")
@@ -79,14 +82,14 @@ object ClientAuthSSLHttpServer {
 
   def main(args: Array[String]): Unit = {
     val sslContext = ExampleKeystore.clientAuthSslContext()
-    val f = NIO1SocketServerGroup.fixedGroup(workerThreads = channel.DefaultPoolSize)
+    val f =
+      NIO1SocketServerGroup.fixedGroup(workerThreads = channel.DefaultPoolSize)
     new Http1ServerExample(f, 4430)({ builder =>
-        val eng = sslContext.createSSLEngine()
-        eng.setUseClientMode(false)
-        eng.setNeedClientAuth(true)
-        builder.prepend(new SSLStage(eng, 100*1024))
-      })
-      .run()
+      val eng = sslContext.createSSLEngine()
+      eng.setUseClientMode(false)
+      eng.setNeedClientAuth(true)
+      builder.prepend(new SSLStage(eng, 100 * 1024))
+    }).run()
       .join()
 
     println("Finished.")

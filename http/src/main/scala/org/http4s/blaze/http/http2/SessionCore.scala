@@ -1,6 +1,5 @@
 package org.http4s.blaze.http.http2
 
-
 import scala.concurrent.ExecutionContext
 import scala.concurrent.duration.Duration
 

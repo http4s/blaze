@@ -38,13 +38,15 @@ private object bits {
 
   object Flags {
     val END_STREAM: Byte = 0x1
-    def END_STREAM(flags: Byte): Boolean = checkFlag(flags, END_STREAM) // Data, Header
+    def END_STREAM(flags: Byte): Boolean =
+      checkFlag(flags, END_STREAM) // Data, Header
 
     val PADDED: Byte = 0x8
     def PADDED(flags: Byte): Boolean = checkFlag(flags, PADDED) // Data, Header
 
     val END_HEADERS: Byte = 0x4
-    def END_HEADERS(flags: Byte): Boolean = checkFlag(flags, END_HEADERS) // Header, push_promise
+    def END_HEADERS(flags: Byte): Boolean =
+      checkFlag(flags, END_HEADERS) // Header, push_promise
 
     val PRIORITY: Byte = 0x20
     def PRIORITY(flags: Byte): Boolean = checkFlag(flags, PRIORITY) // Header
@@ -60,6 +62,7 @@ private object bits {
   }
 
   private[this] val clientPrefaceBuffer: ByteBuffer =
-    ByteBuffer.wrap(PrefaceString.getBytes(StandardCharsets.UTF_8))
+    ByteBuffer
+      .wrap(PrefaceString.getBytes(StandardCharsets.UTF_8))
       .asReadOnlyBuffer()
 }

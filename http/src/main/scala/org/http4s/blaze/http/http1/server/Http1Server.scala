@@ -16,17 +16,21 @@ object Http1Server {
   case class GroupAndChannel(group: ServerChannelGroup, channel: ServerChannel)
 
   /** Create a new Http1Server */
-  def apply(service: SocketConnection => HttpService,
-            address: InetSocketAddress,
-            config: HttpServerStageConfig,
-            useNio2: Boolean = false,
-            workerThreads: Int = channel.DefaultPoolSize): Try[GroupAndChannel] = {
+  def apply(
+      service: SocketConnection => HttpService,
+      address: InetSocketAddress,
+      config: HttpServerStageConfig,
+      useNio2: Boolean = false,
+      workerThreads: Int = channel.DefaultPoolSize): Try[GroupAndChannel] = {
 
     val group: ServerChannelGroup =
-      if (useNio2) NIO2SocketServerGroup.fixedGroup(workerThreads = workerThreads)
+      if (useNio2)
+        NIO2SocketServerGroup.fixedGroup(workerThreads = workerThreads)
       else NIO1SocketServerGroup.fixedGroup(workerThreads = workerThreads)
 
-    val builder = { ch: SocketConnection => LeafBuilder(new Http1ServerStage(service(ch), config)) }
+    val builder = { ch: SocketConnection =>
+      LeafBuilder(new Http1ServerStage(service(ch), config))
+    }
 
     val channel = group.bind(address, builder)
     if (channel.isFailure) group.closeGroup()

@@ -25,7 +25,8 @@ private[http] class ClientSelector(config: HttpClientConfig) {
       maxHeaderListSize = config.maxResponseLineLength + config.maxHeadersLength // the request line is part of the headers
     )
 
-  private[this] def buildPipeline(p: Promise[HttpClientSession])(s: String): LeafBuilder[ByteBuffer] = {
+  private[this] def buildPipeline(p: Promise[HttpClientSession])(
+      s: String): LeafBuilder[ByteBuffer] =
     s match {
       case H2 | H2_14 =>
         logger.debug(s"Selected $s, resulted in H2 protocol.")
@@ -40,5 +41,4 @@ private[http] class ClientSelector(config: HttpClientConfig) {
         p.success(clientStage)
         LeafBuilder(clientStage)
     }
-  }
 }

@@ -4,12 +4,13 @@ import scala.annotation.tailrec
 import scala.concurrent.Future
 import scala.concurrent.duration.Duration
 import org.http4s.blaze.pipeline.MidStage
-import org.http4s.blaze.pipeline.Command.{ Disconnect, Disconnected }
-import org.http4s.blaze.util.{ Cancellable, TickWheelExecutor }
+import org.http4s.blaze.pipeline.Command.{Disconnect, Disconnected}
+import org.http4s.blaze.util.{Cancellable, TickWheelExecutor}
 
 import java.util.concurrent.atomic.AtomicReference
 
-abstract class TimeoutStageBase[T](timeout: Duration, exec: TickWheelExecutor) extends MidStage[T, T] { stage =>
+abstract class TimeoutStageBase[T](timeout: Duration, exec: TickWheelExecutor)
+    extends MidStage[T, T] { stage =>
 
   import TimeoutStageBase.closedTag
 
@@ -20,7 +21,8 @@ abstract class TimeoutStageBase[T](timeout: Duration, exec: TickWheelExecutor) e
 
   /////////// Private impl bits //////////////////////////////////////////
 
-  private val lastTimeout = new AtomicReference[Cancellable](Cancellable.NoopCancel)
+  private val lastTimeout =
+    new AtomicReference[Cancellable](Cancellable.NoopCancel)
 
   private val killswitch = new Runnable {
     override def run(): Unit = {
@@ -37,8 +39,7 @@ abstract class TimeoutStageBase[T](timeout: Duration, exec: TickWheelExecutor) e
       // woops... we submitted a new cancellation when we were closed!
       next.cancel()
       setAndCancel(closedTag)
-    }
-    else prev.cancel()
+    } else prev.cancel()
   }
 
   /////////// Pass through implementations ////////////////////////////////
@@ -56,9 +57,11 @@ abstract class TimeoutStageBase[T](timeout: Duration, exec: TickWheelExecutor) e
     super.stageShutdown()
   }
 
-  final protected def resetTimeout(): Unit = setAndCancel(exec.schedule(killswitch, timeout))
+  final protected def resetTimeout(): Unit =
+    setAndCancel(exec.schedule(killswitch, timeout))
 
-  final protected def cancelTimeout(): Unit = setAndCancel(Cancellable.NoopCancel)
+  final protected def cancelTimeout(): Unit =
+    setAndCancel(Cancellable.NoopCancel)
 
   final protected def startTimeout(): Unit = resetTimeout()
 }

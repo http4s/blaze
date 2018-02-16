@@ -18,9 +18,9 @@ import scala.util.{Failure, Success}
   * @param builder builds the appropriate pipeline based on the
   */
 final class ALPNServerSelector(
-  engine: SSLEngine,
-  selector: Set[String] => String,
-  builder: String => LeafBuilder[ByteBuffer]
+    engine: SSLEngine,
+    selector: Set[String] => String,
+    builder: String => LeafBuilder[ByteBuffer]
 ) extends TailStage[ByteBuffer] {
 
   ALPN.put(engine, new ServerProvider)
@@ -30,18 +30,17 @@ final class ALPNServerSelector(
 
   override def name: String = "PipelineSelector"
 
-  override protected def stageStartup(): Unit = {
+  override protected def stageStartup(): Unit =
     // This shouldn't complete until the handshake is done and ALPN has been run.
     channelWrite(Nil).onComplete {
-      case Success(_)       => selectPipeline()
+      case Success(_) => selectPipeline()
       case Failure(Cmd.EOF) => // NOOP
-      case Failure(t)       =>
+      case Failure(t) =>
         logger.error(t)(s"$name failed to startup")
         sendOutboundCommand(Cmd.Error(t))
     }(trampoline)
-  }
 
-  private def selectPipeline(): Unit = {
+  private def selectPipeline(): Unit =
     try {
       val protocol = selected.getOrElse(selector(Set.empty))
       val b = builder(protocol)
@@ -52,7 +51,6 @@ final class ALPNServerSelector(
         logger.error(t)("Failure building pipeline")
         sendOutboundCommand(Cmd.Error(t))
     }
-  }
 
   private class ServerProvider extends ALPN.ServerProvider {
     import scala.collection.JavaConverters._
@@ -64,8 +62,7 @@ final class ALPNServerSelector(
       s
     }
 
-    override def unsupported(): Unit = {
+    override def unsupported(): Unit =
       logger.debug(s"Unsupported protocols, defaulting to $selected")
-    }
   }
 }

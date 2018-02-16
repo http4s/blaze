@@ -6,10 +6,9 @@ import org.http4s.blaze.pipeline.Command.Error
 
 import java.nio.{BufferOverflowException, ByteBuffer}
 
-import scala.concurrent.{Promise, Future}
+import scala.concurrent.{Future, Promise}
 import scala.util.{Failure, Success}
 import scala.util.control.NonFatal
-
 
 trait ByteToObjectStage[O] extends MidStage[ByteBuffer, O] {
   import org.http4s.blaze.util.BufferTools._
@@ -39,23 +38,23 @@ trait ByteToObjectStage[O] extends MidStage[ByteBuffer, O] {
 
   /////////////////////////////////////////////////////////////////////////////
 
-  override def writeRequest(data: Seq[O]): Future[Unit] = {
+  override def writeRequest(data: Seq[O]): Future[Unit] =
     try channelWrite(data.flatMap(messageToBuffer))
-    catch { case NonFatal(t) =>
-      logger.error(t)("Encoding failure")
-      Future.failed(t)
+    catch {
+      case NonFatal(t) =>
+        logger.error(t)("Encoding failure")
+        Future.failed(t)
     }
-  }
 
-  def writeRequest(data: O): Future[Unit] = {
+  def writeRequest(data: O): Future[Unit] =
     try channelWrite(messageToBuffer(data))
-    catch { case NonFatal(t) =>
-      logger.error(t)("Encoding failure")
-      Future.failed(t)
+    catch {
+      case NonFatal(t) =>
+        logger.error(t)("Encoding failure")
+        Future.failed(t)
     }
-  }
 
-  def readRequest(size: Int): Future[O] = {
+  def readRequest(size: Int): Future[O] =
     if (_decodeBuffer != null && _decodeBuffer.hasRemaining) {
       try {
         val slice = _decodeBuffer.slice()
@@ -64,12 +63,10 @@ trait ByteToObjectStage[O] extends MidStage[ByteBuffer, O] {
 
         result match {
           case Some(o) => Future.successful(o)
-          case None    => startReadDecode()
+          case None => startReadDecode()
         }
-      }
-      catch { case NonFatal(t) => Future.failed(t) }
+      } catch { case NonFatal(t) => Future.failed(t) }
     } else startReadDecode()
-  }
 
   private def startReadDecode(): Future[O] = {
     val p = Promise[O]
@@ -78,28 +75,29 @@ trait ByteToObjectStage[O] extends MidStage[ByteBuffer, O] {
   }
 
   // if we got here, we need more data
-  private def readAndDecodeLoop(p: Promise[O]): Unit = channelRead().onComplete {
-    case Success(lineBuffer) =>
-      _decodeBuffer = concatBuffers(_decodeBuffer, lineBuffer)
+  private def readAndDecodeLoop(p: Promise[O]): Unit =
+    channelRead().onComplete {
+      case Success(lineBuffer) =>
+        _decodeBuffer = concatBuffers(_decodeBuffer, lineBuffer)
 
-      // Now we slice the buffer, decode, and set the correct position on our internal buffer
-      try {
-        val slice = _decodeBuffer.slice()
-        val result = bufferToMessage(slice)
-        cleanBuffers(slice)
+        // Now we slice the buffer, decode, and set the correct position on our internal buffer
+        try {
+          val slice = _decodeBuffer.slice()
+          val result = bufferToMessage(slice)
+          cleanBuffers(slice)
 
-        result match {
-          case Some(o) =>  p.success(o)
-          case None    => readAndDecodeLoop(p)
+          result match {
+            case Some(o) => p.success(o)
+            case None => readAndDecodeLoop(p)
+          }
+        } catch {
+          case NonFatal(t) =>
+            logger.error(t)("Error during decode")
+            p.tryFailure(t)
         }
-      }
-      catch { case NonFatal(t) =>
-        logger.error(t)("Error during decode")
-        p.tryFailure(t)
-      }
 
-    case Failure(t) => p.failure(t)
-  }(trampoline)
+      case Failure(t) => p.failure(t)
+    }(trampoline)
 
   /** Maintains the state of the internal _decodeBuffer */
   private def cleanBuffers(slice: ByteBuffer): Unit = {
@@ -111,8 +109,6 @@ trait ByteToObjectStage[O] extends MidStage[ByteBuffer, O] {
     // see if we have too large of buffer remaining
     if (maxBufferSize > 0 && _decodeBuffer.remaining() > maxBufferSize) {
       outboundCommand(Error(new BufferOverflowException))
-    }
-
-    else if (!_decodeBuffer.hasRemaining)  _decodeBuffer = null
+    } else if (!_decodeBuffer.hasRemaining) _decodeBuffer = null
   }
 }

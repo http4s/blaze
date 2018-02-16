@@ -31,10 +31,12 @@ class Http2ServerExample(port: Int) {
       .cap(ServerSelector(eng, ExampleService.service(None), HttpServerStageConfig()))
   }
 
-  private val factory = NIO1SocketServerGroup.fixedGroup(workerThreads = channel.DefaultPoolSize)
+  private val factory =
+    NIO1SocketServerGroup.fixedGroup(workerThreads = channel.DefaultPoolSize)
 
   def run(): ServerChannel =
-    factory.bind(new InetSocketAddress(port), f)
+    factory
+      .bind(new InetSocketAddress(port), f)
       .getOrElse(sys.error("Failed to start server."))
 }
 

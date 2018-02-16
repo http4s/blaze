@@ -8,8 +8,8 @@ import scala.collection.mutable.HashMap
 import scala.concurrent.{Future, Promise}
 
 private final class StreamManagerImpl(
-  session: SessionCore,
-  inboundStreamBuilder: Option[Int => LeafBuilder[StreamFrame]]
+    session: SessionCore,
+    inboundStreamBuilder: Option[Int => LeafBuilder[StreamFrame]]
 ) extends StreamManager {
   private[this] val logger = org.log4s.getLogger
   private[this] val streams = new HashMap[Int, StreamState]
@@ -17,17 +17,17 @@ private final class StreamManagerImpl(
   private[this] var drainingP: Option[Promise[Unit]] = None
 
   private class OutboundStreamStateImpl extends http2.OutboundStreamStateImpl(session) {
-    override protected def registerStream(): Option[Int] = {
+    override protected def registerStream(): Option[Int] =
       if (drainingP.isDefined) None // We're draining, so reject the stream
-      else session.idManager.takeOutboundId() match {
-        case id@Some(freshId) =>
-          assert(streams.put(freshId, this).isEmpty)
-          id
+      else
+        session.idManager.takeOutboundId() match {
+          case id @ Some(freshId) =>
+            assert(streams.put(freshId, this).isEmpty)
+            id
 
-        case None =>
-          None
-      }
-    }
+          case None =>
+            None
+        }
   }
 
   // TODO: we use this to determine status, and that isn't thread safe
@@ -79,7 +79,7 @@ private final class StreamManagerImpl(
     }
   }
 
-  def newInboundStream(streamId: Int): Either[Http2Exception, InboundStreamState] = {
+  def newInboundStream(streamId: Int): Either[Http2Exception, InboundStreamState] =
     if (!session.idManager.observeInboundId(streamId)) {
       // Illegal stream ID. See why below
       val msg =
@@ -90,8 +90,9 @@ private final class StreamManagerImpl(
         }
       Left(PROTOCOL_ERROR.goaway(msg))
     } else if (inboundStreamBuilder.isEmpty) {
-      Left(PROTOCOL_ERROR.goaway(
-        s"Client received request for new inbound stream ($streamId) without push promise"))
+      Left(
+        PROTOCOL_ERROR.goaway(
+          s"Client received request for new inbound stream ($streamId) without push promise"))
     } else if (drainingP.isDefined) {
       Left(REFUSED_STREAM.rst(streamId, "Session draining"))
     } else if (session.localSettings.maxConcurrentStreams <= size) {
@@ -106,8 +107,10 @@ private final class StreamManagerImpl(
       Left(REFUSED_STREAM.rst(streamId))
     } else {
       val leafBuilder = inboundStreamBuilder.get.apply(streamId) // we already made sure it wasn't empty
-      val streamFlowWindow = session.sessionFlowControl.newStreamFlowWindow(streamId)
-      val streamState = new InboundStreamStateImpl(session, streamId, streamFlowWindow)
+      val streamFlowWindow =
+        session.sessionFlowControl.newStreamFlowWindow(streamId)
+      val streamState =
+        new InboundStreamStateImpl(session, streamId, streamFlowWindow)
       assert(streams.put(streamId, streamState).isEmpty)
 
       // assemble the pipeline
@@ -116,9 +119,8 @@ private final class StreamManagerImpl(
 
       Right(streamState)
     }
-  }
 
-  override def rstStream(cause: Http2StreamException): MaybeError = {
+  override def rstStream(cause: Http2StreamException): MaybeError =
     // We remove the stream from the collection first since the `StreamState` will
     // then invoke `streamClosed` and use it's return value as the predicate for
     // sending a RST, which it shouldn't do since it was closed via an RST.
@@ -134,7 +136,6 @@ private final class StreamManagerImpl(
       case None =>
         Continue // nop
     }
-  }
 
   override def streamClosed(streamState: StreamState): Boolean = {
     val result = streams.remove(streamState.streamId).isDefined
@@ -150,11 +151,14 @@ private final class StreamManagerImpl(
     result
   }
 
-  override def handlePushPromise(streamId: Int, promisedId: Int, headers: Headers): Result = {
+  override def handlePushPromise(streamId: Int, promisedId: Int, headers: Headers): Result =
     if (session.idManager.isIdleOutboundId(streamId)) {
-      Error(PROTOCOL_ERROR.goaway(s"Received PUSH_PROMISE for associated to an idle stream ($streamId)"))
+      Error(
+        PROTOCOL_ERROR.goaway(
+          s"Received PUSH_PROMISE for associated to an idle stream ($streamId)"))
     } else if (!session.idManager.isInboundId(promisedId)) {
-      Error(PROTOCOL_ERROR.goaway(s"Received PUSH_PROMISE frame with illegal stream id: $promisedId"))
+      Error(
+        PROTOCOL_ERROR.goaway(s"Received PUSH_PROMISE frame with illegal stream id: $promisedId"))
     } else if (!session.idManager.observeInboundId(promisedId)) {
       Error(PROTOCOL_ERROR.goaway("Received PUSH_PROMISE frame on non-idle stream"))
     } else {
@@ -175,9 +179,8 @@ private final class StreamManagerImpl(
       logger.debug(s"Rejecting pushed stream $promisedId associated with stream $streamId")
       Error(REFUSED_STREAM.rst(promisedId, "Server push not supported"))
     }
-  }
 
-  override def flowWindowUpdate(streamId: Int, sizeIncrement: Int): MaybeError = {
+  override def flowWindowUpdate(streamId: Int, sizeIncrement: Int): MaybeError =
     // note: No need to check the size increment since it's been
     // validated by the `Http2FrameDecoder`.
     if (session.idManager.isIdleId(streamId)) {
@@ -207,9 +210,8 @@ private final class StreamManagerImpl(
           result
       }
     }
-  }
 
-  override def drain(lastHandledOutboundStream: Int, reason: Http2SessionException): Future[Unit] = {
+  override def drain(lastHandledOutboundStream: Int, reason: Http2SessionException): Future[Unit] =
     drainingP match {
       case Some(p) =>
         logger.debug(reason)(s"Received a second GOAWAY($lastHandledOutboundStream")
@@ -221,19 +223,19 @@ private final class StreamManagerImpl(
           lastHandledOutboundStream < id && session.idManager.isOutboundId(id)
         }
 
-        unhandledStreams.foreach { case (id, stream) =>
-          // We remove the stream first so that we don't send a RST back to
-          // the peer, since they have discarded the stream anyway.
-          streams.remove(id)
-          val ex = Http2Exception.REFUSED_STREAM.rst(id, reason.msg)
-          stream.closeWithError(Some(ex))
+        unhandledStreams.foreach {
+          case (id, stream) =>
+            // We remove the stream first so that we don't send a RST back to
+            // the peer, since they have discarded the stream anyway.
+            streams.remove(id)
+            val ex = Http2Exception.REFUSED_STREAM.rst(id, reason.msg)
+            stream.closeWithError(Some(ex))
         }
 
         val p = Promise[Unit]
         drainingP = Some(p)
         p.future
     }
-  }
 
   override def newOutboundStream(): OutboundStreamState =
     new OutboundStreamStateImpl
