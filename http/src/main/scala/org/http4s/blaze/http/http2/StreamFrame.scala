@@ -17,7 +17,7 @@ sealed trait StreamFrame {
   *             data must not be modified.
   */
 case class DataFrame(endStream: Boolean, data: ByteBuffer) extends StreamFrame {
-  def flowBytes = data.remaining()
+  def flowBytes: Int = data.remaining()
 }
 
 /** Headers frame for http2

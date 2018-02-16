@@ -9,7 +9,7 @@ package org.http4s.blaze.pipeline
   * @tparam I type the pipeline will read and write
   */
 final class LeafBuilder[I] private[pipeline](leaf: Tail[I]) {
-  
+
   def prepend[N](stage: MidStage[N, I]): LeafBuilder[N] = {
     if (stage._nextStage != null) sys.error(s"Stage $stage must be fresh")
     if (stage.isInstanceOf[HeadStage[_]]) sys.error("LeafBuilder cannot accept HeadStages!")
@@ -22,12 +22,12 @@ final class LeafBuilder[I] private[pipeline](leaf: Tail[I]) {
   def prepend[N](tb: TrunkBuilder[N, I]): LeafBuilder[N] = tb.cap(this)
 
   def +:[N](tb: TrunkBuilder[N, I]): LeafBuilder[N] = prepend(tb)
-  
+
   def base(root: HeadStage[I]): root.type = {
     if (root._nextStage != null) sys.error(s"Stage $root must be fresh")
     leaf._prevStage = root
     root._nextStage = leaf
-    root    
+    root
   }
 }
 

@@ -56,7 +56,7 @@ final class ServerPriorKnowledgeHandshaker(
     }
 
     this.replaceTail(newTail, true)
-    
+
     // The session starts itself up and drives the pipeline
     new ConnectionImpl(
       tailStage = tail,

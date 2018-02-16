@@ -20,7 +20,7 @@ abstract class TimeoutStageBase[T](timeout: Duration, exec: TickWheelExecutor) e
 
   /////////// Private impl bits //////////////////////////////////////////
 
-  private val lastTimeout = new AtomicReference[Cancellable](Cancellable.noopCancel)
+  private val lastTimeout = new AtomicReference[Cancellable](Cancellable.NoopCancel)
 
   private val killswitch = new Runnable {
     override def run(): Unit = {
@@ -58,7 +58,7 @@ abstract class TimeoutStageBase[T](timeout: Duration, exec: TickWheelExecutor) e
 
   final protected def resetTimeout(): Unit = setAndCancel(exec.schedule(killswitch, timeout))
 
-  final protected def cancelTimeout(): Unit = setAndCancel(Cancellable.noopCancel)
+  final protected def cancelTimeout(): Unit = setAndCancel(Cancellable.NoopCancel)
 
   final protected def startTimeout(): Unit = resetTimeout()
 }

@@ -247,10 +247,11 @@ private class FrameDecoder(localSettings: Http2Settings, listener: FrameListener
       if (size != 0) listener.onWindowUpdateFrame(streamId, size)
       else Error {  // never less than 0 due to the mask above
         val msg = s"WINDOW_UPDATE with invalid update size 0"
-        if (streamId == 0)
+        if (streamId == 0) {
           PROTOCOL_ERROR.goaway(msg)
-        else
+        } else {
           PROTOCOL_ERROR.rst(streamId, msg)
+        }
       }
     }
   }

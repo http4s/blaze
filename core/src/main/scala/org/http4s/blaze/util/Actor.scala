@@ -4,6 +4,9 @@ import java.util.concurrent.atomic.AtomicReference
 
 import scala.annotation.tailrec
 import scala.concurrent.ExecutionContext
+import scala.util.control.NonFatal
+
+import org.http4s.blaze.util.Actor.MaxIterations
 
 /** Lightweight actor system HEAVILY inspired by the scalaz actors.
   * scalaz actors would have been a good fit except a heavyweight dependency
@@ -12,15 +15,18 @@ import scala.concurrent.ExecutionContext
 
 private[blaze] abstract class Actor[M](ec: ExecutionContext) {
 
-  // Keep the head of the chain
-  private[this] val head = new AtomicReference[Node]()
+  // Keep the tail of the chain
+  private[this] val tailNode = new AtomicReference[Node]()
   // keep a reusable runner around, no need to make more garbage on every actor startup
   private[this] val runner = new RecycleableRunnable(null)
 
   /** The canonical message handling function */
   protected def act(message: M): Unit
 
-  /** Handler of errors throw during the `act` function */
+  /** Handler of errors throw during the `act` function
+    *
+    * This method must not throw.
+    */
   protected def onError(t: Throwable, msg: M): Unit =
     Actor.logger.error(t)(s"Unhandled exception throw when processing message '$msg'.")
 
@@ -30,7 +36,7 @@ private[blaze] abstract class Actor[M](ec: ExecutionContext) {
     */
   final def !(msg: M): Unit = {
     val n = new Node(msg)
-    val tail = head.getAndSet(n)
+    val tail = tailNode.getAndSet(n)
     if (tail eq null) {   // Execute
       runner.start = n
       ec.execute(runner)
@@ -40,42 +46,29 @@ private[blaze] abstract class Actor[M](ec: ExecutionContext) {
 
   private[this] class Node(val m: M) extends AtomicReference[Node]
   private[this] class RecycleableRunnable(@volatile var start: Node) extends Runnable {
-
     override def run(): Unit = {
-      // We use a while loop and mutation to avoid keeping a
-      // link to the head of the Node list, although its unlikely
-      // to be a practical problem with low cycle quotas.
-      var next = start
-      start = null
+      @tailrec
+      def go(i: Int, next: Node): Unit = {
+        if (i >= MaxIterations) reSchedule(next)
+        else {
+          val m = next.m
+          try act(m)
+          catch { case NonFatal(t) => onError(t, m) }
 
-      var i = 0
-      while (i < 256) {
-        i += 1
-        val m = next.m
-        try act(m)
-        catch { case t:Throwable =>
-          try onError(t, m)
-          catch { case t: Throwable =>
-            Actor.logger.error(t)(s"Error during execution of `onError` in Actor. Msg: $m")
-          }
-        }
-
-        val maybeNext = next.get()
-        if (maybeNext == null) {
-          // We have reached the end of the list. Check for a race to add a new element.
-          if (head.compareAndSet(next, null)) return
+          val maybeNext = next.get
+          if (maybeNext != null) go(i + 1, maybeNext)
           else {
-            // someone just added a Node, so spin until the link resolves
-            next = spin(next)
+            // We have reached the end of the list. Check for a race to add a new element.
+            if (!tailNode.compareAndSet(next, null)) {
+              // someone just added a Node, so spin until the link resolves
+              go(i + 1, spin(next))
+            }
           }
-        } else {
-          // continue
-          next = maybeNext
         }
       }
-
-      // reached our quota. Reschedule.
-      reSchedule(next)
+      val next = start
+      start = null
+      go(0, next)
     }
 
     private[this] def reSchedule(node: Node) = {
@@ -85,13 +78,17 @@ private[blaze] abstract class Actor[M](ec: ExecutionContext) {
 
     @tailrec
     private[this] def spin(prev: Node): Node = {
-      val n2 = prev.get()
-      if (n2 eq null) spin(prev)
-      else n2
+      val next = prev.get
+      if (next eq null) spin(prev)
+      else next
     }
   }
 }
 
 private object Actor {
   private val logger = org.log4s.getLogger
+
+  // We don't want to bogart the thread indefinitely so we reschedule
+  // ourselves after 256 iterations to allow other work to interleave.
+  private val MaxIterations = 256
 }

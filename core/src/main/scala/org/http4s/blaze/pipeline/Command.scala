@@ -34,7 +34,7 @@ object Command {
     * or otherwise
     */
   case object EOF extends Exception("EOF") with InboundCommand with NoStackTrace {
-    override def toString() = getMessage
+    override def toString: String = getMessage
   }
 
   /** Signals that an unknown error has occurred. In this even the tail stages have likely

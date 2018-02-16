@@ -14,7 +14,7 @@ object ServerSelector {
 
   private val logger = getLogger
 
-  def apply(engine: SSLEngine, 
+  def apply(engine: SSLEngine,
            service: HttpService,
             config: HttpServerStageConfig): ALPNServerSelector = {
 
@@ -28,7 +28,7 @@ object ServerSelector {
       else if (protocols(H2_14)) H2_14
       else HTTP_1_1
     }
-    
+
     new ALPNServerSelector(engine, selector, builder)
   }
 

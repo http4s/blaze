@@ -11,8 +11,9 @@ private object FrameSerializer {
 
   // Override the scala provided `require(condition, => msg)` to avoid the thunks
   private[this] def require(condition: Boolean, msg: String): Unit = {
-    if (!condition)
+    if (!condition) {
       throw new IllegalArgumentException(msg)
+    }
   }
 
   /** Create a DATA frame

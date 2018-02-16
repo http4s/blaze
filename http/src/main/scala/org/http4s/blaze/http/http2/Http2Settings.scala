@@ -101,7 +101,7 @@ object Http2Settings {
     /** Get the human readable name of this setting */
     def name: String = key.name
 
-    override def toString = s"$name(0x${Integer.toHexString(code)}, $value"
+    override def toString: String = s"$name(0x${Integer.toHexString(code)}, $value"
   }
 
   /** Create a new [[Http2Settings]] initialized with the protocol defaults */
@@ -151,7 +151,7 @@ object Http2Settings {
   }
 
   final case class SettingKey(code: Int, name: String) {
-    override def toString = name
+    override def toString: String = name
 
     /** Create a new `Setting` with the provided value */
     def apply(value: SettingValue): Setting = Setting(code, value)

@@ -24,7 +24,7 @@ private[http] class ServerStage(
 
   private val timeoutService = ServiceTimeoutFilter(config.serviceTimeout)(service)
 
-  override def name = s"Http2StreamStage($streamId)"
+  override def name: String = s"Http2StreamStage($streamId)"
 
   override protected def stageStartup(): Unit = {
     super.stageStartup()

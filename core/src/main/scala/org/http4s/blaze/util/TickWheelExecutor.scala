@@ -6,9 +6,8 @@ import scala.annotation.tailrec
 import scala.util.control.NonFatal
 import scala.concurrent.ExecutionContext
 import scala.concurrent.duration._
+import org.http4s.blaze.util.TickWheelExecutor.DefaultWheelSize
 import org.log4s.getLogger
-
-
 
 /** Low resolution execution scheduler
   *
@@ -24,7 +23,7 @@ import org.log4s.getLogger
   * @param wheelSize number of spokes on the wheel. Each tick, the wheel will advance a spoke
   * @param tick duration between ticks
   */
-class TickWheelExecutor(wheelSize: Int = 512, tick: Duration = 200.milli) {
+class TickWheelExecutor(wheelSize: Int = DefaultWheelSize, tick: Duration = 200.milli) {
 
   require(wheelSize > 0, "Need finite size number of ticks")
   require(tick.isFinite() && tick.toNanos != 0, "tick duration must be finite")
@@ -96,7 +95,7 @@ class TickWheelExecutor(wheelSize: Int = 512, tick: Duration = 200.milli) {
   def schedule(r: Runnable, ec: ExecutionContext, timeout: Duration): Cancellable = {
     if (alive) {
       if (!timeout.isFinite) {  // This will never timeout, so don't schedule it.
-        Cancellable.noopCancel
+        Cancellable.NoopCancel
       }
       else {
         val millis = timeout.toMillis
@@ -116,10 +115,9 @@ class TickWheelExecutor(wheelSize: Int = 512, tick: Duration = 200.milli) {
         else {  // we can submit the task right now! Not sure why you would want to do this...
           try ec.execute(r)
           catch { case NonFatal(t) => onNonFatal(t) }
-          Cancellable.noopCancel
+          Cancellable.NoopCancel
         }
       }
-      
     }
     else sys.error("TickWheelExecutor is shutdown")
   }
@@ -177,7 +175,7 @@ class TickWheelExecutor(wheelSize: Int = 512, tick: Duration = 200.milli) {
   protected def onNonFatal(t: Throwable): Unit = {
     logger.error(t)("Non-Fatal Exception caught while executing scheduled task")
   }
-  
+
   private def getBucket(expiration: Long): Bucket = {
     val i = ((expiration*_tickInv).toLong) % wheelSize
     clockFace(i.toInt)
@@ -211,8 +209,8 @@ class TickWheelExecutor(wheelSize: Int = 512, tick: Duration = 200.milli) {
 
       checkNext(head)
     }
-    
-    def add(node: Node): Unit =  {
+
+    def add(node: Node): Unit = {
       node.insertAfter(head)
     }
   }
@@ -223,12 +221,14 @@ class TickWheelExecutor(wheelSize: Int = 512, tick: Duration = 200.milli) {
     * @param expiration time in milliseconds after which this Node is expired
     * @param next next Node in the list or `tailNode` if this is the last element
     */
-  final private class Node(r: Runnable,
-                          ec: ExecutionContext,
-              val expiration: Long,
-                    var prev: Node,
-                    var next: Node,
-                var canceled: Boolean = false) extends Cancellable {
+  final private class Node(
+    r: Runnable,
+    ec: ExecutionContext,
+    val expiration: Long,
+    var prev: Node,
+    var next: Node,
+    var canceled: Boolean = false
+  ) extends Cancellable {
 
     /** Remove this node from its linked list */
     def unlink(): Unit = {
@@ -265,13 +265,18 @@ class TickWheelExecutor(wheelSize: Int = 512, tick: Duration = 200.milli) {
         val h = head.get()
         if (!head.compareAndSet(h, Cancel(this, h))) go()
       }
-
       go()
     }
 
-    def run() = try ec.execute(r) catch { case NonFatal(t) => onNonFatal(t) }
+    def run(): Unit = {
+      try ec.execute(r)
+      catch { case NonFatal(t) => onNonFatal(t) }
+    }
   }
 }
 
-
+object TickWheelExecutor {
+  /** Default size of the hash wheel */
+  val DefaultWheelSize = 512
+}
 

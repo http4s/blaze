@@ -22,5 +22,5 @@ abstract class ServerChannelGroup {
   protected def acceptConnection(address: InetSocketAddress): Boolean = {
     logger.info(s"Connection from $address accepted at ${new Date}.")
     true
-  }  
+  }
 }

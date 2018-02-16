@@ -34,7 +34,11 @@ private object ClientSessionManagerImpl {
   }
 }
 
-private final class ClientSessionManagerImpl(sessionCache: java.util.Map[ConnectionId, java.util.Collection[HttpClientSession]], config: HttpClientConfig) extends ClientSessionManager {
+private final class ClientSessionManagerImpl(
+  sessionCache: java.util.Map[ConnectionId,
+  java.util.Collection[HttpClientSession]],
+  config: HttpClientConfig
+) extends ClientSessionManager {
 
   private[this] def getId(composition: UrlComposition): ConnectionId =
     ConnectionId(composition.scheme, composition.authority)

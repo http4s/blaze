@@ -3,14 +3,14 @@ package org.http4s.blaze.pipeline
 import java.util.Date
 import java.util.concurrent.TimeoutException
 
-import scala.concurrent.{Promise, Future}
+import scala.concurrent.{Future, Promise}
 import scala.concurrent.duration.Duration
-
 import org.log4s.getLogger
-
 import Command._
 import org.http4s.blaze.util.Execution.directec
 import org.http4s.blaze.util.Execution
+
+import scala.util.control.NonFatal
 
 /*         Stages are formed from the three fundamental types. They essentially form a
  *         double linked list. Commands can be sent in both directions while data is only
@@ -76,7 +76,7 @@ sealed trait Tail[I] extends Stage {
         val f = _prevStage.readRequest(size)
         checkTimeout(timeout, f)
       } else _stageDisconnected()
-    }  catch { case t: Throwable => return Future.failed(t) }
+    } catch { case NonFatal(t) => Future.failed(t) }
   }
 
   /** Write a single outbound message to the pipeline */
@@ -164,27 +164,26 @@ sealed trait Tail[I] extends Stage {
   final def replaceTail(leafBuilder: LeafBuilder[I], startup: Boolean): this.type = {
     stageShutdown()
 
-    if (this._prevStage == null) return this
+    if (this._prevStage != null) {
+      this match {
+        case m: MidStage[_, _] =>
+          m.sendInboundCommand(Disconnected)
+          m._nextStage = null
 
-    this match {
-      case m: MidStage[_, _] =>
-        m.sendInboundCommand(Disconnected)
-        m._nextStage = null
+        case _ => // NOOP, must be a TailStage
+      }
 
-      case _ => // NOOP, must be a TailStage
+      val prev = this._prevStage
+      this._prevStage._nextStage = null
+      this._prevStage = null
+
+      prev match {
+        case m: MidStage[_, I] => leafBuilder.prepend(m)
+        case h: HeadStage[I]   => leafBuilder.base(h)
+      }
+
+      if (startup) prev.sendInboundCommand(Command.Connected)
     }
-
-    val prev = this._prevStage
-    this._prevStage._nextStage = null
-    this._prevStage = null
-
-    prev match {
-      case m: MidStage[_, I] => leafBuilder.prepend(m)
-      case h: HeadStage[I]   => leafBuilder.base(h)
-    }
-
-    if (startup) prev.sendInboundCommand(Command.Connected)
-
     this
   }
 
@@ -341,13 +340,13 @@ trait MidStage[I, O] extends Tail[I] with Head[O] {
   final def replaceInline(stage: MidStage[I, O]): this.type = {
     stageShutdown()
 
-    if (_nextStage == null || _prevStage == null) return this
+    if (_nextStage != null && _prevStage != null) {
+      _nextStage._prevStage = stage
+      _prevStage._nextStage = stage
+      this._nextStage = null
+      this._prevStage = null
+    }
 
-    _nextStage._prevStage = stage
-    _prevStage._nextStage = stage
-
-    this._nextStage = null
-    this._prevStage = null
     this
   }
 
