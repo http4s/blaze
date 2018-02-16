@@ -22,16 +22,16 @@ abstract class H2ClientExample(url: String, count: Int, timeout: Duration) {
 
   protected implicit val ec = scala.concurrent.ExecutionContext.global
 
-  private[this] def doCall(tag: Int): Future[Int] = doCallString(tag).map(_.length)
+  private[this] def doCall(tag: Int): Future[Int] =
+    doCallString(tag).map(_.length)
 
-  private[this] def doCallString(tag: Int): Future[String] = {
+  private[this] def doCallString(tag: Int): Future[String] =
     Http2Client.defaultH2Client.GET("https://www.google.com/") { resp =>
       resp.body.accumulate().map { bytes =>
         println(s"Finished response $tag of bytes ${bytes.remaining}: ${resp.headers}")
         StandardCharsets.UTF_8.decode(bytes).toString
       }
     }
-  }
 
   def main(args: Array[String]): Unit = {
     println(s"${getClass.getSimpleName} performing $count requests")
@@ -48,8 +48,9 @@ abstract class H2ClientExample(url: String, count: Int, timeout: Duration) {
     val resps = Await.result(Future.sequence(repeatCall(count)), timeout)
     val duration = System.currentTimeMillis - start
 
-    val length = resps.foldLeft(0){ case (acc, (i, len)) =>
-      acc + len
+    val length = resps.foldLeft(0) {
+      case (acc, (i, len)) =>
+        acc + len
     }
 
     println(s"The total body length of ${resps.length} messages: $length. Took $duration millis")

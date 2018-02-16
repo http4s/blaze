@@ -11,7 +11,8 @@ private[blaze] object HeaderTools {
   private case class CachedDateHeader(acquired: Long, header: String)
 
   private val dateFormat =
-    DateTimeFormatter.ofPattern("EEE, dd MMM yyyy HH:mm:ss zzz")
+    DateTimeFormatter
+      .ofPattern("EEE, dd MMM yyyy HH:mm:ss zzz")
       .withLocale(Locale.US)
       .withZone(ZoneId.of("GMT"))
 
@@ -36,7 +37,7 @@ private[blaze] object HeaderTools {
       contentLength: Option[String],
       connection: Option[String])
 
-  def isKeepAlive(connectionHeader: Option[String], minorVersion: Int): Boolean = {
+  def isKeepAlive(connectionHeader: Option[String], minorVersion: Int): Boolean =
     connectionHeader match {
       case Some(headerValue) =>
         if (headerValue.equalsIgnoreCase("keep-alive")) true
@@ -45,7 +46,6 @@ private[blaze] object HeaderTools {
         else false
       case None => minorVersion != 0
     }
-  }
 
   /**
     * Reader the headers to the `StringBuilder` with the exception of Transfer-Encoding and
@@ -90,7 +90,8 @@ private[blaze] object HeaderTools {
 
     SpecialHeaders(
       transferEncoding,
-      contentLength,connection
+      contentLength,
+      connection
     )
   }
 }

@@ -4,17 +4,18 @@ import org.http4s.blaze.http.http2.Http2Settings.DefaultSettings
 import org.http4s.blaze.http.http2.Http2Exception.{FLOW_CONTROL_ERROR, PROTOCOL_ERROR}
 import org.log4s.getLogger
 
-
 /** Flow control representation of a Http2 Session */
 private class SessionFlowControlImpl(
-  session: SessionCore,
-  flowStrategy: FlowStrategy
+    session: SessionCore,
+    flowStrategy: FlowStrategy
 ) extends SessionFlowControl {
 
   private[this] val logger = getLogger
 
-  private[this] var _sessionInboundWindow: Int = DefaultSettings.INITIAL_WINDOW_SIZE
-  private[this] var _sessionOutboundWindow: Int = DefaultSettings.INITIAL_WINDOW_SIZE
+  private[this] var _sessionInboundWindow: Int =
+    DefaultSettings.INITIAL_WINDOW_SIZE
+  private[this] var _sessionOutboundWindow: Int =
+    DefaultSettings.INITIAL_WINDOW_SIZE
   private[this] var _sessionUnconsumedInbound: Int = 0
 
   // exposed for testing
@@ -47,7 +48,8 @@ private class SessionFlowControlImpl(
 
     if (0 < update.stream) {
       stream.streamInboundAcked(update.stream)
-      session.writeController.write(session.http2Encoder.streamWindowUpdate(stream.streamId, update.stream))
+      session.writeController.write(
+        session.http2Encoder.streamWindowUpdate(stream.streamId, update.stream))
       ()
     }
   }
@@ -105,7 +107,8 @@ private class SessionFlowControlImpl(
     logger.trace(s"Consumed $count inbound session bytes. $sessionWindowString")
     require(0 <= count)
     if (count > _sessionUnconsumedInbound) {
-      val msg = s"Consumed more bytes ($count) than had been accounted for (${_sessionUnconsumedInbound})"
+      val msg =
+        s"Consumed more bytes ($count) than had been accounted for (${_sessionUnconsumedInbound})"
       throw new IllegalStateException(msg)
     } else if (count > 0) {
       _sessionUnconsumedInbound -= count
@@ -117,7 +120,7 @@ private class SessionFlowControlImpl(
   final override def sessionUnconsumedBytes: Int = _sessionUnconsumedInbound
 
   /** Get the remaining bytes in the sessions outbound flow window */
-  final override def sessionOutboundWindow: Int =  _sessionOutboundWindow
+  final override def sessionOutboundWindow: Int = _sessionOutboundWindow
 
   /** Update the session outbound window
     *
@@ -147,14 +150,16 @@ private class SessionFlowControlImpl(
 
   ////////////////////////////////////////////////////////////////////
 
-  private[this] final class StreamFlowWindowImpl(val streamId: Int)
-    extends StreamFlowWindow {
+  private[this] final class StreamFlowWindowImpl(val streamId: Int) extends StreamFlowWindow {
 
-    private[this] var _streamInboundWindow: Int = session.localSettings.initialWindowSize
-    private[this] var _streamOutboundWindow: Int = session.remoteSettings.initialWindowSize
+    private[this] var _streamInboundWindow: Int =
+      session.localSettings.initialWindowSize
+    private[this] var _streamOutboundWindow: Int =
+      session.remoteSettings.initialWindowSize
     private[this] var _streamUnconsumedInbound: Int = 0
 
-    override def sessionFlowControl: SessionFlowControl = SessionFlowControlImpl.this
+    override def sessionFlowControl: SessionFlowControl =
+      SessionFlowControlImpl.this
 
     override def streamUnconsumedBytes: Int = _streamUnconsumedInbound
 
@@ -165,8 +170,7 @@ private class SessionFlowControlImpl(
       // Updates MUST be greater than 0, otherwise its protocol error
       // https://tools.ietf.org/html/rfc7540#section-6.9
       if (count <= 0) {
-        Some(PROTOCOL_ERROR.goaway(
-          s"Invalid stream ($streamId) WINDOW_UPDATE: size <= 0."))
+        Some(PROTOCOL_ERROR.goaway(s"Invalid stream ($streamId) WINDOW_UPDATE: size <= 0."))
       } else if (Int.MaxValue - streamOutboundWindow < count) {
         // A sender MUST NOT allow a flow-control window to exceed 2^31-1 octets.
         // https://tools.ietf.org/html/rfc7540#section-6.9.1
@@ -178,7 +182,8 @@ private class SessionFlowControlImpl(
     }
 
     override def remoteSettingsInitialWindowChange(delta: Int): Option[Http2Exception] = {
-      logger.trace(s"Stream($streamId) outbound window adjusted by $delta bytes. $streamWindowString")
+      logger.trace(
+        s"Stream($streamId) outbound window adjusted by $delta bytes. $streamWindowString")
       // A sender MUST NOT allow a flow-control window to exceed 2^31-1 octets.
       // https://tools.ietf.org/html/rfc7540#section-6.9.2
       if (Int.MaxValue - streamOutboundWindow < delta) {
@@ -192,7 +197,8 @@ private class SessionFlowControlImpl(
     override def outboundRequest(request: Int): Int = {
       require(0 <= request)
 
-      val withdrawal = math.min(sessionOutboundWindow, math.min(request, streamOutboundWindow))
+      val withdrawal =
+        math.min(sessionOutboundWindow, math.min(request, streamOutboundWindow))
       _sessionOutboundWindow -= withdrawal
       _streamOutboundWindow -= withdrawal
 
@@ -201,7 +207,7 @@ private class SessionFlowControlImpl(
       withdrawal
     }
 
-    override def streamInboundWindow: Int =  _streamInboundWindow
+    override def streamInboundWindow: Int = _streamInboundWindow
 
     override def inboundObserved(count: Int): Boolean = {
       logger.trace(s"Stream($streamId) observed $count inbound bytes. $streamWindowString")
@@ -227,8 +233,6 @@ private class SessionFlowControlImpl(
       require(count <= streamUnconsumedBytes)
       require(count <= sessionUnconsumedBytes)
 
-
-
       if (0 < count) {
         _streamUnconsumedInbound -= count
         _sessionUnconsumedInbound -= count
@@ -246,9 +250,8 @@ private class SessionFlowControlImpl(
     }
 
     // String representation of the session and stream flow windows for debugging
-    private[this] def streamWindowString: String = {
+    private[this] def streamWindowString: String =
       s"$sessionWindowString, Stream($streamId): " +
         s"{inbound: $streamInboundWindow, unconsumed: $streamUnconsumedBytes, outbound: $streamOutboundWindow}"
-    }
   }
 }

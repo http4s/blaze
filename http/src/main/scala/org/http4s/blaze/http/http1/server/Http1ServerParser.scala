@@ -11,15 +11,16 @@ import scala.collection.immutable.VectorBuilder
 private[blaze] object BlazeServerParser {
 
   final case class RequestPrelude[HeadersT](
-     method: String,
-     uri: String,
-     majorVersion: Int,
-     minorVersion: Int,
-     headers: Iterable[HeadersT])
+      method: String,
+      uri: String,
+      majorVersion: Int,
+      minorVersion: Int,
+      headers: Iterable[HeadersT])
 }
 
-private[blaze] final class BlazeServerParser[Header](maxNonBody: Int)(implicit hl: HeaderLike[Header])
-  extends Http1ServerParser(maxNonBody, maxNonBody, 2*1024) {
+private[blaze] final class BlazeServerParser[Header](maxNonBody: Int)(
+    implicit hl: HeaderLike[Header])
+    extends Http1ServerParser(maxNonBody, maxNonBody, 2 * 1024) {
 
   private[this] var uri: String = null
   private[this] var method: String = null
@@ -36,11 +37,11 @@ private[blaze] final class BlazeServerParser[Header](maxNonBody: Int)(implicit h
   }
 
   override protected def submitRequestLine(
-    methodString: String,
-    uri: String,
-    scheme: String,
-    majorversion: Int,
-    minorversion: Int
+      methodString: String,
+      uri: String,
+      scheme: String,
+      majorversion: Int,
+      minorversion: Int
   ): Boolean = {
     this.uri = uri
     this.method = methodString
@@ -63,11 +64,10 @@ private[blaze] final class BlazeServerParser[Header](maxNonBody: Int)(implicit h
   }
 
   // Return value of `true` means the prelude is complete
-  def parsePrelude(buffer: ByteBuffer): Boolean = {
+  def parsePrelude(buffer: ByteBuffer): Boolean =
     if (!requestLineComplete() && !parseRequestLine(buffer)) false
     else if (!headersComplete() && !parseHeaders(buffer)) false
     else true
-  }
 
   /**
     * Parses the body of a message. The result will never be `null`

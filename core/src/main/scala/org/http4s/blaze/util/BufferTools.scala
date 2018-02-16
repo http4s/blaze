@@ -29,9 +29,9 @@ object BufferTools {
 
   /** Merge the `ByteBuffer`s into a single buffer */
   def joinBuffers(buffers: Seq[ByteBuffer]): ByteBuffer = buffers match {
-    case Seq()  => emptyBuffer
+    case Seq() => emptyBuffer
     case Seq(b) => b
-    case _      =>
+    case _ =>
       val sz = buffers.foldLeft(0)((sz, o) => sz + o.remaining())
       val b = allocate(sz)
       buffers.foreach(b.put)
@@ -41,45 +41,45 @@ object BufferTools {
   }
 
   /** Get the `String` representation of the `ByteBuffer` */
-  def bufferToString(buffer: ByteBuffer, charset: Charset = StandardCharsets.UTF_8): String = {
+  def bufferToString(buffer: ByteBuffer, charset: Charset = StandardCharsets.UTF_8): String =
     if (!buffer.hasRemaining) ""
     else {
       val arr = new Array[Byte](buffer.remaining())
       buffer.get(arr)
       new String(arr, charset)
     }
-  }
 
   /** Join the two buffers into a single ByteBuffer. This method is
     * guaranteed to return a ByteBuffer, but it may be empty. */
-  def concatBuffers(oldbuff: ByteBuffer, newbuff: ByteBuffer): ByteBuffer = {
+  def concatBuffers(oldbuff: ByteBuffer, newbuff: ByteBuffer): ByteBuffer =
     if (oldbuff == null) {
       if (newbuff == null) emptyBuffer
       else newbuff
-    }
-    else if (newbuff == null) oldbuff // already established that oldbuff is not `null`
+    } else if (newbuff == null)
+      oldbuff // already established that oldbuff is not `null`
     else if (!oldbuff.hasRemaining) newbuff
     else if (!newbuff.hasRemaining) oldbuff
-    else if (!oldbuff.isReadOnly && oldbuff.capacity() >= oldbuff.limit() + newbuff.remaining()) {
+    else if (!oldbuff.isReadOnly && oldbuff
+        .capacity() >= oldbuff.limit() + newbuff.remaining()) {
       // Enough room to append newbuff to the end tof oldbuff
-      oldbuff.mark()
+      oldbuff
+        .mark()
         .position(oldbuff.limit())
         .limit(oldbuff.limit() + newbuff.remaining())
 
-      oldbuff.put(newbuff)
+      oldbuff
+        .put(newbuff)
         .reset()
 
       oldbuff
-    }
-    else {  // Need to make a larger buffer
+    } else { // Need to make a larger buffer
       val n = allocate(oldbuff.remaining() + newbuff.remaining())
       n.put(oldbuff)
-       .put(newbuff)
-       .flip()
+        .put(newbuff)
+        .flip()
 
       n
     }
-  }
 
   /** Take a slice of bytes from the `ByteBuffer`, consuming the bytes.
     *
@@ -97,7 +97,8 @@ object BufferTools {
     buffer.limit(buffer.position() + size)
     val slice = buffer.slice()
 
-    buffer.position(buffer.limit())
+    buffer
+      .position(buffer.limit())
       .limit(currentLimit)
     slice
   }
@@ -109,11 +110,10 @@ object BufferTools {
     */
   def checkEmpty(buffers: Array[ByteBuffer]): Boolean = {
     @tailrec
-    def checkEmpty(i: Int): Boolean = {
+    def checkEmpty(i: Int): Boolean =
       if (i < 0) true
       else if (!buffers(i).hasRemaining()) checkEmpty(i - 1)
       else false
-    }
     checkEmpty(buffers.length - 1)
   }
 
@@ -123,7 +123,7 @@ object BufferTools {
   def dropEmpty(buffers: Array[ByteBuffer]): Int = {
     val max = buffers.length - 1
     var first = 0
-    while(first < max && !buffers(first).hasRemaining()) {
+    while (first < max && !buffers(first).hasRemaining()) {
       buffers(first) = emptyBuffer
       first += 1
     }
@@ -139,7 +139,7 @@ object BufferTools {
     !buffers.exists(_.hasRemaining)
 
   /** Make a String from the collection of ByteBuffers */
-  def mkString(buffers: Seq[ByteBuffer],charset: Charset = StandardCharsets.UTF_8): String = {
+  def mkString(buffers: Seq[ByteBuffer], charset: Charset = StandardCharsets.UTF_8): String = {
     val b = joinBuffers(buffers)
     charset.decode(b).toString()
   }
@@ -157,7 +157,7 @@ object BufferTools {
     val start = out.position()
 
     @tailrec
-    def go(i: Int): Unit = {
+    def go(i: Int): Unit =
       if (!out.hasRemaining || i >= buffers.length) ()
       else if (buffers(i) == null || !buffers(i).hasRemaining) go(i + 1)
       else {
@@ -173,7 +173,6 @@ object BufferTools {
         buffer.position(position)
         go(i + 1)
       }
-    }
 
     go(0)
 
@@ -191,18 +190,17 @@ object BufferTools {
   private[blaze] def fastForwardBuffers(buffers: Array[ByteBuffer], size: Int): Boolean = {
     require(size >= 0)
     @tailrec
-    def go(i: Int, remaining: Int): Int = {
+    def go(i: Int, remaining: Int): Int =
       if (remaining == 0 || i >= buffers.length) remaining
       else {
         val buffer = buffers(i)
-        if (buffer == null || !buffer.hasRemaining) go (i + 1, remaining)
+        if (buffer == null || !buffer.hasRemaining) go(i + 1, remaining)
         else {
           val toForward = math.min(remaining, buffer.remaining())
           buffer.position(buffer.position() + toForward)
           go(i + 1, remaining - toForward)
         }
       }
-    }
 
     go(0, size) == 0
   }
@@ -210,14 +208,13 @@ object BufferTools {
   /** Check if all the `ByteBuffer`s in the array are either direct, empty, or null */
   private[blaze] def areDirectOrEmpty(buffers: Array[ByteBuffer]): Boolean = {
     @tailrec
-    def go(i: Int): Boolean = {
+    def go(i: Int): Boolean =
       if (i >= buffers.length) true
       else {
         val buffer = buffers(i)
         if (buffer == null || buffer.isDirect || !buffer.hasRemaining) go(i + 1)
         else false
       }
-    }
 
     go(0)
   }
@@ -234,12 +231,11 @@ object BufferTools {
     sb.append(" 0x")
     val readOnly = buffer.asReadOnlyBuffer() // makes a read-only copy
     @tailrec
-    def go(i: Int): Unit = {
+    def go(i: Int): Unit =
       if (i < limit && readOnly.hasRemaining) {
         sb.append("%02X".format(readOnly.get()))
         go(i + 1)
       }
-    }
     go(0)
 
     sb.result()

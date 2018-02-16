@@ -20,9 +20,9 @@ import scala.util.control.NonFatal
   * @param highWaterMark number of bytes that will trigger a flush.
   */
 private final class WriteControllerImpl(
-  session: SessionCore,
-  highWaterMark: Int,
-  tailStage: TailStage[ByteBuffer]
+    session: SessionCore,
+    highWaterMark: Int,
+    tailStage: TailStage[ByteBuffer]
 ) extends WriteController {
   import WriteControllerImpl._
 
@@ -50,7 +50,8 @@ private final class WriteControllerImpl(
       Future.successful(())
   }
 
-  private[this] def pendingInterests: Boolean = !pendingWrites.isEmpty || !interestedStreams.isEmpty
+  private[this] def pendingInterests: Boolean =
+    !pendingWrites.isEmpty || !interestedStreams.isEmpty
 
   def write(data: Seq[ByteBuffer]): Boolean = state match {
     case Idle | Flushing | Closing(_) =>
@@ -62,7 +63,7 @@ private final class WriteControllerImpl(
       false
   }
 
-  def write(data: ByteBuffer): Boolean = write(data::Nil)
+  def write(data: ByteBuffer): Boolean = write(data :: Nil)
 
   def registerWriteInterest(interest: WriteInterest): Boolean = state match {
     case Closed => false
@@ -72,12 +73,11 @@ private final class WriteControllerImpl(
       true
   }
 
-  private[this] def maybeWrite(): Unit = {
+  private[this] def maybeWrite(): Unit =
     if (state == Idle) {
       state = Flushing
       doWrite()
     }
-  }
 
   private[this] def addDirectWrites(dest: ArrayBuffer[ByteBuffer]): Int = {
     var written = 0
@@ -105,43 +105,46 @@ private final class WriteControllerImpl(
     var bytesToWrite = addDirectWrites(toWrite)
 
     // Accumulate bytes until we run out of interests or have exceeded the high-water mark
-    while(!interestedStreams.isEmpty && bytesToWrite < highWaterMark) {
+    while (!interestedStreams.isEmpty && bytesToWrite < highWaterMark) {
       try {
         val data = interestedStreams.poll().performStreamWrite()
         bytesToWrite += addBuffs(toWrite, data)
-      } catch { case NonFatal(t) =>
-        logger.error(t)(s"Unhandled exception performing stream write operation")
+      } catch {
+        case NonFatal(t) =>
+          logger.error(t)(s"Unhandled exception performing stream write operation")
       }
     }
 
     logger.debug(s"Flushing $bytesToWrite to the wire")
 
-    tailStage.channelWrite(toWrite).onComplete {
-      case Success(_) =>
-        state match {
-          case Idle =>
-            throw new IllegalStateException("Write finished to find Idle state")
+    tailStage
+      .channelWrite(toWrite)
+      .onComplete {
+        case Success(_) =>
+          state match {
+            case Idle =>
+              throw new IllegalStateException("Write finished to find Idle state")
 
-          case Flushing if pendingInterests =>
-            doWrite()
+            case Flushing if pendingInterests =>
+              doWrite()
 
-          case Flushing =>
-            state = Idle
+            case Flushing =>
+              state = Idle
 
-          case Closing(_) if pendingInterests =>
-            doWrite()
+            case Closing(_) if pendingInterests =>
+              doWrite()
 
-          case Closing(p) =>
-            state = Closed
-            p.success(())
+            case Closing(p) =>
+              state = Closed
+              p.success(())
 
-          case Closed =>
-            throw new IllegalStateException("Shouldn't get here")
-        }
+            case Closed =>
+              throw new IllegalStateException("Shouldn't get here")
+          }
 
-      case Failure(t) =>
-        session.invokeShutdownWithError(Some(t), "WriteController.doWrite")
-    }(session.serialExecutor)
+        case Failure(t) =>
+          session.invokeShutdownWithError(Some(t), "WriteController.doWrite")
+      }(session.serialExecutor)
   }
 }
 

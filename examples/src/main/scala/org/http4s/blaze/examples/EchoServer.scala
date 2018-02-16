@@ -15,17 +15,17 @@ import org.http4s.blaze.pipeline.Command.EOF
 import org.http4s.blaze.channel.nio2.NIO2SocketServerGroup
 import org.log4s.getLogger
 
-
-
 class EchoServer {
   private[this] val logger = getLogger
 
   def prepare(address: InetSocketAddress): ServerChannel = {
     val f: BufferPipelineBuilder = _ => new EchoStage
 
-    NIO2SocketServerGroup().bind(address, f).getOrElse(sys.error("Failed to start server."))
+    NIO2SocketServerGroup()
+      .bind(address, f)
+      .getOrElse(sys.error("Failed to start server."))
   }
-  
+
   def run(port: Int): Unit = {
     val address = new InetSocketAddress(port)
     val channel = prepare(address)
@@ -39,8 +39,8 @@ class EchoServer {
 
     val msg = "echo: ".getBytes
 
-    final override def stageStartup(): Unit = {
-      channelRead().onComplete{
+    final override def stageStartup(): Unit =
+      channelRead().onComplete {
         case Success(buff) =>
           val b = BufferTools.allocate(buff.remaining() + msg.length)
           b.put(msg).put(buff).flip()
@@ -49,9 +49,8 @@ class EchoServer {
           channelWrite(b).foreach(_ => stageStartup())
 
         case Failure(EOF) => this.logger.debug("Channel closed.")
-        case Failure(t)   => this.logger.error("Channel read failed: " + t)
+        case Failure(t) => this.logger.error("Channel read failed: " + t)
       }
-    }
   }
 }
 

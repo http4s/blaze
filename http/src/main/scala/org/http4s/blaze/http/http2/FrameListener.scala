@@ -48,7 +48,12 @@ private trait FrameListener {
     * @param data compressed binary header data
     * @return
     */
-  def onHeadersFrame(streamId: Int, priority: Priority, endHeaders: Boolean, endStream: Boolean, data: ByteBuffer): Result
+  def onHeadersFrame(
+      streamId: Int,
+      priority: Priority,
+      endHeaders: Boolean,
+      endStream: Boolean,
+      data: ByteBuffer): Result
 
   /** Called on successful receipt of a CONTINUATION frame
     *
@@ -95,7 +100,11 @@ private trait FrameListener {
     * @param end_headers This is the last frame of this promise block.
     * @param data compressed binary header data.
     */
-  def onPushPromiseFrame(streamId: Int, promisedId: Int, end_headers: Boolean, data: ByteBuffer): Result
+  def onPushPromiseFrame(
+      streamId: Int,
+      promisedId: Int,
+      end_headers: Boolean,
+      data: ByteBuffer): Result
 
   /** Called on successful receipt of a PING frame
     *
@@ -126,4 +135,3 @@ private trait FrameListener {
     */
   def onWindowUpdateFrame(streamId: Int, sizeIncrement: Int): Result
 }
-

@@ -17,7 +17,7 @@ private final class ClientSessionImpl(
     remoteSettings: MutableHttp2Settings,
     flowStrategy: FlowStrategy,
     parentExecutor: ExecutionContext)
-  extends Http2ClientSession {
+    extends Http2ClientSession {
 
   private[this] val logger = getLogger
   private[this] val connection: Connection = new ConnectionImpl(

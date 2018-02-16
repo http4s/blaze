@@ -10,7 +10,8 @@ import scala.collection.mutable.ArrayBuffer
 private object RequestParser {
 
   def makeRequest(hs: Headers, body: BodyReader): Either[String, HttpRequest] = {
-    val normalHeaders = new ArrayBuffer[(String, String)](math.max(0, hs.size - 3))
+    val normalHeaders =
+      new ArrayBuffer[(String, String)](math.max(0, hs.size - 3))
     var method: String = null
     var scheme: String = null
     var path: String = null
@@ -20,39 +21,41 @@ private object RequestParser {
     hs.foreach {
       case (k, v) if isPseudo(k) =>
         if (pseudoDone) error += s"Pseudo header ($k) in invalid position. "
-        else k match {
-          case Method =>
-            if (method == null) method = v
-            else error += "Multiple ':method' headers defined. "
+        else
+          k match {
+            case Method =>
+              if (method == null) method = v
+              else error += "Multiple ':method' headers defined. "
 
-          case Scheme =>
-            if (scheme == null) scheme = v
-            else error += "Multiple ':scheme' headers defined. "
+            case Scheme =>
+              if (scheme == null) scheme = v
+              else error += "Multiple ':scheme' headers defined. "
 
-          case Path =>
-            if (path == null) {
-              if (v.isEmpty) error += "Received :path pseudo-header with empty value. "
-              path = v
-            }
-            else error += "Multiple ':path' headers defined. "
+            case Path =>
+              if (path == null) {
+                if (v.isEmpty)
+                  error += "Received :path pseudo-header with empty value. "
+                path = v
+              } else error += "Multiple ':path' headers defined. "
 
-          case Authority => // NOOP; TODO: maybe we should synthesize a Host header out of this?
+            case Authority => // NOOP; TODO: maybe we should synthesize a Host header out of this?
 
-          case _ =>
-            // Endpoints MUST treat a request or response that contains
-            // undefined or invalid pseudo-header fields as malformed
-            // https://tools.ietf.org/html/rfc7540#section-8.1.2.1
-            error += s"Invalid pseudo header: $k. "
-        }
+            case _ =>
+              // Endpoints MUST treat a request or response that contains
+              // undefined or invalid pseudo-header fields as malformed
+              // https://tools.ietf.org/html/rfc7540#section-8.1.2.1
+              error += s"Invalid pseudo header: $k. "
+          }
 
-      case h@(k, v) => // Non pseudo headers
+      case h @ (k, v) => // Non pseudo headers
         pseudoDone = true
         k match {
           case HeaderNames.Connection =>
             error += s"HTTP/2.0 forbids connection specific headers: $h. "
 
           case HeaderNames.TE =>
-            if (!v.equalsIgnoreCase("trailers")) error += "HTTP/2.0 forbids TE header values other than 'trailers'. "
+            if (!v.equalsIgnoreCase("trailers"))
+              error += "HTTP/2.0 forbids TE header values other than 'trailers'. "
           // ignore otherwise
 
           case _ if !validHeaderName(k) =>

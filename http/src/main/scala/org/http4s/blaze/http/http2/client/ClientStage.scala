@@ -39,8 +39,12 @@ private class ClientStage(request: HttpRequest) extends TailStage[StreamFrame] {
   private[this] def observeEOF(): Unit = lock.synchronized { inboundEOF = true }
 
   private class ReleasableResponseImpl(
-      code: Int, status: String, headers: Headers, body: BodyReader)
-    extends ClientResponse(code, status, headers, body) with ReleaseableResponse {
+      code: Int,
+      status: String,
+      headers: Headers,
+      body: BodyReader)
+      extends ClientResponse(code, status, headers, body)
+      with ReleaseableResponse {
     override def release(): Unit = ClientStage.this.release(Command.Disconnect)
   }
 
@@ -70,7 +74,7 @@ private class ClientStage(request: HttpRequest) extends TailStage[StreamFrame] {
   }
 
   private def writeBody(body: BodyReader): Unit = {
-    def go(): Future[Unit] = {
+    def go(): Future[Unit] =
       body().flatMap { b =>
         val eos = b.hasRemaining
         val frame = DataFrame(eos, b)
@@ -78,31 +82,34 @@ private class ClientStage(request: HttpRequest) extends TailStage[StreamFrame] {
         if (!eos) f.flatMap(_ => go())(Execution.trampoline)
         else f
       }(Execution.trampoline)
-    }
 
     // The body writing computation is orphaned: if it completes that great, if not
     // that's also fine. Errors should be propagated via the response or errors.
-    go().onComplete { _ => body.discard() }(Execution.directec)
+    go().onComplete { _ =>
+      body.discard()
+    }(Execution.directec)
   }
 
-  private def readResponseHeaders(): Unit = channelRead().onComplete {
-    case Success(HeadersFrame(_, eos, hs)) =>
-      val body = if (eos) BodyReader.EmptyBodyReader else new BodyReaderImpl
-      // TODO: we need to make sure this wasn't a 1xx response
-      collectResponseFromHeaders(body, hs) match {
-        case s @ Success(_) => _result.tryComplete(s)
-        case Failure(ex) => shutdownWithError(ex, "readResponseHeaders")
-      }
+  private def readResponseHeaders(): Unit =
+    channelRead().onComplete {
+      case Success(HeadersFrame(_, eos, hs)) =>
+        val body = if (eos) BodyReader.EmptyBodyReader else new BodyReaderImpl
+        // TODO: we need to make sure this wasn't a 1xx response
+        collectResponseFromHeaders(body, hs) match {
+          case s @ Success(_) => _result.tryComplete(s)
+          case Failure(ex) => shutdownWithError(ex, "readResponseHeaders")
+        }
 
-    case Success(other) =>
-      // The first frame must be a HEADERS frame, either of an informational
-      // response or the message prelude
-      // https://tools.ietf.org/html/rfc7540#section-8.1
-      val ex = new IllegalStateException(s"HTTP2 response started with message other than headers: $other")
-      shutdownWithError(ex, "readResponseHeaders")
+      case Success(other) =>
+        // The first frame must be a HEADERS frame, either of an informational
+        // response or the message prelude
+        // https://tools.ietf.org/html/rfc7540#section-8.1
+        val ex = new IllegalStateException(
+          s"HTTP2 response started with message other than headers: $other")
+        shutdownWithError(ex, "readResponseHeaders")
 
-    case Failure(ex) => shutdownWithError(ex, "readResponseHeaders")
-  }(Execution.trampoline)
+      case Failure(ex) => shutdownWithError(ex, "readResponseHeaders")
+    }(Execution.trampoline)
 
   private[this] class BodyReaderImpl extends BodyReader {
     // We don't want to call `release()` here because we may be waiting for this message
@@ -111,23 +118,25 @@ private class ClientStage(request: HttpRequest) extends TailStage[StreamFrame] {
 
     override def isExhausted: Boolean = inboundConsumed
 
-    override def apply(): Future[ByteBuffer] = {
+    override def apply(): Future[ByteBuffer] =
       if (inboundConsumed) BufferTools.emptyFutureBuffer
-      else channelRead().map {
-        case d@DataFrame(eos, data) =>
-          if (eos) discard()
-          logger.debug(s"Received data frame: $d")
-          data
+      else
+        channelRead().map {
+          case d @ DataFrame(eos, data) =>
+            if (eos) discard()
+            logger.debug(s"Received data frame: $d")
+            data
 
-        case other =>
-          logger.debug(s"Received frame other than data: $other. Discarding remainder of body.")
-          discard()
-          BufferTools.emptyBuffer
-      }(Execution.directec)
-    }
+          case other =>
+            logger.debug(s"Received frame other than data: $other. Discarding remainder of body.")
+            discard()
+            BufferTools.emptyBuffer
+        }(Execution.directec)
   }
 
-  private def collectResponseFromHeaders(body: BodyReader, hs: Seq[(String, String)]): Try[ReleaseableResponse] = {
+  private def collectResponseFromHeaders(
+      body: BodyReader,
+      hs: Seq[(String, String)]): Try[ReleaseableResponse] = {
     logger.debug(s"Received response headers: $hs")
 
     val regularHeaders = new VectorBuilder[(String, String)]
@@ -136,29 +145,33 @@ private class ClientStage(request: HttpRequest) extends TailStage[StreamFrame] {
 
     val it = hs.iterator
     while (it.hasNext) {
-      val pair@(k, v) = it.next()
+      val pair @ (k, v) = it.next()
 
       if (!k.startsWith(":")) {
-          pseudos = false // definitely not in pseudos anymore
-          regularHeaders += pair
+        pseudos = false // definitely not in pseudos anymore
+        regularHeaders += pair
       } else if (!pseudos) {
         return Failure(new Exception("Pseudo headers were not contiguous"))
-      } else k match {
+      } else
+        k match {
           // Matching on pseudo headers now
-        case Status =>
-          if (statusCode != -1)
-            return Failure(new Exception("Multiple status code HTTP2 pseudo headers detected in response"))
+          case Status =>
+            if (statusCode != -1)
+              return Failure(
+                new Exception("Multiple status code HTTP2 pseudo headers detected in response"))
 
-          try statusCode = v.toInt
-          catch { case ex: NumberFormatException => return Failure(ex) }
+            try statusCode = v.toInt
+            catch { case ex: NumberFormatException => return Failure(ex) }
 
-        case _ => // don't care about other pseudo headers at this time
-      }
+          case _ => // don't care about other pseudo headers at this time
+        }
     }
 
-    if (statusCode != -1) Success(new ReleasableResponseImpl(statusCode, "UNKNOWN", regularHeaders.result(), body))
+    if (statusCode != -1)
+      Success(new ReleasableResponseImpl(statusCode, "UNKNOWN", regularHeaders.result(), body))
     else {
-      val ex = Http2Exception.PROTOCOL_ERROR.rst(-1, "HTTP2 Response headers didn't include a status code.")
+      val ex = Http2Exception.PROTOCOL_ERROR
+        .rst(-1, "HTTP2 Response headers didn't include a status code.")
       release(Command.Error(ex))
       Failure(ex)
     }
@@ -178,7 +191,7 @@ private class ClientStage(request: HttpRequest) extends TailStage[StreamFrame] {
 private object ClientStage {
   import PseudoHeaders._
 
-  private[client] def makeHeaders(request: HttpRequest): Try[Vector[(String, String)]] = {
+  private[client] def makeHeaders(request: HttpRequest): Try[Vector[(String, String)]] =
     UrlComposition(request.url).map { breakdown =>
       val hs = new VectorBuilder[(String, String)]
 
@@ -192,5 +205,4 @@ private object ClientStage {
 
       hs.result()
     }
-  }
 }

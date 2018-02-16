@@ -5,7 +5,6 @@ import org.http4s.blaze.http.http1.client.BasicHttp1ClientSessionManager
 import org.http4s.blaze.util.Execution
 import scala.concurrent.Future
 
-
 /** Generic interface for making HTTP client requests
   *
   * A [[HttpClient]] hides the details of the underlying sockets, connection
@@ -40,16 +39,18 @@ trait HttpClient extends ClientActions {
     *       dependant on both the implementation and if the resources have been fully
     *       consumed.
     */
-  def apply[T](request: HttpRequest)(f: ClientResponse => Future[T]): Future[T] = {
+  def apply[T](request: HttpRequest)(f: ClientResponse => Future[T]): Future[T] =
     unsafeDispatch(request).flatMap { resp =>
       val result = f(resp)
-      result.onComplete { _ => resp.release() }(Execution.directec)
+      result.onComplete { _ =>
+        resp.release()
+      }(Execution.directec)
       result
     }(Execution.directec)
-  }
 }
 
 object HttpClient {
+
   /** Basic implementation of a HTTP/1.1 client.
     *
     * This client doesn't do any session pooling, so one request = one socket connection.

@@ -29,7 +29,8 @@ private object SettingsDecoder {
 
     val tpe = buffer.get()
 
-    if (tpe != FrameTypes.SETTINGS) Left(Http2Exception.PROTOCOL_ERROR.goaway("Expected SETTINGS frame"))
+    if (tpe != FrameTypes.SETTINGS)
+      Left(Http2Exception.PROTOCOL_ERROR.goaway("Expected SETTINGS frame"))
     else {
       val flags = buffer.get()
       val streamId = FrameDecoder.getStreamId(buffer)
@@ -43,35 +44,41 @@ private object SettingsDecoder {
     * @param streamId stream id obtained from the frame header. Must be 0x0.
     * @param flags flags obtained from the frame header.
     */
-  def decodeSettingsFrame(buffer: ByteBuffer, streamId: Int, flags: Byte): Either[Http2Exception, SettingsFrame] = {
+  def decodeSettingsFrame(
+      buffer: ByteBuffer,
+      streamId: Int,
+      flags: Byte): Either[Http2Exception, SettingsFrame] = {
     import Http2Exception._
 
     val len = buffer.remaining
     val isAck = Flags.ACK(flags)
 
     if (len % 6 != 0) { // Invalid frame size
-      val msg = s"SETTINGS frame payload must be multiple of 6 bytes, size: $len"
+      val msg =
+        s"SETTINGS frame payload must be multiple of 6 bytes, size: $len"
       Left(FRAME_SIZE_ERROR.goaway(msg))
     } else if (isAck && len != 0) {
       val settingsCount = len / 6 // 6 bytes per setting
-      val msg = s"SETTINGS ACK frame with settings payload ($settingsCount settings)"
+      val msg =
+        s"SETTINGS ACK frame with settings payload ($settingsCount settings)"
       Left(FRAME_SIZE_ERROR.goaway(msg))
     } else if (streamId != 0x0) {
       Left(PROTOCOL_ERROR.goaway(s"SETTINGS frame with invalid stream id: $streamId"))
-    } else Right {
-      // We have a valid frame
-      if (isAck) SettingsFrame(None)
-      else {
-        val settings = Vector.newBuilder[Setting]
-        while(buffer.hasRemaining) {
-          val id: Int = buffer.getShort() & 0xffff
-          val value = buffer.getInt()
-          settings += Setting(id, value)
-        }
+    } else
+      Right {
+        // We have a valid frame
+        if (isAck) SettingsFrame(None)
+        else {
+          val settings = Vector.newBuilder[Setting]
+          while (buffer.hasRemaining) {
+            val id: Int = buffer.getShort() & 0xffff
+            val value = buffer.getInt()
+            settings += Setting(id, value)
+          }
 
-        SettingsFrame(Some(settings.result))
+          SettingsFrame(Some(settings.result))
+        }
       }
-    }
   }
 
   /** Create a [[MutableHttp2Settings]] from a collection of settings */

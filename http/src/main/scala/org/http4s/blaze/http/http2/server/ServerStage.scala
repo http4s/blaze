@@ -15,14 +15,16 @@ import scala.util.{Failure, Success, Try}
 
 /** Basic implementation of a http2 stream [[TailStage]] */
 private[http] class ServerStage(
-  streamId: Int,
-  service: HttpService,
-  config: HttpServerStageConfig
+    streamId: Int,
+    service: HttpService,
+    config: HttpServerStageConfig
 ) extends TailStage[StreamFrame] {
 
-  private implicit def _ec = Execution.trampoline // for all the onComplete calls
+  private implicit def _ec =
+    Execution.trampoline // for all the onComplete calls
 
-  private val timeoutService = ServiceTimeoutFilter(config.serviceTimeout)(service)
+  private val timeoutService =
+    ServiceTimeoutFilter(config.serviceTimeout)(service)
 
   override def name: String = s"Http2StreamStage($streamId)"
 
@@ -36,10 +38,10 @@ private[http] class ServerStage(
     sendOutboundCommand(cmd)
   }
 
-  private def startRequest(): Unit = {
+  private def startRequest(): Unit =
     // The prelude should already be available (or we wouldn't have a stream id)
     // so adding a timeout is unnecessary.
-    channelRead().onComplete  {
+    channelRead().onComplete {
       case Success(HeadersFrame(_, endStream, hs)) =>
         if (endStream) checkAndRunRequest(hs, BodyReader.EmptyBodyReader)
         else getBodyReader(hs)
@@ -49,7 +51,7 @@ private[http] class ServerStage(
           s"Stream $streamId received invalid frame: ${frame.getClass.getSimpleName}")
         shutdownWithCommand(Cmd.Error(e))
 
-        // TODO: what about a 408 response for a timeout?
+      // TODO: what about a 408 response for a timeout?
       case Failure(Cmd.EOF) => shutdownWithCommand(Cmd.Disconnect)
 
       case Failure(t) =>
@@ -57,14 +59,14 @@ private[http] class ServerStage(
         val e = INTERNAL_ERROR.rst(streamId, s"Unknown error")
         shutdownWithCommand(Cmd.Error(e))
     }(Execution.directec)
-  }
 
   private[this] def getBodyReader(hs: Headers): Unit = {
     val length: Option[Try[Long]] = hs.collectFirst {
       case (HeaderNames.ContentLength, v) =>
         try Success(java.lang.Long.valueOf(v))
-        catch { case t: NumberFormatException =>
-           Failure(PROTOCOL_ERROR.rst(streamId, s"Invalid content-length: $v."))
+        catch {
+          case t: NumberFormatException =>
+            Failure(PROTOCOL_ERROR.rst(streamId, s"Invalid content-length: $v."))
         }
     }
 
@@ -75,26 +77,30 @@ private[http] class ServerStage(
     }
   }
 
-  private[this] def checkAndRunRequest(hs: Headers, bodyReader: BodyReader): Unit = {
+  private[this] def checkAndRunRequest(hs: Headers, bodyReader: BodyReader): Unit =
     RequestParser.makeRequest(hs, bodyReader) match {
       case Right(request) =>
-        timeoutService(request).onComplete(renderResponse(request.method, _))(config.serviceExecutor)
+        timeoutService(request).onComplete(renderResponse(request.method, _))(
+          config.serviceExecutor)
 
       case Left(errMsg) =>
         shutdownWithCommand(Cmd.Error(PROTOCOL_ERROR.rst(streamId, errMsg)))
     }
-  }
 
-  private[this] def renderResponse(method: String, response: Try[RouteAction]): Unit = response match {
-    case Success(builder) =>
-      builder.handle(getWriter(method, _))
-        .onComplete(onComplete)(Execution.directec)
+  private[this] def renderResponse(method: String, response: Try[RouteAction]): Unit =
+    response match {
+      case Success(builder) =>
+        builder
+          .handle(getWriter(method, _))
+          .onComplete(onComplete)(Execution.directec)
 
-    case Failure(t) => shutdownWithCommand(Cmd.Error(t))
-  }
+      case Failure(t) => shutdownWithCommand(Cmd.Error(t))
+    }
 
   private[this] def getWriter(method: String, prelude: HttpResponsePrelude): BodyWriter = {
-    val sizeHint = prelude.headers match {case b: IndexedSeq[_] => b.size + 1; case _ => 16 }
+    val sizeHint = prelude.headers match {
+      case b: IndexedSeq[_] => b.size + 1; case _ => 16
+    }
     val hs = new ArrayBuffer[(String, String)](sizeHint)
     hs += PseudoHeaders.Status -> Integer.toString(prelude.code)
 
@@ -117,9 +123,9 @@ private[http] class ServerStage(
   }
 
   private def onComplete(result: Try[_]): Unit = result match {
-    case Success(_)       => shutdownWithCommand(Cmd.Disconnect)
+    case Success(_) => shutdownWithCommand(Cmd.Disconnect)
     case Failure(Cmd.EOF) => stageShutdown()
-    case Failure(t)       => shutdownWithCommand(Cmd.Error(t))
+    case Failure(t) => shutdownWithCommand(Cmd.Error(t))
   }
 
   private class NoopWriter(headers: Headers) extends BodyWriter {
@@ -127,12 +133,11 @@ private[http] class ServerStage(
 
     private val underlying = new StandardWriter(headers)
 
-    override def write(buffer: ByteBuffer): Future[Unit] = {
+    override def write(buffer: ByteBuffer): Future[Unit] =
       underlying.close().flatMap { _ =>
         sendOutboundCommand(Cmd.Disconnect)
         InternalWriter.ClosedChannelException
       }
-    }
 
     override def flush(): Future[Unit] = write(BufferTools.emptyBuffer)
 
@@ -140,7 +145,9 @@ private[http] class ServerStage(
   }
 
   private class BodyReaderImpl(length: Long) extends AbstractBodyReader(streamId, length) {
-    override protected def channelRead(): Future[StreamFrame] = ServerStage.this.channelRead()
-    override protected def failed(ex: Throwable): Unit = sendOutboundCommand(Cmd.Error(ex))
+    override protected def channelRead(): Future[StreamFrame] =
+      ServerStage.this.channelRead()
+    override protected def failed(ex: Throwable): Unit =
+      sendOutboundCommand(Cmd.Error(ex))
   }
 }

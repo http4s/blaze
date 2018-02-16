@@ -22,22 +22,24 @@ private object ClientSessionManagerImpl {
 
   case class ConnectionId(scheme: String, authority: String)
 
-  case class Http1SessionProxy(id: ConnectionId, parent: Http1ClientSession) extends Http1ClientSession {
-    override def dispatch(request: HttpRequest): Future[ReleaseableResponse] = parent.dispatch(request)
+  case class Http1SessionProxy(id: ConnectionId, parent: Http1ClientSession)
+      extends Http1ClientSession {
+    override def dispatch(request: HttpRequest): Future[ReleaseableResponse] =
+      parent.dispatch(request)
     override def status: Status = parent.status
     override def close(within: Duration): Future[Unit] = parent.close(within)
   }
 
   def apply(config: HttpClientConfig): ClientSessionManagerImpl = {
-    val sessionCache = new java.util.HashMap[ConnectionId, java.util.Collection[HttpClientSession]]
+    val sessionCache =
+      new java.util.HashMap[ConnectionId, java.util.Collection[HttpClientSession]]
     new ClientSessionManagerImpl(sessionCache, config)
   }
 }
 
 private final class ClientSessionManagerImpl(
-  sessionCache: java.util.Map[ConnectionId,
-  java.util.Collection[HttpClientSession]],
-  config: HttpClientConfig
+    sessionCache: java.util.Map[ConnectionId, java.util.Collection[HttpClientSession]],
+    config: HttpClientConfig
 ) extends ClientSessionManager {
 
   private[this] def getId(composition: UrlComposition): ConnectionId =
@@ -50,7 +52,7 @@ private final class ClientSessionManagerImpl(
 
   override def acquireSession(request: HttpRequest): Future[HttpClientSession] = {
     logger.debug(s"Acquiring session for request $request")
-     UrlComposition(request.url) match {
+    UrlComposition(request.url) match {
       case Success(urlComposition) =>
         val id = getId(urlComposition)
         val session = findExistingSession(id)
@@ -66,41 +68,44 @@ private final class ClientSessionManagerImpl(
   }
 
   // WARNING: can emit `null`. For internal use only
-  private[this] def findExistingSession(id: ConnectionId): HttpClientSession = sessionCache.synchronized {
-    sessionCache.get(id) match {
-      case null => null // nop
-      case sessions =>
-        var session: HttpClientSession = null
-        val it = sessions.iterator
-        while(session == null && it.hasNext) it.next() match {
-          case h2: Http2ClientSession if h2.status == Closed =>
-            h2.closeNow() // make sure its closed
-            it.remove()
+  private[this] def findExistingSession(id: ConnectionId): HttpClientSession =
+    sessionCache.synchronized {
+      sessionCache.get(id) match {
+        case null => null // nop
+        case sessions =>
+          var session: HttpClientSession = null
+          val it = sessions.iterator
+          while (session == null && it.hasNext) it.next() match {
+            case h2: Http2ClientSession if h2.status == Closed =>
+              h2.closeNow() // make sure its closed
+              it.remove()
 
-          case h2: Http2ClientSession if LowQualityThreshold < h2.quality =>
-            session = h2
+            case h2: Http2ClientSession if LowQualityThreshold < h2.quality =>
+              session = h2
 
-          case _: Http2ClientSession => () // nop
+            case _: Http2ClientSession => () // nop
 
-          case h1: Http1ClientSession =>
-            it.remove()
-            if (h1.status != Closed) { // Should never be busy
-              session = h1 // found a suitable HTTP/1.x session.
-            } else {
-              h1.closeNow()
-            }
-        }
+            case h1: Http1ClientSession =>
+              it.remove()
+              if (h1.status != Closed) { // Should never be busy
+                session = h1 // found a suitable HTTP/1.x session.
+              } else {
+                h1.closeNow()
+              }
+          }
 
-        // if we took the last session, drop the collection
-        if (sessions.isEmpty) {
-          sessionCache.remove(id)
-        }
+          // if we took the last session, drop the collection
+          if (sessions.isEmpty) {
+            sessionCache.remove(id)
+          }
 
-        session
+          session
+      }
     }
-  }
 
-  private[this] def createNewSession(urlComposition: UrlComposition, id: ConnectionId): Future[HttpClientSession] = {
+  private[this] def createNewSession(
+      urlComposition: UrlComposition,
+      id: ConnectionId): Future[HttpClientSession] = {
     logger.debug(s"Creating new session for id $id")
     val p = Promise[HttpClientSession]
 
@@ -118,7 +123,7 @@ private final class ClientSessionManagerImpl(
         builder.base(head)
         head.sendInboundCommand(Command.Connected)
         p.trySuccess(new Http1SessionProxy(id, clientStage))
-      }
+    }
 
     p.future
   }
@@ -141,7 +146,8 @@ private final class ClientSessionManagerImpl(
         }
 
       case proxy: Http1SessionProxy => addSessionToCache(proxy.id, proxy)
-      case other => sys.error(s"The impossible happened! Found invalid type: $other")
+      case other =>
+        sys.error(s"The impossible happened! Found invalid type: $other")
     }
   }
 
@@ -151,8 +157,9 @@ private final class ClientSessionManagerImpl(
     sessionCache.synchronized {
       sessionCache.asScala.values.foreach(_.asScala.foreach { session =>
         try session.closeNow()
-        catch { case NonFatal(t) =>
-          logger.warn(t)("Exception caught while closing session")
+        catch {
+          case NonFatal(t) =>
+            logger.warn(t)("Exception caught while closing session")
         }
       })
       sessionCache.clear()

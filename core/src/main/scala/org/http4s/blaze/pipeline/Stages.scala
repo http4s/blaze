@@ -43,7 +43,8 @@ sealed trait Stage {
     * before this method is called. It is not impossible for this method to be called multiple
     * times by misbehaving stages. It is therefore recommended that the method be idempotent.
     */
-  protected def stageStartup(): Unit = logger.debug(s"${getClass.getSimpleName} starting up at ${new Date}")
+  protected def stageStartup(): Unit =
+    logger.debug(s"${getClass.getSimpleName} starting up at ${new Date}")
 
   /** Shuts down the stage, deallocating resources, etc.
     *
@@ -53,7 +54,8 @@ sealed trait Stage {
     * possible for this to be called more than once due to the reception of multiple disconnect
     * commands. It is therefore recommended that the method be idempotent.
     */
-  protected def stageShutdown(): Unit = logger.debug(s"${getClass.getSimpleName} shutting down at ${new Date}")
+  protected def stageShutdown(): Unit =
+    logger.debug(s"${getClass.getSimpleName} shutting down at ${new Date}")
 
   /** Handle basic startup and shutdown commands.
     * This should clearly be overridden in all cases except possibly TailStages
@@ -61,31 +63,29 @@ sealed trait Stage {
     * @param cmd a command originating from the channel
     */
   def inboundCommand(cmd: InboundCommand): Unit = cmd match {
-    case Connected     => stageStartup()
-    case Disconnected  => stageShutdown()
-    case _             => logger.warn(s"$name received unhandled inbound command: $cmd")
+    case Connected => stageStartup()
+    case Disconnected => stageShutdown()
+    case _ => logger.warn(s"$name received unhandled inbound command: $cmd")
   }
 }
 
 sealed trait Tail[I] extends Stage {
   private[pipeline] var _prevStage: Head[I] = null
 
-  def channelRead(size: Int = -1, timeout: Duration = Duration.Inf): Future[I] = {
+  def channelRead(size: Int = -1, timeout: Duration = Duration.Inf): Future[I] =
     try {
       if (_prevStage != null) {
         val f = _prevStage.readRequest(size)
         checkTimeout(timeout, f)
       } else _stageDisconnected()
     } catch { case NonFatal(t) => Future.failed(t) }
-  }
 
   /** Write a single outbound message to the pipeline */
-  def channelWrite(data: I): Future[Unit] = {
+  def channelWrite(data: I): Future[Unit] =
     if (_prevStage != null) {
       try _prevStage.writeRequest(data)
       catch { case t: Throwable => Future.failed(t) }
     } else _stageDisconnected()
-  }
 
   /** Write a single outbound message to the pipeline with a timeout */
   final def channelWrite(data: I, timeout: Duration): Future[Unit] = {
@@ -94,12 +94,11 @@ sealed trait Tail[I] extends Stage {
   }
 
   /** Write a collection of outbound messages to the pipeline */
-  def channelWrite(data: Seq[I]): Future[Unit] = {
+  def channelWrite(data: Seq[I]): Future[Unit] =
     if (_prevStage != null) {
       try _prevStage.writeRequest(data)
       catch { case t: Throwable => Future.failed(t) }
     } else _stageDisconnected()
-  }
 
   /** Write a collection of outbound messages to the pipeline with a timeout */
   final def channelWrite(data: Seq[I], timeout: Duration): Future[Unit] = {
@@ -108,7 +107,7 @@ sealed trait Tail[I] extends Stage {
   }
 
   /** Insert the `MidStage` before this `Stage` */
-  final def spliceBefore(stage: MidStage[I, I]): Unit = {
+  final def spliceBefore(stage: MidStage[I, I]): Unit =
     if (_prevStage != null) {
       stage._prevStage = _prevStage
       stage._nextStage = this
@@ -119,14 +118,15 @@ sealed trait Tail[I] extends Stage {
       logger.error(e)("")
       throw e
     }
-  }
 
   /** Send a command to the next outbound `Stage` of the pipeline */
   final def sendOutboundCommand(cmd: OutboundCommand): Unit = {
     logger.debug(s"Stage ${getClass.getSimpleName} sending outbound command: $cmd")
     if (_prevStage != null) {
       try _prevStage.outboundCommand(cmd)
-      catch { case t: Throwable => logger.error(t)("Outbound command caused an error") }
+      catch {
+        case t: Throwable => logger.error(t)("Outbound command caused an error")
+      }
     } else {
       val e = new Exception("Cannot send outbound command on disconnected stage")
       logger.error(e)("")
@@ -135,27 +135,27 @@ sealed trait Tail[I] extends Stage {
   }
 
   /** Find the next outbound `Stage` with the given name, if it exists. */
-  final def findOutboundStage(name: String): Option[Stage] = {
+  final def findOutboundStage(name: String): Option[Stage] =
     if (this.name == name) Some(this)
     else if (_prevStage == null) None
-    else _prevStage match {
-      case s: Tail[_] => s.findOutboundStage(name)
-      case t          => if (t.name == name) Some(t) else None
+    else
+      _prevStage match {
+        case s: Tail[_] => s.findOutboundStage(name)
+        case t => if (t.name == name) Some(t) else None
 
-    }
-  }
+      }
 
   /** Find the next outbound `Stage` of type `C`, if it exists. */
-  final def findOutboundStage[C <: Stage](clazz: Class[C]): Option[C] = {
+  final def findOutboundStage[C <: Stage](clazz: Class[C]): Option[C] =
     if (clazz.isAssignableFrom(this.getClass)) Some(this.asInstanceOf[C])
     else if (_prevStage == null) None
-    else _prevStage match {
-      case s: Tail[_] => s.findOutboundStage[C](clazz)
-      case t =>
-        if (clazz.isAssignableFrom(t.getClass)) Some(t.asInstanceOf[C])
-        else None
-    }
-  }
+    else
+      _prevStage match {
+        case s: Tail[_] => s.findOutboundStage[C](clazz)
+        case t =>
+          if (clazz.isAssignableFrom(t.getClass)) Some(t.asInstanceOf[C])
+          else None
+      }
 
   /** Replace all downstream `Stage`s, including this `Stage`.
     *
@@ -179,7 +179,7 @@ sealed trait Tail[I] extends Stage {
 
       prev match {
         case m: MidStage[_, I] => leafBuilder.prepend(m)
-        case h: HeadStage[I]   => leafBuilder.base(h)
+        case h: HeadStage[I] => leafBuilder.base(h)
       }
 
       if (startup) prev.sendInboundCommand(Command.Connected)
@@ -188,14 +188,12 @@ sealed trait Tail[I] extends Stage {
   }
 
   /** Arranges a timeout for a write request */
-  private def checkTimeout[T](timeout: Duration, f: Future[T]): Future[T] = {
+  private def checkTimeout[T](timeout: Duration, f: Future[T]): Future[T] =
     if (timeout.isFinite()) {
       val p = Promise[T]
       scheduleTimeout(p, f, timeout)
       p.future
-    }
-    else f
-  }
+    } else f
 
   ///////////////////////////////////////////////////////////////////
   /** Schedules a timeout and sets it to race against the provided future
@@ -247,15 +245,14 @@ sealed trait Head[O] extends Stage {
     * It is generally assumed that the order of elements has meaning.
     * @return a `Future` that resolves when the data has been handled.
     */
-  def writeRequest(data: Seq[O]): Future[Unit] = {
-    data.foldLeft[Future[Unit]](Future.successful(())){ (f, d) =>
+  def writeRequest(data: Seq[O]): Future[Unit] =
+    data.foldLeft[Future[Unit]](Future.successful(())) { (f, d) =>
       f.flatMap(_ => writeRequest(d))(directec)
     }
-  }
 
   /** Replace all remaining inbound `Stage`s of the pipeline, not including this `Stage`. */
   final def replaceNext(stage: LeafBuilder[O], startup: Boolean): Tail[O] =
-  _nextStage.replaceTail(stage, startup)
+    _nextStage.replaceTail(stage, startup)
 
   /** Send a command to the next inbound `Stage` of the pipeline */
   final def sendInboundCommand(cmd: InboundCommand): Unit = {
@@ -280,14 +277,14 @@ sealed trait Head[O] extends Stage {
   /** Receives outbound commands
     * Override to capture commands. */
   def outboundCommand(cmd: OutboundCommand): Unit = cmd match {
-    case Connect    => stageStartup()
+    case Connect => stageStartup()
     case Disconnect => stageShutdown()
-    case Error(e)   => logger.error(e)(s"$name received unhandled error command")
-    case cmd        => logger.warn(s"$name received unhandled outbound command: $cmd")
+    case Error(e) => logger.error(e)(s"$name received unhandled error command")
+    case cmd => logger.warn(s"$name received unhandled outbound command: $cmd")
   }
 
   /** Insert the `MidStage` after `this` */
-  final def spliceAfter(stage: MidStage[O, O]): Unit = {
+  final def spliceAfter(stage: MidStage[O, O]): Unit =
     if (_nextStage != null) {
       stage._nextStage = _nextStage
       stage._prevStage = this
@@ -298,29 +295,28 @@ sealed trait Head[O] extends Stage {
       logger.error(e)("")
       throw e
     }
-  }
 
   /** Find the next outbound `Stage` with the given name, if it exists. */
-  final def findInboundStage(name: String): Option[Stage] = {
+  final def findInboundStage(name: String): Option[Stage] =
     if (this.name == name) Some(this)
     else if (_nextStage == null) None
-    else _nextStage match {
-      case s: MidStage[_, _] => s.findInboundStage(name)
-      case t: TailStage[_]   => if (t.name == name) Some(t) else None
-    }
-  }
+    else
+      _nextStage match {
+        case s: MidStage[_, _] => s.findInboundStage(name)
+        case t: TailStage[_] => if (t.name == name) Some(t) else None
+      }
 
   /** Find the next inbound `Stage` of type `C`, if it exists. */
-  final def findInboundStage[C <: Stage](clazz: Class[C]): Option[C] = {
+  final def findInboundStage[C <: Stage](clazz: Class[C]): Option[C] =
     if (clazz.isAssignableFrom(this.getClass)) Some(this.asInstanceOf[C])
     else if (_nextStage == null) None
-    else _nextStage match {
-      case s: MidStage[_, _] => s.findInboundStage[C](clazz)
-      case t: TailStage[_] =>
-        if (clazz.isAssignableFrom(t.getClass)) Some(t.asInstanceOf[C])
-        else None
-    }
-  }
+    else
+      _nextStage match {
+        case s: MidStage[_, _] => s.findInboundStage[C](clazz)
+        case t: TailStage[_] =>
+          if (clazz.isAssignableFrom(t.getClass)) Some(t.asInstanceOf[C])
+          else None
+      }
 }
 
 /** The three fundamental stage types */
@@ -351,7 +347,7 @@ trait MidStage[I, O] extends Tail[I] with Head[O] {
   }
 
   /** Remove this `MidStage` from the pipeline */
-  final def removeStage()(implicit ev: MidStage[I,O] =:= MidStage[I, I]): Unit = {
+  final def removeStage()(implicit ev: MidStage[I, O] =:= MidStage[I, I]): Unit = {
     stageShutdown()
 
     if (_prevStage != null && _nextStage != null) {
@@ -361,7 +357,7 @@ trait MidStage[I, O] extends Tail[I] with Head[O] {
 
       _nextStage = null
       _prevStage = null
-    }
-    else logger.warn(s"Cannot remove a disconnected stage ${this.getClass.getSimpleName}")
+    } else
+      logger.warn(s"Cannot remove a disconnected stage ${this.getClass.getSimpleName}")
   }
 }

@@ -39,7 +39,7 @@ class TickWheelExecutor(wheelSize: Int = DefaultWheelSize, tick: Duration = 200.
   @volatile private var alive = true
 
   private val tickMilli = tick.toMillis
-  private val _tickInv = 1.0/tickMilli.toDouble
+  private val _tickInv = 1.0 / tickMilli.toDouble
 
   private val head = new AtomicReference[ScheduleEvent](Tail)
 
@@ -51,9 +51,8 @@ class TickWheelExecutor(wheelSize: Int = DefaultWheelSize, tick: Duration = 200.
   // new Thread that actually runs the execution.
 
   private val thread = new Thread(s"blaze-tick-wheel-executor") {
-    override def run(): Unit = {
+    override def run(): Unit =
       cycle(System.currentTimeMillis())
-    }
   }
 
   thread.setDaemon(true)
@@ -61,9 +60,8 @@ class TickWheelExecutor(wheelSize: Int = DefaultWheelSize, tick: Duration = 200.
 
   /////////////////////////////////////////////////////
 
-  def shutdown(): Unit = {
+  def shutdown(): Unit =
     alive = false
-  }
 
   /** Schedule the `Runnable` on the [[TickWheelExecutor]]
     *
@@ -77,9 +75,8 @@ class TickWheelExecutor(wheelSize: Int = DefaultWheelSize, tick: Duration = 200.
     * @return a [[Cancellable]]. This is not a `java.util.concurrent.Cancellable`,
     *         which is a richer interface.
     */
-  def schedule(r: Runnable, timeout: Duration): Cancellable = {
+  def schedule(r: Runnable, timeout: Duration): Cancellable =
     schedule(r, Execution.directec, timeout)
-  }
 
   /** Schedule the `Runnable` on the [[TickWheelExecutor]]
     *
@@ -92,12 +89,11 @@ class TickWheelExecutor(wheelSize: Int = DefaultWheelSize, tick: Duration = 200.
     * @return a [[Cancellable]]. This is not a `java.util.concurrent.Cancellable`,
     *         which is a richer interface.
     */
-  def schedule(r: Runnable, ec: ExecutionContext, timeout: Duration): Cancellable = {
+  def schedule(r: Runnable, ec: ExecutionContext, timeout: Duration): Cancellable =
     if (alive) {
-      if (!timeout.isFinite) {  // This will never timeout, so don't schedule it.
+      if (!timeout.isFinite) { // This will never timeout, so don't schedule it.
         Cancellable.NoopCancel
-      }
-      else {
+      } else {
         val millis = timeout.toMillis
         if (millis > 0) {
           val expires = millis + System.currentTimeMillis()
@@ -111,16 +107,13 @@ class TickWheelExecutor(wheelSize: Int = DefaultWheelSize, tick: Duration = 200.
 
           go()
           node
-        }
-        else {  // we can submit the task right now! Not sure why you would want to do this...
+        } else { // we can submit the task right now! Not sure why you would want to do this...
           try ec.execute(r)
           catch { case NonFatal(t) => onNonFatal(t) }
           Cancellable.NoopCancel
         }
       }
-    }
-    else sys.error("TickWheelExecutor is shutdown")
-  }
+    } else sys.error("TickWheelExecutor is shutdown")
 
   // Deals with appending and removing tasks from the buckets
   private def handleTasks(): Unit = {
@@ -146,7 +139,7 @@ class TickWheelExecutor(wheelSize: Int = DefaultWheelSize, tick: Duration = 200.
   @tailrec
   private def cycle(lastTickTime: Long): Unit = {
 
-    handleTasks()  // Deal with scheduling and cancellations
+    handleTasks() // Deal with scheduling and cancellations
 
     val now = System.currentTimeMillis()
     val lastTick = (lastTickTime * _tickInv).toLong
@@ -156,7 +149,8 @@ class TickWheelExecutor(wheelSize: Int = DefaultWheelSize, tick: Duration = 200.
     @tailrec
     def go(i: Long): Unit = if (i < ticks) { // will do at least one tick
       val ii = ((lastTick + i) % wheelSize).toInt
-      clockFace(ii).prune(now) // Remove canceled and submit expired tasks from the current spoke
+      clockFace(ii)
+        .prune(now) // Remove canceled and submit expired tasks from the current spoke
       go(i + 1)
     }
     go(0)
@@ -166,18 +160,16 @@ class TickWheelExecutor(wheelSize: Int = DefaultWheelSize, tick: Duration = 200.
       val left = tickMilli - (System.currentTimeMillis() - now)
       if (left > 0) Thread.sleep(left)
       cycle(now)
-    }
-    else {  // delete all our buckets so we don't hold any references
+    } else { // delete all our buckets so we don't hold any references
       for { i <- 0 until wheelSize } clockFace(i) = null
     }
   }
 
-  protected def onNonFatal(t: Throwable): Unit = {
+  protected def onNonFatal(t: Throwable): Unit =
     logger.error(t)("Non-Fatal Exception caught while executing scheduled task")
-  }
 
   private def getBucket(expiration: Long): Bucket = {
-    val i = ((expiration*_tickInv).toLong) % wheelSize
+    val i = ((expiration * _tickInv).toLong) % wheelSize
     clockFace(i.toInt)
   }
 
@@ -194,25 +186,22 @@ class TickWheelExecutor(wheelSize: Int = DefaultWheelSize, tick: Duration = 200.
       def checkNext(prev: Node): Unit = {
         val next = prev.next
         if (next ne null) {
-          if (next.canceled) {   // remove it
+          if (next.canceled) { // remove it
             logger.error("Tickwheel has canceled node in bucket: shouldn't get here.")
             next.unlink()
-          }
-          else if (next.expiresBy(time)) {
+          } else if (next.expiresBy(time)) {
             next.run()
             next.unlink()
             checkNext(prev)
-          }
-          else checkNext(next)  // still valid
+          } else checkNext(next) // still valid
         }
       }
 
       checkNext(head)
     }
 
-    def add(node: Node): Unit = {
+    def add(node: Node): Unit =
       node.insertAfter(head)
-    }
   }
 
   /** A Link in a single linked list which can also be passed to the user as a Cancellable
@@ -222,12 +211,12 @@ class TickWheelExecutor(wheelSize: Int = DefaultWheelSize, tick: Duration = 200.
     * @param next next Node in the list or `tailNode` if this is the last element
     */
   final private class Node(
-    r: Runnable,
-    ec: ExecutionContext,
-    val expiration: Long,
-    var prev: Node,
-    var next: Node,
-    var canceled: Boolean = false
+      r: Runnable,
+      ec: ExecutionContext,
+      val expiration: Long,
+      var prev: Node,
+      var next: Node,
+      var canceled: Boolean = false
   ) extends Cancellable {
 
     /** Remove this node from its linked list */
@@ -268,15 +257,14 @@ class TickWheelExecutor(wheelSize: Int = DefaultWheelSize, tick: Duration = 200.
       go()
     }
 
-    def run(): Unit = {
+    def run(): Unit =
       try ec.execute(r)
       catch { case NonFatal(t) => onNonFatal(t) }
-    }
   }
 }
 
 object TickWheelExecutor {
+
   /** Default size of the hash wheel */
   val DefaultWheelSize = 512
 }
-

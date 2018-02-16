@@ -16,9 +16,9 @@ trait ChannelHead extends HeadStage[ByteBuffer] {
   protected def closeWithError(t: Throwable): Unit
 
   override def outboundCommand(cmd: OutboundCommand): Unit = cmd match {
-      case Disconnect => closeWithError(EOF)
-      case Error(e)   => closeWithError(e)
-      case cmd        => // NOOP
+    case Disconnect => closeWithError(EOF)
+    case Error(e) => closeWithError(e)
+    case cmd => // NOOP
   }
 
   /** Filter the error, replacing known "EOF" like errors with EOF */
@@ -38,9 +38,9 @@ object ChannelHead {
 
   // If the connection is forcibly closed, we might get an IOException with one of the following messages
   private[blaze] val brokePipeMessages = Set(
-    "Connection timed out",       // Found on linux NIO1
-    "Connection reset by peer",   // Found on Linux
-    "An existing connection was forcibly closed by the remote host",    // Found on windows
-    "Broken pipe"   // also found on Linux
+    "Connection timed out", // Found on linux NIO1
+    "Connection reset by peer", // Found on Linux
+    "An existing connection was forcibly closed by the remote host", // Found on windows
+    "Broken pipe" // also found on Linux
   )
 }

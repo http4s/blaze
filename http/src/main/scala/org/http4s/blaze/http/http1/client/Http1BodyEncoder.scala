@@ -20,7 +20,7 @@ private object Http1BodyEncoder {
   object IdentityEncoder extends Http1BodyEncoder {
     override def finish(): ByteBuffer = BufferTools.emptyBuffer
 
-    override def encode(buffer: ByteBuffer): Seq[ByteBuffer] = buffer::Nil
+    override def encode(buffer: ByteBuffer): Seq[ByteBuffer] = buffer :: Nil
   }
 
   // Prepends chunks with a length field
@@ -47,8 +47,8 @@ private object Http1BodyEncoder {
     }
 
     private val terminator =
-      ByteBuffer.wrap("0\r\n\r\n".getBytes(StandardCharsets.UTF_8))
+      ByteBuffer
+        .wrap("0\r\n\r\n".getBytes(StandardCharsets.UTF_8))
         .asReadOnlyBuffer()
   }
 }
-

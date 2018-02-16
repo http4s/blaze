@@ -3,7 +3,6 @@ package pipeline
 
 import scala.util.control.NoStackTrace
 
-
 object Command {
 
   trait InboundCommand

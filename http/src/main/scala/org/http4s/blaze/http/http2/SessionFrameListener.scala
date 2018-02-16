@@ -16,11 +16,15 @@ private class SessionFrameListener(
     session: SessionCore,
     isClient: Boolean,
     headerDecoder: HeaderDecoder)
-  extends HeaderAggregatingFrameListener(session.localSettings, headerDecoder) {
+    extends HeaderAggregatingFrameListener(session.localSettings, headerDecoder) {
 
   // Concrete methods ////////////////////////////////////////////////////////////////////
 
-  override def onCompleteHeadersFrame(streamId: Int, priority: Priority, endStream: Boolean, headers: Headers): Result = {
+  override def onCompleteHeadersFrame(
+      streamId: Int,
+      priority: Priority,
+      endStream: Boolean,
+      headers: Headers): Result =
     session.streamManager.get(streamId) match {
       case Some(stream) =>
         stream.invokeInboundHeaders(priority, endStream, headers)
@@ -28,13 +32,16 @@ private class SessionFrameListener(
       case None =>
         session.streamManager.newInboundStream(streamId) match {
           case Left(ex) => Error(ex)
-          case Right(is) => is.invokeInboundHeaders(priority, endStream, headers)
+          case Right(is) =>
+            is.invokeInboundHeaders(priority, endStream, headers)
         }
     }
-  }
 
   // See https://tools.ietf.org/html/rfc7540#section-6.6 and section-8.2 for the list of rules
-  override def onCompletePushPromiseFrame(streamId: Int, promisedId: Int, headers: Headers): Result = {
+  override def onCompletePushPromiseFrame(
+      streamId: Int,
+      promisedId: Int,
+      headers: Headers): Result =
     if (!isClient) {
       // A client cannot push. Thus, servers MUST treat the receipt of a
       // PUSH_PROMISE frame as a connection error of type PROTOCOL_ERROR.
@@ -46,10 +53,10 @@ private class SessionFrameListener(
       // and has received acknowledgement MUST treat the receipt of a
       // PUSH_PROMISE frame as a connection error (Section 5.4.1) of type PROTOCOL_ERROR.
       Error(PROTOCOL_ERROR.goaway("Received PUSH_PROMISE frame then they are disallowed"))
-    } else session.streamManager.handlePushPromise(streamId, promisedId, headers)
-  }
+    } else
+      session.streamManager.handlePushPromise(streamId, promisedId, headers)
 
-  override def onDataFrame(streamId: Int, isLast: Boolean, data: ByteBuffer, flow: Int): Result = {
+  override def onDataFrame(streamId: Int, isLast: Boolean, data: ByteBuffer, flow: Int): Result =
     session.streamManager.get(streamId) match {
       case Some(stream) =>
         // the stream will deal with updating the flow windows
@@ -75,7 +82,6 @@ private class SessionFrameListener(
           Error(STREAM_CLOSED.rst(streamId))
         }
     }
-  }
 
   // TODO: what would priority handling look like?
   override def onPriorityFrame(streamId: Int, priority: Priority.Dependent): Result =
@@ -87,9 +93,8 @@ private class SessionFrameListener(
     session.streamManager.rstStream(ex)
   }
 
-  override def onWindowUpdateFrame(streamId: Int, sizeIncrement: Int): Result = {
+  override def onWindowUpdateFrame(streamId: Int, sizeIncrement: Int): Result =
     session.streamManager.flowWindowUpdate(streamId, sizeIncrement)
-  }
 
   override def onPingFrame(ack: Boolean, data: Array[Byte]): Result = {
     // TODO: need to prioritize ping acks
@@ -98,41 +103,42 @@ private class SessionFrameListener(
     Continue
   }
 
-  override def onSettingsFrame(settings: Option[Seq[Setting]]): Result = settings match {
-    // We don't consider the uncertainty between us sending a SETTINGS frame and its ack
-    // but that's OK since we never update settings after the initial handshake.
-    case None => Continue // ack
-    case Some(settings) =>
-      val remoteSettings = session.remoteSettings
-      // These two settings require some action if they change
-      val initialInitialWindowSize = remoteSettings.initialWindowSize
-      val initialHeaderTableSize = remoteSettings.headerTableSize
+  override def onSettingsFrame(settings: Option[Seq[Setting]]): Result =
+    settings match {
+      // We don't consider the uncertainty between us sending a SETTINGS frame and its ack
+      // but that's OK since we never update settings after the initial handshake.
+      case None => Continue // ack
+      case Some(settings) =>
+        val remoteSettings = session.remoteSettings
+        // These two settings require some action if they change
+        val initialInitialWindowSize = remoteSettings.initialWindowSize
+        val initialHeaderTableSize = remoteSettings.headerTableSize
 
-      val result = remoteSettings.updateSettings(settings) match {
-        case Some(ex) => Error(ex) // problem with settings
-        case None =>
-          if (remoteSettings.headerTableSize != initialHeaderTableSize) {
-            session.http2Encoder.setMaxTableSize(remoteSettings.headerTableSize)
-          }
+        val result = remoteSettings.updateSettings(settings) match {
+          case Some(ex) => Error(ex) // problem with settings
+          case None =>
+            if (remoteSettings.headerTableSize != initialHeaderTableSize) {
+              session.http2Encoder.setMaxTableSize(remoteSettings.headerTableSize)
+            }
 
-          val diff = remoteSettings.initialWindowSize - initialInitialWindowSize
-          if (diff == 0) Continue
-          else {
-            // https://tools.ietf.org/html/rfc7540#section-6.9.2
-            // a receiver MUST adjust the size of all stream flow-control windows that
-            // it maintains by the difference between the new value and the old value.
-            session.streamManager.initialFlowWindowChange(diff)
-          }
-      }
+            val diff = remoteSettings.initialWindowSize - initialInitialWindowSize
+            if (diff == 0) Continue
+            else {
+              // https://tools.ietf.org/html/rfc7540#section-6.9.2
+              // a receiver MUST adjust the size of all stream flow-control windows that
+              // it maintains by the difference between the new value and the old value.
+              session.streamManager.initialFlowWindowChange(diff)
+            }
+        }
 
-      if (result == Continue) {
-        // ack the SETTINGS frame on success, otherwise we are tearing
-        // down the connection anyway so no need
-        session.writeController.write(FrameSerializer.mkSettingsAckFrame())
-      }
+        if (result == Continue) {
+          // ack the SETTINGS frame on success, otherwise we are tearing
+          // down the connection anyway so no need
+          session.writeController.write(FrameSerializer.mkSettingsAckFrame())
+        }
 
-      result
-  }
+        result
+    }
 
   override def onGoAwayFrame(lastStream: Int, errorCode: Long, debugData: Array[Byte]): Result = {
     val message = new String(debugData, StandardCharsets.UTF_8)

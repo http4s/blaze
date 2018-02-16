@@ -4,12 +4,11 @@ import org.http4s.blaze.channel.ChannelHead
 
 import scala.util.{Failure, Success, Try}
 import java.nio.ByteBuffer
-import java.nio.channels.{CancelledKeyException, SelectionKey, SelectableChannel}
+import java.nio.channels.{CancelledKeyException, SelectableChannel, SelectionKey}
 import scala.concurrent.{Future, Promise}
 import scala.util.control.NonFatal
 import org.http4s.blaze.pipeline.Command.{Disconnected, EOF}
 import org.http4s.blaze.util.BufferTools
-
 
 private[nio1] object NIO1HeadStage {
 
@@ -23,22 +22,22 @@ private[nio1] object NIO1HeadStage {
 }
 
 private[nio1] abstract class NIO1HeadStage(
-  ch: SelectableChannel,
-  loop: SelectorLoop,
-  key: SelectionKey
+    ch: SelectableChannel,
+    loop: SelectorLoop,
+    key: SelectionKey
 ) extends ChannelHead {
   import NIO1HeadStage._
 
   override def name: String = "NIO1 ByteBuffer Head Stage"
 
   // State of the HeadStage. These should only be accessed from the SelectorLoop thread
-  private var closedReason: Throwable = null // will only be written to inside of 'closeWithError'
+  // will only be written to inside of 'closeWithError'
+  private var closedReason: Throwable = null
 
   private var readPromise: Promise[ByteBuffer] = null
 
   private var writeData: Array[ByteBuffer] = null
   private var writePromise: Promise[Unit] = null
-
 
   final def opsReady(scratch: ByteBuffer): Unit = {
     val readyOps = key.readyOps
@@ -63,13 +62,15 @@ private[nio1] abstract class NIO1HeadStage(
         if (p != null) {
           p.tryComplete(r)
           ()
+        } else {
+          /* NOOP: was handled during an exception event */
+          ()
         }
-        else { /* NOOP: was handled during an exception event */ ()}
 
       case Failure(e) =>
         val ee = checkError(e)
         sendInboundCommand(Disconnected)
-        closeWithError(ee)    // will complete the promise with the error
+        closeWithError(ee) // will complete the promise with the error
         ()
     }
   }
@@ -88,10 +89,13 @@ private[nio1] abstract class NIO1HeadStage(
         if (p != null) {
           p.tryComplete(cachedSuccess)
           ()
+        } else {
+          /* NOOP: channel must have been closed in some manner */
+          ()
         }
-        else { /* NOOP: channel must have been closed in some manner */ ()}
 
-      case Incomplete => /* Need to wait for another go around to try and send more data */
+      case Incomplete =>
+        /* Need to wait for another go around to try and send more data */
         BufferTools.dropEmpty(buffers)
         ()
 
@@ -109,55 +113,54 @@ private[nio1] abstract class NIO1HeadStage(
     val p = Promise[ByteBuffer]
 
     loop.executeTask(new Runnable {
-      override def run(): Unit = {
+      override def run(): Unit =
         if (closedReason != null) {
           p.tryFailure(closedReason)
           ()
-        }
-        else if (readPromise == null) {
+        } else if (readPromise == null) {
           readPromise = p
           setOp(SelectionKey.OP_READ)
           ()
-        }
-        else {
+        } else {
           p.tryFailure(new IllegalStateException("Cannot have more than one pending read request"))
           ()
         }
-      }
     })
     p.future
   }
 
   /// channel write bits /////////////////////////////////////////////////
 
-  final override def writeRequest(data: ByteBuffer): Future[Unit] = writeRequest(data::Nil)
+  final override def writeRequest(data: ByteBuffer): Future[Unit] =
+    writeRequest(data :: Nil)
 
   final override def writeRequest(data: Seq[ByteBuffer]): Future[Unit] = {
     logger.trace(s"NIO1HeadStage Write Request: $data")
     val p = Promise[Unit]
     loop.executeTask(new Runnable {
-      override def run(): Unit = {
+      override def run(): Unit =
         if (closedReason != null) {
           p.tryFailure(closedReason)
           ()
-        }
-        else if (writePromise == null) {
+        } else if (writePromise == null) {
           val writes = data.toArray
-          if (!BufferTools.checkEmpty(writes)) {  // Non-empty buffer
+          if (!BufferTools.checkEmpty(writes)) { // Non-empty buffer
             writePromise = p
             writeData = writes
             setOp(SelectionKey.OP_WRITE)
             p.future
             ()
+          } else {
+            // Empty buffer, just return success
+            p.tryComplete(cachedSuccess)
+            ()
           }
-          else p.tryComplete(cachedSuccess); () // Empty buffer, just return success
         } else {
           val t = new IllegalStateException("Cannot have more than one pending write request")
           logger.error(t)(s"Multiple pending write requests")
           p.tryFailure(t)
           ()
         }
-      }
     })
 
     p.future
@@ -196,8 +199,7 @@ private[nio1] abstract class NIO1HeadStage(
       // this is the only place that writes to the variable
       if (closedReason == null) {
         closedReason = t
-      }
-      else if(closedReason != EOF && closedReason != t) {
+      } else if (closedReason != EOF && closedReason != t) {
         closedReason.addSuppressed(t)
       }
 
@@ -226,21 +228,22 @@ private[nio1] abstract class NIO1HeadStage(
         doClose(t)
       }
     })
-    catch { case NonFatal(t2) =>
-      t2.addSuppressed(t)
-      logger.error(t2)("Caught exception while closing channel: trying to close from " +
-                      s"${Thread.currentThread.getName}")
-      doClose(t2)
+    catch {
+      case NonFatal(t2) =>
+        t2.addSuppressed(t)
+        logger.error(t2)(
+          "Caught exception while closing channel: trying to close from " +
+            s"${Thread.currentThread.getName}")
+        doClose(t2)
     }
   }
 
   /** Unsets a channel interest
-   *  only to be called by the SelectorLoop thread
+    *  only to be called by the SelectorLoop thread
    **/
-  private def unsetOp(op: Int): Unit = {
+  private def unsetOp(op: Int): Unit =
     // assert(Thread.currentThread() == loop,
     //       s"Expected to be called only by SelectorLoop thread, was called by ${Thread.currentThread.getName}")
-
     try {
       val ops = key.interestOps()
       if ((ops & op) != 0) {
@@ -252,13 +255,11 @@ private[nio1] abstract class NIO1HeadStage(
         sendInboundCommand(Disconnected)
         closeWithError(EOF)
     }
-  }
 
   // only to be called by the SelectorLoop thread
-  private def setOp(op: Int) : Unit = {
+  private def setOp(op: Int): Unit =
     // assert(Thread.currentThread() == loop,
     //       s"Expected to be called only by SelectorLoop thread, was called by ${Thread.currentThread.getName}")
-
     try {
       val ops = key.interestOps()
       if ((ops & op) == 0) {
@@ -270,5 +271,4 @@ private[nio1] abstract class NIO1HeadStage(
         sendInboundCommand(Disconnected)
         closeWithError(EOF)
     }
-  }
 }

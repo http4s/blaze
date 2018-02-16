@@ -16,7 +16,7 @@ class ALPNClientSelector(
     available: Seq[String],
     default: String,
     builder: String => LeafBuilder[ByteBuffer])
-  extends TailStage[ByteBuffer] {
+    extends TailStage[ByteBuffer] {
   require(available.nonEmpty)
 
   ALPN.put(engine, new ClientProvider)
@@ -26,18 +26,17 @@ class ALPNClientSelector(
 
   override def name: String = "Http2ClientALPNSelector"
 
-  override protected def stageStartup(): Unit = {
+  override protected def stageStartup(): Unit =
     // This shouldn't complete until the handshake is done and ALPN has been run.
     channelWrite(Nil).onComplete {
-      case Success(_)       => selectPipeline()
+      case Success(_) => selectPipeline()
       case Failure(Cmd.EOF) => // NOOP
-      case Failure(t)       =>
+      case Failure(t) =>
         logger.error(t)(s"$name failed to startup")
         sendOutboundCommand(Cmd.Error(t))
     }(trampoline)
-  }
 
-  private def selectPipeline(): Unit = {
+  private def selectPipeline(): Unit =
     try {
       logger.debug(s"Client ALPN selected: $selected")
       val tail = builder(selected.getOrElse(default))
@@ -48,7 +47,6 @@ class ALPNClientSelector(
         logger.error(t)("Failure building pipeline")
         sendOutboundCommand(Cmd.Error(t))
     }
-  }
 
   private class ClientProvider extends ALPN.ClientProvider {
     override val protocols: util.List[String] = available.asJava

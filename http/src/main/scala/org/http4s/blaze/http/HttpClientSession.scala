@@ -84,4 +84,3 @@ object HttpClientSession {
   /** The session will no longer be able to dispatch requests */
   case object Closed extends Status
 }
-

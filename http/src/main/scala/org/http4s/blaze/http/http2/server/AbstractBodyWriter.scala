@@ -43,8 +43,7 @@ private abstract class AbstractBodyWriter(private var hs: Headers) extends BodyW
         val bodyFrame = DataFrame(false, buffer)
         flushMessage(hs :: bodyFrame :: Nil)
       }
-    }
-    else if (!buffer.hasRemaining) InternalWriter.CachedSuccess
+    } else if (!buffer.hasRemaining) InternalWriter.CachedSuccess
     else {
       val bodyFrame = DataFrame(false, buffer)
       flushMessage(bodyFrame)

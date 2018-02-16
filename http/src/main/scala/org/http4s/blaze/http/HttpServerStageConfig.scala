@@ -11,8 +11,8 @@ import scala.concurrent.duration.Duration
   * TODO: what about things like listening address and port?
   */
 case class HttpServerStageConfig(
-  maxNonBodyBytes: Int = 16*1024,                           // Max bytes to accept as part of headers and request line
-  requestPreludeTimeout: Duration = Duration.Inf,           // Timeout for the next request before considering the session lost
-  serviceTimeout: Duration = Duration.Inf,                  // Timeout to apply to the service before sending a
-  maxConcurrentStreams: Int = 100,                          // Maximum number of inbound streams we allow concurrently for HTTP2
-  serviceExecutor: ExecutionContext = Execution.trampoline) // Executor to run the service future in.
+    maxNonBodyBytes: Int = 16 * 1024, // Max bytes to accept as part of headers and request line
+    requestPreludeTimeout: Duration = Duration.Inf, // Timeout for the next request before considering the session lost
+    serviceTimeout: Duration = Duration.Inf, // Timeout to apply to the service before sending a
+    maxConcurrentStreams: Int = 100, // Maximum number of inbound streams we allow concurrently for HTTP2
+    serviceExecutor: ExecutionContext = Execution.trampoline) // Executor to run the service future in.

@@ -35,7 +35,7 @@ private abstract class AbstractBodyReader(streamId: Int, length: Long) extends B
 
   override def isExhausted: Boolean = this.synchronized(finished)
 
-  def apply(): Future[ByteBuffer] = {
+  def apply(): Future[ByteBuffer] =
     if (isExhausted) BufferTools.emptyFutureBuffer
     else {
       channelRead().flatMap { frame =>
@@ -49,7 +49,8 @@ private abstract class AbstractBodyReader(streamId: Int, length: Long) extends B
                 Success(bytes)
               } else {
                 // overflow. This is a malformed message.
-                val msg = s"Invalid content-length, expected: $length, received (thus far): $bytesRead"
+                val msg =
+                  s"Invalid content-length, expected: $length, received (thus far): $bytesRead"
                 Failure(PROTOCOL_ERROR.rst(streamId, msg))
               }
 
@@ -79,7 +80,6 @@ private abstract class AbstractBodyReader(streamId: Int, length: Long) extends B
         Future.fromTry(result)
       }(Execution.trampoline)
     }
-  }
 }
 
 private object AbstractBodyReader {

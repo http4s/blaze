@@ -13,9 +13,11 @@ object HeaderLike {
 
   def apply[T](implicit hl: HeaderLike[T]): HeaderLike[T] = hl
 
-  implicit val tupleHeaderLike: HeaderLike[(String, String)] = new HeaderLike[(String, String)] {
-    override def make(key: String, value: String): (String, String) = ((key, value))
-    override def getKey(header: (String, String)): String = header._1
-    override def getValue(header: (String, String)): String = header._2
-  }
+  implicit val tupleHeaderLike: HeaderLike[(String, String)] =
+    new HeaderLike[(String, String)] {
+      override def make(key: String, value: String): (String, String) =
+        ((key, value))
+      override def getKey(header: (String, String)): String = header._1
+      override def getValue(header: (String, String)): String = header._2
+    }
 }

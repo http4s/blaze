@@ -23,9 +23,9 @@ import scala.util.control.NonFatal
   * @param maxTableSize maximum compression table to maintain
   */
 private final class HeaderDecoder(
-  maxHeaderListSize: Int,
-  discardOverflowHeaders: Boolean,
-  val maxTableSize: Int
+    maxHeaderListSize: Int,
+    discardOverflowHeaders: Boolean,
+    val maxTableSize: Int
 ) {
   require(maxTableSize >= DefaultSettings.HEADER_TABLE_SIZE)
 
@@ -49,7 +49,7 @@ private final class HeaderDecoder(
   def setMaxHeaderTableSize(max: Int): Unit = decoder.setMaxHeaderTableSize(max)
 
   /** Returns the header collection and clears the builder */
-  def finish(): Seq[(String,String)] = {
+  def finish(): Seq[(String, String)] = {
     if (!sawEndHeaders) {
       throw new IllegalStateException(
         "Should only be called after decoding the a terminating header fragment")
@@ -65,20 +65,20 @@ private final class HeaderDecoder(
 
   def currentHeaderBlockSize: Int = headerBlockSize
 
-  def headerListSizeOverflow: Boolean = currentHeaderBlockSize > maxHeaderListSize
+  def headerListSizeOverflow: Boolean =
+    currentHeaderBlockSize > maxHeaderListSize
 
   /** Decode the headers into the internal header accumulator */
   def decode(buffer: ByteBuffer, streamId: Int, endHeaders: Boolean): MaybeError =
     doDecode(buffer, streamId, endHeaders, listener)
 
   private[this] def doDecode(
-    buffer: ByteBuffer,
-    streamId: Int,
-    endHeaders: Boolean,
-    listener: HeaderListener): MaybeError = {
+      buffer: ByteBuffer,
+      streamId: Int,
+      endHeaders: Boolean,
+      listener: HeaderListener): MaybeError = {
     if (sawEndHeaders) {
-      throw new IllegalStateException(
-        "called doDecode() after receiving an endHeaders flag")
+      throw new IllegalStateException("called doDecode() after receiving an endHeaders flag")
     }
 
     try {
@@ -87,9 +87,10 @@ private final class HeaderDecoder(
       decoder.decode(new ByteBufferInputStream(buff), listener)
 
       if (!buff.hasRemaining()) leftovers = null
-      else if (buff ne buffer) leftovers = buff // we made a copy with concatBuffers
-      else {  // buff == input buffer. Need to copy the input buffer so we are not sharing it
-      val b = BufferTools.allocate(buff.remaining())
+      else if (buff ne buffer)
+        leftovers = buff // we made a copy with concatBuffers
+      else { // buff == input buffer. Need to copy the input buffer so we are not sharing it
+        val b = BufferTools.allocate(buff.remaining())
         b.put(buff).flip()
         leftovers = b
       }
@@ -99,8 +100,9 @@ private final class HeaderDecoder(
       }
 
       Continue
-    } catch { case NonFatal(_) =>
-      Error(COMPRESSION_ERROR.goaway(s"Compression error on stream $streamId"))
+    } catch {
+      case NonFatal(_) =>
+        Error(COMPRESSION_ERROR.goaway(s"Compression error on stream $streamId"))
     }
   }
 }

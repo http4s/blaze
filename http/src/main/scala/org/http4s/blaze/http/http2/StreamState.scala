@@ -24,7 +24,10 @@ private trait StreamState extends HeadStage[StreamFrame] with WriteInterest {
   def invokeInboundData(endStream: Boolean, data: ByteBuffer, flowBytes: Int): MaybeError
 
   /** Called by the session when a HEADERS has been received from the remote peer */
-  def invokeInboundHeaders(priority: Priority, endStream: Boolean, headers: Seq[(String,String)]): MaybeError
+  def invokeInboundHeaders(
+      priority: Priority,
+      endStream: Boolean,
+      headers: Seq[(String, String)]): MaybeError
 
   /** Close the stream, optionally with an error */
   def closeWithError(t: Option[Throwable]): Unit

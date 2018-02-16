@@ -15,24 +15,22 @@ object Execution {
   private[this] val logger = getLogger
 
   // Race a future vs a default value. The timer used is the default blaze scheduler
-  private[blaze] def withTimeout[T](d: Duration, fallback: Try[T])(f: Future[T]): Future[T] = {
+  private[blaze] def withTimeout[T](d: Duration, fallback: Try[T])(f: Future[T]): Future[T] =
     if (!d.isFinite) f
     else if (f.isCompleted) f
     else {
       val p = Promise[T]
       val r = new Runnable {
-        def run(): Unit = {
+        def run(): Unit =
           if (p.tryComplete(fallback)) {
             logger.debug(s"Future $f timed out after $d, yielding reesult $fallback")
           }
-        }
       }
       // Race the future vs a timeout
       Execution.scheduler.schedule(r, d)
       f.onComplete(p.tryComplete(_))(Execution.directec)
       p.future
     }
-  }
 
   /** A trampolining `ExecutionContext`
     *
@@ -97,13 +95,14 @@ object Execution {
       }
     }
 
-    override def reportFailure(cause: Throwable): Unit = trampolineFailure(cause)
+    override def reportFailure(cause: Throwable): Unit =
+      trampolineFailure(cause)
 
     @tailrec
     private def run(): Unit = {
       val r = next()
       if (r == null) {
-        rest = null     // don't want a memory leak from potentially large array buffers
+        rest = null // don't want a memory leak from potentially large array buffers
         running = false
       } else {
         try r.run()
@@ -121,5 +120,6 @@ object Execution {
     }
   }
 
-  private def trampolineFailure(cause: Throwable) = logger.error(cause)("Trampoline EC Exception caught")
+  private def trampolineFailure(cause: Throwable) =
+    logger.error(cause)("Trampoline EC Exception caught")
 }

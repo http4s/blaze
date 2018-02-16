@@ -14,12 +14,11 @@ object ExampleKeystore {
     val ks = KeyStore.getInstance("JKS")
     ks.load(ksStream, BogusKeystore.getKeyStorePassword)
 
-
-    val kmf = KeyManagerFactory.getInstance(KeyManagerFactory.getDefaultAlgorithm())
+    val kmf =
+      KeyManagerFactory.getInstance(KeyManagerFactory.getDefaultAlgorithm())
     kmf.init(ks, BogusKeystore.getCertificatePassword)
 
     val context = SSLContext.getInstance("SSL")
-
 
     context.init(kmf.getKeyManagers(), null, null)
 
@@ -39,16 +38,15 @@ object ExampleKeystore {
     val ks = KeyStore.getInstance("JKS")
     ks.load(ksStream, "password".toCharArray)
 
-
     val kmf = KeyManagerFactory.getInstance("SunX509")
     kmf.init(ks, "password".toCharArray)
 
     val context = SSLContext.getInstance("SSL")
 
     // the keystore is also used as the trust manager
-    val tmf = TrustManagerFactory.getInstance(TrustManagerFactory.getDefaultAlgorithm)
+    val tmf =
+      TrustManagerFactory.getInstance(TrustManagerFactory.getDefaultAlgorithm)
     tmf.init(ks)
-
 
     context.init(kmf.getKeyManagers(), tmf.getTrustManagers, null)
 

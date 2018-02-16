@@ -1,18 +1,17 @@
 package org.http4s.blaze.pipeline
 
-
-
 /** By requiring a LeafBuilder, you are ensuring that the pipeline is capped
   * with a TailStage as the only way to get a LeafBuilder if by capping with a
   * TailStage or getting a new LeafBuilder from a TailStage
   * @param leaf the capped pipeline
   * @tparam I type the pipeline will read and write
   */
-final class LeafBuilder[I] private[pipeline](leaf: Tail[I]) {
+final class LeafBuilder[I] private[pipeline] (leaf: Tail[I]) {
 
   def prepend[N](stage: MidStage[N, I]): LeafBuilder[N] = {
     if (stage._nextStage != null) sys.error(s"Stage $stage must be fresh")
-    if (stage.isInstanceOf[HeadStage[_]]) sys.error("LeafBuilder cannot accept HeadStages!")
+    if (stage.isInstanceOf[HeadStage[_]])
+      sys.error("LeafBuilder cannot accept HeadStages!")
 
     leaf._prevStage = stage
     stage._nextStage = leaf
@@ -34,18 +33,21 @@ final class LeafBuilder[I] private[pipeline](leaf: Tail[I]) {
 object LeafBuilder {
   def apply[T](leaf: TailStage[T]): LeafBuilder[T] = new LeafBuilder[T](leaf)
 
-  implicit def tailToLeaf[I](tail: TailStage[I]): LeafBuilder[I] = LeafBuilder(tail)
+  implicit def tailToLeaf[I](tail: TailStage[I]): LeafBuilder[I] =
+    LeafBuilder(tail)
 }
 
 /** Facilitates starting a pipeline from a MidStage. Can be appended and prepended
   * to build up the pipeline
   */
-final class TrunkBuilder[I1, O] private[pipeline](protected val head: MidStage[I1, _],
-                                                  protected val tail: MidStage[_, O]) {
+final class TrunkBuilder[I1, O] private[pipeline] (
+    protected val head: MidStage[I1, _],
+    protected val tail: MidStage[_, O]) {
 
   def append[N](stage: MidStage[O, N]): TrunkBuilder[I1, N] = {
     if (stage._prevStage != null) sys.error(s"Stage $stage must be fresh")
-    if (stage.isInstanceOf[HeadStage[_]]) sys.error(s"Cannot append HeadStages: $stage")
+    if (stage.isInstanceOf[HeadStage[_]])
+      sys.error(s"Cannot append HeadStages: $stage")
 
     tail._nextStage = stage
     stage._prevStage = tail
@@ -77,18 +79,19 @@ final class TrunkBuilder[I1, O] private[pipeline](protected val head: MidStage[I
 
   def prepend[A](stage: MidStage[A, I1]): TrunkBuilder[A, O] = {
     if (stage._nextStage != null) sys.error(s"Stage $stage must be fresh")
-    if (stage.isInstanceOf[HeadStage[_]]) sys.error("Cannot prepend HeadStage. Use method base")
+    if (stage.isInstanceOf[HeadStage[_]])
+      sys.error("Cannot prepend HeadStage. Use method base")
 
     head._prevStage = stage
     stage._nextStage = head
     new TrunkBuilder(stage, tail)
   }
 
-  def prepend[A1, A2](tb: TrunkBuilder[A1, I1]): TrunkBuilder[A1, O] = {
+  def prepend[A1, A2](tb: TrunkBuilder[A1, I1]): TrunkBuilder[A1, O] =
     tb.append(this)
-  }
 }
 
 object TrunkBuilder {
-  def apply[T1, T2](mid: MidStage[T1, T2]): TrunkBuilder[T1, T2] = new TrunkBuilder(mid, mid)
+  def apply[T1, T2](mid: MidStage[T1, T2]): TrunkBuilder[T1, T2] =
+    new TrunkBuilder(mid, mid)
 }

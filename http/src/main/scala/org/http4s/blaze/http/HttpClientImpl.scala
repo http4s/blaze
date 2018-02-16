@@ -13,10 +13,8 @@ private[http] class HttpClientImpl(sessionPool: ClientSessionManager) extends Ht
 
   private implicit def ec = Execution.directec
 
-  private class ReleaseableResponseProxy(
-      session: HttpClientSession,
-      resp: ReleaseableResponse)
-    extends ClientResponse(resp.code, resp.status, resp.headers, resp.body)
+  private class ReleaseableResponseProxy(session: HttpClientSession, resp: ReleaseableResponse)
+      extends ClientResponse(resp.code, resp.status, resp.headers, resp.body)
       with ReleaseableResponse {
     private[this] var released = false
     override def release(): Unit = synchronized {
@@ -30,7 +28,8 @@ private[http] class HttpClientImpl(sessionPool: ClientSessionManager) extends Ht
 
   override def unsafeDispatch(request: HttpRequest): Future[ReleaseableResponse] =
     sessionPool.acquireSession(request).flatMap { session =>
-      val f = session.dispatch(request).map(new ReleaseableResponseProxy(session, _))
+      val f =
+        session.dispatch(request).map(new ReleaseableResponseProxy(session, _))
 
       // If we fail to acquire the response, it is our job to return the
       // session since the user has no handle to do so.

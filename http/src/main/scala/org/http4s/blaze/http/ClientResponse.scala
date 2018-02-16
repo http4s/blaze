@@ -23,32 +23,35 @@ object ClientResponse {
   def stringBody(response: ClientResponse): Future[String] = {
     val acc = new ArrayBuffer[ByteBuffer](8)
 
-    var count  = 0
+    var count = 0
 
-    def go(): Future[String] = response.body().flatMap { buffer =>
-      count += buffer.remaining()
-      if (buffer.hasRemaining) {
-        acc += buffer
-        go()
-      }
-      else {
-        val b = BufferTools.joinBuffers(acc)
-        val encoding = getCharset(response.headers)
+    def go(): Future[String] =
+      response
+        .body()
+        .flatMap { buffer =>
+          count += buffer.remaining()
+          if (buffer.hasRemaining) {
+            acc += buffer
+            go()
+          } else {
+            val b = BufferTools.joinBuffers(acc)
+            val encoding = getCharset(response.headers)
 
-        try {
-          val bodyString = Charset.forName(encoding).decode(b).toString()
-          Future.successful(bodyString)
-        }
-        catch { case e: Throwable => Future.failed(e) }
-      }
-    }(Execution.trampoline)
+            try {
+              val bodyString = Charset.forName(encoding).decode(b).toString()
+              Future.successful(bodyString)
+            } catch { case e: Throwable => Future.failed(e) }
+          }
+        }(Execution.trampoline)
 
     go()
   }
 
-  private def getCharset(hs: Headers): String = {
+  private def getCharset(hs: Headers): String =
     hs.collectFirst {
-      case (k, v) if k.equalsIgnoreCase("content-type") => charsetRegex.findFirstIn(v)
-    }.flatten.getOrElse("UTF-8")
-  }
+        case (k, v) if k.equalsIgnoreCase("content-type") =>
+          charsetRegex.findFirstIn(v)
+      }
+      .flatten
+      .getOrElse("UTF-8")
 }

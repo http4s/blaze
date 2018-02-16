@@ -49,9 +49,9 @@ private[blaze] final class TaskQueue {
       if (tail == ClosedNode) Closed // closed
       else if (!queueTail.compareAndSet(tail, node)) loop() // lost the race
       else if (tail != null) {
-          // link the head -> node
-          tail.lazySet(node)
-          Enqueued
+        // link the head -> node
+        tail.lazySet(node)
+        Enqueued
       } else {
         // this was the first element in the queue
         queueHead.set(node)
@@ -77,7 +77,7 @@ private[blaze] final class TaskQueue {
     }
 
     @tailrec
-    def go(node: Node): Unit = {
+    def go(node: Node): Unit =
       if (node ne ClosedNode) {
         try node.runnable.run()
         catch {
@@ -91,10 +91,8 @@ private[blaze] final class TaskQueue {
             go(spin(node))
           }
           //else () // Finished the last node. All done.
-        }
-        else go(next)
+        } else go(next)
       }
-    }
 
     val t = queueHead.getAndSet(null)
     if (t ne null) {
@@ -125,8 +123,9 @@ private[blaze] object TaskQueue {
   // the queue is closed.
   private val ClosedNode = new Node(new Runnable {
     def run(): Unit = {
-      val ex = bug("Illegal state reached! TaskQueue found executing " +
-        "a marker node. Please report as a bug.")
+      val ex = bug(
+        "Illegal state reached! TaskQueue found executing " +
+          "a marker node. Please report as a bug.")
       logger.error(ex)("Unexpected state")
     }
   })

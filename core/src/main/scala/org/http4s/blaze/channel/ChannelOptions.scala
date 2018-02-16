@@ -8,9 +8,8 @@ case class OptionValue[T](key: SocketOption[T], value: T)
 
 /** Collection of socket options */
 case class ChannelOptions(options: Vector[OptionValue[_]]) {
-  def applyToChannel(channel: NetworkChannel): Unit = {
-    options.foreach { case OptionValue(k, v) =>  channel.setOption(k, v) }
-  }
+  def applyToChannel(channel: NetworkChannel): Unit =
+    options.foreach { case OptionValue(k, v) => channel.setOption(k, v) }
 }
 
 object ChannelOptions {
