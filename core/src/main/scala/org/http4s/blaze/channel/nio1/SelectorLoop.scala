@@ -1,8 +1,8 @@
 package org.http4s.blaze.channel.nio1
 
-import org.http4s.blaze.pipeline.{Command => Cmd}
 import org.http4s.blaze.pipeline._
 import org.http4s.blaze.channel.BufferPipelineBuilder
+import org.http4s.blaze.util
 
 import scala.util.control.{ControlThrowable, NonFatal}
 import java.nio.channels._
@@ -153,7 +153,7 @@ final class SelectorLoop(
       it.remove()
 
       try if (k.isValid) {
-        val head = k.attachment.asInstanceOf[NIO1HeadStage]
+        val head = getAttachment(k)
         if (head != null) {
           head.opsReady(scratch)
         } else {
@@ -170,7 +170,7 @@ final class SelectorLoop(
           }
 
           try {
-            val head = k.attachment.asInstanceOf[NIO1HeadStage]
+            val head = getAttachment(k)
             head.closeWithError(t)
           } catch {
             case t @ (NonFatal(_) | _: ControlThrowable) =>
@@ -186,11 +186,9 @@ final class SelectorLoop(
     try {
       selector.keys.asScala.foreach { k =>
         try {
-          val head = k.attachment
+          val head = getAttachment(k)
           if (head != null) {
-            val stage = head.asInstanceOf[NIO1HeadStage]
-            stage.sendInboundCommand(Cmd.Disconnected)
-            stage.closeWithError(Cmd.EOF)
+            head.close()
           }
           k.channel.close()
           k.attach(null)
@@ -203,4 +201,14 @@ final class SelectorLoop(
         logger.warn(t)("Killing selector resulted in an exception")
     }
   }
+
+  private[this] def getAttachment(key: SelectionKey): Selectable =
+    key.attachment match {
+      case null => null
+      case s: Selectable => s
+      case other =>
+        val ex = util.bug(s"Unexpected type: ${other.getClass.getName}")
+        logger.error(ex)(ex.getMessage)
+        throw ex
+    }
 }

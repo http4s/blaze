@@ -25,7 +25,7 @@ private[nio1] abstract class NIO1HeadStage(
     ch: SelectableChannel,
     loop: SelectorLoop,
     key: SelectionKey
-) extends ChannelHead {
+) extends ChannelHead with Selectable {
   import NIO1HeadStage._
 
   override def name: String = "NIO1 ByteBuffer Head Stage"
@@ -189,6 +189,9 @@ private[nio1] abstract class NIO1HeadStage(
     */
   protected def performWrite(scratch: ByteBuffer, buffers: Array[ByteBuffer]): WriteResult
 
+
+  final override def close(): Unit = closeWithError(EOF)
+
   // Cleanup any read or write requests with the Throwable
   final override def closeWithError(t: Throwable): Unit = {
 
@@ -214,6 +217,7 @@ private[nio1] abstract class NIO1HeadStage(
       }
 
       writeData = null
+      sendInboundCommand(Disconnected)
     }
 
     try loop.executeTask(new Runnable {
@@ -252,7 +256,6 @@ private[nio1] abstract class NIO1HeadStage(
       }
     } catch {
       case _: CancelledKeyException =>
-        sendInboundCommand(Disconnected)
         closeWithError(EOF)
     }
 
@@ -268,7 +271,6 @@ private[nio1] abstract class NIO1HeadStage(
       }
     } catch {
       case _: CancelledKeyException =>
-        sendInboundCommand(Disconnected)
         closeWithError(EOF)
     }
 }
