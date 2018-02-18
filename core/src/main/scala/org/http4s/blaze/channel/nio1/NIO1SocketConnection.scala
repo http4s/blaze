@@ -23,7 +23,7 @@ object NIO1Connection {
 
 }
 
-case class NIO1SocketConnection(connection: SocketChannel) extends SocketConnection {
+private case class NIO1SocketConnection(connection: SocketChannel) extends SocketConnection {
 
   override def remote: SocketAddress = connection.getRemoteAddress
 

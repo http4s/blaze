@@ -2,47 +2,56 @@ package org.http4s.blaze.channel.nio1
 
 import org.http4s.blaze.util
 
-import scala.util.control.{ControlThrowable, NonFatal}
 import java.nio.channels._
 import java.io.IOException
 import java.nio.ByteBuffer
-import java.util.concurrent.{Executor, RejectedExecutionException}
+import java.util.{Set => JSet}
+import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.{Executor, RejectedExecutionException, ThreadFactory}
 
 import org.http4s.blaze.util.TaskQueue
 import org.log4s.getLogger
 
 import scala.concurrent.ExecutionContext
+import scala.util.control.{ControlThrowable, NonFatal}
 
 /** A special thread that listens for events on the provided selector.
   *
-  * @param id The name of this `SelectorLoop`
-  * @param selector the `Selector` to listen on
-  * @param bufferSize size of the scratch buffer instantiated for this thread
+  * @param selector `Selector` to listen on.
+  * @param bufferSize Size of the scratch buffer instantiated for this thread.
+  * @param threadFactory Factory to make the `Thread` instance to run the loop.
   *
   * @note when the `SelectorLoop` is closed all registered [[Selectable]]s
   *       are closed with it.
   */
 final class SelectorLoop(
-    id: String,
     selector: Selector,
-    bufferSize: Int
-) extends Thread(id)
-    with Executor
+    bufferSize: Int,
+    threadFactory: ThreadFactory
+) extends Executor
     with ExecutionContext {
-
-  private[this] val logger = getLogger
-  private[this] val taskQueue = new TaskQueue
+  require(bufferSize > 0, s"Invalid buffer size: $bufferSize")
 
   @volatile
-  private[this] var _isClosed = false
+  private[this] var isClosed = false
+  private[this] val once = new AtomicBoolean(false)
+  private[this] val logger = getLogger
+  private[this] val taskQueue = new TaskQueue
+  private[this] val thread = threadFactory.newThread(new Runnable {
+    override def run(): Unit = runLoop()
+  })
+
+  private[this] val threadName = thread.getName
+  thread.start()
 
   /** Signal to the [[SelectorLoop]] that it should close */
-  def close(): Unit = {
-    _isClosed = true
-    logger.info(s"Shutting down SelectorLoop ${getName()}")
-    selector.wakeup()
-    ()
-  }
+  def close(): Unit =
+    if (once.compareAndSet(false, true)) {
+      isClosed = true
+      logger.info(s"Shutting down SelectorLoop $threadName")
+      selector.wakeup()
+      ()
+    }
 
   /** Schedule the provided `Runnable` for execution, potentially running it now
     *
@@ -53,7 +62,7 @@ final class SelectorLoop(
   @inline
   @throws[RejectedExecutionException]
   def executeTask(runnable: Runnable): Unit =
-    if (Thread.currentThread() != this) enqueueTask(runnable)
+    if (Thread.currentThread() != thread) enqueueTask(runnable)
     else {
       try runnable.run()
       catch { case NonFatal(t) => reportFailure(t) }
@@ -85,7 +94,7 @@ final class SelectorLoop(
   override def execute(runnable: Runnable): Unit = enqueueTask(runnable)
 
   override def reportFailure(cause: Throwable): Unit =
-    logger.info(cause)(s"Exception executing task in selector look $id")
+    logger.info(cause)(s"Exception executing task in selector look $threadName")
 
   /** Initialize a new `Selectable` channel
     *
@@ -119,31 +128,31 @@ final class SelectorLoop(
     })
 
   // Main thread method. The loop will break if the Selector loop is closed
-  override def run(): Unit = {
+  private[this] def runLoop(): Unit = {
     // The scratch buffer is a direct buffer as this will often be used for I/O
     val scratch = ByteBuffer.allocateDirect(bufferSize)
 
-    try while (!_isClosed) {
+    try while (!isClosed) {
+      // Block here until some I/O event happens or someone adds
+      // a task to run and wakes the loop.
+      val selected = selector.select()
+
       // Run any pending tasks. These may set interest ops,
       // just compute something, etc.
       taskQueue.executeTasks()
 
-      // Block here until some IO event happens or someone adds
-      // a task to run and wakes the loop
-      if (selector.select() > 0) {
-        // We have some new IO operations waiting for us. Process them
-        val it = selector.selectedKeys().iterator()
-        processKeys(scratch, it)
+      // We have some new I/O operations waiting for us. Process them.
+      if (selected > 0) {
+        processKeys(scratch, selector.selectedKeys)
       }
-
     } catch {
       case e: ClosedSelectorException =>
-        _isClosed = true
         logger.error(e)("Selector unexpectedly closed")
+        close()
 
       case e: Throwable =>
         logger.error(e)("Unhandled exception in selector loop")
-        _isClosed = true
+        close()
     }
 
     // If we've made it to here, we've exited the run loop and we need to shut down.
@@ -153,7 +162,8 @@ final class SelectorLoop(
     taskQueue.close()
   }
 
-  private[this] def processKeys(scratch: ByteBuffer, it: java.util.Iterator[SelectionKey]): Unit =
+  private[this] def processKeys(scratch: ByteBuffer, selectedKeys: JSet[SelectionKey]): Unit = {
+    val it = selectedKeys.iterator()
     while (it.hasNext) {
       val k = it.next()
       it.remove()
@@ -180,6 +190,7 @@ final class SelectorLoop(
           }
       }
     }
+  }
 
   private[this] def killSelector(): Unit = {
     import scala.collection.JavaConverters._
