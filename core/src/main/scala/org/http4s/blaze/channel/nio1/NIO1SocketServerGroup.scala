@@ -4,13 +4,8 @@ import java.nio.channels._
 import java.net.InetSocketAddress
 import java.util.concurrent.atomic.AtomicReference
 
-import org.http4s.blaze.channel.{
-  BufferPipelineBuilder,
-  ChannelOptions,
-  DefaultPoolSize,
-  ServerChannel,
-  ServerChannelGroup
-}
+import org.http4s.blaze.channel.{BufferPipelineBuilder, ChannelOptions, DefaultPoolSize, ServerChannel, ServerChannelGroup}
+import org.http4s.blaze.pipeline.Command
 import org.http4s.blaze.util
 import org.log4s._
 
@@ -182,9 +177,15 @@ final class NIO1SocketServerGroup private (pool: SelectorLoopPool, channelOption
         channelOptions.applyToChannel(clientChannel)
         val loop = pool.nextLoop()
         loop.initChannel(
-          service,
           clientChannel,
-          key => new SocketChannelHead(clientChannel, loop, key))
+          key => {
+            val conn = NIO1Connection(clientChannel)
+            val head = new SocketChannelHead(clientChannel, loop, key)
+            service(conn).base(head)
+            // TODO: should this be differed?
+            head.inboundCommand(Command.Connected)
+            head
+          })
       } else {
         logger.trace(s"Rejected connection from $address")
         clientChannel.close()

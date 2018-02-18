@@ -1,7 +1,7 @@
 package org.http4s.blaze.channel.nio1
 
 import org.http4s.blaze.pipeline._
-import org.http4s.blaze.channel.BufferPipelineBuilder
+import org.http4s.blaze.channel.{BufferPipelineBuilder, SocketConnection}
 import org.http4s.blaze.util
 
 import scala.util.control.{ControlThrowable, NonFatal}
@@ -85,13 +85,12 @@ final class SelectorLoop(
 
   /** Initialize a new `Selectable` channel
     *
-    * The `SelectableChannel` is added to the selector loop and
-    * the pipeline is constructed using the resultant `SelectionKey`
+    * The `SelectableChannel` is added to the selector loop the
+    * [[Selectable]] will be notified when it has events ready.
     */
   def initChannel(
-      builder: BufferPipelineBuilder,
       ch: SelectableChannel,
-      mkStage: SelectionKey => NIO1HeadStage
+      mkStage: SelectionKey => Selectable
   ): Unit =
     enqueueTask(new Runnable {
       def run(): Unit = {
@@ -100,9 +99,6 @@ final class SelectorLoop(
         try {
           val head = mkStage(key)
           key.attach(head)
-          // construct the pipeline
-          builder(NIO1Connection(ch)).base(head)
-          head.inboundCommand(Command.Connected)
           logger.debug("Started channel.")
         } catch {
           case t @ (NonFatal(_) | _: ControlThrowable) =>
