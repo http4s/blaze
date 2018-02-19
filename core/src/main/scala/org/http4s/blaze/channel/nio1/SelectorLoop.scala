@@ -51,6 +51,7 @@ final class SelectorLoop(
     * the `SelectorLoop` thread later.
     */
   @inline
+  @throws[RejectedExecutionException]
   def executeTask(runnable: Runnable): Unit =
     if (Thread.currentThread() != this) enqueueTask(runnable)
     else {
@@ -80,6 +81,7 @@ final class SelectorLoop(
         throw new RejectedExecutionException("This SelectorLoop is closed.")
     }
 
+  @throws[RejectedExecutionException]
   override def execute(runnable: Runnable): Unit = enqueueTask(runnable)
 
   override def reportFailure(cause: Throwable): Unit =
@@ -99,17 +101,15 @@ final class SelectorLoop(
   ): Unit =
     enqueueTask(new Runnable {
       def run(): Unit = {
-        try {
+        if (!selector.isOpen) ch.close()
+        else try {
           // We place all this noise in the `try` since pretty
           // much every method on the `SelectableChannel` can throw.
-          if (!selector.isOpen) ch.close()
-          else {
-            require(!ch.selectableChannel.isBlocking, s"Can only register non-blocking channels")
-            val key = ch.selectableChannel.register(selector, 0)
-            val head = mkStage(key)
-            key.attach(head)
-            logger.debug("Channel initialized.")
-          }
+          require(!ch.selectableChannel.isBlocking, s"Can only register non-blocking channels")
+          val key = ch.selectableChannel.register(selector, 0)
+          val head = mkStage(key)
+          key.attach(head)
+          logger.debug("Channel initialized.")
         } catch {
           case t @ (NonFatal(_) | _: ControlThrowable) =>
             logger.error(t)("Caught error during channel init.")

@@ -123,6 +123,8 @@ final class NIO1SocketServerGroup private (pool: SelectorLoopPool, channelOption
       // in case we were closed because the event loop was closed,
       // we need to be ready to handle a `RejectedExecutionException`.
       try {
+        // We use `enqueueTask` deliberately so as to not jump ahead
+        // of channel initialization.
         selectorLoop.enqueueTask(new Runnable {
           override def run(): Unit = doClose()
         })
