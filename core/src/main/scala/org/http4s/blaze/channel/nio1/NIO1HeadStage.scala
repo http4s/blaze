@@ -223,7 +223,8 @@ private[nio1] abstract class NIO1HeadStage(
       writeData = null
       try ch.close()
       catch {
-        case ex: IOException => logger.debug(ex)("During close")
+        case ex: IOException =>
+          logger.warn(ex)("Unexpected IOException during channel close")
       }
       sendInboundCommand(Disconnected)
     }
