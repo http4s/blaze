@@ -7,7 +7,13 @@ import java.nio.ByteBuffer
 import java.util.concurrent.RejectedExecutionException
 import java.util.concurrent.atomic.AtomicBoolean
 
-import org.http4s.blaze.channel.{BufferPipelineBuilder, ChannelOptions, DefaultPoolSize, ServerChannel, ServerChannelGroup}
+import org.http4s.blaze.channel.{
+  BufferPipelineBuilder,
+  ChannelOptions,
+  DefaultPoolSize,
+  ServerChannel,
+  ServerChannelGroup
+}
 import org.http4s.blaze.pipeline.Command
 import org.log4s._
 
@@ -62,12 +68,13 @@ final class NIO1SocketServerGroup private (pool: SelectorLoopPool, channelOption
   private[this] class SocketAcceptor(
       key: SelectionKey,
       ch: ServerChannelImpl,
-      service: BufferPipelineBuilder) extends Selectable {
+      service: BufferPipelineBuilder)
+      extends Selectable {
 
     // Save it since once the channel is closed, we're in trouble.
     private[this] val closed = new AtomicBoolean(false)
 
-    override def opsReady(unused: ByteBuffer): Unit = {
+    override def opsReady(unused: ByteBuffer): Unit =
       if (key.isAcceptable) {
         try acceptNewConnections()
         catch {
@@ -75,21 +82,18 @@ final class NIO1SocketServerGroup private (pool: SelectorLoopPool, channelOption
             closeWithError(ex)
         }
       }
-    }
 
-    override def close(): Unit = {
+    override def close(): Unit =
       if (closed.compareAndSet(false, true)) {
         logger.info(s"Listening socket(${ch.socketAddress})")
         doClose()
       }
-    }
 
-    override def closeWithError(cause: Throwable): Unit = {
+    override def closeWithError(cause: Throwable): Unit =
       if (closed.compareAndSet(false, true)) {
         logger.error(cause)(s"Listening socket(${ch.socketAddress}) closed forcibly.")
         doClose()
       }
-    }
 
     // To close, we close the `ServerChannelImpl` which will
     // close the `ServerSocketChannel`.
@@ -113,12 +117,14 @@ final class NIO1SocketServerGroup private (pool: SelectorLoopPool, channelOption
   // minimize race conditions.
   private[this] class ServerChannelImpl(
       val selectableChannel: ServerSocketChannel,
-      selectorLoop: SelectorLoop) extends ServerChannel with NIO1Channel {
+      selectorLoop: SelectorLoop)
+      extends ServerChannel
+      with NIO1Channel {
 
     val socketAddress: InetSocketAddress =
       selectableChannel.getLocalAddress.asInstanceOf[InetSocketAddress]
 
-    override protected def closeChannel(): Unit = {
+    override protected def closeChannel(): Unit =
       // We try to run the close in the event loop, but just
       // in case we were closed because the event loop was closed,
       // we need to be ready to handle a `RejectedExecutionException`.
@@ -133,7 +139,6 @@ final class NIO1SocketServerGroup private (pool: SelectorLoopPool, channelOption
           logger.info("Selector loop closed. Closing in local thread.")
           doClose()
       }
-    }
 
     // Must be called within the `SelectorLoop`, it at all possible.
     private[this] def doClose(): Unit = {
@@ -194,8 +199,8 @@ final class NIO1SocketServerGroup private (pool: SelectorLoopPool, channelOption
 
   // Will be called from within the SelectorLoop
   private[this] def buildSocketAcceptor(
-    ch: ServerChannelImpl,
-    service: BufferPipelineBuilder
+      ch: ServerChannelImpl,
+      service: BufferPipelineBuilder
   )(key: SelectionKey): Selectable = {
     val acceptor = new SocketAcceptor(key, ch, service)
     try key.interestOps(SelectionKey.OP_ACCEPT)
@@ -207,8 +212,8 @@ final class NIO1SocketServerGroup private (pool: SelectorLoopPool, channelOption
   }
 
   private[this] def handleClientChannel(
-    clientChannel: SocketChannel,
-    service: BufferPipelineBuilder
+      clientChannel: SocketChannel,
+      service: BufferPipelineBuilder
   ): Unit = {
     val address = clientChannel.getRemoteAddress.asInstanceOf[InetSocketAddress]
     // Check to see if we want to keep this connection.
@@ -228,7 +233,8 @@ final class NIO1SocketServerGroup private (pool: SelectorLoopPool, channelOption
           // TODO: should this be differed?
           head.inboundCommand(Command.Connected)
           head
-        })
+        }
+      )
     } else {
       logger.trace(s"Rejected connection from $address")
       clientChannel.close()

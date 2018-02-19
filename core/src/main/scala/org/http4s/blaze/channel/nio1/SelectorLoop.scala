@@ -100,22 +100,22 @@ final class SelectorLoop(
       mkStage: SelectionKey => Selectable
   ): Unit =
     enqueueTask(new Runnable {
-      def run(): Unit = {
+      def run(): Unit =
         if (!selector.isOpen) ch.close()
-        else try {
-          // We place all this noise in the `try` since pretty
-          // much every method on the `SelectableChannel` can throw.
-          require(!ch.selectableChannel.isBlocking, s"Can only register non-blocking channels")
-          val key = ch.selectableChannel.register(selector, 0)
-          val head = mkStage(key)
-          key.attach(head)
-          logger.debug("Channel initialized.")
-        } catch {
-          case t @ (NonFatal(_) | _: ControlThrowable) =>
-            logger.error(t)("Caught error during channel init.")
-            ch.close()
-        }
-      }
+        else
+          try {
+            // We place all this noise in the `try` since pretty
+            // much every method on the `SelectableChannel` can throw.
+            require(!ch.selectableChannel.isBlocking, s"Can only register non-blocking channels")
+            val key = ch.selectableChannel.register(selector, 0)
+            val head = mkStage(key)
+            key.attach(head)
+            logger.debug("Channel initialized.")
+          } catch {
+            case t @ (NonFatal(_) | _: ControlThrowable) =>
+              logger.error(t)("Caught error during channel init.")
+              ch.close()
+          }
     })
 
   // Main thread method. The loop will break if the Selector loop is closed

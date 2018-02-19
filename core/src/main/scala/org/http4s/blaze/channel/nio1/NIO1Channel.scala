@@ -7,6 +7,7 @@ import java.nio.channels.SelectableChannel
   * The interface adds a way to cleanup resources other than the channel itself.
   */
 trait NIO1Channel {
+
   /** The underlying java `SelectableChannel` */
   val selectableChannel: SelectableChannel
 
@@ -16,8 +17,7 @@ trait NIO1Channel {
 
 object NIO1Channel {
   // Simple proxy implementation
-  private[this] final class Impl(
-      val selectableChannel: SelectableChannel) extends NIO1Channel {
+  private[this] final class Impl(val selectableChannel: SelectableChannel) extends NIO1Channel {
     override def close(): Unit = selectableChannel.close()
   }
 

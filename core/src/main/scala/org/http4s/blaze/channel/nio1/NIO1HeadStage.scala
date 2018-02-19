@@ -29,7 +29,8 @@ private[nio1] abstract class NIO1HeadStage(
     ch: SelectableChannel,
     loop: SelectorLoop,
     key: SelectionKey
-) extends ChannelHead with Selectable {
+) extends ChannelHead
+    with Selectable {
   import NIO1HeadStage._
 
   override def name: String = "NIO1 ByteBuffer Head Stage"
@@ -193,7 +194,6 @@ private[nio1] abstract class NIO1HeadStage(
     */
   protected def performWrite(scratch: ByteBuffer, buffers: Array[ByteBuffer]): WriteResult
 
-
   final override def close(): Unit = closeWithError(EOF)
 
   // Cleanup any read or write requests with the Throwable
@@ -230,7 +230,8 @@ private[nio1] abstract class NIO1HeadStage(
 
     try loop.executeTask(new Runnable {
       def run(): Unit = {
-        logger.trace(s"closeWithError($cause); readPromise: $readPromise, writePromise: $writePromise")
+        logger.trace(
+          s"closeWithError($cause); readPromise: $readPromise, writePromise: $writePromise")
         if (cause != EOF) logger.error(cause)("Abnormal NIO1HeadStage termination")
 
         if (key.isValid) key.interestOps(0)
