@@ -85,7 +85,7 @@ final class NIO1SocketServerGroup private (pool: SelectorLoopPool, channelOption
 
     override def close(): Unit =
       if (closed.compareAndSet(false, true)) {
-        logger.info(s"Listening socket(${ch.socketAddress})")
+        logger.info(s"Listening socket(${ch.socketAddress}) closed.")
         doClose()
       }
 
@@ -140,7 +140,7 @@ final class NIO1SocketServerGroup private (pool: SelectorLoopPool, channelOption
           doClose()
       }
 
-    // Must be called within the `SelectorLoop`, it at all possible.
+    // Must be called within the `SelectorLoop`, if at all possible.
     private[this] def doClose(): Unit = {
       logger.info(s"Closing NIO1 channel $socketAddress")
       listeningSet.synchronized {
