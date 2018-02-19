@@ -93,15 +93,13 @@ final class NIO1SocketServerGroup private (pool: SelectorLoopPool, channelOption
 
     // To close, we close the `ServerChannelImpl` which will
     // close the `ServerSocketChannel`.
-    private[this] def doClose(): Unit = {
-      ch.close()
-    }
+    private[this] def doClose(): Unit = ch.close()
 
     @tailrec
     private[this] def acceptNewConnections(): Unit = {
       // We go in a loop just in case we have more than one.
       // Once we're out, the `.accept()` method will return `null`.
-      val child = ch.serverChannel.accept()
+      val child = ch.selectableChannel.accept()
       if (child != null) {
         handleClientChannel(child, service)
         acceptNewConnections()
@@ -109,19 +107,23 @@ final class NIO1SocketServerGroup private (pool: SelectorLoopPool, channelOption
     }
   }
 
+  // The core type tracked in this group. It is exclusively responsible
+  // for closing the underlying `ServerSocketChannel`. IF possible, closing
+  // the underlying channel is done in its assigned selector loop to
+  // minimize race conditions.
   private[this] class ServerChannelImpl(
-      val serverChannel: ServerSocketChannel,
-      selectorLoop: SelectorLoop) extends ServerChannel {
+      val selectableChannel: ServerSocketChannel,
+      selectorLoop: SelectorLoop) extends ServerChannel with NIO1Channel {
 
     val socketAddress: InetSocketAddress =
-      serverChannel.getLocalAddress.asInstanceOf[InetSocketAddress]
+      selectableChannel.getLocalAddress.asInstanceOf[InetSocketAddress]
 
     override protected def closeChannel(): Unit = {
       // We try to run the close in the event loop, but just
       // in case we were closed because the event loop was closed,
       // we need to be ready to handle a `RejectedExecutionException`.
       try {
-        selectorLoop.executeTask(new Runnable {
+        selectorLoop.enqueueTask(new Runnable {
           override def run(): Unit = doClose()
         })
       } catch {
@@ -131,12 +133,13 @@ final class NIO1SocketServerGroup private (pool: SelectorLoopPool, channelOption
       }
     }
 
+    // Must be called within the `SelectorLoop`, it at all possible.
     private[this] def doClose(): Unit = {
       logger.info(s"Closing NIO1 channel $socketAddress")
       listeningSet.synchronized {
         listeningSet.remove(this)
       }
-      try serverChannel.close()
+      try selectableChannel.close()
       catch {
         case NonFatal(t) => logger.debug(t)("Failure during channel close")
       }
@@ -164,6 +167,7 @@ final class NIO1SocketServerGroup private (pool: SelectorLoopPool, channelOption
       service: BufferPipelineBuilder
   ): Try[ServerChannel] = Try {
     val ch = ServerSocketChannel.open().bind(address)
+    ch.configureBlocking(false)
     val loop = pool.nextLoop()
 
     val serverChannel = new ServerChannelImpl(ch, loop)
@@ -180,7 +184,7 @@ final class NIO1SocketServerGroup private (pool: SelectorLoopPool, channelOption
       serverChannel.close()
     } else {
       logger.info("Service bound to address " + serverChannel.socketAddress)
-      loop.initChannel(ch, buildSocketAcceptor(serverChannel, service))
+      loop.initChannel(serverChannel, buildSocketAcceptor(serverChannel, service))
     }
 
     serverChannel
@@ -209,11 +213,12 @@ final class NIO1SocketServerGroup private (pool: SelectorLoopPool, channelOption
     // Note: we only log at trace since it is highly likely that `acceptConnection`
     // would have also logged this info for normal application observability.
     if (acceptConnection(address)) {
+      clientChannel.configureBlocking(false)
       logger.trace(s"Accepted connection from $address")
       channelOptions.applyToChannel(clientChannel)
       val loop = pool.nextLoop()
       loop.initChannel(
-        clientChannel,
+        NIO1Channel(clientChannel),
         key => {
           val conn = NIO1Connection(clientChannel)
           val head = new SocketChannelHead(clientChannel, loop, key)

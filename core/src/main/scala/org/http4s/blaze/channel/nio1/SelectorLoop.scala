@@ -13,11 +13,14 @@ import org.log4s.getLogger
 
 import scala.concurrent.ExecutionContext
 
-/** A special thread that listens for events on the provided selector
+/** A special thread that listens for events on the provided selector.
   *
   * @param id The name of this `SelectorLoop`
   * @param selector the `Selector` to listen on
   * @param bufferSize size of the scratch buffer instantiated for this thread
+  *
+  * @note when the `SelectorLoop` is closed all registered [[Selectable]]s
+  *       are closed with it.
   */
 final class SelectorLoop(
     id: String,
@@ -86,21 +89,27 @@ final class SelectorLoop(
     *
     * The `SelectableChannel` is added to the selector loop the
     * [[Selectable]] will be notified when it has events ready.
+    *
+    * @note the underlying `SelectableChannel` _must_ be
+    *       configured in non-blocking mode.
     */
   def initChannel(
-      ch: SelectableChannel,
+      ch: NIO1Channel,
       mkStage: SelectionKey => Selectable
   ): Unit =
     enqueueTask(new Runnable {
       def run(): Unit = {
         try {
-          // We place all this noice in the `try` since pretty
+          // We place all this noise in the `try` since pretty
           // much every method on the `SelectableChannel` can throw.
-          ch.configureBlocking(false)
-          val key = ch.register(selector, 0)
-          val head = mkStage(key)
-          key.attach(head)
-          logger.debug("Started channel.")
+          if (!selector.isOpen) ch.close()
+          else {
+            require(!ch.selectableChannel.isBlocking, s"Can only register non-blocking channels")
+            val key = ch.selectableChannel.register(selector, 0)
+            val head = mkStage(key)
+            key.attach(head)
+            logger.debug("Channel initialized.")
+          }
         } catch {
           case t @ (NonFatal(_) | _: ControlThrowable) =>
             logger.error(t)("Caught error during channel init.")
@@ -137,7 +146,9 @@ final class SelectorLoop(
         _isClosed = true
     }
 
-    // If we've made it to here, we've exited the run loop and we need to shut down
+    // If we've made it to here, we've exited the run loop and we need to shut down.
+    // We first kill the selector and then drain any remaining tasks since closing
+    // attached `Selectable`s may have resulted in more tasks.
     killSelector()
     taskQueue.close()
   }
@@ -160,11 +171,11 @@ final class SelectorLoop(
           selectable.close()
         }
       } catch {
-        case t: Throwable =>
+        case t @ (NonFatal(_) | _: ControlThrowable) =>
           logger.error(t)("Error performing channel operations. Closing channel.")
           try selectable.closeWithError(t)
           catch {
-            case t @ (NonFatal(_) | _: ControlThrowable) =>
+            case t: Throwable =>
               logger.error(t)("Fatal error shutting down pipeline")
           }
       }
@@ -172,6 +183,8 @@ final class SelectorLoop(
 
   private[this] def killSelector(): Unit = {
     import scala.collection.JavaConverters._
+    // We first close all the associated keys and then close
+    // the `Selector` which will then be essentially useless.
     try {
       if (!selector.keys.isEmpty) {
         val ex = new ShutdownChannelGroupException
@@ -184,7 +197,6 @@ final class SelectorLoop(
           } catch { case _: IOException => /* NOOP */ }
         }
       }
-
       selector.close()
     } catch {
       case t @ (NonFatal(_) | _: ControlThrowable) =>
