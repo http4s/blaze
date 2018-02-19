@@ -14,124 +14,124 @@ import scala.concurrent.{Await, Future, Promise}
 import scala.concurrent.duration._
 
 
-class ChannelSpec extends Specification {
-
-  case class ServerPair(group: ServerChannelGroup, channel: ServerChannel)
-
-  def bind(nio2: Boolean)(f: BufferPipelineBuilder): ServerPair = {
-    val factory = if (nio2) NIO2SocketServerGroup.fixedGroup(workerThreads = 2)
-                  else      NIO1SocketServerGroup.fixedGroup(workerThreads = 2)
+class NIO1ChannelSpec extends BaseChannelSpec {
+  override protected def bind(f: BufferPipelineBuilder): ServerPair = {
+    val factory = NIO1SocketServerGroup.fixedGroup(workerThreads = 2)
 
     val channel = factory.bind(new InetSocketAddress(0), f).get // will throw if failed to bind
     ServerPair(factory, channel)
   }
+}
 
-  def bindEcho(nio2: Boolean): ServerPair = {
-    bind(nio2){ _ => LeafBuilder(new EchoStage) }
+class NIO2ChannelSpec extends BaseChannelSpec {
+  override protected def bind(f: BufferPipelineBuilder): ServerPair = {
+    val factory = NIO2SocketServerGroup.fixedGroup(workerThreads = 2)
+
+    val channel = factory.bind(new InetSocketAddress(0), f).get // will throw if failed to bind
+    ServerPair(factory, channel)
   }
-
-  val CommonDelay = 1000
-
-  testNIO(false)
-
-  testNIO(true)
 
   "NIO2 Channel" should {
     "throw an exception when trying to shutdown the system default group" in {
       NIO2SocketServerGroup().closeGroup() must throwA[IllegalStateException]
     }
   }
+}
 
-  def testNIO(isNIO2: Boolean) = {
-    val title = (if (isNIO2) "NIO2" else "NIO1") + " Channels"
+abstract class BaseChannelSpec extends Specification {
 
-    title should {
-      "Bind the port and then be closed" in {
-        val ServerPair(group,channel) = bindEcho(isNIO2)
-        Thread.sleep(CommonDelay.toLong)
-        channel.close()
-        group.closeGroup()
-        channel.join()
-        true should_== true
-      }
+  protected case class ServerPair(group: ServerChannelGroup, channel: ServerChannel)
 
-      "Execute shutdown hooks" in {
-        val i = new AtomicInteger(0)
-        val ServerPair(group,channel) = bindEcho(isNIO2)
-        channel.addShutdownHook{ () => i.incrementAndGet(); () } must_== true
-        channel.close()
-        group.closeGroup()
-        channel.join()
-        i.get should_== 1
-      }
+  protected def bind(f: BufferPipelineBuilder): ServerPair
 
-      "Execute shutdown hooks when one throws an exception" in {
-        val i = new AtomicInteger(0)
-        val ServerPair(group,channel) = bindEcho(isNIO2)
-        channel.addShutdownHook{ () => i.incrementAndGet(); () } must_== true
-        channel.addShutdownHook{ () => sys.error("Foo") }    must_== true
-        channel.addShutdownHook{ () => i.incrementAndGet(); () } must_== true
-        channel.close()
+  private def bindEcho(): ServerPair = {
+    bind{ _ => LeafBuilder(new EchoStage) }
+  }
 
-        group.closeGroup()
-        channel.join()
+  "Bind the port and then be closed" in {
+    val ServerPair(group,channel) = bindEcho()
+    Thread.sleep(1000L)
+    channel.close()
+    group.closeGroup()
+    channel.join()
+    ok
+  }
 
-        i.get should_== 2
-      }
+  "Execute shutdown hooks" in {
+    val i = new AtomicInteger(0)
+    val ServerPair(group,channel) = bindEcho()
+    channel.addShutdownHook{ () => i.incrementAndGet(); () } must_== true
+    channel.close()
+    group.closeGroup()
+    channel.join()
+    i.get should_== 1
+  }
 
-      "Execute shutdown hooks when the ServerChannelGroup is shutdown" in {
-        val i = new AtomicInteger(0)
-        val ServerPair(group,channel) = bindEcho(isNIO2)
-        channel.addShutdownHook{ () => i.incrementAndGet(); () } must_== true
-        group.closeGroup()
+  "Execute shutdown hooks when one throws an exception" in {
+    val i = new AtomicInteger(0)
+    val ServerPair(group,channel) = bindEcho()
+    channel.addShutdownHook{ () => i.incrementAndGet(); () } must_== true
+    channel.addShutdownHook{ () => sys.error("Foo") }    must_== true
+    channel.addShutdownHook{ () => i.incrementAndGet(); () } must_== true
+    channel.close()
 
-        channel.join()
+    group.closeGroup()
+    channel.join()
 
-        i.get should_== 1
-      }
+    i.get should_== 2
+  }
 
-      "Not register a hook on a shutdown ServerChannel" in {
-        val ServerPair(group,channel) = bindEcho(isNIO2)
-        channel.close()
-        group.closeGroup()
-        channel.addShutdownHook { () => sys.error("Blam!") } must_== false
-      }
+  "Execute shutdown hooks when the ServerChannelGroup is shutdown" in {
+    val i = new AtomicInteger(0)
+    val ServerPair(group,channel) = bindEcho()
+    channel.addShutdownHook{ () => i.incrementAndGet(); () } must_== true
+    group.closeGroup()
 
-      class ZeroWritingStage(batch: Boolean) extends TailStage[ByteBuffer] {
-        private[this] val writeResult = Promise[Unit]
+    channel.join()
 
-        def name = this.getClass.getSimpleName
+    i.get should_== 1
+  }
 
-        def completeF: Future[Unit] = writeResult.future
+  "Not register a hook on a shutdown ServerChannel" in {
+    val ServerPair(group,channel) = bindEcho()
+    channel.close()
+    group.closeGroup()
+    channel.addShutdownHook { () => sys.error("Blam!") } must_== false
+  }
 
-        override protected def stageStartup(): Unit = {
-          val f = if (batch) channelWrite(Seq.empty) else channelWrite(ByteBuffer.allocate(0))
-          writeResult.tryCompleteWith(f)
-          f.onComplete(_ => sendOutboundCommand(Command.Disconnect))(Execution.directec)
-        }
-      }
+  class ZeroWritingStage(batch: Boolean) extends TailStage[ByteBuffer] {
+    private[this] val writeResult = Promise[Unit]
 
-      def writeBuffer(batch: Boolean): Unit = {
-        val stage = new ZeroWritingStage(batch)
-        val ServerPair(group,channel) = bind(isNIO2){ _ => LeafBuilder(stage) }
-        val socket = new Socket()
-        socket.connect(channel.socketAddress)
+    def name = this.getClass.getSimpleName
 
-        Await.result(stage.completeF, 2.seconds)
-        socket.close()
-        channel.close()
-        group.closeGroup()
-      }
+    def completeF: Future[Unit] = writeResult.future
 
-      "Write an empty buffer" in {
-        writeBuffer(false)
-        ok // if we made it this far, it worked.
-      }
-
-      "Write an empty collection of buffers" in {
-        writeBuffer(true)
-        ok // if we made it this far, it worked.
-      }
+    override protected def stageStartup(): Unit = {
+      val f = if (batch) channelWrite(Seq.empty) else channelWrite(ByteBuffer.allocate(0))
+      writeResult.tryCompleteWith(f)
+      f.onComplete(_ => sendOutboundCommand(Command.Disconnect))(Execution.directec)
     }
+  }
+
+  def writeBuffer(batch: Boolean): Unit = {
+    val stage = new ZeroWritingStage(batch)
+    val ServerPair(group,channel) = bind { _ => LeafBuilder(stage) }
+    val socket = new Socket()
+    socket.connect(channel.socketAddress)
+
+    Await.result(stage.completeF, 2.seconds)
+    socket.close()
+    channel.close()
+    group.closeGroup()
+  }
+
+  "Write an empty buffer" in {
+    writeBuffer(false)
+    ok // if we made it this far, it worked.
+  }
+
+  "Write an empty collection of buffers" in {
+    writeBuffer(true)
+    ok // if we made it this far, it worked.
   }
 }
