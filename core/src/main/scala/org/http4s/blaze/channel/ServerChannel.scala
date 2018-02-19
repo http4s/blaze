@@ -18,7 +18,11 @@ abstract class ServerChannel extends Closeable { self =>
 
   private val shutdownHooks = Vector.newBuilder[Hook]
 
-  /** Close out any resources associated with the [[ServerChannel]] */
+  /** Close out any resources associated with the [[ServerChannel]]
+    *
+    * @note Regardless of the number of times `close()` is called
+    *       this method will only be called once.
+    */
   protected def closeChannel(): Unit
 
   /** The bound socket address for this [[ServerChannel]] */

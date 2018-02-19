@@ -1,8 +1,11 @@
 package org.http4s.blaze.channel.nio1
 
+import java.io.IOException
 import java.nio.channels._
 import java.net.InetSocketAddress
-import java.util.concurrent.atomic.AtomicReference
+import java.nio.ByteBuffer
+import java.util.concurrent.RejectedExecutionException
+import java.util.concurrent.atomic.AtomicBoolean
 
 import org.http4s.blaze.channel.{
   BufferPipelineBuilder,
@@ -11,9 +14,11 @@ import org.http4s.blaze.channel.{
   ServerChannel,
   ServerChannelGroup
 }
-import org.http4s.blaze.util
+import org.http4s.blaze.pipeline.Command
 import org.log4s._
 
+import scala.annotation.tailrec
+import scala.collection.mutable
 import scala.util.Try
 import scala.util.control.NonFatal
 
@@ -49,30 +54,117 @@ object NIO1SocketServerGroup {
 final class NIO1SocketServerGroup private (pool: SelectorLoopPool, channelOptions: ChannelOptions)
     extends ServerChannelGroup {
 
-  @volatile
-  private[this] var isClosed = false
   private[this] val logger = getLogger
-  private[this] val selector = Selector.open()
-  private val t = new AcceptThread()
+  // Also acts as our intrinsic lock.
+  private[this] val listeningSet = new mutable.HashSet[ServerChannelImpl]()
+  // protected by synchronization on the intrinsic lock.
+  private[this] var isClosed = false
 
-  // Start the selector thread
-  t.setDaemon(true)
-  t.start()
+  // Closing delegates to the `ServerChannelImpl` which
+  // ensures only-once behavior and attempts to close the
+  // channel within the `SelectorLoop`, if it's still running.
+  // That should help alleviate many of the exceptions associated
+  // with performing operations on closed channels, etc.
+  private[this] class SocketAcceptor(
+      key: SelectionKey,
+      ch: ServerChannelImpl,
+      service: BufferPipelineBuilder)
+      extends Selectable {
 
-  override def closeGroup(): Unit = {
-    val wake = synchronized {
-      if (isClosed) false
-      else {
-        isClosed = true
-        true
+    // Save it since once the channel is closed, we're in trouble.
+    private[this] val closed = new AtomicBoolean(false)
+
+    override def opsReady(unused: ByteBuffer): Unit =
+      if (key.isAcceptable) {
+        try acceptNewConnections()
+        catch {
+          case ex: IOException =>
+            closeWithError(ex)
+        }
+      }
+
+    override def close(): Unit =
+      if (closed.compareAndSet(false, true)) {
+        logger.info(s"Listening socket(${ch.socketAddress}) closed.")
+        doClose()
+      }
+
+    override def closeWithError(cause: Throwable): Unit =
+      if (closed.compareAndSet(false, true)) {
+        logger.error(cause)(s"Listening socket(${ch.socketAddress}) closed forcibly.")
+        doClose()
+      }
+
+    // To close, we close the `ServerChannelImpl` which will
+    // close the `ServerSocketChannel`.
+    private[this] def doClose(): Unit = ch.close()
+
+    @tailrec
+    private[this] def acceptNewConnections(): Unit = {
+      // We go in a loop just in case we have more than one.
+      // Once we're out, the `.accept()` method will return `null`.
+      val child = ch.selectableChannel.accept()
+      if (child != null) {
+        handleClientChannel(child, service)
+        acceptNewConnections()
       }
     }
+  }
 
-    if (wake) {
-      logger.info("Closing NIO1SocketServerGroup")
-      selector.wakeup()
-      ()
+  // The core type tracked in this group. It is exclusively responsible
+  // for closing the underlying `ServerSocketChannel`. IF possible, closing
+  // the underlying channel is done in its assigned selector loop to
+  // minimize race conditions.
+  private[this] class ServerChannelImpl(
+      val selectableChannel: ServerSocketChannel,
+      selectorLoop: SelectorLoop)
+      extends ServerChannel
+      with NIO1Channel {
+
+    val socketAddress: InetSocketAddress =
+      selectableChannel.getLocalAddress.asInstanceOf[InetSocketAddress]
+
+    override protected def closeChannel(): Unit =
+      // We try to run the close in the event loop, but just
+      // in case we were closed because the event loop was closed,
+      // we need to be ready to handle a `RejectedExecutionException`.
+      try {
+        // We use `enqueueTask` deliberately so as to not jump ahead
+        // of channel initialization.
+        selectorLoop.enqueueTask(new Runnable {
+          override def run(): Unit = doClose()
+        })
+      } catch {
+        case _: RejectedExecutionException =>
+          logger.info("Selector loop closed. Closing in local thread.")
+          doClose()
+      }
+
+    // Must be called within the `SelectorLoop`, if at all possible.
+    private[this] def doClose(): Unit = {
+      logger.info(s"Closing NIO1 channel $socketAddress")
+      listeningSet.synchronized {
+        listeningSet.remove(this)
+      }
+      try selectableChannel.close()
+      catch {
+        case NonFatal(t) => logger.debug(t)("Failure during channel close")
+      }
     }
+  }
+
+  override def closeGroup(): Unit = {
+    // Set the state to closed and close any existing acceptors
+    val toClose = listeningSet.synchronized {
+      if (isClosed) Seq.empty
+      else {
+        isClosed = true
+        val toClose = listeningSet.toVector
+        listeningSet.clear()
+        toClose
+      }
+    }
+    toClose.foreach(_.close())
   }
 
   /** Create a [[org.http4s.blaze.channel.ServerChannel]] that will serve the
@@ -82,164 +174,70 @@ final class NIO1SocketServerGroup private (pool: SelectorLoopPool, channelOption
       service: BufferPipelineBuilder
   ): Try[ServerChannel] = Try {
     val ch = ServerSocketChannel.open().bind(address)
-    val serverChannel = new ServerChannelImpl(ch, service)
-    t.listenOnChannel(serverChannel)
+    ch.configureBlocking(false)
+    val loop = pool.nextLoop()
 
-    logger.info("Service bound to address " + ch.getLocalAddress)
+    val serverChannel = new ServerChannelImpl(ch, loop)
+    val closed = listeningSet.synchronized {
+      if (isClosed) true
+      else {
+        listeningSet += serverChannel
+        false
+      }
+    }
+
+    if (closed) {
+      logger.info("Group closed")
+      serverChannel.close()
+    } else {
+      logger.info("Service bound to address " + serverChannel.socketAddress)
+      loop.initChannel(serverChannel, buildSocketAcceptor(serverChannel, service))
+    }
+
     serverChannel
   }
 
-  private class AcceptThread extends Thread("blaze-nio1-acceptor") {
-    private[this] val newChannels = new AtomicReference[List[ServerChannelImpl]](Nil)
-
-    /** Maybe add a channel to the selector loop
-      *
-      * If the group is closed the channel is closed.
-      */
-    def listenOnChannel(channel: ServerChannelImpl): Unit = {
-      def go(): Unit = newChannels.get() match {
-        case null => channel.close() // Queue is closed.
-        case q if newChannels.compareAndSet(q, channel :: q) =>
-          // Successful set. Wake the loop.
-          selector.wakeup()
-          ()
-        case _ =>
-          go() // Lost race. Try again.
-      }
-
-      go()
+  // Will be called from within the SelectorLoop
+  private[this] def buildSocketAcceptor(
+      ch: ServerChannelImpl,
+      service: BufferPipelineBuilder
+  )(key: SelectionKey): Selectable = {
+    val acceptor = new SocketAcceptor(key, ch, service)
+    try key.interestOps(SelectionKey.OP_ACCEPT)
+    catch {
+      case ex: CancelledKeyException => acceptor.closeWithError(ex)
     }
 
-    override def run(): Unit = {
-      acceptLoop()
-      shutdown()
-    }
+    acceptor
+  }
 
-    // Loop that continues until it detects that the channel is closed
-    private[this] def acceptLoop(): Unit =
-      while (!isClosed) {
-        // Wait for connections or events, potentially blocking the thread.
-        selector.select()
-
-        // Add any new connections
-        addNewChannels()
-
-        val it = selector.selectedKeys.iterator()
-
-        while (it.hasNext()) {
-          val key = it.next()
-          it.remove()
-
-          // If it's not valid, the channel might have been closed
-          // via the `ServerChannelImpl` or in `channelAccept`.
-          if (key.isValid) {
-            val channel = key.attachment.asInstanceOf[ServerChannelImpl]
-            channelAccept(channel)
-          }
+  private[this] def handleClientChannel(
+      clientChannel: SocketChannel,
+      service: BufferPipelineBuilder
+  ): Unit = {
+    val address = clientChannel.getRemoteAddress.asInstanceOf[InetSocketAddress]
+    // Check to see if we want to keep this connection.
+    // Note: we only log at trace since it is highly likely that `acceptConnection`
+    // would have also logged this info for normal application observability.
+    if (acceptConnection(address)) {
+      clientChannel.configureBlocking(false)
+      logger.trace(s"Accepted connection from $address")
+      channelOptions.applyToChannel(clientChannel)
+      val loop = pool.nextLoop()
+      loop.initChannel(
+        NIO1Channel(clientChannel),
+        key => {
+          val conn = NIO1Connection(clientChannel)
+          val head = new SocketChannelHead(clientChannel, loop, key)
+          service(conn).base(head)
+          // TODO: should this be differed?
+          head.inboundCommand(Command.Connected)
+          head
         }
-      }
-
-    private[this] def channelAccept(channel: ServerChannelImpl): Unit = {
-      val serverSocketChannel = channel.serverSocketChannel
-      try {
-        val clientChannel = serverSocketChannel.accept()
-        if (clientChannel != null) {
-          handleClientChannel(clientChannel, channel.service)
-        } else {
-          // This should never happen since we explicitly
-          // waited for the channel to open and there isn't
-          // a way for users to close the server channels
-          val msg = s"While attempting to open client socket found server channel unready"
-          logger.error(util.bug(msg))(msg)
-        }
-      } catch {
-        case NonFatal(e) =>
-          val localAddress = serverSocketChannel.getLocalAddress
-          logger.error(e)(s"Error accepting connection on address $localAddress")
-
-          // If the server channel cannot go on, disconnect it.
-          if (!serverSocketChannel.isOpen) {
-            logger.error(s"Channel bound to address $localAddress has been unexpectedly closed.")
-            channel.close()
-          }
-
-        case t: Throwable =>
-          logger.error(t)("Fatal error in connection accept loop. Closing Group.")
-          closeGroup() // will cause the closing of the attached channels
-      }
+      )
+    } else {
+      logger.trace(s"Rejected connection from $address")
+      clientChannel.close()
     }
-
-    private[this] def handleClientChannel(
-        clientChannel: SocketChannel,
-        service: BufferPipelineBuilder
-    ): Unit = {
-      val address = clientChannel.getRemoteAddress.asInstanceOf[InetSocketAddress]
-      // Check to see if we want to keep this connection.
-      // Note: we only log at trace since it is highly likely that `acceptConnection`
-      // would have also logged this info for normal application observability.
-      if (acceptConnection(address)) {
-        logger.trace(s"Accepted connection from $address")
-        channelOptions.applyToChannel(clientChannel)
-        val loop = pool.nextLoop()
-        loop.initChannel(
-          service,
-          clientChannel,
-          key => new SocketChannelHead(clientChannel, loop, key))
-      } else {
-        logger.trace(s"Rejected connection from $address")
-        clientChannel.close()
-      }
-    }
-
-    private[this] def addNewChannels(): Unit = {
-      val pending = newChannels.getAndSet(Nil)
-
-      pending.foreach { ch =>
-        try {
-          ch.serverSocketChannel.configureBlocking(false)
-          ch.serverSocketChannel.register(selector, SelectionKey.OP_ACCEPT, ch)
-
-        } catch {
-          case NonFatal(t) =>
-            logger.error(t)(
-              "Error during channel registration: " +
-                ch.serverSocketChannel.getLocalAddress())
-            try ch.close()
-            catch {
-              case NonFatal(t) =>
-                logger.debug(t)("Failure during channel close")
-            }
-        }
-      }
-    }
-
-    // Cleans up the selector and any pending new channels.
-    private[this] def shutdown(): Unit = {
-      // We have been closed. Close all the attached channels as well
-      val it = selector.keys().iterator()
-      while (it.hasNext()) {
-        val key = it.next()
-        val ch = key.attachment().asInstanceOf[ServerChannelImpl]
-        key.cancel()
-        ch.close()
-      }
-
-      // Close down the selector loops
-      pool.shutdown()
-
-      // clear out the queue
-      newChannels.getAndSet(null).foreach { ch =>
-        try ch.close()
-        catch {
-          case NonFatal(t) => logger.debug(t)("Failure during channel close")
-        }
-      }
-
-      // Finally close the selector
-      try selector.close()
-      catch {
-        case NonFatal(t) => logger.debug(t)("Failure during selector close")
-      }
-    }
-  } // thread
+  }
 }
