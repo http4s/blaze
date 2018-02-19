@@ -1,7 +1,5 @@
 package org.http4s.blaze.channel.nio1
 
-import org.http4s.blaze.pipeline._
-import org.http4s.blaze.channel.{BufferPipelineBuilder, SocketConnection}
 import org.http4s.blaze.util
 
 import scala.util.control.{ControlThrowable, NonFatal}
@@ -66,6 +64,7 @@ final class SelectorLoop(
     *     the calling thread is `this` `SelectorLoop`, or schedule it for
     *     later otherwise.
     */
+  @throws[RejectedExecutionException]
   def enqueueTask(runnable: Runnable): Unit =
     taskQueue.enqueueTask(runnable) match {
       case TaskQueue.Enqueued =>
@@ -94,17 +93,17 @@ final class SelectorLoop(
   ): Unit =
     enqueueTask(new Runnable {
       def run(): Unit = {
-        ch.configureBlocking(false)
-        val key = ch.register(selector, 0)
         try {
+          // We place all this noice in the `try` since pretty
+          // much every method on the `SelectableChannel` can throw.
+          ch.configureBlocking(false)
+          val key = ch.register(selector, 0)
           val head = mkStage(key)
           key.attach(head)
           logger.debug("Started channel.")
         } catch {
           case t @ (NonFatal(_) | _: ControlThrowable) =>
             logger.error(t)("Caught error during channel init.")
-            key.attach(null)
-            key.cancel()
             ch.close()
         }
       }
@@ -148,47 +147,42 @@ final class SelectorLoop(
       val k = it.next()
       it.remove()
 
-      try if (k.isValid) {
-        val head = getAttachment(k)
-        if (head != null) {
-          head.opsReady(scratch)
-        } else {
-          // Null head. Must be disconnected
-          k.cancel()
-          logger.error("Illegal state: selector key had null attachment.")
+      val selectable = getAttachment(k)
+      try {
+        if (k.isValid) {
+          if (selectable != null) {
+            selectable.opsReady(scratch)
+          } else {
+            k.cancel()
+            logger.error("Illegal state: selector key had null attachment.")
+          }
+        } else if (selectable != null) {
+          selectable.close()
         }
       } catch {
         case t: Throwable =>
-          logger.error(t) {
-            if (t.isInstanceOf[IOException])
-              "IOException while performing channel operations. Closing channel."
-            else "Error performing channel operations. Closing channel."
-          }
-
-          try {
-            val head = getAttachment(k)
-            head.closeWithError(t)
-          } catch {
+          logger.error(t)("Error performing channel operations. Closing channel.")
+          try selectable.closeWithError(t)
+          catch {
             case t @ (NonFatal(_) | _: ControlThrowable) =>
               logger.error(t)("Fatal error shutting down pipeline")
           }
-          k.attach(null)
-          k.cancel()
       }
     }
 
   private[this] def killSelector(): Unit = {
     import scala.collection.JavaConverters._
     try {
-      selector.keys.asScala.foreach { k =>
-        try {
-          val head = getAttachment(k)
-          if (head != null) {
-            head.close()
-          }
-          k.channel.close()
-          k.attach(null)
-        } catch { case _: IOException => /* NOOP */ }
+      if (!selector.keys.isEmpty) {
+        val ex = new ShutdownChannelGroupException
+        selector.keys.asScala.foreach { k =>
+          try {
+            val head = getAttachment(k)
+            if (head != null) {
+              head.closeWithError(ex)
+            }
+          } catch { case _: IOException => /* NOOP */ }
+        }
       }
 
       selector.close()

@@ -1,10 +1,14 @@
 package org.http4s.blaze.channel.nio1
 
+import java.io.IOException
+
 import org.http4s.blaze.channel.ChannelHead
 
 import scala.util.{Failure, Success, Try}
 import java.nio.ByteBuffer
 import java.nio.channels.{CancelledKeyException, SelectableChannel, SelectionKey}
+import java.util.concurrent.RejectedExecutionException
+
 import scala.concurrent.{Future, Promise}
 import scala.util.control.NonFatal
 import org.http4s.blaze.pipeline.Command.{Disconnected, EOF}
@@ -193,7 +197,7 @@ private[nio1] abstract class NIO1HeadStage(
   final override def close(): Unit = closeWithError(EOF)
 
   // Cleanup any read or write requests with the Throwable
-  final override def closeWithError(t: Throwable): Unit = {
+  final override def closeWithError(cause: Throwable): Unit = {
 
     // intended to be called from within the SelectorLoop but if
     // it's closed it will be performed in the current thread
@@ -217,28 +221,27 @@ private[nio1] abstract class NIO1HeadStage(
       }
 
       writeData = null
+      try ch.close()
+      catch {
+        case ex: IOException => logger.debug(ex)("During close")
+      }
       sendInboundCommand(Disconnected)
     }
 
     try loop.executeTask(new Runnable {
-      def run() = {
-        logger.trace(s"closeWithError($t); readPromise: $readPromise, writePromise: $writePromise")
-        if (t != EOF) logger.error(t)("Abnormal NIO1HeadStage termination")
+      def run(): Unit = {
+        logger.trace(s"closeWithError($cause); readPromise: $readPromise, writePromise: $writePromise")
+        if (cause != EOF) logger.error(cause)("Abnormal NIO1HeadStage termination")
 
         if (key.isValid) key.interestOps(0)
         key.attach(null)
-        ch.close()
-
-        doClose(t)
+        doClose(cause)
       }
     })
     catch {
-      case NonFatal(t2) =>
-        t2.addSuppressed(t)
-        logger.error(t2)(
-          "Caught exception while closing channel: trying to close from " +
-            s"${Thread.currentThread.getName}")
-        doClose(t2)
+      case e: RejectedExecutionException =>
+        logger.error(e)("Event loop closed. Closing in current thread.")
+        doClose(cause)
     }
   }
 
