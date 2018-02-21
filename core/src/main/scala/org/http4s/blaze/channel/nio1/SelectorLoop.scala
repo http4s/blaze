@@ -94,7 +94,7 @@ final class SelectorLoop(
   override def execute(runnable: Runnable): Unit = enqueueTask(runnable)
 
   override def reportFailure(cause: Throwable): Unit =
-    logger.info(cause)(s"Exception executing task in selector look $threadName")
+    logger.info(cause)(s"Exception executing task in selector loop $threadName")
 
   /** Initialize a new `Selectable` channel
     *
