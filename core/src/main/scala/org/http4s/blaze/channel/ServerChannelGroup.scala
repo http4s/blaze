@@ -7,6 +7,11 @@ import org.log4s.getLogger
 
 import scala.util.Try
 
+/** Abstraction for binding a server socket and handling connections.
+  *
+  * @note Implementations may have resources associated with
+  *       them before binding any sockets and should be closed.
+  */
 abstract class ServerChannelGroup {
   protected val logger = getLogger
 

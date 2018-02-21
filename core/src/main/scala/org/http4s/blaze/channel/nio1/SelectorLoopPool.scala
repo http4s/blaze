@@ -7,5 +7,5 @@ trait SelectorLoopPool {
   def nextLoop(): SelectorLoop
 
   /** Shut down all the [[SelectorLoop]]s */
-  def shutdown(): Unit
+  def close(): Unit
 }

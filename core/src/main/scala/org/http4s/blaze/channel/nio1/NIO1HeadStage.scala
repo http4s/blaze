@@ -27,7 +27,7 @@ private[nio1] object NIO1HeadStage {
 
 private[nio1] abstract class NIO1HeadStage(
     ch: SelectableChannel,
-    loop: SelectorLoop,
+    selectorLoop: SelectorLoop,
     key: SelectionKey
 ) extends ChannelHead
     with Selectable {
@@ -117,7 +117,7 @@ private[nio1] abstract class NIO1HeadStage(
     logger.trace(s"NIOHeadStage received a read request of size $size")
     val p = Promise[ByteBuffer]
 
-    loop.executeTask(new Runnable {
+    selectorLoop.executeTask(new Runnable {
       override def run(): Unit =
         if (closedReason != null) {
           p.tryFailure(closedReason)
@@ -142,7 +142,7 @@ private[nio1] abstract class NIO1HeadStage(
   final override def writeRequest(data: Seq[ByteBuffer]): Future[Unit] = {
     logger.trace(s"NIO1HeadStage Write Request: $data")
     val p = Promise[Unit]
-    loop.executeTask(new Runnable {
+    selectorLoop.executeTask(new Runnable {
       override def run(): Unit =
         if (closedReason != null) {
           p.tryFailure(closedReason)
@@ -229,12 +229,11 @@ private[nio1] abstract class NIO1HeadStage(
       sendInboundCommand(Disconnected)
     }
 
-    try loop.executeTask(new Runnable {
+    try selectorLoop.executeTask(new Runnable {
       def run(): Unit = {
         logger.trace(
           s"closeWithError($cause); readPromise: $readPromise, writePromise: $writePromise")
         if (cause != EOF) logger.error(cause)("Abnormal NIO1HeadStage termination")
-
         if (key.isValid) key.interestOps(0)
         key.attach(null)
         doClose(cause)
