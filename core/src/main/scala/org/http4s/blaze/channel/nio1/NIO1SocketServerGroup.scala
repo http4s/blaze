@@ -273,7 +273,7 @@ private final class NIO1SocketServerGroup private (
         NIO1Channel(clientChannel),
         key => {
           val conn = NIO1Connection(clientChannel)
-          val head = new SocketChannelHead(clientChannel, loop, key)
+          val head = new NIO1HeadStage(clientChannel, loop, key)
           service(conn).base(head)
           head.inboundCommand(Command.Connected)
           head
