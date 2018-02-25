@@ -10,8 +10,7 @@ import java.nio.channels.{CancelledKeyException, SelectableChannel, SelectionKey
 import java.util.concurrent.RejectedExecutionException
 
 import scala.concurrent.{Future, Promise}
-import scala.util.control.NonFatal
-import org.http4s.blaze.pipeline.Command.{Disconnected, EOF}
+import org.http4s.blaze.pipeline.Command.EOF
 import org.http4s.blaze.util.BufferTools
 
 private[nio1] object NIO1HeadStage {
@@ -65,18 +64,13 @@ private[nio1] abstract class NIO1HeadStage(
         val p = readPromise
         readPromise = null
         if (p != null) {
-          p.tryComplete(r)
-          ()
-        } else {
-          /* NOOP: was handled during an exception event */
+          p.complete(r)
           ()
         }
 
       case Failure(e) =>
         val ee = checkError(e)
-        sendInboundCommand(Disconnected)
         closeWithError(ee) // will complete the promise with the error
-        ()
     }
   }
 
@@ -106,7 +100,6 @@ private[nio1] abstract class NIO1HeadStage(
 
       case WriteError(t) =>
         unsetOp(SelectionKey.OP_WRITE)
-        sendInboundCommand(Disconnected)
         closeWithError(t)
     }
   }
@@ -145,7 +138,7 @@ private[nio1] abstract class NIO1HeadStage(
     selectorLoop.executeTask(new Runnable {
       override def run(): Unit =
         if (closedReason != null) {
-          p.tryFailure(closedReason)
+          p.failure(closedReason)
           ()
         } else if (writePromise == null) {
           val writes = data.toArray
@@ -157,13 +150,12 @@ private[nio1] abstract class NIO1HeadStage(
             ()
           } else {
             // Empty buffer, just return success
-            p.tryComplete(cachedSuccess)
+            p.complete(cachedSuccess)
             ()
           }
         } else {
           val t = new IllegalStateException("Cannot have more than one pending write request")
-          logger.error(t)(s"Multiple pending write requests")
-          p.tryFailure(t)
+          p.failure(t)
           ()
         }
     })
@@ -226,7 +218,6 @@ private[nio1] abstract class NIO1HeadStage(
         case ex: IOException =>
           logger.warn(ex)("Unexpected IOException during channel close")
       }
-      sendInboundCommand(Disconnected)
     }
 
     try selectorLoop.executeTask(new Runnable {
