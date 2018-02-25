@@ -15,14 +15,8 @@ object Command {
   /** Signals that the pipeline [[HeadStage]] is connected and ready to accept read and write requests */
   case object Connected extends InboundCommand
 
-  /** Signals the tails desire to shutdown. No [[Disconnected]] command should be sent in reply */
+  /** Signals the tails desire to shutdown. */
   case object Disconnect extends OutboundCommand
-
-  /** Signals to the tail of the pipeline that it has been disconnected and
-    * shutdown. Any following reads or writes will result in an exception, [[EOF]],
-    * a general Exception signaling the stage is not connected, or otherwise.
-    */
-  case object Disconnected extends InboundCommand
 
   /** Signals the the stages a desire to flush the pipeline. This is just a suggestion
     * and is not guaranteed to induce any effect. */
