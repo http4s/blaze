@@ -6,13 +6,17 @@ import org.http4s.blaze.channel.ChannelHead
 
 import scala.util.{Failure, Success, Try}
 import java.nio.ByteBuffer
-import java.nio.channels.{CancelledKeyException, SelectableChannel, SelectionKey}
+import java.nio.channels._
 import java.util.concurrent.RejectedExecutionException
 
+import org.http4s.blaze.channel.ChannelHead.brokePipeMessages
+
 import scala.concurrent.{Future, Promise}
-import scala.util.control.NonFatal
 import org.http4s.blaze.pipeline.Command.{Disconnected, EOF}
+import org.http4s.blaze.util
 import org.http4s.blaze.util.BufferTools
+
+import scala.annotation.tailrec
 
 private[nio1] object NIO1HeadStage {
 
@@ -23,10 +27,88 @@ private[nio1] object NIO1HeadStage {
   case object Incomplete extends WriteResult
   case class WriteError(t: Exception) extends WriteResult // EOF signals normal termination
 
+  /** Performs the read operation
+    * @param scratch a ByteBuffer which is owned by the SelectorLoop to use as
+    *                scratch space until this method returns
+    * @return a Try with either a successful ByteBuffer, an error, or null if this operation is not complete
+    */
+  private def performRead(ch: SocketChannel, scratch: ByteBuffer): Try[ByteBuffer] =
+    try {
+      scratch.clear()
+      val bytes = ch.read(scratch)
+      if (bytes < 0) Failure(EOF)
+      else {
+        scratch.flip()
+        val b = ByteBuffer.allocate(scratch.remaining)
+        b.put(scratch)
+        b.flip()
+        Success(b)
+      }
+
+    } catch {
+      case e: ClosedChannelException => Failure(EOF)
+      case e: IOException if brokePipeMessages.contains(e.getMessage) =>
+        Failure(EOF)
+      case e: IOException => Failure(e)
+    }
+
+  /** Perform the write operation for this channel
+    * @param buffers buffers to be written to the channel
+    * @return a WriteResult that is one of Complete, Incomplete or WriteError(e: Exception)
+    */
+  private def performWrite(
+      ch: SocketChannel,
+      scratch: ByteBuffer,
+      buffers: Array[ByteBuffer]): WriteResult =
+    try {
+      if (BufferTools.areDirectOrEmpty(buffers)) {
+        ch.write(buffers)
+        if (util.BufferTools.checkEmpty(buffers)) Complete
+        else Incomplete
+      } else {
+        // To sidestep the java NIO "memory leak" (see http://www.evanjones.ca/java-bytebuffer-leak.html)
+        // We copy the data to the scratch buffer (which should be a direct ByteBuffer)
+        // before the write. We then check to see how much data was written and fast-forward
+        // the input buffers accordingly.
+        // This is very similar to the pattern used by the Oracle JDK implementation in its
+        // IOUtil class: if the provided buffers are not direct buffers, they are copied to
+        // temporary direct ByteBuffers and written.
+        @tailrec
+        def writeLoop(): WriteResult = {
+          scratch.clear()
+          BufferTools.copyBuffers(buffers, scratch)
+          scratch.flip()
+
+          val written = ch.write(scratch)
+          if (written > 0) {
+            assert(BufferTools.fastForwardBuffers(buffers, written))
+          }
+
+          if (scratch.remaining > 0) {
+            // Couldn't write all the data
+            Incomplete
+          } else if (util.BufferTools.checkEmpty(buffers)) {
+            // All data was written
+            Complete
+          } else {
+            // May still be able to write more to the socket buffer
+            writeLoop()
+          }
+        }
+
+        writeLoop()
+      }
+    } catch {
+      case _: ClosedChannelException => WriteError(EOF)
+      case e: IOException if brokePipeMessages.contains(e.getMessage) =>
+        WriteError(EOF)
+      case e: IOException =>
+        WriteError(e)
+    }
 }
 
-private[nio1] abstract class NIO1HeadStage(
-    ch: SelectableChannel,
+private[nio1] final class NIO1HeadStage(
+    ch: SocketChannel,
     selectorLoop: SelectorLoop,
     key: SelectionKey
 ) extends ChannelHead
@@ -54,29 +136,29 @@ private[nio1] abstract class NIO1HeadStage(
   private[this] def readReady(scratch: ByteBuffer): Unit = {
     // assert(Thread.currentThread() == loop,
     //       s"Expected to be called only by SelectorLoop thread, was called by ${Thread.currentThread.getName}")
-
-    val r = performRead(scratch)
     unsetOp(SelectionKey.OP_READ)
 
-    // if we successfully read some data, unset the interest and
-    // complete the promise, otherwise fail appropriately
-    r match {
-      case Success(_) =>
-        val p = readPromise
-        readPromise = null
-        if (p != null) {
-          p.tryComplete(r)
-          ()
-        } else {
-          /* NOOP: was handled during an exception event */
-          ()
-        }
+    if (readPromise != null) {
+      // if we successfully read some data, unset the interest and
+      // complete the promise, otherwise fail appropriately
+      performRead(ch, scratch) match {
+        case s @ Success(_) =>
+          val p = readPromise
+          readPromise = null
+          if (p != null) {
+            p.tryComplete(s)
+            ()
+          } else {
+            /* NOOP: was handled during an exception event */
+            ()
+          }
 
-      case Failure(e) =>
-        val ee = checkError(e)
-        sendInboundCommand(Disconnected)
-        closeWithError(ee) // will complete the promise with the error
-        ()
+        case Failure(e) =>
+          val ee = checkError(e)
+          sendInboundCommand(Disconnected)
+          closeWithError(ee) // will complete the promise with the error
+          ()
+      }
     }
   }
 
@@ -85,7 +167,7 @@ private[nio1] abstract class NIO1HeadStage(
     //       s"Expected to be called only by SelectorLoop thread, was called by ${Thread.currentThread.getName}")
 
     val buffers = writeData // get a local reference so we don't hit the volatile a lot
-    performWrite(scratch, buffers) match {
+    performWrite(ch, scratch, buffers) match {
       case Complete =>
         writeData = null
         unsetOp(SelectionKey.OP_WRITE)
@@ -94,18 +176,21 @@ private[nio1] abstract class NIO1HeadStage(
         if (p != null) {
           p.tryComplete(cachedSuccess)
           ()
-        } else {
-          /* NOOP: channel must have been closed in some manner */
-          ()
         }
 
       case Incomplete =>
-        /* Need to wait for another go around to try and send more data */
+        // Need to wait for another go around to try and send more data
         BufferTools.dropEmpty(buffers)
         ()
 
       case WriteError(t) =>
         unsetOp(SelectionKey.OP_WRITE)
+        val p = writePromise
+        writePromise = null
+        if (p != null) {
+          p.failure(t)
+        }
+        // TODO: maybe the tail of the pipeline should be in charge of disconnecting.
         sendInboundCommand(Disconnected)
         closeWithError(t)
     }
@@ -180,19 +265,6 @@ private[nio1] abstract class NIO1HeadStage(
   }
 
   ///////////////////////////////// Channel Ops ////////////////////////////////////////
-
-  /** Performs the read operation
-    * @param scratch a ByteBuffer which is owned by the SelectorLoop to use as
-    *                scratch space until this method returns
-    * @return a Try with either a successful ByteBuffer, an error, or null if this operation is not complete
-    */
-  protected def performRead(scratch: ByteBuffer): Try[ByteBuffer]
-
-  /** Perform the write operation for this channel
-    * @param buffers buffers to be written to the channel
-    * @return a WriteResult that is one of Complete, Incomplete or WriteError(e: Exception)
-    */
-  protected def performWrite(scratch: ByteBuffer, buffers: Array[ByteBuffer]): WriteResult
 
   final override def close(): Unit = closeWithError(EOF)
 
