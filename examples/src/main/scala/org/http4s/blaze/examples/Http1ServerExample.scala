@@ -14,6 +14,7 @@ import org.http4s.blaze.pipeline.stages.SSLStage
 import org.http4s.blaze.pipeline.LeafBuilder
 import org.http4s.blaze.pipeline.stages.monitors.IntervalConnectionMonitor
 
+import scala.concurrent.Future
 import scala.concurrent.duration._
 
 class Http1ServerExample(factory: ServerChannelGroup, port: Int)(
@@ -23,11 +24,11 @@ class Http1ServerExample(factory: ServerChannelGroup, port: Int)(
 
   def run(): ServerChannel = {
     val ref = new AtomicReference[ServerChannel](null)
-    val f: BufferPipelineBuilder =
+    val f: SocketPipelineBuilder =
       status.wrapBuilder { _ =>
         val stage =
           new Http1ServerStage(ExampleService.service(Some(status), Some(ref)), config)
-        trans(LeafBuilder(stage))
+        Future.successful(trans(LeafBuilder(stage)))
       }
 
     val address = new InetSocketAddress(port)

@@ -15,7 +15,7 @@ import scala.concurrent.duration._
 
 
 class NIO1ChannelSpec extends BaseChannelSpec {
-  override protected def bind(f: BufferPipelineBuilder): ServerPair = {
+  override protected def bind(f: SocketPipelineBuilder): ServerPair = {
     val factory = NIO1SocketServerGroup.fixedGroup(workerThreads = 2)
 
     val channel = factory.bind(new InetSocketAddress(0), f).get // will throw if failed to bind
@@ -24,7 +24,7 @@ class NIO1ChannelSpec extends BaseChannelSpec {
 }
 
 class NIO2ChannelSpec extends BaseChannelSpec {
-  override protected def bind(f: BufferPipelineBuilder): ServerPair = {
+  override protected def bind(f: SocketPipelineBuilder): ServerPair = {
     val factory = NIO2SocketServerGroup.fixedGroup(workerThreads = 2)
 
     val channel = factory.bind(new InetSocketAddress(0), f).get // will throw if failed to bind
@@ -42,10 +42,10 @@ abstract class BaseChannelSpec extends Specification {
 
   protected case class ServerPair(group: ServerChannelGroup, channel: ServerChannel)
 
-  protected def bind(f: BufferPipelineBuilder): ServerPair
+  protected def bind(f: SocketPipelineBuilder): ServerPair
 
   private def bindEcho(): ServerPair = {
-    bind{ _ => LeafBuilder(new EchoStage) }
+    bind{ _ => Future.successful(LeafBuilder(new EchoStage)) }
   }
 
   "Bind the port and then be closed" in {
@@ -115,7 +115,7 @@ abstract class BaseChannelSpec extends Specification {
 
   def writeBuffer(batch: Boolean): Unit = {
     val stage = new ZeroWritingStage(batch)
-    val ServerPair(group,channel) = bind { _ => LeafBuilder(stage) }
+    val ServerPair(group,channel) = bind { _ => Future.successful(LeafBuilder(stage)) }
     val socket = new Socket()
     socket.connect(channel.socketAddress)
 

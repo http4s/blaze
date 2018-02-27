@@ -8,11 +8,11 @@ import java.util.concurrent.{RejectedExecutionException, ThreadFactory}
 import java.util.concurrent.atomic.{AtomicBoolean, AtomicInteger}
 
 import org.http4s.blaze.channel.{
-  BufferPipelineBuilder,
   ChannelOptions,
   DefaultPoolSize,
   ServerChannel,
-  ServerChannelGroup
+  ServerChannelGroup,
+  SocketPipelineBuilder
 }
 import org.http4s.blaze.pipeline.Command
 import org.http4s.blaze.util.BasicThreadFactory
@@ -20,7 +20,7 @@ import org.log4s._
 
 import scala.annotation.tailrec
 import scala.collection.mutable
-import scala.util.Try
+import scala.util.{Failure, Success, Try}
 import scala.util.control.NonFatal
 
 object NIO1SocketServerGroup {
@@ -76,7 +76,7 @@ object NIO1SocketServerGroup {
 
       override def bind(
           address: InetSocketAddress,
-          service: BufferPipelineBuilder
+          service: SocketPipelineBuilder
       ): Try[ServerChannel] =
         underlying.bind(address, service)
     }
@@ -108,7 +108,7 @@ private final class NIO1SocketServerGroup private (
   private[this] class SocketAcceptor(
       key: SelectionKey,
       ch: ServerChannelImpl,
-      service: BufferPipelineBuilder)
+      service: SocketPipelineBuilder)
       extends Selectable {
 
     // Save it since once the channel is closed, we're in trouble.
@@ -217,7 +217,7 @@ private final class NIO1SocketServerGroup private (
     * services on the requisite sockets */
   override def bind(
       address: InetSocketAddress,
-      service: BufferPipelineBuilder
+      service: SocketPipelineBuilder
   ): Try[ServerChannel] = Try {
     val ch = ServerSocketChannel.open().bind(address)
     ch.configureBlocking(false)
@@ -246,7 +246,7 @@ private final class NIO1SocketServerGroup private (
   // Will be called from within the SelectorLoop
   private[this] def buildSocketAcceptor(
       ch: ServerChannelImpl,
-      service: BufferPipelineBuilder
+      service: SocketPipelineBuilder
   )(key: SelectionKey): Selectable = {
     val acceptor = new SocketAcceptor(key, ch, service)
     try key.interestOps(SelectionKey.OP_ACCEPT)
@@ -258,30 +258,33 @@ private final class NIO1SocketServerGroup private (
 
   private[this] def handleClientChannel(
       clientChannel: SocketChannel,
-      service: BufferPipelineBuilder
+      service: SocketPipelineBuilder
   ): Unit = {
-    val address = clientChannel.getRemoteAddress.asInstanceOf[InetSocketAddress]
-    // Check to see if we want to keep this connection.
-    // Note: we only log at trace since it is highly likely that `acceptConnection`
-    // would have also logged this info for normal application observability.
-    if (acceptConnection(address)) {
-      clientChannel.configureBlocking(false)
-      logger.trace(s"Accepted connection from $address")
-      channelOptions.applyToChannel(clientChannel)
-      val loop = selectorPool.nextLoop()
-      loop.initChannel(
-        NIO1Channel(clientChannel),
-        key => {
-          val conn = NIO1Connection(clientChannel)
-          val head = new NIO1HeadStage(clientChannel, loop, key)
-          service(conn).base(head)
+    clientChannel.configureBlocking(false)
+    channelOptions.applyToChannel(clientChannel)
+
+    val address = clientChannel.getRemoteAddress
+    val loop = selectorPool.nextLoop()
+    val conn = NIO1Connection(clientChannel)
+
+    // From within the selector loop, constructs a pipeline or
+    // just closes the socket if the pipeline builder rejects it.
+    def fromKey(key: SelectionKey): Selectable = {
+      val head = new NIO1HeadStage(clientChannel, loop, key)
+      service(conn).onComplete {
+        case Success(tail) =>
+          tail.base(head)
           head.inboundCommand(Command.Connected)
-          head
-        }
-      )
-    } else {
-      logger.trace(s"Rejected connection from $address")
-      clientChannel.close()
+          logger.info(s"Accepted connection from $address")
+
+        case Failure(ex) =>
+          head.close()
+          logger.info(ex)(s"Rejected connection from $address")
+      }(loop)
+
+      head
     }
+
+    loop.initChannel(NIO1Channel(clientChannel), fromKey)
   }
 }

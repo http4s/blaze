@@ -3,8 +3,9 @@ package org.http4s.blaze.pipeline.stages.monitors
 import java.nio.ByteBuffer
 import java.util.concurrent.atomic.AtomicBoolean
 
-import org.http4s.blaze.channel.BufferPipelineBuilder
+import org.http4s.blaze.channel.{SocketConnection, SocketPipelineBuilder}
 import org.http4s.blaze.pipeline.MidStage
+import org.http4s.blaze.util.Execution
 import org.http4s.blaze.util.Execution.directec
 
 import scala.concurrent.Future
@@ -12,8 +13,8 @@ import scala.concurrent.Future
 /** Facilitates injecting some monitoring tools into the pipeline */
 abstract class ConnectionMonitor {
 
-  def wrapBuilder(factory: BufferPipelineBuilder): BufferPipelineBuilder =
-    factory.andThen(_.prepend(new ServerStatusStage))
+  def wrapBuilder(factory: SocketPipelineBuilder): SocketPipelineBuilder =
+    factory(_).map(_.prepend(new ServerStatusStage))(Execution.trampoline)
 
   protected def connectionAccepted(): Unit
   protected def connectionClosed(): Unit

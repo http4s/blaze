@@ -32,9 +32,6 @@ final class LeafBuilder[I] private[pipeline] (leaf: Tail[I]) {
 
 object LeafBuilder {
   def apply[T](leaf: TailStage[T]): LeafBuilder[T] = new LeafBuilder[T](leaf)
-
-  implicit def tailToLeaf[I](tail: TailStage[I]): LeafBuilder[I] =
-    LeafBuilder(tail)
 }
 
 /** Facilitates starting a pipeline from a MidStage. Can be appended and prepended

@@ -8,8 +8,10 @@ import java.util.concurrent.atomic.AtomicInteger
 
 import org.http4s.blaze.channel._
 import org.http4s.blaze.pipeline.Command.Connected
+import org.http4s.blaze.util.Execution
+import org.log4s.getLogger
 
-import scala.util.Try
+import scala.util.{Failure, Success, Try}
 import scala.util.control.NonFatal
 
 object NIO2SocketServerGroup {
@@ -58,6 +60,7 @@ final class NIO2SocketServerGroup private (
     group: AsynchronousChannelGroup,
     channelOptions: ChannelOptions)
     extends ServerChannelGroup {
+  private[this] val logger = getLogger
 
   /** Closes the group along with all current connections.
     *
@@ -73,7 +76,7 @@ final class NIO2SocketServerGroup private (
         "Cannot shut down the system default AsynchronousChannelGroup.")
     }
 
-  def bind(address: InetSocketAddress, service: BufferPipelineBuilder): Try[ServerChannel] =
+  def bind(address: InetSocketAddress, service: SocketPipelineBuilder): Try[ServerChannel] =
     Try {
       val ch = AsynchronousServerSocketChannel.open(group).bind(address)
       val serverChannel =
@@ -85,7 +88,7 @@ final class NIO2SocketServerGroup private (
   private[this] final class NIO2ServerChannel(
       val socketAddress: InetSocketAddress,
       ch: AsynchronousServerSocketChannel,
-      service: BufferPipelineBuilder)
+      service: SocketPipelineBuilder)
       extends ServerChannel {
 
     override protected def closeChannel(): Unit =
@@ -112,15 +115,20 @@ final class NIO2SocketServerGroup private (
     def listen(): Unit = {
       val handler = new CompletionHandler[AsynchronousSocketChannel, Null] {
         override def completed(ch: AsynchronousSocketChannel, attachment: Null): Unit = {
-          val address = ch.getRemoteAddress().asInstanceOf[InetSocketAddress]
+          // Constructs a new pipeline, presuming the
+          // pipeline builder accepts the socket
+          service(new NIO2SocketConnection(ch)).onComplete {
+            case Success(tail) =>
+              channelOptions.applyToChannel(ch)
+              tail
+                .base(new ByteBufferHead(ch, bufferSize))
+                .sendInboundCommand(Connected)
 
-          if (!acceptConnection(address)) ch.close()
-          else {
-            channelOptions.applyToChannel(ch)
-            service(new NIO2SocketConnection(ch))
-              .base(new ByteBufferHead(ch, bufferSize))
-              .sendInboundCommand(Connected)
-          }
+            case Failure(ex) =>
+              val address = ch.getRemoteAddress
+              ch.close()
+              logger.info(ex)(s"Rejected connection from $address")
+          }(Execution.trampoline)
 
           listen() // Continue the circle of life
         }
