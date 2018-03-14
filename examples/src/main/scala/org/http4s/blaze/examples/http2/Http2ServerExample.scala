@@ -11,6 +11,8 @@ import org.http4s.blaze.http.http2.server.ServerSelector
 import org.http4s.blaze.pipeline.TrunkBuilder
 import org.http4s.blaze.pipeline.stages.SSLStage
 
+import scala.concurrent.Future
+
 /** Basic HTTP/2 server example
   *
   * The server is capable of serving traffic over both HTTP/1.x and HTTP/2
@@ -24,11 +26,12 @@ import org.http4s.blaze.pipeline.stages.SSLStage
 class Http2ServerExample(port: Int) {
   private val sslContext = ExampleKeystore.sslContext()
 
-  private val f: BufferPipelineBuilder = { _ =>
+  private val f: SocketPipelineBuilder = { _ =>
     val eng = sslContext.createSSLEngine()
     eng.setUseClientMode(false)
-    TrunkBuilder(new SSLStage(eng))
-      .cap(ServerSelector(eng, ExampleService.service(None), HttpServerStageConfig()))
+    Future.successful(
+      TrunkBuilder(new SSLStage(eng))
+        .cap(ServerSelector(eng, ExampleService.service(None), HttpServerStageConfig())))
   }
 
   private val factory =

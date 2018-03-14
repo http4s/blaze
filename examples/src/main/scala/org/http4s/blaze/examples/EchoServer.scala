@@ -1,12 +1,13 @@
 package org.http4s.blaze
 package examples
 
-import org.http4s.blaze.pipeline.TailStage
+import org.http4s.blaze.pipeline.{LeafBuilder, TailStage}
 import java.nio.ByteBuffer
+
 import org.http4s.blaze.util.BufferTools
 
 import scala.util.{Failure, Success}
-import org.http4s.blaze.channel.{BufferPipelineBuilder, ServerChannel}
+import org.http4s.blaze.channel.{ServerChannel, SocketPipelineBuilder}
 import java.net.InetSocketAddress
 import java.util.Date
 
@@ -15,11 +16,13 @@ import org.http4s.blaze.pipeline.Command.EOF
 import org.http4s.blaze.channel.nio2.NIO2SocketServerGroup
 import org.log4s.getLogger
 
+import scala.concurrent.Future
+
 class EchoServer {
   private[this] val logger = getLogger
 
   def prepare(address: InetSocketAddress): ServerChannel = {
-    val f: BufferPipelineBuilder = _ => new EchoStage
+    val f: SocketPipelineBuilder = _ => Future.successful(LeafBuilder(new EchoStage))
 
     NIO2SocketServerGroup()
       .bind(address, f)

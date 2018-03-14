@@ -8,7 +8,9 @@ import org.http4s.blaze.channel.nio1.NIO1SocketServerGroup
 import org.http4s.blaze.channel.nio2.NIO2SocketServerGroup
 import org.http4s.blaze.http.{HttpServerStageConfig, _}
 import org.http4s.blaze.pipeline.LeafBuilder
+import org.http4s.blaze.util.Execution
 
+import scala.concurrent.Future
 import scala.util.Try
 
 object Http1Server {
@@ -17,7 +19,7 @@ object Http1Server {
 
   /** Create a new Http1Server */
   def apply(
-      service: SocketConnection => HttpService,
+      service: SocketConnection => Future[HttpService],
       address: InetSocketAddress,
       config: HttpServerStageConfig,
       useNio2: Boolean = false,
@@ -28,9 +30,9 @@ object Http1Server {
         NIO2SocketServerGroup.fixedGroup(workerThreads = workerThreads)
       else NIO1SocketServerGroup.fixedGroup(workerThreads = workerThreads)
 
-    val builder = { ch: SocketConnection =>
-      LeafBuilder(new Http1ServerStage(service(ch), config))
-    }
+    val builder = service(_: SocketConnection).map { service =>
+      LeafBuilder(new Http1ServerStage(service, config))
+    }(Execution.directec)
 
     val channel = group.bind(address, builder)
     if (channel.isFailure) group.closeGroup()
