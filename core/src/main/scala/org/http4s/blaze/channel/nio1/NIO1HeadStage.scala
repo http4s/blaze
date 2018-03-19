@@ -1,22 +1,16 @@
 package org.http4s.blaze.channel.nio1
 
 import java.io.IOException
-
-import org.http4s.blaze.channel.ChannelHead
-
-import scala.util.{Failure, Success, Try}
 import java.nio.ByteBuffer
 import java.nio.channels._
 import java.util.concurrent.RejectedExecutionException
-
-import org.http4s.blaze.channel.ChannelHead.brokePipeMessages
-
-import scala.concurrent.{Future, Promise}
+import org.http4s.blaze.channel.ChannelHead
 import org.http4s.blaze.pipeline.Command.{Disconnected, EOF}
 import org.http4s.blaze.util
 import org.http4s.blaze.util.BufferTools
-
 import scala.annotation.tailrec
+import scala.concurrent.{Future, Promise}
+import scala.util.{Failure, Success, Try}
 
 private[nio1] object NIO1HeadStage {
 
@@ -47,7 +41,7 @@ private[nio1] object NIO1HeadStage {
 
     } catch {
       case e: ClosedChannelException => Failure(EOF)
-      case e: IOException if brokePipeMessages.contains(e.getMessage) =>
+      case e: IOException if ChannelHead.brokePipeMessages.contains(e.getMessage) =>
         Failure(EOF)
       case e: IOException => Failure(e)
     }
@@ -100,7 +94,7 @@ private[nio1] object NIO1HeadStage {
       }
     } catch {
       case _: ClosedChannelException => WriteError(EOF)
-      case e: IOException if brokePipeMessages.contains(e.getMessage) =>
+      case e: IOException if ChannelHead.brokePipeMessages.contains(e.getMessage) =>
         WriteError(EOF)
       case e: IOException =>
         WriteError(e)
@@ -145,18 +139,13 @@ private[nio1] final class NIO1HeadStage(
         case s @ Success(_) =>
           val p = readPromise
           readPromise = null
-          if (p != null) {
-            p.tryComplete(s)
-            ()
-          } else {
-            /* NOOP: was handled during an exception event */
-            ()
-          }
+          p.complete(s)
+          ()
 
         case Failure(e) =>
-          val ee = checkError(e)
-          sendInboundCommand(Disconnected)
-          closeWithError(ee) // will complete the promise with the error
+          val p = readPromise
+          readPromise = null
+          p.failure(checkError(e))
           ()
       }
     }
@@ -189,10 +178,8 @@ private[nio1] final class NIO1HeadStage(
         writePromise = null
         if (p != null) {
           p.failure(t)
+          ()
         }
-        // TODO: maybe the tail of the pipeline should be in charge of disconnecting.
-        sendInboundCommand(Disconnected)
-        closeWithError(t)
     }
   }
 
@@ -230,7 +217,7 @@ private[nio1] final class NIO1HeadStage(
     selectorLoop.executeTask(new Runnable {
       override def run(): Unit =
         if (closedReason != null) {
-          p.tryFailure(closedReason)
+          p.failure(closedReason)
           ()
         } else if (writePromise == null) {
           val writes = data.toArray
@@ -242,26 +229,17 @@ private[nio1] final class NIO1HeadStage(
             ()
           } else {
             // Empty buffer, just return success
-            p.tryComplete(cachedSuccess)
+            p.complete(cachedSuccess)
             ()
           }
         } else {
           val t = new IllegalStateException("Cannot have more than one pending write request")
-          logger.error(t)(s"Multiple pending write requests")
-          p.tryFailure(t)
+          p.failure(t)
           ()
         }
     })
 
     p.future
-  }
-
-  ///////////////////////////////// Shutdown methods ///////////////////////////////////
-
-  /** Shutdown the channel with an EOF for any pending OPs */
-  override protected def stageShutdown(): Unit = {
-    closeWithError(EOF)
-    super.stageShutdown()
   }
 
   ///////////////////////////////// Channel Ops ////////////////////////////////////////

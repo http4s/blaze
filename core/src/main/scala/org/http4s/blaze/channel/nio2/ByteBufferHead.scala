@@ -9,7 +9,6 @@ import scala.concurrent.{Future, Promise}
 import java.nio.channels._
 import java.nio.ByteBuffer
 import java.io.IOException
-import java.util.Date
 import java.util.concurrent.TimeUnit
 import java.lang.{Long => JLong}
 
@@ -18,43 +17,17 @@ private[nio2] final class ByteBufferHead(channel: AsynchronousSocketChannel, buf
 
   def name: String = "ByteBufferHeadStage"
 
-  private val buffer = ByteBuffer.allocateDirect(bufferSize)
+  @volatile
+  private[this] var closeReason: Throwable = null
+  private[this] val buffer = ByteBuffer.allocateDirect(bufferSize)
 
   override def writeRequest(data: ByteBuffer): Future[Unit] =
-    if (!data.hasRemaining() && data.position > 0) {
-      logger.warn(
-        "Received write request with non-zero position but ZERO available" +
-          s"bytes at ${new Date} on org.http4s.blaze.channel $channel: $data")
-      Future.successful(())
-    } else {
-      val p = Promise[Unit]
-      def go(i: Int): Unit =
-        channel.write(
-          data,
-          null: Null,
-          new CompletionHandler[Integer, Null] {
-            def failed(exc: Throwable, attachment: Null): Unit = {
-              val e = checkError(exc)
-              sendInboundCommand(Disconnected)
-              closeWithError(e)
-              p.tryFailure(e)
-              ()
-            }
+    writeRequest(data::Nil)
 
-            def completed(result: Integer, attachment: Null): Unit = {
-              if (result.intValue < i)
-                go(i - result.intValue) // try to write again
-              else p.trySuccess(()); () // All done
-            }
-          }
-        )
-      go(data.remaining())
-
-      p.future
-    }
-
-  override def writeRequest(data: Seq[ByteBuffer]): Future[Unit] =
-    if (data.isEmpty) Future.successful(())
+  override def writeRequest(data: Seq[ByteBuffer]): Future[Unit] = {
+    val reason = closeReason
+    if (reason != null) Future.failed(reason)
+    else if (data.isEmpty) Future.successful(())
     else {
       val p = Promise[Unit]
       val srcs = data.toArray
@@ -70,21 +43,24 @@ private[nio2] final class ByteBufferHead(channel: AsynchronousSocketChannel, buf
           new CompletionHandler[JLong, Null] {
             def failed(exc: Throwable, attachment: Null): Unit = {
               val e = checkError(exc)
-              sendInboundCommand(Disconnected)
-              closeWithError(e)
               p.tryFailure(e)
               ()
             }
 
             def completed(result: JLong, attachment: Null): Unit =
-              if (BufferTools.checkEmpty(srcs)) { p.trySuccess(()); () } else
-                go(BufferTools.dropEmpty(srcs))
+              if (!BufferTools.checkEmpty(srcs)) go(BufferTools.dropEmpty(srcs))
+              else {
+                p.success(())
+                ()
+              }
           }
         )
+
       go(0)
 
       p.future
     }
+  }
 
   def readRequest(size: Int): Future[ByteBuffer] = {
     val p = Promise[ByteBuffer]
@@ -100,25 +76,25 @@ private[nio2] final class ByteBufferHead(channel: AsynchronousSocketChannel, buf
       new CompletionHandler[Integer, Null] {
         def failed(exc: Throwable, attachment: Null): Unit = {
           val e = checkError(exc)
-          sendInboundCommand(Disconnected)
-          closeWithError(e)
-          p.tryFailure(e)
+          p.failure(e)
           ()
         }
 
-        def completed(i: Integer, attachment: Null): Unit =
-          if (i.intValue() >= 0) {
+        def completed(i: Integer, attachment: Null): Unit = i.intValue match {
+          case 0 =>
+            p.success(BufferTools.emptyBuffer)
+            ()
+
+          case i if i < 0 =>
+            p.failure(EOF)
+
+          case i =>
             buffer.flip()
-            val b = ByteBuffer.allocate(buffer.remaining())
+            val b = ByteBuffer.allocate(buffer.remaining)
             b.put(buffer).flip()
-            p.trySuccess(b)
+            p.success(b)
             ()
-          } else { // must be end of stream
-            sendInboundCommand(Disconnected)
-            closeWithError(EOF)
-            p.tryFailure(EOF)
-            ()
-          }
+        }
       }
     )
     p.future
@@ -132,15 +108,23 @@ private[nio2] final class ByteBufferHead(channel: AsynchronousSocketChannel, buf
     case e: Throwable => super.checkError(e)
   }
 
-  override protected def stageShutdown(): Unit = closeWithError(EOF)
-
   override protected def closeWithError(t: Throwable): Unit = {
+    val needsClose = synchronized {
+      val reason = closeReason
+      if (reason == null || reason == EOF) {
+        closeReason = t
+      }
+      reason == null
+    }
+
     t match {
       case EOF => logger.debug(s"closeWithError(EOF)")
       case t => logger.error(t)("NIO2 channel closed with an unexpected error")
     }
 
-    try channel.close()
-    catch { case e: IOException => /* Don't care */ }
+    if (needsClose) {
+      try channel.close()
+      catch { case e: IOException => /* Don't care */ }
+    }
   }
 }

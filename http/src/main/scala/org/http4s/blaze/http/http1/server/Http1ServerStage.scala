@@ -4,7 +4,7 @@ import java.nio.ByteBuffer
 
 import org.http4s.blaze.http.util.ServiceTimeoutFilter
 import org.http4s.blaze.http.{HttpRequest, HttpServerStageConfig, RouteAction, _}
-import org.http4s.blaze.pipeline.Command.EOF
+import org.http4s.blaze.pipeline.Command.{Disconnect, EOF}
 import org.http4s.blaze.pipeline.{Command => Cmd, _}
 import org.http4s.blaze.util.Execution
 
@@ -71,15 +71,19 @@ class Http1ServerStage(service: HttpService, config: HttpServerStageConfig)
             case Success(Http1ServerCodec.Reload) =>
               dispatchLoop() // continue the loop
             case Success(Http1ServerCodec.Close) =>
-              sendOutboundCommand(Cmd.Disconnect) // not able to server another on this session
+              shutdownWithCommand(Cmd.Disconnect) // not able to server another on this session
 
-            case Failure(EOF) => /* NOOP socket should now be closed */
+            case Failure(EOF) =>
+              logger.debug(EOF)("Failed to render response")
+              shutdownWithCommand(Disconnect)
+
             case Failure(ex) =>
               logger.error(ex)("Failed to render response")
               shutdownWithCommand(Cmd.Error(ex))
           }
 
-        case Failure(EOF) => /* NOOP */
+        case Failure(EOF) =>
+          shutdownWithCommand(Cmd.Disconnect)
         case Failure(ex) =>
           logger.error(ex)("Failed to service request. Sending 500 response.")
           codec

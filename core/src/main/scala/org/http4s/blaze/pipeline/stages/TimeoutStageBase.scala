@@ -4,7 +4,7 @@ import scala.annotation.tailrec
 import scala.concurrent.Future
 import scala.concurrent.duration.Duration
 import org.http4s.blaze.pipeline.MidStage
-import org.http4s.blaze.pipeline.Command.{Disconnect, Disconnected}
+import org.http4s.blaze.pipeline.Command.Disconnect
 import org.http4s.blaze.util.{Cancellable, TickWheelExecutor}
 
 import java.util.concurrent.atomic.AtomicReference
@@ -28,7 +28,6 @@ abstract class TimeoutStageBase[T](timeout: Duration, exec: TickWheelExecutor)
     override def run(): Unit = {
       logger.debug(s"Timeout of $timeout triggered. Killing pipeline.")
       sendOutboundCommand(Disconnect)
-      sendInboundCommand(Disconnected)
     }
   }
 

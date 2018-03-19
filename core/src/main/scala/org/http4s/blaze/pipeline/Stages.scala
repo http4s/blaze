@@ -1,6 +1,5 @@
 package org.http4s.blaze.pipeline
 
-import java.util.Date
 import java.util.concurrent.TimeoutException
 
 import scala.concurrent.{Future, Promise}
@@ -32,7 +31,7 @@ import scala.util.control.NonFatal
  */
 
 sealed trait Stage {
-  final protected val logger = getLogger
+  final protected val logger = getLogger(this.getClass)
 
   def name: String
 
@@ -44,18 +43,18 @@ sealed trait Stage {
     * times by misbehaving stages. It is therefore recommended that the method be idempotent.
     */
   protected def stageStartup(): Unit =
-    logger.debug(s"${getClass.getSimpleName} starting up at ${new Date}")
+    logger.debug(s"Starting up.")
 
   /** Shuts down the stage, deallocating resources, etc.
     *
-    * This method will be called when the stages receives a [[Disconnected]] command unless the
+    * This method will be called when the stages receives a [[Disconnect]] command unless the
     * `inboundCommand` method is overridden. It is not impossible that this will not be called
     * due to failure for other stages to propagate shutdown commands. Conversely, it is also
     * possible for this to be called more than once due to the reception of multiple disconnect
     * commands. It is therefore recommended that the method be idempotent.
     */
   protected def stageShutdown(): Unit =
-    logger.debug(s"${getClass.getSimpleName} shutting down at ${new Date}")
+    logger.debug(s"Shutting down.")
 
   /** Handle basic startup and shutdown commands.
     * This should clearly be overridden in all cases except possibly TailStages
@@ -64,7 +63,6 @@ sealed trait Stage {
     */
   def inboundCommand(cmd: InboundCommand): Unit = cmd match {
     case Connected => stageStartup()
-    case Disconnected => stageShutdown()
     case _ => logger.warn(s"$name received unhandled inbound command: $cmd")
   }
 }

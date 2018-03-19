@@ -39,8 +39,6 @@ class QuietTimeoutStageSpec extends TimeoutHelpers {
       pipe.sendOutboundCommand(Command.Disconnect)
 
       checkFuture(f, 5.second) should throwA[Command.EOF.type]
-      Thread.sleep(4000)
-      pipe.getDisconnects must_==(0)
     }
   }
 }
