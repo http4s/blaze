@@ -76,9 +76,9 @@ organization in ThisBuild := "org.http4s"
 
 version in ThisBuild := "0.13.1-SNAPSHOT"
 
-scalaVersion in ThisBuild := "2.11.8"
+scalaVersion in ThisBuild := "2.11.12"
 
-crossScalaVersions in ThisBuild := Seq("2.10.6", scalaVersion.value, "2.12.4")
+crossScalaVersions in ThisBuild := Seq("2.10.7", scalaVersion.value, "2.12.5")
 
 description in ThisBuild := "NIO Framework for Scala"
 
@@ -127,12 +127,12 @@ lazy val dependencies = Seq(
 
 lazy val http4sWebsocket     = "org.http4s"                 %% "http4s-websocket"    % "0.2.0"
 lazy val logbackClassic      = "ch.qos.logback"             %  "logback-classic"     % "1.2.3"
-lazy val log4s               = "org.log4s"                  %% "log4s"               % "1.4.0"
+lazy val log4s               = "org.log4s"                  %% "log4s"               % "1.6.1"
 lazy val scalaXml =            "org.scala-lang.modules"     %% "scala-xml"           % "1.0.6"
 lazy val twitterHPACK        = "com.twitter"                %  "hpack"               % "1.0.2"
 
 // Testing only dependencies
-lazy val specs2              = "org.specs2"                 %% "specs2-core"         % "3.8.6"
+lazy val specs2              = "org.specs2"                 %% "specs2-core"         % "3.9.5"
 lazy val asyncHttpClient     = "org.asynchttpclient"        %  "async-http-client"   % "2.0.24"
 
 
@@ -141,7 +141,7 @@ lazy val alpn_api            = "org.eclipse.jetty.alpn"     % "alpn-api"        
 
 // Note that the alpn_boot version is JVM version specific. Check the docs if getting weird errors.
 // Also note that only java8 and above has the require cipher suite for http2.
-lazy val alpn_boot           = "org.mortbay.jetty.alpn"     % "alpn-boot"            % "8.1.11.v20170118"
+lazy val alpn_boot           = "org.mortbay.jetty.alpn"     % "alpn-boot"            % "8.1.12.v20180117"
 
 /* publishing */
 lazy val publishing = Seq(
