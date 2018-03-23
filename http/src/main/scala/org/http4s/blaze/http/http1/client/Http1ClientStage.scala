@@ -254,39 +254,41 @@ private[http] class Http1ClientStage(config: HttpClientConfig)
               s"complete: ${codec.contentComplete()}, buffer: $buffer, state: $state]")
 
           if (!validDispatch) Failure(EOF)
-          else
-            state match {
-              case Closed(ex) => Failure(ex)
-              case Running(_, false) =>
-                val out = codec.parseData(buffer)
-                // We check if we're done and shut down if appropriate
-                // If we're not done, we need to guard against sending
-                // an empty `ByteBuffer` since that is our 'EOF' signal.
-                if (codec.contentComplete()) {
-                  discard() // closes down our parser
-                  if (!buffer.hasRemaining) Success(out)
-                  else {
-                    // We're not in a good state if we have finished parsing the response
-                    // but still have some data. That is a sign that our session is probably
-                    // corrupt so we should fail the BodyReader even though we technically
-                    // have enough data.
-                    closeNow()
-                    Failure(new IllegalStateException(
-                      s"HTTP1 client parser found in corrupt state: still have ${buffer.remaining()} data " +
-                        s"after complete dispatch"
-                    ))
-                  }
-                } else if (out.hasRemaining) Success(out)
-                else null // need more data
-
-              case state => illegalState("parseBody", state)
-            }
+          else checkStateAndParse()
         }
       } catch {
         case NonFatal(t) =>
-          closeNow()
+          handleError("tryParseBuffer", t)
           Failure(t)
       }
+
+    // must be called while holding the stageLock
+    private[this] def checkStateAndParse(): Try[ByteBuffer] = state match {
+      case Closed(ex) => Failure(ex)
+      case Running(_, false) =>
+        val out = codec.parseData(buffer)
+        // We check if we're done and shut down if appropriate
+        // If we're not done, we need to guard against sending
+        // an empty `ByteBuffer` since that is our 'EOF' signal.
+        if (codec.contentComplete()) {
+          discard() // closes down our parser
+          if (!buffer.hasRemaining) Success(out)
+          else {
+            // We're not in a good state if we have finished parsing the response
+            // but still have some data. That is a sign that our session is probably
+            // corrupt so we should fail the BodyReader even though we technically
+            // have enough data.
+            closeNow()
+            Failure(new IllegalStateException(
+              s"HTTP1 client parser found in corrupt state: still have ${buffer.remaining()} data " +
+                s"after complete dispatch"
+            ))
+          }
+        } else if (out.hasRemaining) Success(out)
+        else null // need more data
+
+      case state => illegalState("parseBody", state)
+    }
   }
 
   // BodyReader //////////////////////////////////////////////////////////////////////////
@@ -377,13 +379,11 @@ private[http] class Http1ClientStage(config: HttpClientConfig)
     p.future
   }
 
-  // Generally shuts things down. These may be normal errors
-  private def handleError(phase: String, err: Throwable): Unit =
-    stageLock.synchronized {
-      logger.debug(err)(s"Phase $phase resulted in an error. Current state: $state")
-      state = Closed(err)
-      stageShutdown()
-    }
+  // Generally shuts things down. These may be normal errors so only log at debug level
+  private def handleError(phase: String, err: Throwable): Unit = {
+    logger.debug(err)(s"Phase $phase resulted in an error. Current state: $state")
+    closeNow()
+  }
 
   private def illegalState(phase: String, state: State): Nothing = {
     val ex = new IllegalStateException(s"Found illegal state $state in phase $phase")
