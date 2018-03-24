@@ -14,8 +14,16 @@ import org.http4s.blaze.pipeline.MidStage
 import org.http4s.blaze.pipeline.Command.EOF
 import org.http4s.blaze.util
 import org.http4s.blaze.util.Execution._
-import org.http4s.blaze.util.{BufferTools, ScratchBuffer}
+import org.http4s.blaze.util.{BufferTools, ThreadLocalScratchBuffer}
 import org.http4s.blaze.util.BufferTools._
+
+private object SSLStage {
+  private[this] val scratchBuffer: ThreadLocalScratchBuffer =
+    new ThreadLocalScratchBuffer(useDirect = false)
+
+  private def getScratchBuffer(size: Int) =
+    scratchBuffer.getScratchBuffer(size)
+}
 
 final class SSLStage(engine: SSLEngine, maxWrite: Int = 1024 * 1024)
     extends MidStage[ByteBuffer, ByteBuffer] {
@@ -388,5 +396,3 @@ final class SSLStage(engine: SSLEngine, maxWrite: Int = 1024 * 1024)
     }
   }
 }
-
-private object SSLStage extends ScratchBuffer

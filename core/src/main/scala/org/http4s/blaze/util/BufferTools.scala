@@ -119,7 +119,8 @@ object BufferTools {
 
   /** Replaces any empty buffers except for the last one with the `emptyBuffer`
     * to allow GC of depleted ByteBuffers and returns the index of the first
-    * non-empty ByteBuffer, or the last index, whichever comes first. */
+    * non-empty ByteBuffer, or the last index, whichever comes first.
+    */
   def dropEmpty(buffers: Array[ByteBuffer]): Int = {
     val max = buffers.length - 1
     var first = 0
