@@ -15,4 +15,19 @@ case class HttpRequest(
     minorVersion: Int,
     headers: Headers,
     body: BodyReader
-)
+) {
+  private[this] def formatStr(headersString: String): String =
+    s"HttpRequest($method, $url, $majorVersion, $minorVersion, $headersString, $body)"
+
+  override def toString: String =
+    if (logsensitiveinfo()) sensitiveToString
+    else formatStr(headers.toString)
+
+  /** A String representation of this request that includes the headers
+    *
+    * @note it is generally a security flaw to log headers as they may contain
+    *       sensitive user data. As such, this method should be used sparingly
+    *       and almost never in a production environment.
+    */
+  def sensitiveToString: String = formatStr(headers.toString)
+}

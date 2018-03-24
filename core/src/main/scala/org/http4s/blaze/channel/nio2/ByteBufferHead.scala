@@ -22,7 +22,7 @@ private[nio2] final class ByteBufferHead(channel: AsynchronousSocketChannel, buf
   private[this] val buffer = ByteBuffer.allocateDirect(bufferSize)
 
   override def writeRequest(data: ByteBuffer): Future[Unit] =
-    writeRequest(data::Nil)
+    writeRequest(data :: Nil)
 
   override def writeRequest(data: Seq[ByteBuffer]): Future[Unit] = {
     val reason = closeReason
