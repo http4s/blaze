@@ -4,7 +4,7 @@ import BlazePlugin._
 organization in ThisBuild := "org.http4s"
 
 lazy val commonSettings = Seq(
-  version := "0.14.0-M3",
+  version := "0.14.0-SNAPSHOT",
   description := "NIO Framework for Scala",
   crossScalaVersions := Seq("2.11.11", scalaVersion.value),
   scalacOptions in (Compile, doc) ++= Seq("-no-link-warnings") // Suppresses problems with Scaladoc @throws links
