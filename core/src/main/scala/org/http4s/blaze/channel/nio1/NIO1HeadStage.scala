@@ -4,43 +4,47 @@ import java.io.IOException
 import java.nio.ByteBuffer
 import java.nio.channels._
 import java.util.concurrent.RejectedExecutionException
+
 import org.http4s.blaze.channel.ChannelHead
 import org.http4s.blaze.pipeline.Command.{Disconnected, EOF}
 import org.http4s.blaze.util
 import org.http4s.blaze.util.BufferTools
+
 import scala.annotation.tailrec
 import scala.concurrent.{Future, Promise}
 import scala.util.{Failure, Success, Try}
 
 private[nio1] object NIO1HeadStage {
 
-  private val cachedSuccess = Success(())
+  private val CachedSuccess = Success(())
 
-  sealed trait WriteResult
-  case object Complete extends WriteResult
-  case object Incomplete extends WriteResult
-  case class WriteError(t: Exception) extends WriteResult // EOF signals normal termination
+  private sealed trait WriteResult
+  private case object Complete extends WriteResult
+  private case object Incomplete extends WriteResult
+  private case class WriteError(t: Exception) extends WriteResult // EOF signals normal termination
 
   /** Performs the read operation
-    * @param scratch a ByteBuffer which is owned by the SelectorLoop to use as
-    *                scratch space until this method returns
-    * @return a Try with either a successful ByteBuffer, an error, or null if this operation is not complete
+    *
+    * @param scratch a ByteBuffer in which to load read data. The method
+    *                doesn't take and ownership interest in the buffer, eg it's
+    *                reference is not retained.
+    * @return a `Try` representing successfully loading data into `scratch`, or
+    *         the failure cause.
     */
-  private def performRead(ch: SocketChannel, scratch: ByteBuffer): Try[ByteBuffer] =
+  private def performRead(ch: SocketChannel, scratch: ByteBuffer, size: Int): Try[Unit] =
     try {
       scratch.clear()
+      if (size >= 0 && size < scratch.remaining) {
+        scratch.limit(size)
+      }
       val bytes = ch.read(scratch)
       if (bytes < 0) Failure(EOF)
       else {
         scratch.flip()
-        val b = ByteBuffer.allocate(scratch.remaining)
-        b.put(scratch)
-        b.flip()
-        Success(b)
+        CachedSuccess
       }
-
     } catch {
-      case e: ClosedChannelException => Failure(EOF)
+      case _: ClosedChannelException => Failure(EOF)
       case e: IOException if ChannelHead.brokePipeMessages.contains(e.getMessage) =>
         Failure(EOF)
       case e: IOException => Failure(e)
@@ -79,13 +83,13 @@ private[nio1] object NIO1HeadStage {
           }
 
           if (scratch.remaining > 0) {
-            // Couldn't write all the data
+            // Couldn't write all the data.
             Incomplete
           } else if (util.BufferTools.checkEmpty(buffers)) {
             // All data was written
             Complete
           } else {
-            // May still be able to write more to the socket buffer
+            // May still be able to write more to the socket buffer.
             writeLoop()
           }
         }
@@ -113,12 +117,13 @@ private[nio1] final class NIO1HeadStage(
 
   // State of the HeadStage. These should only be accessed from the SelectorLoop thread
   // will only be written to inside of 'closeWithError'
-  private var closedReason: Throwable = null
+  private[this] var closedReason: Throwable = null
 
-  private var readPromise: Promise[ByteBuffer] = null
+  private[this] var readPromise: Promise[ByteBuffer] = null
+  private[this] var readSize: Int = -1
 
-  private var writeData: Array[ByteBuffer] = null
-  private var writePromise: Promise[Unit] = null
+  private[this] var writeData: Array[ByteBuffer] = null
+  private[this] var writePromise: Promise[Unit] = null
 
   final def opsReady(scratch: ByteBuffer): Unit = {
     val readyOps = key.readyOps
@@ -128,18 +133,17 @@ private[nio1] final class NIO1HeadStage(
 
   // Called by the selector loop when this channel has data to read
   private[this] def readReady(scratch: ByteBuffer): Unit = {
-    // assert(Thread.currentThread() == loop,
-    //       s"Expected to be called only by SelectorLoop thread, was called by ${Thread.currentThread.getName}")
     unsetOp(SelectionKey.OP_READ)
 
     if (readPromise != null) {
       // if we successfully read some data, unset the interest and
       // complete the promise, otherwise fail appropriately
-      performRead(ch, scratch) match {
-        case s @ Success(_) =>
+      performRead(ch, scratch, readSize) match {
+        case Success(_) =>
+          val buffer = BufferTools.copyBuffer(scratch)
           val p = readPromise
           readPromise = null
-          p.complete(s)
+          p.success(buffer)
           ()
 
         case Failure(e) =>
@@ -152,9 +156,6 @@ private[nio1] final class NIO1HeadStage(
   }
 
   private[this] def writeReady(scratch: ByteBuffer): Unit = {
-    //assert(Thread.currentThread() == loop,
-    //       s"Expected to be called only by SelectorLoop thread, was called by ${Thread.currentThread.getName}")
-
     val buffers = writeData // get a local reference so we don't hit the volatile a lot
     performWrite(ch, scratch, buffers) match {
       case Complete =>
@@ -163,7 +164,7 @@ private[nio1] final class NIO1HeadStage(
         val p = writePromise
         writePromise = null
         if (p != null) {
-          p.tryComplete(cachedSuccess)
+          p.tryComplete(CachedSuccess)
           ()
         }
 
@@ -189,17 +190,34 @@ private[nio1] final class NIO1HeadStage(
     logger.trace(s"NIOHeadStage received a read request of size $size")
     val p = Promise[ByteBuffer]
 
-    selectorLoop.executeTask(new Runnable {
-      override def run(): Unit =
+    selectorLoop.executeTask(new selectorLoop.LoopRunnable {
+      override def run(scratchBuffer: ByteBuffer): Unit =
         if (closedReason != null) {
-          p.tryFailure(closedReason)
+          p.failure(closedReason)
           ()
         } else if (readPromise == null) {
-          readPromise = p
-          setOp(SelectionKey.OP_READ)
-          ()
+          // First we try to just read data, and fall back to NIO notification
+          // if we don't get any data back.
+          performRead(ch, scratchBuffer, size) match {
+            case Success(_) if scratchBuffer.remaining > 0 =>
+              // We read some data. Need to copy it and send it on it's way.
+              val data = BufferTools.copyBuffer(scratchBuffer)
+              p.success(data)
+              ()
+
+            case Success(_) =>
+              // No data available, so setup for NIO notification.
+              readSize = size
+              readPromise = p
+              setOp(SelectionKey.OP_READ)
+              ()
+
+            case Failure(e) =>
+              p.failure(checkError(e))
+              ()
+          }
         } else {
-          p.tryFailure(new IllegalStateException("Cannot have more than one pending read request"))
+          p.failure(new IllegalStateException("Cannot have more than one pending read request"))
           ()
         }
     })
@@ -214,22 +232,37 @@ private[nio1] final class NIO1HeadStage(
   final override def writeRequest(data: Seq[ByteBuffer]): Future[Unit] = {
     logger.trace(s"NIO1HeadStage Write Request: $data")
     val p = Promise[Unit]
-    selectorLoop.executeTask(new Runnable {
-      override def run(): Unit =
+    selectorLoop.executeTask(new selectorLoop.LoopRunnable {
+      override def run(scratch: ByteBuffer): Unit =
         if (closedReason != null) {
           p.failure(closedReason)
           ()
         } else if (writePromise == null) {
           val writes = data.toArray
-          if (!BufferTools.checkEmpty(writes)) { // Non-empty buffer
-            writePromise = p
-            writeData = writes
-            setOp(SelectionKey.OP_WRITE)
-            p.future
-            ()
+          if (!BufferTools.checkEmpty(writes)) {
+            // Non-empty buffers. First we check to see if we can immediately
+            // write all the data to save a trip through the NIO event system.
+            performWrite(ch, scratch, writes) match {
+              case Complete =>
+                p.tryComplete(CachedSuccess)
+                ()
+
+              case Incomplete =>
+                // Need to be notified by NIO when we can write again.
+                BufferTools.dropEmpty(writes)
+                writePromise = p
+                writeData = writes
+                setOp(SelectionKey.OP_WRITE)
+                p.future
+                ()
+
+              case WriteError(t) =>
+                p.failure(t)
+                ()
+            }
           } else {
-            // Empty buffer, just return success
-            p.complete(cachedSuccess)
+            // Empty buffers, just return success.
+            p.complete(CachedSuccess)
             ()
           }
         } else {
@@ -299,7 +332,7 @@ private[nio1] final class NIO1HeadStage(
   /** Unsets a channel interest
     *  only to be called by the SelectorLoop thread
    **/
-  private def unsetOp(op: Int): Unit =
+  private[this] def unsetOp(op: Int): Unit =
     // assert(Thread.currentThread() == loop,
     //       s"Expected to be called only by SelectorLoop thread, was called by ${Thread.currentThread.getName}")
     try {
@@ -314,7 +347,7 @@ private[nio1] final class NIO1HeadStage(
     }
 
   // only to be called by the SelectorLoop thread
-  private def setOp(op: Int): Unit =
+  private[this] def setOp(op: Int): Unit =
     // assert(Thread.currentThread() == loop,
     //       s"Expected to be called only by SelectorLoop thread, was called by ${Thread.currentThread.getName}")
     try {

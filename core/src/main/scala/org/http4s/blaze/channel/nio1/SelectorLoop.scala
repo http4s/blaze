@@ -32,8 +32,34 @@ final class SelectorLoop(
     with ExecutionContext {
   require(bufferSize > 0, s"Invalid buffer size: $bufferSize")
 
+  /** A Runnable that will only execute in this selector loop and provides
+    * access to the `SelectorLoop`s scratch buffer.
+    */
+  abstract class LoopRunnable extends Runnable {
+
+    /** Execute the task with the borrowed scratch `ByteBuffer`
+      *
+      * @param scratch a `ByteBuffer` that is owned by the parent
+      *                `SelectorLoop`, and as such, the executing task
+      *                _must not_ retain a refer to it.
+      */
+    def run(scratch: ByteBuffer): Unit
+
+    final override def run(): Unit = {
+      val currentThread = Thread.currentThread
+      if (currentThread == thread) run(scratch)
+      else {
+        val msg = "Task rejected: executed RunWithScratch in incorrect " +
+          s"thread: $currentThread. Expected thread: $thread."
+        val ex = new IllegalStateException(msg)
+        logger.error(ex)(msg)
+      }
+    }
+  }
+
   @volatile
   private[this] var isClosed = false
+  private[this] val scratch = ByteBuffer.allocateDirect(bufferSize)
   private[this] val once = new AtomicBoolean(false)
   private[this] val logger = getLogger
   private[this] val taskQueue = new TaskQueue
@@ -129,9 +155,6 @@ final class SelectorLoop(
 
   // Main thread method. The loop will break if the Selector loop is closed
   private[this] def runLoop(): Unit = {
-    // The scratch buffer is a direct buffer as this will often be used for I/O
-    val scratch = ByteBuffer.allocateDirect(bufferSize)
-
     try while (!isClosed) {
       // Block here until some I/O event happens or someone adds
       // a task to run and wakes the loop.

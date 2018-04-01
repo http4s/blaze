@@ -19,10 +19,10 @@ private[nio2] final class ByteBufferHead(channel: AsynchronousSocketChannel, buf
 
   @volatile
   private[this] var closeReason: Throwable = null
-  private[this] val buffer = ByteBuffer.allocateDirect(bufferSize)
+  private[this] val scratchBuffer = ByteBuffer.allocateDirect(bufferSize)
 
   override def writeRequest(data: ByteBuffer): Future[Unit] =
-    writeRequest(data::Nil)
+    writeRequest(data :: Nil)
 
   override def writeRequest(data: Seq[ByteBuffer]): Future[Unit] = {
     val reason = closeReason
@@ -64,14 +64,14 @@ private[nio2] final class ByteBufferHead(channel: AsynchronousSocketChannel, buf
 
   def readRequest(size: Int): Future[ByteBuffer] = {
     val p = Promise[ByteBuffer]
-    buffer.clear()
+    scratchBuffer.clear()
 
     if (size >= 0 && size < bufferSize) {
-      buffer.limit(size)
+      scratchBuffer.limit(size)
     }
 
     channel.read(
-      buffer,
+      scratchBuffer,
       null: Null,
       new CompletionHandler[Integer, Null] {
         def failed(exc: Throwable, attachment: Null): Unit = {
@@ -88,11 +88,9 @@ private[nio2] final class ByteBufferHead(channel: AsynchronousSocketChannel, buf
           case i if i < 0 =>
             p.failure(EOF)
 
-          case i =>
-            buffer.flip()
-            val b = ByteBuffer.allocate(buffer.remaining)
-            b.put(buffer).flip()
-            p.success(b)
+          case _ =>
+            scratchBuffer.flip()
+            p.success(BufferTools.copyBuffer(scratchBuffer))
             ()
         }
       }
