@@ -199,9 +199,6 @@ private abstract class StreamStateImpl(session: SessionCore) extends StreamState
   final override def outboundCommand(cmd: OutboundCommand): Unit =
     session.serialExecutor.execute(new Runnable {
       def run(): Unit = cmd match {
-        case Command.Connect =>
-          () // nop
-
         case Command.Disconnect =>
           closeWithError(None) // will send a RST_STREAM, if necessary
 

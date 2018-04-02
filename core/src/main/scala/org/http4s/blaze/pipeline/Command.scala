@@ -9,9 +9,6 @@ object Command {
 
   trait OutboundCommand
 
-  /** Signals the stages desire to Connect. It may be attempting to read from the pipeline */
-  case object Connect extends OutboundCommand
-
   /** Signals that the pipeline [[HeadStage]] is connected and ready to accept read and write requests */
   case object Connected extends InboundCommand
 
