@@ -24,11 +24,6 @@ object Command {
     */
   case object Disconnected extends InboundCommand
 
-  /** Signals the the stages a desire to flush the pipeline. This is just a suggestion
-    * and is not guaranteed to induce any effect.
-    */
-  case object Flush extends OutboundCommand
-
   /** Signals to the entire pipeline that the [[HeadStage]] has been disconnected and
     * shutdown. Any following reads or writes will result in an exception, [[EOF]]
     * or otherwise
