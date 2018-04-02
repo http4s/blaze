@@ -41,7 +41,6 @@ private[http] class ClientPriorKnowledgeHandshaker(
   }
 
   override protected def handlePreface(): Future[ByteBuffer] = {
-    sendOutboundCommand(Command.Connect) // establish the pipeline
     channelWrite(bits.getPrefaceBuffer()).map { _ =>
       BufferTools.emptyBuffer
     }

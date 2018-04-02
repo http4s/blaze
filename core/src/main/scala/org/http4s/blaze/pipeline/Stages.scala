@@ -275,7 +275,6 @@ sealed trait Head[O] extends Stage {
   /** Receives outbound commands
     * Override to capture commands. */
   def outboundCommand(cmd: OutboundCommand): Unit = cmd match {
-    case Connect => stageStartup()
     case Disconnect => stageShutdown()
     case Error(e) => logger.error(e)(s"$name received unhandled error command")
     case cmd => logger.warn(s"$name received unhandled outbound command: $cmd")
