@@ -15,7 +15,6 @@ import scala.concurrent.{Future, Promise}
 import scala.util.control.NonFatal
 import scala.util.{Failure, Success, Try}
 
-// TODO: we're totally logging all sorts of headers in here, which is bad for security
 private[http] class Http1ClientStage(config: HttpClientConfig)
     extends TailStage[ByteBuffer]
     with Http1ClientSession {
@@ -45,7 +44,6 @@ private[http] class Http1ClientStage(config: HttpClientConfig)
     }
   }
 
-  // TODO: we should put this on a timer...
   override def close(within: Duration): Future[Unit] = {
     val sendDisconnect = stageLock.synchronized {
       state match {
@@ -130,7 +128,14 @@ private[http] class Http1ClientStage(config: HttpClientConfig)
   private[this] def receiveResponse(buffer: ByteBuffer, p: Promise[ReleaseableResponse]): Unit = {
     // We juggle the `null` to allow us to satisfy the promise outside of the lock
     val response: ReleaseableResponse = try stageLock.synchronized {
-      logger.debug(s"Receiving response. $buffer, :\n${bufferAsString(buffer)}\n")
+      logger.debug {
+        // Only log the buffer contents if we're okay logging sensitive information.
+        val bufferStr =
+          if (logsensitiveinfo()) BufferTools.bufferToString(buffer.duplicate())
+          else "<buffer contents hidden>"
+        s"Receiving response. $buffer, :\n$bufferStr\n"
+      }
+
       if (!buffer.hasRemaining) {
         channelReadThenReceive(p)
         null
@@ -306,7 +311,9 @@ private[http] class Http1ClientStage(config: HttpClientConfig)
       new ClientBodyReader(buffer)
     }
 
-  /** The returned Future is satisfied once the entire request has been written
+  /** Begin writing a response to the peer.
+    *
+    * The returned Future is completed once the entire request has been written
     * to the wire. Any errors that occur during the write process, including those
     * that come from the request body, will result in the failed Future.
     */
@@ -394,15 +401,11 @@ private[http] class Http1ClientStage(config: HttpClientConfig)
 
 private object Http1ClientStage {
 
-  sealed trait State
-  sealed trait ClosedState extends State
+  private sealed trait State
+  private sealed trait ClosedState extends State
 
-  case object Unconnected extends ClosedState // similar to closed, but can transition to idle
-  case class Running(var writeChannelClear: Boolean, var readChannelClear: Boolean) extends State
-  case class Closed(reason: Throwable) extends ClosedState
-
-  def bufferAsString(buffer: ByteBuffer): String = {
-    val b = buffer.duplicate()
-    StandardCharsets.UTF_8.decode(b).toString
-  }
+  private case object Unconnected extends ClosedState // similar to closed, but can transition to idle
+  private case class Running(var writeChannelClear: Boolean, var readChannelClear: Boolean)
+      extends State
+  private case class Closed(reason: Throwable) extends ClosedState
 }
