@@ -125,7 +125,7 @@ lazy val dependencies = Seq(
   libraryDependencies += log4s
 )
 
-lazy val http4sWebsocket     = "org.http4s"                 %% "http4s-websocket"    % "0.2.0"
+lazy val http4sWebsocket     = "org.http4s"                 %% "http4s-websocket"    % "0.2.1"
 lazy val logbackClassic      = "ch.qos.logback"             %  "logback-classic"     % "1.2.3"
 lazy val log4s               = "org.log4s"                  %% "log4s"               % "1.6.1"
 lazy val scalaXml =            "org.scala-lang.modules"     %% "scala-xml"           % "1.0.6"
