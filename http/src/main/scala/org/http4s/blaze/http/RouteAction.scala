@@ -58,7 +58,7 @@ object RouteAction {
         def go(): Unit = body.onComplete {
           case Failure(t) => p.tryFailure(t)
           case Success(buff) =>
-            if (!buff.hasRemaining) p.completeWith(writer.close())
+            if (!buff.hasRemaining) p.completeWith(writer.close(None))
             else
               writer.write(buff).onComplete {
                 case Success(_) => go()
@@ -91,7 +91,7 @@ object RouteAction {
 
         writer
           .write(body.asReadOnlyBuffer())
-          .flatMap(_ => writer.close())(Execution.directec)
+          .flatMap(_ => writer.close(None))(Execution.directec)
       }
     }
 

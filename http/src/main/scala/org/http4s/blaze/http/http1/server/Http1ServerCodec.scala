@@ -206,12 +206,14 @@ private final class Http1ServerCodec(maxNonBodyBytes: Int, pipeline: TailStage[B
     final override type Finished = RouteResult
 
     private[this] var closed = false
-    protected val lock: Object = this
+
+    final protected def lock: Object = this
 
     protected def doWrite(buffer: ByteBuffer): Future[Unit]
 
     protected def doFlush(): Future[Unit]
 
+    // Must only be called from while synchronized on `lock`
     protected def doClose(): Future[RouteResult]
 
     final override def write(buffer: ByteBuffer): Future[Unit] =
@@ -225,16 +227,25 @@ private final class Http1ServerCodec(maxNonBodyBytes: Int, pipeline: TailStage[B
       else doFlush()
     }
 
-    final override def close(): Future[RouteResult] = lock.synchronized {
+    final override def close(cause: Option[Throwable]): Future[RouteResult] = lock.synchronized {
       if (closed) InternalWriter.ClosedChannelException
       else {
         closed = true
-        doClose()
+        cause match {
+          case Some(ex) =>
+            // Since we're aborting, we need to just hang up for HTTP/1.x since
+            // we can't set a RST or signal in any other way that the response
+            // didn't terminate normally.
+            logger.debug(ex)("Closed due to exception")
+            FutureClose
+          case None =>
+            doClose()
+        }
       }
     }
   }
 
-  private class ClosingWriter(var sb: StringBuilder) extends InternalWriter {
+  private final class ClosingWriter(var sb: StringBuilder) extends InternalWriter {
 
     override def doWrite(buffer: ByteBuffer): Future[Unit] =
       if (sb == null) pipeline.channelWrite(buffer)
@@ -251,11 +262,11 @@ private final class Http1ServerCodec(maxNonBodyBytes: Int, pipeline: TailStage[B
 
     // This writer will always request that the connection be closed
     override def doClose(): Future[RouteResult] =
-      if (sb == null) Future.successful(Close)
+      if (sb == null) FutureClose
       else doFlush().map(_ => Close)(Execution.directec)
   }
 
-  private class FixedLengthBodyWriter(forceClose: Boolean, sb: StringBuilder, len: Long)
+  private final class FixedLengthBodyWriter(forceClose: Boolean, sb: StringBuilder, len: Long)
       extends InternalWriter {
 
     private var cache = new ArrayBuffer[ByteBuffer](4)
@@ -315,13 +326,16 @@ private final class Http1ServerCodec(maxNonBodyBytes: Int, pipeline: TailStage[B
         doFlush().map(_ => selectComplete(forceClose))(Execution.directec)
       else {
         closed = true
-        Future.successful(selectComplete(forceClose))
+        selectComplete(forceClose) match {
+          case Reload => FutureReload
+          case Close => FutureClose
+        }
       }
     }
   }
 
   // Write data as chunks
-  private class ChunkedBodyWriter(
+  private final class ChunkedBodyWriter(
       forceClose: Boolean,
       private var prelude: StringBuilder,
       maxCacheSize: Int)
@@ -387,7 +401,7 @@ private final class Http1ServerCodec(maxNonBodyBytes: Int, pipeline: TailStage[B
     * falls back to a [[ChunkedBodyWriter]]. If the buffer is not exceeded, the entire
     * body is written as a single chunk using standard encoding.
     */
-  private class SelectingWriter(forceClose: Boolean, minor: Int, sb: StringBuilder)
+  private final class SelectingWriter(forceClose: Boolean, minor: Int, sb: StringBuilder)
       extends InternalWriter {
 
     private val cache = new ListBuffer[ByteBuffer]
@@ -414,7 +428,7 @@ private final class Http1ServerCodec(maxNonBodyBytes: Int, pipeline: TailStage[B
       }
 
     override def doClose(): Future[Http1ServerCodec.RouteResult] =
-      if (underlying != null) underlying.close()
+      if (underlying != null) underlying.close(None)
       else {
         // write everything we have as a fixed length body
         val buffs = cache.result()
@@ -467,4 +481,7 @@ private object Http1ServerCodec {
   sealed trait RouteResult
   case object Reload extends RouteResult
   case object Close extends RouteResult
+
+  private val FutureClose: Future[Close.type] = Future.successful(Close)
+  private val FutureReload: Future[Reload.type] = Future.successful(Reload)
 }

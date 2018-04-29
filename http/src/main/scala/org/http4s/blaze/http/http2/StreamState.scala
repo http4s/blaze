@@ -6,6 +6,14 @@ import org.http4s.blaze.pipeline.HeadStage
 
 private trait StreamState extends HeadStage[StreamFrame] with WriteInterest {
 
+  /** Whether the `StreamState` is part of the H2 session
+    *
+    * This is used by client streams to signal that they haven't yet become
+    * part of the H2 session since they are 'lazy' until they have emitted
+    * the first HEADERS frame, at which point they get assigned a stream id.
+    */
+  def initialized: Boolean
+
   /** Stream ID associated with this stream */
   def streamId: Int
 

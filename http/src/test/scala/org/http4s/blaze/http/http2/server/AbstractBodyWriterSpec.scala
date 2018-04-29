@@ -1,13 +1,10 @@
 package org.http4s.blaze.http.http2.server
 
-import java.io.IOException
 import java.nio.ByteBuffer
-
 import org.http4s.blaze.http.http2.{DataFrame, HeadersFrame, Priority, StreamFrame}
 import org.http4s.blaze.pipeline.Command
 import org.http4s.blaze.util.BufferTools
 import org.specs2.mutable.Specification
-
 import scala.concurrent.Future
 import scala.util.{Failure, Success}
 
@@ -35,6 +32,13 @@ class AbstractBodyWriterSpec extends Specification {
 
     var flushed: Option[Seq[StreamFrame]] = None
 
+    var failedReason: Option[Throwable] = None
+
+    override protected def fail(cause: Throwable): Unit = {
+      assert(failedReason.isEmpty)
+      failedReason = Some(cause)
+    }
+
     override protected def flushMessage(msg: StreamFrame): Future[Unit] = flushMessage(msg::Nil)
 
     override protected def flushMessage(msg: Seq[StreamFrame]): Future[Unit] = {
@@ -46,13 +50,13 @@ class AbstractBodyWriterSpec extends Specification {
 
   "AbstractBodyWriter" >> {
     "flush" >> {
-      "Flushes headers if they haven't been written" >> {
+      "flushes headers if they haven't been written" >> {
         val writer = new WriterImpl
         checkSuccess(writer.flush())
         writer.flushed must_== Some(Seq(hsFrame(false)))
       }
 
-      "Flushes nothing if the headers are already gone" >> {
+      "flushes nothing if the headers are already gone" >> {
         val writer = new WriterImpl
         checkSuccess(writer.flush())
         writer.flushed must_== Some(Seq(hsFrame(false)))
@@ -63,21 +67,21 @@ class AbstractBodyWriterSpec extends Specification {
         writer.flushed must beNone
       }
 
-      "Flush results in failure of already closed" >> {
+      "flush results in failure of already closed" >> {
         val writer = new WriterImpl
-        checkSuccess(writer.close())
+        checkSuccess(writer.close(None))
         checkIOException(writer.flush())
       }
     }
 
     "write" >> {
-      "Flushes headers and data if they haven't been written" >> {
+      "flushes headers and data if they haven't been written" >> {
         val writer = new WriterImpl
         checkSuccess(writer.write(data(1)))
         writer.flushed must_== Some(Seq(hsFrame(false), dataFrame(false, 1)))
       }
 
-      "Flushes data if the headers are already gone" >> {
+      "flushes data if the headers are already gone" >> {
         val writer = new WriterImpl
         checkSuccess(writer.flush())
         writer.flushed must beSome
@@ -87,9 +91,9 @@ class AbstractBodyWriterSpec extends Specification {
         writer.flushed must_== Some(Seq(dataFrame(false, 1)))
       }
 
-      "Flush results in failure of already closed" >> {
+      "flush results in failure of already closed" >> {
         val writer = new WriterImpl
-        checkSuccess(writer.close())
+        checkSuccess(writer.close(None))
         writer.flushed must beSome
         writer.flushed = None
 
@@ -98,29 +102,37 @@ class AbstractBodyWriterSpec extends Specification {
     }
 
     "close" >> {
-      "Flushes headers if they haven't been written" >> {
+      "flushes headers if they haven't been written" >> {
         val writer = new WriterImpl
-        checkSuccess(writer.close())
+        checkSuccess(writer.close(None))
         writer.flushed must_== Some(Seq(hsFrame(true)))
       }
 
-      "Flushes empty data if the headers are already gone" >> {
+      "flushes empty data if the headers are already gone" >> {
         val writer = new WriterImpl
         checkSuccess(writer.flush())
         writer.flushed must_== Some(Seq(hsFrame(false)))
         writer.flushed = None
 
-        checkSuccess(writer.close())
+        checkSuccess(writer.close(None))
         writer.flushed must_== Some(Seq(dataFrame(true, 0)))
       }
 
       "results in failure of already closed" >> {
         val writer = new WriterImpl
-        checkSuccess(writer.close())
+        checkSuccess(writer.close(None))
         writer.flushed must_== Some(Seq(hsFrame(true)))
         writer.flushed = None
 
-        checkIOException(writer.close())
+        checkIOException(writer.close(None))
+      }
+
+      "with cause doesn't flush" >> {
+        val writer = new WriterImpl
+        val ex = new Exception("boom")
+        checkSuccess(writer.close(Some(ex)))
+        writer.flushed must beNone
+        writer.failedReason must beSome(ex)
       }
     }
   }

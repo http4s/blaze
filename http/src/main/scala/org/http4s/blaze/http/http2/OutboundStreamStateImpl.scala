@@ -9,11 +9,12 @@ private abstract class OutboundStreamStateImpl(session: SessionCore)
   private[this] var lazyStreamId: Int = -1
   private[this] var lazyFlowWindow: StreamFlowWindow = null
 
-  private[this] def initialized: Boolean = lazyStreamId != -1
   private[this] def uninitializedException(): Nothing =
     throw new IllegalStateException("Stream uninitialized")
 
   protected def registerStream(): Option[Int]
+
+  final override def initialized: Boolean = lazyStreamId != -1
 
   final override def name: String = {
     val id = if (initialized) Integer.toString(streamId) else "uninitialized"
