@@ -1,11 +1,9 @@
 package org.http4s.blaze.http.http2.server
 
 import java.nio.ByteBuffer
-
 import org.http4s.blaze.http.http2.{DataFrame, HeadersFrame, Priority, StreamFrame}
 import org.http4s.blaze.http.{BodyWriter, Headers, InternalWriter}
 import org.http4s.blaze.util.BufferTools
-
 import scala.concurrent.Future
 
 private abstract class AbstractBodyWriter(private var hs: Headers) extends BodyWriter {
@@ -24,6 +22,8 @@ private abstract class AbstractBodyWriter(private var hs: Headers) extends BodyW
   protected def flushMessage(msg: StreamFrame): Future[Unit]
 
   protected def flushMessage(msg: Seq[StreamFrame]): Future[Unit]
+
+  protected def fail(cause: Throwable): Unit
 
   final override def write(buffer: ByteBuffer): Future[Unit] = {
     var hsToFlush: Headers = null
@@ -68,7 +68,7 @@ private abstract class AbstractBodyWriter(private var hs: Headers) extends BodyW
     }
   }
 
-  final override def close(): Future[Finished] = {
+  final override def close(cause: Option[Throwable]): Future[Finished] = {
     var hsToFlush: Headers = null
     val wasClosed = this.synchronized {
       if (closed) true
@@ -79,12 +79,19 @@ private abstract class AbstractBodyWriter(private var hs: Headers) extends BodyW
       }
     }
     if (wasClosed) InternalWriter.ClosedChannelException
-    else if (hsToFlush != null) {
-      val frame = HeadersFrame(Priority.NoPriority, true, hsToFlush)
-      flushMessage(frame)
-    } else {
-      val frame = DataFrame(true, BufferTools.emptyBuffer)
-      flushMessage(frame)
+    else cause match {
+      case Some(ex) =>
+        fail(ex)
+        InternalWriter.CachedSuccess
+
+      case None =>
+        if (hsToFlush != null) {
+          val frame = HeadersFrame(Priority.NoPriority, true, hsToFlush)
+          flushMessage(frame)
+        } else {
+          val frame = DataFrame(true, BufferTools.emptyBuffer)
+          flushMessage(frame)
+        }
     }
   }
 }

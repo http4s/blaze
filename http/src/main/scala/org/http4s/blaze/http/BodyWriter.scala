@@ -37,7 +37,10 @@ trait BodyWriter {
 
   /** Close the writer and flush any buffers
     *
+    * If the reason is `Some`, this means that the message was not completely written
+    * due to the provided error.
+    *
     * @return a `Future[Finished]` which will resolve once the close process has completed.
     */
-  def close(): Future[Finished]
+  def close(reason: Option[Throwable]): Future[Finished]
 }

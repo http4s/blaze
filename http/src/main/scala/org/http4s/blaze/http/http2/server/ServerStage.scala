@@ -120,6 +120,9 @@ private[http] class ServerStage(
 
     override protected def flushMessage(msg: Seq[StreamFrame]): Future[Unit] =
       channelWrite(msg)
+
+    override protected def fail(cause: Throwable): Unit =
+      sendOutboundCommand(Cmd.Error(cause))
   }
 
   private def onComplete(result: Try[_]): Unit = result match {
@@ -134,14 +137,15 @@ private[http] class ServerStage(
     private val underlying = new StandardWriter(headers)
 
     override def write(buffer: ByteBuffer): Future[Unit] =
-      underlying.close().flatMap { _ =>
+      underlying.close(None).flatMap { _ =>
         sendOutboundCommand(Cmd.Disconnect)
         InternalWriter.ClosedChannelException
       }
 
     override def flush(): Future[Unit] = write(BufferTools.emptyBuffer)
 
-    override def close(): Future[Unit] = underlying.close()
+    override def close(cause: Option[Throwable]): Future[Unit] =
+      underlying.close(cause)
   }
 
   private class BodyReaderImpl(length: Long) extends AbstractBodyReader(streamId, length) {

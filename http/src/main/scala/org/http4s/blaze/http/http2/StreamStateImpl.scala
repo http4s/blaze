@@ -287,8 +287,9 @@ private abstract class StreamStateImpl(session: SessionCore) extends StreamState
           Some(INTERNAL_ERROR.rst(streamId, "Unhandled error in stream pipeline"))
       }
 
-      // Remove ourselves from the streamManager
-      val wasRegistered = session.streamManager.streamClosed(this)
+      // If we're registered, remove ourselves from the streamManager. If we're
+      // not initialized we shouldn't be registered, and won't have a stream id.
+      val wasRegistered = initialized && session.streamManager.streamClosed(this)
 
       http2Ex match {
         case Some(ex: Http2StreamException) if wasRegistered =>
@@ -298,9 +299,10 @@ private abstract class StreamStateImpl(session: SessionCore) extends StreamState
           ()
 
         case Some(ex: Http2StreamException) =>
-          // If the stream didn't exist, it is
-          // because this stream was reset by the remote, and thus we shouldn't send a
-          // RST ourselves. https://tools.ietf.org/html/rfc7540#section-5.4.2
+          // If the stream didn't exist, it is because this stream was never
+          // initialized or it was reset by the remote, and thus we shouldn't
+          // send a RST ourselves.
+          // https://tools.ietf.org/html/rfc7540#section-5.4.2
           logger.debug(ex)(s"Stream ($streamId) closed but not sending RST")
           ()
 

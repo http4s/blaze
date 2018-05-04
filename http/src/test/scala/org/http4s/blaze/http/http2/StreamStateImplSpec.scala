@@ -32,7 +32,7 @@ class StreamStateImplSpec extends Specification {
 
     lazy val tools = new MockTools
 
-    val streamState = new InboundStreamStateImpl(
+    lazy val streamState: StreamStateImpl = new InboundStreamStateImpl(
       session = tools,
       streamId = streamId,
       flowWindow = tools.sessionFlowControl.newStreamFlowWindow(streamId))
@@ -134,7 +134,7 @@ class StreamStateImplSpec extends Specification {
       tools.writeController.observedWrites.isEmpty must beTrue
     }
 
-    "Close down when receiving Error Command" in {
+    "close down when receiving Error Command" in {
       val ctx = new Ctx
       import ctx._
 
@@ -144,6 +144,22 @@ class StreamStateImplSpec extends Specification {
       tools.streamManager.finishedStreams.dequeue() must_== streamState
       // Should have written a RST frame
       tools.writeController.observedWrites.isEmpty must beFalse
+    }
+
+    "close down when receiving Error Command from uninitialized stage" in {
+      val ctx = new Ctx {
+        override lazy val streamState: StreamStateImpl = new OutboundStreamStateImpl(tools) {
+          override protected def registerStream(): Option[Int] = ???
+        }
+      }
+      import ctx._
+
+      val ex = new Exception("boom")
+      tools.writeController.observedWrites.isEmpty must beTrue
+      streamState.outboundCommand(Command.Error(ex))
+      tools.streamManager.finishedStreams.isEmpty must beTrue
+      // Shouldn't have written a RST frame
+      tools.writeController.observedWrites.isEmpty must beTrue
     }
 
     "signal that flow bytes have been consumed to the flow control on complete pending read" in {

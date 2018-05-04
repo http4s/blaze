@@ -7,4 +7,7 @@ private final class InboundStreamStateImpl(
 ) extends StreamStateImpl(session)
     with InboundStreamState {
   override def name: String = s"InboundStreamState($streamId)"
+
+  // Inbound streams are always initialized
+  override def initialized: Boolean = true
 }
