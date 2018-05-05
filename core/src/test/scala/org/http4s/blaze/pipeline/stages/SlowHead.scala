@@ -7,6 +7,8 @@ final class SlowHead[O] extends HeadStage[O] {
 
   override def name: String = "SlowHead"
 
+  override protected def doClosePipeline(cause: Option[Throwable]): Unit = ???
+
   case class Write(value: O, completion: Promise[Unit])
 
   private[this] var pendingWrite: Option[Write] = None

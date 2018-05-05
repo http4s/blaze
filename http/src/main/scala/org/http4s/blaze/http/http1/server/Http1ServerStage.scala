@@ -4,10 +4,9 @@ import java.nio.ByteBuffer
 
 import org.http4s.blaze.http.util.ServiceTimeoutFilter
 import org.http4s.blaze.http.{HttpRequest, HttpServerStageConfig, RouteAction, _}
-import org.http4s.blaze.pipeline.Command.{Disconnect, EOF}
-import org.http4s.blaze.pipeline.{Command => Cmd, _}
+import org.http4s.blaze.pipeline.Command.EOF
+import org.http4s.blaze.pipeline.TailStage
 import org.http4s.blaze.util.Execution
-
 import scala.util.control.NoStackTrace
 import scala.util.{Failure, Success}
 
@@ -71,30 +70,26 @@ class Http1ServerStage(service: HttpService, config: HttpServerStageConfig)
             case Success(Http1ServerCodec.Reload) =>
               dispatchLoop() // continue the loop
             case Success(Http1ServerCodec.Close) =>
-              shutdownWithCommand(Cmd.Disconnect) // not able to server another on this session
+              closePipeline(None) // not able to server another on this session
 
             case Failure(EOF) =>
               logger.debug(EOF)("Failed to render response")
-              shutdownWithCommand(Disconnect)
+              closePipeline(None)
 
             case Failure(ex) =>
               logger.error(ex)("Failed to render response")
-              shutdownWithCommand(Cmd.Error(ex))
+              closePipeline(Some(ex))
           }
 
         case Failure(EOF) =>
-          shutdownWithCommand(Cmd.Disconnect)
+          closePipeline(None)
+
         case Failure(ex) =>
           logger.error(ex)("Failed to service request. Sending 500 response.")
           codec
             .renderResponse(RouteAction.InternalServerError(), forceClose = true)
-            .onComplete(_ => shutdownWithCommand(Cmd.Error(ex)))
+            .onComplete(_ => closePipeline(None))
       }
-
-  private def shutdownWithCommand(cmd: Cmd.OutboundCommand): Unit = {
-    stageShutdown()
-    sendOutboundCommand(cmd)
-  }
 
   // Determine if this request requires the connection be closed
   private def requestRequiresClose(request: HttpRequest): Boolean = {

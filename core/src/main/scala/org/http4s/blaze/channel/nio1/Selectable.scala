@@ -18,15 +18,6 @@ private trait Selectable {
     */
   def opsReady(scratch: ByteBuffer): Unit
 
-  /** Close this `Selectable` and release associated resources.
-    *
-    * This close method represents closure under normal conditions.
-    */
-  def close(): Unit
-
-  /** Close this `Selectable` and release associated resources.
-    *
-    * This close method represents closure under exceptional conditions.
-    */
-  def closeWithError(cause: Throwable): Unit
+  /** Close this `Selectable` and release associated resources. */
+  def close(cause: Option[Throwable]): Unit
 }

@@ -1,21 +1,18 @@
 package org.http4s.blaze.http.http1.client
 
 import java.nio.ByteBuffer
-import java.nio.charset.StandardCharsets
-
 import org.http4s.blaze.http.HttpClientSession.{ReleaseableResponse, Status}
 import org.http4s.blaze.http._
 import org.http4s.blaze.http.http1.client.Http1ClientCodec.EncodedPrelude
 import org.http4s.blaze.pipeline.Command.EOF
-import org.http4s.blaze.pipeline.{Command, TailStage}
+import org.http4s.blaze.pipeline.TailStage
 import org.http4s.blaze.util.{BufferTools, Execution}
-
 import scala.concurrent.duration.Duration
 import scala.concurrent.{Future, Promise}
 import scala.util.control.NonFatal
 import scala.util.{Failure, Success, Try}
 
-private[http] class Http1ClientStage(config: HttpClientConfig)
+private[http] final class Http1ClientStage(config: HttpClientConfig)
     extends TailStage[ByteBuffer]
     with Http1ClientSession {
   import Http1ClientStage._
@@ -45,16 +42,19 @@ private[http] class Http1ClientStage(config: HttpClientConfig)
   }
 
   override def close(within: Duration): Future[Unit] = {
-    val sendDisconnect = stageLock.synchronized {
+    val didClose = stageLock.synchronized {
       state match {
         case Closed(_) => false
         case _ =>
-          stageShutdown()
+          state = Closed(EOF)
           true
       }
     }
 
-    if (sendDisconnect) sendOutboundCommand(Command.Disconnect)
+    if (didClose) {
+      stageShutdown()
+      closePipeline(None)
+    }
     Future.successful(())
   }
 
@@ -64,13 +64,6 @@ private[http] class Http1ClientStage(config: HttpClientConfig)
       super.stageStartup()
       state = Running(true, true)
     } else illegalState("stageStartup", state)
-  }
-
-  override protected def stageShutdown(): Unit = stageLock.synchronized {
-    super.stageShutdown()
-    if (!state.isInstanceOf[Closed]) {
-      state = Closed(EOF)
-    }
   }
 
   override def dispatch(request: HttpRequest): Future[ReleaseableResponse] =
@@ -329,7 +322,7 @@ private[http] class Http1ClientStage(config: HttpClientConfig)
           // Need to make sure we discard the body if we fail to write
           try request.body.discard()
           finally {
-            p.tryFailure(t)
+            p.failure(t)
             ()
           }
 

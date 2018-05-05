@@ -6,7 +6,6 @@ import org.http4s.blaze.http.{ClientResponse, _}
 import org.http4s.blaze.http.HttpClientSession.ReleaseableResponse
 import org.http4s.blaze.http.util.UrlTools.UrlComposition
 import org.http4s.blaze.http.http2._
-import org.http4s.blaze.pipeline.Command.{Disconnect, OutboundCommand}
 import org.http4s.blaze.pipeline.{Command, TailStage}
 import org.http4s.blaze.util.{BufferTools, Execution}
 
@@ -26,11 +25,11 @@ private class ClientStage(request: HttpRequest) extends TailStage[StreamFrame] {
   // there is no handle to detect when the request body has been written, and,
   // in general, we should not expect to receive the full response before the
   // full request has been written.
-  private[this] def release(cmd: OutboundCommand): Unit = lock.synchronized {
+  private[this] def release(cause: Option[Throwable]): Unit = lock.synchronized {
     if (!released) {
       released = true
       inboundEOF = true
-      sendOutboundCommand(cmd)
+      closePipeline(cause)
     }
   }
 
@@ -45,7 +44,7 @@ private class ClientStage(request: HttpRequest) extends TailStage[StreamFrame] {
       body: BodyReader)
       extends ClientResponse(code, status, headers, body)
       with ReleaseableResponse {
-    override def release(): Unit = ClientStage.this.release(Command.Disconnect)
+    override def release(): Unit = ClientStage.this.release(None)
   }
 
   override def name: String = "Http2ClientTail"
@@ -172,7 +171,7 @@ private class ClientStage(request: HttpRequest) extends TailStage[StreamFrame] {
     else {
       val ex = Http2Exception.PROTOCOL_ERROR
         .rst(-1, "HTTP2 Response headers didn't include a status code.")
-      release(Command.Error(ex))
+      release(Some(ex))
       Failure(ex)
     }
   }
@@ -182,7 +181,7 @@ private class ClientStage(request: HttpRequest) extends TailStage[StreamFrame] {
     if (_result.tryFailure(ex)) {
       // Since the user won't be getting a `ReleasableResponse`, it is our job
       // to close down the stream.
-      val command = if (ex == Command.EOF) Disconnect else Command.Error(ex)
+      val command = if (ex == Command.EOF) None else Some(ex)
       release(command)
     }
   }

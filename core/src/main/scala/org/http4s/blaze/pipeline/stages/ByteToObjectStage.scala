@@ -2,7 +2,6 @@ package org.http4s.blaze.pipeline.stages
 
 import org.http4s.blaze.pipeline.MidStage
 import org.http4s.blaze.util.Execution.trampoline
-import org.http4s.blaze.pipeline.Command.Error
 
 import java.nio.{BufferOverflowException, ByteBuffer}
 
@@ -108,7 +107,7 @@ trait ByteToObjectStage[O] extends MidStage[ByteBuffer, O] {
     // Make sure we are not trying to store the previous stages buffer
     // see if we have too large of buffer remaining
     if (maxBufferSize > 0 && _decodeBuffer.remaining() > maxBufferSize) {
-      outboundCommand(Error(new BufferOverflowException))
+      closePipeline(Some(new BufferOverflowException))
     } else if (!_decodeBuffer.hasRemaining) _decodeBuffer = null
   }
 }

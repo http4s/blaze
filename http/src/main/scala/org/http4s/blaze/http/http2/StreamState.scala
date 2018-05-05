@@ -37,6 +37,6 @@ private trait StreamState extends HeadStage[StreamFrame] with WriteInterest {
       endStream: Boolean,
       headers: Seq[(String, String)]): MaybeError
 
-  /** Close the stream, optionally with an error */
-  def closeWithError(t: Option[Throwable]): Unit
+  /** Close the stream, possible due to an error */
+  def doCloseWithError(cause: Option[Throwable]): Unit
 }

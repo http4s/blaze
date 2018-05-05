@@ -15,7 +15,7 @@ class QuietTimeoutStageSpec extends TimeoutHelpers {
       val pipe = makePipeline(Duration.Zero, 10.seconds)
 
       val r = checkFuture(pipe.channelRead())
-      pipe.sendOutboundCommand(Command.Disconnect)
+      pipe.closePipeline(None)
       r
     }
 
@@ -29,14 +29,14 @@ class QuietTimeoutStageSpec extends TimeoutHelpers {
       val f = pipe.channelRead()
       pipe.findOutboundStage(classOf[TimeoutStageBase[ByteBuffer]]).get.removeStage
       val r = checkFuture(f, 5.second)
-      pipe.sendOutboundCommand(Command.Disconnect)
+      pipe.closePipeline(None)
       r
     }
 
     "not schedule timeouts after the pipeline has been shut down" in {
       val pipe = makePipeline(delay = 10.seconds, timeout = 1.seconds)
       val f = pipe.channelRead()
-      pipe.sendOutboundCommand(Command.Disconnect)
+      pipe.closePipeline(None)
 
       checkFuture(f, 5.second) should throwA[Command.EOF.type]
     }

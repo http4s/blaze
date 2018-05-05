@@ -119,19 +119,19 @@ private final class NIO1SocketServerGroup private (
         try acceptNewConnections()
         catch {
           case ex: IOException =>
-            closeWithError(ex)
+            close(Some(ex))
         }
       }
 
-    override def close(): Unit =
+    override def close(cause: Option[Throwable]): Unit =
       if (closed.compareAndSet(false, true) && !ch.channelClosed) {
-        logger.info(s"Listening socket(${ch.socketAddress}) closed.")
-        doClose()
-      }
+        cause match {
+          case Some(c) =>
+            logger.error(c)(s"Listening socket(${ch.socketAddress}) closed forcibly.")
 
-    override def closeWithError(cause: Throwable): Unit =
-      if (closed.compareAndSet(false, true) && !ch.channelClosed) {
-        logger.error(cause)(s"Listening socket(${ch.socketAddress}) closed forcibly.")
+          case None =>
+            logger.info(s"Listening socket(${ch.socketAddress}) closed.")
+        }
         doClose()
       }
 
@@ -251,7 +251,7 @@ private final class NIO1SocketServerGroup private (
     val acceptor = new SocketAcceptor(key, ch, service)
     try key.interestOps(SelectionKey.OP_ACCEPT)
     catch {
-      case ex: CancelledKeyException => acceptor.closeWithError(ex)
+      case ex: CancelledKeyException => acceptor.close(Some(ex))
     }
     acceptor
   }
@@ -278,7 +278,8 @@ private final class NIO1SocketServerGroup private (
           logger.info(s"Accepted connection from $address")
 
         case Failure(ex) =>
-          head.close()
+          // Service rejection isn't a network failure, so we close with None
+          head.close(None)
           logger.info(ex)(s"Rejected connection from $address")
       }(loop)
 

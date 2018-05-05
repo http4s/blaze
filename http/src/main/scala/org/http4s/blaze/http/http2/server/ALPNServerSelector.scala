@@ -3,11 +3,9 @@ package org.http4s.blaze.http.http2.server
 import java.nio.ByteBuffer
 import java.util
 import javax.net.ssl.SSLEngine
-
 import org.eclipse.jetty.alpn.ALPN
 import org.http4s.blaze.pipeline.{LeafBuilder, TailStage, Command => Cmd}
 import org.http4s.blaze.util.Execution.trampoline
-
 import scala.util.{Failure, Success}
 
 /** Dynamically inject an appropriate pipeline using ALPN
@@ -37,7 +35,7 @@ final class ALPNServerSelector(
       case Failure(Cmd.EOF) => // NOOP
       case Failure(t) =>
         logger.error(t)(s"$name failed to startup")
-        sendOutboundCommand(Cmd.Error(t))
+        closePipeline(Some(t))
     }(trampoline)
 
   private def selectPipeline(): Unit =
@@ -49,7 +47,7 @@ final class ALPNServerSelector(
     } catch {
       case t: Throwable =>
         logger.error(t)("Failure building pipeline")
-        sendOutboundCommand(Cmd.Error(t))
+        closePipeline(Some(t))
     }
 
   private class ServerProvider extends ALPN.ServerProvider {

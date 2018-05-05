@@ -4,7 +4,6 @@ import org.http4s.blaze.http.http2.Http2Exception._
 import org.http4s.blaze.pipeline.Command.EOF
 import org.http4s.blaze.pipeline.{Command, LeafBuilder, TailStage}
 import org.specs2.mutable.Specification
-
 import scala.util.Failure
 
 class StreamManagerImplSpec extends Specification {
@@ -142,7 +141,7 @@ class StreamManagerImplSpec extends Specification {
           case Left(ex: Http2StreamException) => ex.code must_== REFUSED_STREAM.code
         }
 
-        s.closeWithError(None)
+        s.doCloseWithError(None)
 
         // Now we can make a new stream
         tools.streamManager.newInboundStream(5) must beLike {

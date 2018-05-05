@@ -1,8 +1,7 @@
 package org.http4s.blaze.http.http2.mocks
 
-import org.http4s.blaze.pipeline.Command.OutboundCommand
-import org.http4s.blaze.pipeline.{Command, HeadStage}
-
+import org.http4s.blaze.pipeline.Command.EOF
+import org.http4s.blaze.pipeline.HeadStage
 import scala.collection.mutable
 import scala.concurrent.{Future, Promise}
 
@@ -39,16 +38,8 @@ private[http2] class MockHeadStage[T] extends HeadStage[T] {
     p.future
   }
 
-  /** Receives outbound commands
-    * Override to capture commands. */
-  override def outboundCommand(cmd: OutboundCommand): Unit = cmd match {
-    case Command.Disconnect =>
-      disconnected = true
-
-    case Command.Error(ex) =>
-      error = Some(ex)
-
-    case cmd =>
-      super.outboundCommand(cmd)
+  override protected def doClosePipeline(cause: Option[Throwable]): Unit = {
+    disconnected = true
+    error = cause
   }
 }
