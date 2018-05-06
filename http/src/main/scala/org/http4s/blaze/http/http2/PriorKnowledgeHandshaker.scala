@@ -3,7 +3,7 @@ package org.http4s.blaze.http.http2
 import java.nio.ByteBuffer
 
 import org.http4s.blaze.http.http2.SettingsDecoder.SettingsFrame
-import org.http4s.blaze.pipeline.{Command, TailStage}
+import org.http4s.blaze.pipeline.TailStage
 import org.http4s.blaze.util.{BufferTools, Execution}
 
 import scala.concurrent.Future
@@ -116,7 +116,7 @@ abstract class PriorKnowledgeHandshaker[T](localSettings: ImmutableHttp2Settings
   private[this] def sendGoAway(http2Exception: Http2Exception): Future[Nothing] = {
     val reply = FrameSerializer.mkGoAwayFrame(0, http2Exception)
     channelWrite(reply).flatMap { _ =>
-      sendOutboundCommand(Command.Disconnect)
+      closePipeline(None)
       Future.failed(http2Exception)
     }
   }

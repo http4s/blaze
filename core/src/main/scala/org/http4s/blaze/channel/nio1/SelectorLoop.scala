@@ -201,12 +201,12 @@ final class SelectorLoop(
             logger.error("Illegal state: selector key had null attachment.")
           }
         } else if (selectable != null) {
-          selectable.close()
+          selectable.close(None)
         }
       } catch {
         case t @ (NonFatal(_) | _: ControlThrowable) =>
           logger.error(t)("Error performing channel operations. Closing channel.")
-          try selectable.closeWithError(t)
+          try selectable.close(Some(t))
           catch {
             case t: Throwable =>
               logger.error(t)("Fatal error shutting down pipeline")
@@ -226,7 +226,7 @@ final class SelectorLoop(
           try {
             val head = getAttachment(k)
             if (head != null) {
-              head.closeWithError(ex)
+              head.close(Some(ex))
             }
           } catch { case _: IOException => /* NOOP */ }
         }

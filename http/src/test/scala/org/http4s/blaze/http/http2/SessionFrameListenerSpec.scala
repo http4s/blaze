@@ -5,6 +5,7 @@ import scala.language.reflectiveCalls
 import org.http4s.blaze.http.Headers
 import org.http4s.blaze.http.http2.Http2Exception._
 import org.http4s.blaze.http.http2.mocks.MockStreamManager
+import org.http4s.blaze.pipeline.Command.EOF
 import org.http4s.blaze.pipeline.LeafBuilder
 import org.http4s.blaze.pipeline.stages.BasicTail
 import org.http4s.blaze.util.BufferTools
@@ -136,7 +137,7 @@ class SessionFrameListenerSpec extends Specification {
 
         val os = tools.streamManager.newOutboundStream()
         os.writeRequest(HeadersFrame(Priority.NoPriority, false, Seq.empty)) // initiate stream
-        os.closeWithError(None)
+        os.doCloseWithError(None)
 
         val data = BufferTools.allocate(4)
 
@@ -164,7 +165,7 @@ class SessionFrameListenerSpec extends Specification {
 
         val os = tools.streamManager.newOutboundStream()
         os.writeRequest(HeadersFrame(Priority.NoPriority, false, Seq.empty)) // initiate stream
-        os.closeWithError(None)
+        os.doCloseWithError(None)
 
         val data = BufferTools.allocate(4)
 

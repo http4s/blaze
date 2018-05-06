@@ -1,14 +1,12 @@
 package org.http4s.blaze.pipeline
 
 import java.util.concurrent.TimeoutException
-
 import scala.concurrent.{Future, Promise}
 import scala.concurrent.duration.Duration
 import org.log4s.getLogger
 import Command._
 import org.http4s.blaze.util.Execution.directec
 import org.http4s.blaze.util.Execution
-
 import scala.util.control.NonFatal
 
 /*         Stages are formed from the three fundamental types. They essentially form a
@@ -35,6 +33,8 @@ sealed trait Stage {
 
   def name: String
 
+  def closePipeline(cause: Option[Throwable]): Unit
+
   /** Start the stage, allocating resources etc.
     *
     * This method should not effect other stages by sending commands etc unless it creates them.
@@ -47,11 +47,7 @@ sealed trait Stage {
 
   /** Shuts down the stage, deallocating resources, etc.
     *
-    * This method will be called when the stages receives a [[Disconnect]] command unless the
-    * `inboundCommand` method is overridden. It is not impossible that this will not be called
-    * due to failure for other stages to propagate shutdown commands. Conversely, it is also
-    * possible for this to be called more than once due to the reception of multiple disconnect
-    * commands. It is therefore recommended that the method be idempotent.
+    * This method will be called when the stages receives a `close` call.
     */
   protected def stageShutdown(): Unit =
     logger.debug(s"Shutting down.")
@@ -69,6 +65,14 @@ sealed trait Stage {
 
 sealed trait Tail[I] extends Stage {
   private[pipeline] var _prevStage: Head[I] = null
+
+  final def closePipeline(cause: Option[Throwable]): Unit = {
+    stageShutdown()
+    val prev = _prevStage
+    if (prev != null) {
+      prev.closePipeline(cause)
+    }
+  }
 
   def channelRead(size: Int = -1, timeout: Duration = Duration.Inf): Future[I] =
     try {
@@ -113,24 +117,8 @@ sealed trait Tail[I] extends Stage {
       _prevStage = stage
     } else {
       val e = new Exception("Cannot splice stage before a disconnected stage")
-      logger.error(e)("")
       throw e
     }
-
-  /** Send a command to the next outbound `Stage` of the pipeline */
-  final def sendOutboundCommand(cmd: OutboundCommand): Unit = {
-    logger.debug(s"Stage ${getClass.getSimpleName} sending outbound command: $cmd")
-    if (_prevStage != null) {
-      try _prevStage.outboundCommand(cmd)
-      catch {
-        case t: Throwable => logger.error(t)("Outbound command caused an error")
-      }
-    } else {
-      val e = new Exception("Cannot send outbound command on disconnected stage")
-      logger.error(e)("")
-      throw e
-    }
-  }
 
   /** Find the next outbound `Stage` with the given name, if it exists. */
   final def findOutboundStage(name: String): Option[Stage] =
@@ -255,12 +243,17 @@ sealed trait Head[O] extends Stage {
   /** Send a command to the next inbound `Stage` of the pipeline */
   final def sendInboundCommand(cmd: InboundCommand): Unit = {
     logger.debug(s"Stage ${getClass.getSimpleName} sending inbound command: $cmd")
-    if (_nextStage != null) {
-      try _nextStage.inboundCommand(cmd)
-      catch { case t: Throwable => outboundCommand(Error(t)) }
+    val next = _nextStage
+    if (next != null) {
+      try next.inboundCommand(cmd)
+      catch {
+        case t: Throwable =>
+          logger.error(t)("Exception caught when attempting inbound command")
+          closePipeline(Some(t))
+      }
     } else {
-      val e = new Exception("Cannot send inbound command on disconnected stage")
-      logger.error(e)("")
+      val msg = "Cannot send inbound command on disconnected stage"
+      val e = new Exception(msg)
       throw e
     }
   }
@@ -272,14 +265,6 @@ sealed trait Head[O] extends Stage {
     sendInboundCommand(cmd)
   }
 
-  /** Receives outbound commands
-    * Override to capture commands. */
-  def outboundCommand(cmd: OutboundCommand): Unit = cmd match {
-    case Disconnect => stageShutdown()
-    case Error(e) => logger.error(e)(s"$name received unhandled error command")
-    case cmd => logger.warn(s"$name received unhandled outbound command: $cmd")
-  }
-
   /** Insert the `MidStage` after `this` */
   final def spliceAfter(stage: MidStage[O, O]): Unit =
     if (_nextStage != null) {
@@ -289,7 +274,6 @@ sealed trait Head[O] extends Stage {
       _nextStage = stage
     } else {
       val e = new Exception("Cannot splice stage after disconnected stage")
-      logger.error(e)("")
       throw e
     }
 
@@ -319,15 +303,20 @@ sealed trait Head[O] extends Stage {
 /** The three fundamental stage types */
 trait TailStage[I] extends Tail[I]
 
-trait HeadStage[O] extends Head[O]
+trait HeadStage[O] extends Head[O] {
+  /** Close the channel with an error
+    *
+    * @note EOF is a valid error to close the channel with and signals normal termination.
+    */
+  protected def doClosePipeline(cause: Option[Throwable]): Unit
+
+  final def closePipeline(cause: Option[Throwable]): Unit = {
+    stageShutdown()
+    doClosePipeline(cause)
+  }
+}
 
 trait MidStage[I, O] extends Tail[I] with Head[O] {
-
-  // Overrides to propagate commands.
-  override def outboundCommand(cmd: OutboundCommand): Unit = {
-    super.outboundCommand(cmd)
-    sendOutboundCommand(cmd)
-  }
 
   /** Replace this `MidStage` with the provided `MidStage` of the same type */
   final def replaceInline(stage: MidStage[I, O]): this.type = {

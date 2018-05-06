@@ -1,7 +1,6 @@
 package org.http4s.blaze.http.http2
 
 import org.http4s.blaze.http.http2.mocks.{MockStreamManager, ObservingSessionFlowControl}
-import org.http4s.blaze.pipeline.Command
 import org.http4s.blaze.util.BufferTools
 import org.specs2.mutable.Specification
 import scala.util.{Failure, Success}
@@ -114,7 +113,7 @@ class StreamStateImplSpec extends Specification {
       val ctx = new Ctx
       import ctx._
 
-      streamState.outboundCommand(Command.Disconnect)
+      streamState.closePipeline(None)
 
       tools.streamManager.finishedStreams.dequeue() must_== streamState
       // Should have written a RST frame
@@ -127,7 +126,7 @@ class StreamStateImplSpec extends Specification {
 
       streamState.invokeInboundHeaders(Priority.NoPriority, true, Seq.empty) // remote closed
       streamState.writeRequest(HeadersFrame(Priority.NoPriority, true, Seq.empty)) // local closed
-      streamState.outboundCommand(Command.Disconnect)
+      streamState.closePipeline(None)
 
       tools.streamManager.finishedStreams.dequeue() must_== streamState
       // Should *NOT* have written a RST frame
@@ -140,7 +139,7 @@ class StreamStateImplSpec extends Specification {
 
       val ex = new Exception("boom")
       tools.writeController.observedWrites.isEmpty must beTrue
-      streamState.outboundCommand(Command.Error(ex))
+      streamState.closePipeline(Some(ex))
       tools.streamManager.finishedStreams.dequeue() must_== streamState
       // Should have written a RST frame
       tools.writeController.observedWrites.isEmpty must beFalse
@@ -156,7 +155,7 @@ class StreamStateImplSpec extends Specification {
 
       val ex = new Exception("boom")
       tools.writeController.observedWrites.isEmpty must beTrue
-      streamState.outboundCommand(Command.Error(ex))
+      streamState.closePipeline(Some(ex))
       tools.streamManager.finishedStreams.isEmpty must beTrue
       // Shouldn't have written a RST frame
       tools.writeController.observedWrites.isEmpty must beTrue

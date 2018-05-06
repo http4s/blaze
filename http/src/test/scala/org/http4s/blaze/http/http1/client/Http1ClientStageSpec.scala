@@ -2,13 +2,12 @@ package org.http4s.blaze.http.http1.client
 
 import java.nio.ByteBuffer
 import java.nio.charset.StandardCharsets
-
 import org.http4s.blaze.http.parser.BaseExceptions.BadCharacter
 import org.http4s.blaze.http.{BodyReader, HttpClientConfig, HttpClientSession, HttpRequest}
+import org.http4s.blaze.pipeline.Command.EOF
 import org.http4s.blaze.pipeline.{Command, HeadStage, LeafBuilder}
 import org.http4s.blaze.util.{BufferTools, ReadPool}
 import org.specs2.mutable.Specification
-
 import scala.concurrent.{Await, Awaitable, Future, Promise}
 import scala.concurrent.duration._
 
@@ -29,6 +28,11 @@ class Http1ClientStageSpec extends Specification {
     }
 
     def close(): Unit = readP.close()
+
+    override protected def doClosePipeline(cause: Option[Throwable]): Unit = {
+      assert(cause == None)
+      close()
+    }
 
     def consumeWrite(): Option[String] = pendingWrite().map {
       case Write(d, p) =>

@@ -6,9 +6,10 @@ import org.http4s.blaze.pipeline.Command.EOF
 
 class SeqHead[O](private var data: Seq[O]) extends HeadStage[O] {
 
+  private val lock = new AnyRef
   private var acc: Vector[O] = Vector.empty
 
-  private val lock = new AnyRef
+  override protected def doClosePipeline(cause: Option[Throwable]): Unit = ???
 
   def results: Seq[O] = lock.synchronized {
     acc

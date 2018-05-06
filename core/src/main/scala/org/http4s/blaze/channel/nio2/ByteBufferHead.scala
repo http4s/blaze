@@ -18,17 +18,16 @@ private[nio2] final class ByteBufferHead(channel: AsynchronousSocketChannel, buf
   def name: String = "ByteBufferHeadStage"
 
   @volatile
-  private[this] var closeReason: Throwable = null
+  private[this] var closeReason: Option[Throwable] = None
   private[this] val scratchBuffer = ByteBuffer.allocateDirect(bufferSize)
 
   override def writeRequest(data: ByteBuffer): Future[Unit] =
     writeRequest(data :: Nil)
 
-  override def writeRequest(data: Seq[ByteBuffer]): Future[Unit] = {
-    val reason = closeReason
-    if (reason != null) Future.failed(reason)
-    else if (data.isEmpty) Future.successful(())
-    else {
+  override def writeRequest(data: Seq[ByteBuffer]): Future[Unit] = closeReason match {
+    case Some(cause) => Future.failed(cause)
+    case None if data.isEmpty => Future.successful(())
+    case None =>
       val p = Promise[Unit]
       val srcs = data.toArray
 
@@ -57,9 +56,7 @@ private[nio2] final class ByteBufferHead(channel: AsynchronousSocketChannel, buf
         )
 
       go(0)
-
       p.future
-    }
   }
 
   def readRequest(size: Int): Future[ByteBuffer] = {
@@ -106,23 +103,25 @@ private[nio2] final class ByteBufferHead(channel: AsynchronousSocketChannel, buf
     case e: Throwable => super.checkError(e)
   }
 
-  override protected def closeWithError(t: Throwable): Unit = {
+  override protected def doClosePipeline(cause: Option[Throwable]): Unit = {
     val needsClose = synchronized {
       val reason = closeReason
-      if (reason == null || reason == EOF) {
-        closeReason = t
+      reason match {
+        case None | Some(EOF) =>
+          closeReason = Some(cause.getOrElse(EOF))
+        case _ => // nop
       }
-      reason == null
+      reason.isEmpty
     }
 
-    t match {
-      case EOF => logger.debug(s"closeWithError(EOF)")
-      case t => logger.error(t)("NIO2 channel closed with an unexpected error")
+    cause match {
+      case Some(t) => logger.error(t)("NIO2 channel closed with error")
+      case None => logger.debug(s"doClosePipeline(None)")
     }
 
     if (needsClose) {
       try channel.close()
-      catch { case e: IOException => /* Don't care */ }
+      catch { case _: IOException => /* Don't care */ }
     }
   }
 }

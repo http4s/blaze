@@ -2,12 +2,10 @@ package org.http4s.blaze.http.http2.server
 
 import java.nio.ByteBuffer
 import java.nio.charset.StandardCharsets
-
 import org.http4s.blaze.http.http2._
 import org.http4s.blaze.pipeline.stages.{BasicTail, OneMessageStage}
-import org.http4s.blaze.pipeline.{Command, LeafBuilder}
+import org.http4s.blaze.pipeline.LeafBuilder
 import org.http4s.blaze.util.{BufferTools, Execution, StageTools}
-
 import scala.concurrent.Future
 import scala.util.Failure
 
@@ -22,7 +20,7 @@ final class ServerPriorKnowledgeHandshaker(
     handshake().onComplete {
       case Failure(ex) =>
         logger.error(ex)("Failed to received prelude")
-        sendOutboundCommand(Command.Disconnect)
+        closePipeline(None)
       case _ => ()
     }
   }

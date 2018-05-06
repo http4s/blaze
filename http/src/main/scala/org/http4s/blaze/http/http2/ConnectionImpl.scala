@@ -72,7 +72,7 @@ private final class ConnectionImpl(
 
   // Make sure we disconnect from the reactor once the session is done
   onClose.onComplete { _ =>
-    tailStage.sendOutboundCommand(Command.Disconnect)
+    tailStage.closePipeline(None)
   }(parentExecutor)
 
   private[this] def readLoop(remainder: ByteBuffer): Unit =
@@ -97,7 +97,7 @@ private final class ConnectionImpl(
               // Otherwise, we need to do it here.
               streamManager.get(ex.stream) match {
                 case Some(stream) =>
-                  stream.closeWithError(Some(ex))
+                  stream.doCloseWithError(Some(ex))
 
                 case None =>
                   val msg = FrameSerializer.mkRstStreamFrame(ex.stream, ex.code)
@@ -177,7 +177,7 @@ private final class ConnectionImpl(
       writeController
         .close()
         .onComplete { _ =>
-          tailStage.sendOutboundCommand(Command.Disconnect)
+          tailStage.closePipeline(None)
           ex match {
             case Some(ex) => closedPromise.failure(ex)
             case None => closedPromise.success(())

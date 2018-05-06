@@ -1,12 +1,11 @@
 package org.http4s.blaze.pipeline.stages
 
+import java.util.concurrent.TimeoutException
 import scala.annotation.tailrec
 import scala.concurrent.Future
 import scala.concurrent.duration.Duration
 import org.http4s.blaze.pipeline.MidStage
-import org.http4s.blaze.pipeline.Command.Disconnect
 import org.http4s.blaze.util.{Cancellable, TickWheelExecutor}
-
 import java.util.concurrent.atomic.AtomicReference
 
 abstract class TimeoutStageBase[T](timeout: Duration, exec: TickWheelExecutor)
@@ -26,8 +25,9 @@ abstract class TimeoutStageBase[T](timeout: Duration, exec: TickWheelExecutor)
 
   private val killswitch = new Runnable {
     override def run(): Unit = {
-      logger.debug(s"Timeout of $timeout triggered. Killing pipeline.")
-      sendOutboundCommand(Disconnect)
+      val ex = new TimeoutException(
+        s"Timeout of $timeout triggered. Killing pipeline.")
+      closePipeline(Some(ex))
     }
   }
 

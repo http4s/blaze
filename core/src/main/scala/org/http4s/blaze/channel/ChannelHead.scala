@@ -3,25 +3,11 @@ package org.http4s.blaze.channel
 import java.io.IOException
 import java.nio.ByteBuffer
 import java.nio.channels.ClosedChannelException
-
 import org.http4s.blaze.pipeline.Command._
 import org.http4s.blaze.pipeline.HeadStage
 
-trait ChannelHead extends HeadStage[ByteBuffer] {
+private abstract class ChannelHead extends HeadStage[ByteBuffer] {
   import ChannelHead.brokePipeMessages
-
-  /** Close the channel with an error
-    * __NOTE:__ EOF is a valid error to close the channel with and signals normal termination.
-    * This method should __not__ send a [[Disconnected]] command. */
-  protected def closeWithError(t: Throwable): Unit
-
-  final override protected def stageShutdown(): Unit = closeWithError(EOF)
-
-  final override def outboundCommand(cmd: OutboundCommand): Unit = cmd match {
-    case Disconnect => closeWithError(EOF)
-    case Error(e) => closeWithError(e)
-    case _ => // NOOP
-  }
 
   /** Filter the error, replacing known "EOF" like errors with EOF */
   protected def checkError(e: Throwable): Throwable = e match {

@@ -2,8 +2,8 @@ package org.http4s.blaze.http.http2
 
 import org.http4s.blaze.http._
 import org.http4s.blaze.http.http2.Http2Exception.{PROTOCOL_ERROR, REFUSED_STREAM}
+import org.http4s.blaze.pipeline.Command.EOF
 import org.http4s.blaze.pipeline.{Command, LeafBuilder}
-
 import scala.collection.mutable.HashMap
 import scala.concurrent.{Future, Promise}
 
@@ -63,7 +63,7 @@ private final class StreamManagerImpl(
     val ss = streams.values.toVector
     for (stream <- ss) {
       streams.remove(stream.streamId)
-      stream.closeWithError(cause)
+      stream.doCloseWithError(cause)
     }
 
     // Need to set the closed state
@@ -127,7 +127,7 @@ private final class StreamManagerImpl(
     // https://tools.ietf.org/html/rfc7540#section-5.4.2
     streams.remove(cause.stream) match {
       case Some(streamState) =>
-        streamState.closeWithError(Some(cause))
+        streamState.doCloseWithError(Some(cause))
         Continue
 
       case None if session.idManager.isIdleId(cause.stream) =>
@@ -229,7 +229,7 @@ private final class StreamManagerImpl(
             // the peer, since they have discarded the stream anyway.
             streams.remove(id)
             val ex = Http2Exception.REFUSED_STREAM.rst(id, reason.msg)
-            stream.closeWithError(Some(ex))
+            stream.doCloseWithError(Some(ex))
         }
 
         val p = Promise[Unit]

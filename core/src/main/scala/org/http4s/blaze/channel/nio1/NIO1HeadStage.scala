@@ -277,10 +277,9 @@ private[nio1] final class NIO1HeadStage(
 
   ///////////////////////////////// Channel Ops ////////////////////////////////////////
 
-  final override def close(): Unit = closeWithError(EOF)
+  final override def close(cause: Option[Throwable]): Unit = doClosePipeline(cause)
 
-  // Cleanup any read or write requests with the Throwable
-  final override def closeWithError(cause: Throwable): Unit = {
+  final override protected def doClosePipeline(cause: Option[Throwable]): Unit = {
 
     // intended to be called from within the SelectorLoop but if
     // it's closed it will be performed in the current thread
@@ -316,16 +315,21 @@ private[nio1] final class NIO1HeadStage(
       def run(): Unit = {
         logger.trace(
           s"closeWithError($cause); readPromise: $readPromise, writePromise: $writePromise")
-        if (cause != EOF) logger.error(cause)("Abnormal NIO1HeadStage termination")
+        val c = cause match {
+          case Some(ex) =>
+            logger.error(cause.get)("Abnormal NIO1HeadStage termination")
+            ex
+          case None => EOF
+        }
         if (key.isValid) key.interestOps(0)
         key.attach(null)
-        doClose(cause)
+        doClose(c)
       }
     })
     catch {
       case e: RejectedExecutionException =>
         logger.error(e)("Event loop closed. Closing in current thread.")
-        doClose(cause)
+        doClose(cause.getOrElse(EOF))
     }
   }
 
@@ -343,7 +347,7 @@ private[nio1] final class NIO1HeadStage(
       }
     } catch {
       case _: CancelledKeyException =>
-        closeWithError(EOF)
+        close(None)
     }
 
   // only to be called by the SelectorLoop thread
@@ -358,6 +362,6 @@ private[nio1] final class NIO1HeadStage(
       }
     } catch {
       case _: CancelledKeyException =>
-        closeWithError(EOF)
+        close(None)
     }
 }

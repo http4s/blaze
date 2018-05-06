@@ -16,6 +16,8 @@ abstract class DelayHead[I](delay: Duration) extends HeadStage[I] {
 
   def name: String = "DelayHead"
 
+  override protected def doClosePipeline(cause: Option[Throwable]): Unit = ()
+
   private val awaitingPromises = new mutable.HashSet[Promise[_]]()
 
   private def rememberPromise(p: Promise[_]): Unit = {

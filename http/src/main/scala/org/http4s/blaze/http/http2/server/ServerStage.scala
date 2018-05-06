@@ -1,20 +1,18 @@
 package org.http4s.blaze.http.http2.server
 
 import java.nio.ByteBuffer
-
 import org.http4s.blaze.http._
 import org.http4s.blaze.http.http2.Http2Exception._
-import org.http4s.blaze.http.http2.{HeadersFrame, PseudoHeaders, StageTools, StreamFrame}
+import org.http4s.blaze.http.http2._
 import org.http4s.blaze.http.util.ServiceTimeoutFilter
 import org.http4s.blaze.pipeline.{TailStage, Command => Cmd}
 import org.http4s.blaze.util.{BufferTools, Execution}
-
 import scala.collection.mutable.ArrayBuffer
 import scala.concurrent.Future
 import scala.util.{Failure, Success, Try}
 
 /** Basic implementation of a http2 stream [[TailStage]] */
-private[http] class ServerStage(
+private[http] final class ServerStage(
     streamId: Int,
     service: HttpService,
     config: HttpServerStageConfig
@@ -33,11 +31,6 @@ private[http] class ServerStage(
     startRequest()
   }
 
-  private def shutdownWithCommand(cmd: Cmd.OutboundCommand): Unit = {
-    stageShutdown()
-    sendOutboundCommand(cmd)
-  }
-
   private def startRequest(): Unit =
     // The prelude should already be available (or we wouldn't have a stream id)
     // so adding a timeout is unnecessary.
@@ -49,15 +42,16 @@ private[http] class ServerStage(
       case Success(frame) =>
         val e = PROTOCOL_ERROR.goaway(
           s"Stream $streamId received invalid frame: ${frame.getClass.getSimpleName}")
-        shutdownWithCommand(Cmd.Error(e))
+        closePipeline(Some(e))
 
       // TODO: what about a 408 response for a timeout?
-      case Failure(Cmd.EOF) => shutdownWithCommand(Cmd.Disconnect)
+      case Failure(Cmd.EOF) =>
+        closePipeline(None)
 
       case Failure(t) =>
         logger.error(t)("Unknown error in startRequest")
         val e = INTERNAL_ERROR.rst(streamId, s"Unknown error")
-        shutdownWithCommand(Cmd.Error(e))
+        closePipeline(Some(e))
     }(Execution.directec)
 
   private[this] def getBodyReader(hs: Headers): Unit = {
@@ -72,7 +66,7 @@ private[http] class ServerStage(
 
     length match {
       case Some(Success(len)) => checkAndRunRequest(hs, new BodyReaderImpl(len))
-      case Some(Failure(error)) => shutdownWithCommand(Cmd.Error(error))
+      case Some(Failure(error)) => closePipeline(Some(error))
       case None => checkAndRunRequest(hs, new BodyReaderImpl(-1))
     }
   }
@@ -84,7 +78,7 @@ private[http] class ServerStage(
           config.serviceExecutor)
 
       case Left(errMsg) =>
-        shutdownWithCommand(Cmd.Error(PROTOCOL_ERROR.rst(streamId, errMsg)))
+        closePipeline(Some(PROTOCOL_ERROR.rst(streamId, errMsg)))
     }
 
   private[this] def renderResponse(method: String, response: Try[RouteAction]): Unit =
@@ -94,7 +88,7 @@ private[http] class ServerStage(
           .handle(getWriter(method, _))
           .onComplete(onComplete)(Execution.directec)
 
-      case Failure(t) => shutdownWithCommand(Cmd.Error(t))
+      case Failure(t) => closePipeline(Some(t))
     }
 
   private[this] def getWriter(method: String, prelude: HttpResponsePrelude): BodyWriter = {
@@ -122,13 +116,13 @@ private[http] class ServerStage(
       channelWrite(msg)
 
     override protected def fail(cause: Throwable): Unit =
-      sendOutboundCommand(Cmd.Error(cause))
+      closePipeline(Some(Http2Exception.INTERNAL_ERROR.rst(streamId)))
   }
 
   private def onComplete(result: Try[_]): Unit = result match {
-    case Success(_) => shutdownWithCommand(Cmd.Disconnect)
+    case Success(_) => closePipeline(None)
     case Failure(Cmd.EOF) => stageShutdown()
-    case Failure(t) => shutdownWithCommand(Cmd.Error(t))
+    case Failure(t) => closePipeline(Some(t))
   }
 
   private class NoopWriter(headers: Headers) extends BodyWriter {
@@ -138,7 +132,7 @@ private[http] class ServerStage(
 
     override def write(buffer: ByteBuffer): Future[Unit] =
       underlying.close(None).flatMap { _ =>
-        sendOutboundCommand(Cmd.Disconnect)
+        ServerStage.this.closePipeline(None)
         InternalWriter.ClosedChannelException
       }
 
@@ -152,6 +146,6 @@ private[http] class ServerStage(
     override protected def channelRead(): Future[StreamFrame] =
       ServerStage.this.channelRead()
     override protected def failed(ex: Throwable): Unit =
-      sendOutboundCommand(Cmd.Error(ex))
+      closePipeline(Some(ex))
   }
 }

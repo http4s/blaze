@@ -2,16 +2,18 @@ package org.http4s.blaze.pipeline
 
 import org.http4s.blaze.util.Execution
 import org.specs2.mutable._
-
 import scala.concurrent.{Future, Await}
 import scala.concurrent.duration._
 
 class PipelineSpec extends Specification {
 
-  implicit def ec = Execution.trampoline
+  private implicit def ec = Execution.trampoline
 
   class IntHead extends HeadStage[Int] {
     def name = "IntHead"
+
+    override protected def doClosePipeline(cause: Option[Throwable]): Unit = ???
+
     @volatile
     var lastWrittenInt: Int = 0
     def writeRequest(data: Int): Future[Unit] = {

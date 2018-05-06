@@ -2,12 +2,9 @@ package org.http4s.blaze.http.http2
 
 import java.nio.ByteBuffer
 import java.util
-
 import org.http4s.blaze.http.http2.Http2Exception._
-import org.http4s.blaze.pipeline.Command.{EOF, OutboundCommand}
-import org.http4s.blaze.pipeline.Command
+import org.http4s.blaze.pipeline.Command.EOF
 import org.http4s.blaze.util.BufferTools
-
 import scala.concurrent.{Future, Promise}
 
 /** Virtual pipeline head for representing HTTP/2 streams
@@ -68,7 +65,7 @@ private abstract class StreamStateImpl(session: SessionCore) extends StreamState
 
   private[this] def invokeStreamRead(size: Int, p: Promise[StreamFrame]): Unit =
     if (pendingRead != null) {
-      closeWithError(Some(INTERNAL_ERROR.rst(streamId)))
+      doCloseWithError(Some(INTERNAL_ERROR.rst(streamId)))
       p.failure(
         new IllegalStateException(s"Already have an outstanding read on a stream ($streamId)"))
       ()
@@ -107,7 +104,7 @@ private abstract class StreamStateImpl(session: SessionCore) extends StreamState
   // Invoke methods are intended to only be called from within the context of the session
   protected def invokeStreamWrite(msg: StreamFrame, p: Promise[Unit]): Unit =
     if (writePromise != null) {
-      closeWithError(Some(INTERNAL_ERROR.rst(streamId)))
+      doCloseWithError(Some(INTERNAL_ERROR.rst(streamId)))
       p.failure(new IllegalStateException(s"Already a pending write on this stream ($streamId)"))
       ()
     } else if (sentEndStream) {
@@ -196,22 +193,6 @@ private abstract class StreamStateImpl(session: SessionCore) extends StreamState
       }
   }
 
-  final override def outboundCommand(cmd: OutboundCommand): Unit =
-    session.serialExecutor.execute(new Runnable {
-      def run(): Unit = cmd match {
-        case Command.Disconnect =>
-          closeWithError(None) // will send a RST_STREAM, if necessary
-
-        case Command.Error(ex: Http2StreamException) =>
-          // Since the pipeline doesn't actually know what streamId it is
-          // associated with its our job to populate it with the real stream id.
-          closeWithError(Some(ex.copy(stream = streamId)))
-
-        case Command.Error(ex) =>
-          closeWithError(Some(ex))
-      }
-    })
-
   ///////////////////// Inbound messages ///////////////////////////////
 
   final override def invokeInboundData(
@@ -259,28 +240,28 @@ private abstract class StreamStateImpl(session: SessionCore) extends StreamState
 
   //////////////////////////////////////////////////////////////////////
 
+  final override protected def doClosePipeline(cause: Option[Throwable]): Unit =
+    session.serialExecutor.execute(
+      new Runnable { def run(): Unit = doCloseWithError(cause) })
+
   // Shuts down the stream and calls `StreamManager.streamFinished` with any potential errors.
   // WARNING: this must be called from within the session executor.
-  final override def closeWithError(t: Option[Throwable]): Unit =
+  final override def doCloseWithError(cause: Option[Throwable]): Unit =
     if (!streamIsClosed) {
-      closedReason = t match {
-        case s @ Some(_) => s
+      closedReason = cause match {
         case None => StreamStateImpl.SomeEOF
+        case other => other
       }
 
       // Release resources, including flow bytes pending
-      clearDataChannels(t match {
-        case Some(ex) => ex
-        case None => EOF
-      })
+      clearDataChannels(closedReason.get)
 
       // We need to translate arbitrary exceptions into a Http2Exception
-      val http2Ex: Option[Http2Exception] = t match {
+      val http2Ex: Option[Http2Exception] = cause match {
         // Gotta make sure both sides agree that this stream is closed
         case None if !(sentEndStream && receivedEndStream) =>
           Some(CANCEL.rst(streamId))
         case None => None
-        case Some(EOF) => None
         case Some(ex: Http2Exception) => Some(ex)
         case Some(other) =>
           logger.warn(other)(s"Unknown error in stream($streamId)")
