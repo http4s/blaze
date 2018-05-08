@@ -84,7 +84,7 @@ final class SSLStage(engine: SSLEngine, maxWrite: Int = 1024 * 1024)
   // All processes that start a handshake will add elements to the queue
   private[this] def inHandshake: Boolean = handshakeQueue.nonEmpty
 
-  // MUST be called inside synchronized blocks
+  // MUST be called from within the serial executor
   private[this] def takeQueuedBytes(): ByteBuffer =
     if (readLeftover != null) {
       val b = readLeftover
@@ -107,7 +107,7 @@ final class SSLStage(engine: SSLEngine, maxWrite: Int = 1024 * 1024)
 
       r match {
         case SSLSuccess if out.nonEmpty =>
-          p.trySuccess(joinBuffers(out))
+          p.success(joinBuffers(out))
           ()
 
         case SSLSuccess => // buffer underflow and no data to send
@@ -117,7 +117,7 @@ final class SSLStage(engine: SSLEngine, maxWrite: Int = 1024 * 1024)
                   readLeftover = concatBuffers(readLeftover, buff)
                   doRead(size, p)
 
-              case Failure(t) => p.tryFailure(t); ()
+              case Failure(t) => p.failure(t); ()
             }(serialExec)
 
         case SSLNeedHandshake(r) =>
@@ -126,7 +126,7 @@ final class SSLStage(engine: SSLEngine, maxWrite: Int = 1024 * 1024)
           sslHandshake(data, r)
           ()
 
-        case SSLFailure(t) => p.tryFailure(t); ()
+        case SSLFailure(t) => p.failure(t); ()
       }
     }
     logger.trace(s"${engine.##}: doRead completed in ${System.nanoTime - start}ns")
@@ -137,8 +137,8 @@ final class SSLStage(engine: SSLEngine, maxWrite: Int = 1024 * 1024)
     val start = System.nanoTime
     val results = handshakeQueue.result(); handshakeQueue.clear();
     results.foreach {
-      case DelayedRead(_, p) => p.tryFailure(t)
-      case DelayedWrite(_, p) => p.tryFailure(t)
+      case DelayedRead(_, p) => p.failure(t)
+      case DelayedWrite(_, p) => p.failure(t)
     }
     logger.trace(s"${engine.##}: handshakeFailure completed in ${System.nanoTime - start}ns")
   }
@@ -185,7 +185,6 @@ final class SSLStage(engine: SSLEngine, maxWrite: Int = 1024 * 1024)
             logger.warn(s"SSL Handshake WRAP produced 0 bytes.\n$r")
 
           channelWrite(copyBuffer(o)).onComplete {
-            // use `sslHandshake` to reacquire the lock
             case Success(_) => sslHandshake(data, r.getHandshakeStatus)
             case Failure(t) => handshakeFailure(t)
           }(serialExec)
@@ -280,7 +279,7 @@ final class SSLStage(engine: SSLEngine, maxWrite: Int = 1024 * 1024)
         case SSLSuccess => // must have more data to write
           channelWrite(out).onComplete {
             case Success(_) => doWrite(data, p)
-            case Failure(t) => p.tryFailure(t); ()
+            case Failure(t) => p.failure(t); ()
           }(serialExec)
 
         case SSLNeedHandshake(r) =>
@@ -289,11 +288,11 @@ final class SSLStage(engine: SSLEngine, maxWrite: Int = 1024 * 1024)
           if (out.nonEmpty) { // need to write
             channelWrite(out).onComplete {
               case Success(_) => sslHandshake(readData, r)
-              case Failure(t) => p.tryFailure(t)
+              case Failure(t) => p.failure(t)
             }(serialExec)
           } else sslHandshake(readData, r)
 
-        case SSLFailure(t) => p.tryFailure(t); ()
+        case SSLFailure(t) => p.failure(t); ()
       }
     }
     logger.trace(s"${engine.##}: continueWrite completed in ${System.nanoTime - start}ns")
@@ -303,7 +302,8 @@ final class SSLStage(engine: SSLEngine, maxWrite: Int = 1024 * 1024)
   private[this] def writeLoop(buffers: Array[ByteBuffer], out: Buffer[ByteBuffer]): SSLResult = {
     val o = getScratchBuffer(maxBuffer)
     @tailrec
-    def goWrite(b: Int): SSLResult = { // We try and encode the data buffer by buffer until its gone
+    def goWrite(b: Int): SSLResult = {
+      // We try and encode the data buffer by buffer until its gone
       o.clear()
       val r = engine.wrap(buffers, o)
 
