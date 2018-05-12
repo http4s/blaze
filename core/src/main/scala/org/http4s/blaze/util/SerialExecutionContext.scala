@@ -4,10 +4,19 @@ import scala.concurrent.ExecutionContext
 
 /** Serialize execution of work, ensuring that no passed work is executed in parallel.
   *
-  * @param parent `ExecutionContext` with which to perform the work. This may execute
-  *               work however it sees fit.
+  * Tasks are executed sequentially, in the order they are offered. Each task has a
+  * happens-before relationship with subsequent tasks, meaning mutations performed
+  * in a task are observed by all sequent tasks.
+  *
+  * @param parent `ExecutionContext` with which to perform the work, which may consist
+  *              of many tasks queued in the `SerialExecutionContext`.
+  * @param maxIterationsBeforeReschedule Maximum number of tasks to execute before
+  *                                      rescheduling work in the `parent`.
   */
-private[blaze] class SerialExecutionContext(parent: ExecutionContext) extends ExecutionContext {
+class SerialExecutionContext(
+    parent: ExecutionContext,
+    maxIterationsBeforeReschedule: Int = SerialExecutionContext.DefaultMaxIterations
+) extends ExecutionContext {
 
   private[this] val actor = new Actor[Runnable](parent) {
     override protected def act(work: Runnable): Unit = work.run()
@@ -20,4 +29,8 @@ private[blaze] class SerialExecutionContext(parent: ExecutionContext) extends Ex
 
   override def reportFailure(cause: Throwable): Unit =
     parent.reportFailure(cause)
+}
+
+private object SerialExecutionContext {
+  private val DefaultMaxIterations = Actor.DefaultMaxIterations
 }

@@ -6,13 +6,17 @@ import scala.annotation.tailrec
 import scala.concurrent.ExecutionContext
 import scala.util.control.NonFatal
 
-import org.http4s.blaze.util.Actor.MaxIterations
+import org.http4s.blaze.util.Actor.DefaultMaxIterations
 
 /** Lightweight actor system HEAVILY inspired by the scalaz actors.
   * scalaz actors would have been a good fit except a heavyweight dependency
   * is very undesirable for this library.
   */
-private[blaze] abstract class Actor[M](ec: ExecutionContext) {
+private[blaze] abstract class Actor[M](
+  ec: ExecutionContext,
+  maxTasksBeforeReschedule: Int = DefaultMaxIterations
+) {
+  require(maxTasksBeforeReschedule > 0)
 
   // Keep the tail of the chain
   private[this] val tailNode = new AtomicReference[Node]()
@@ -47,7 +51,7 @@ private[blaze] abstract class Actor[M](ec: ExecutionContext) {
     override def run(): Unit = {
       @tailrec
       def go(i: Int, next: Node): Unit =
-        if (i >= MaxIterations) reSchedule(next)
+        if (i >= maxTasksBeforeReschedule) reSchedule(next)
         else {
           val m = next.m
           try act(m)
@@ -87,5 +91,5 @@ private object Actor {
 
   // We don't want to bogart the thread indefinitely so we reschedule
   // ourselves after 256 iterations to allow other work to interleave.
-  private val MaxIterations = 256
+  val DefaultMaxIterations = 256
 }
