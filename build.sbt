@@ -6,7 +6,7 @@ organization in ThisBuild := "org.http4s"
 lazy val commonSettings = Seq(
   version := "0.14.0-SNAPSHOT",
   description := "NIO Framework for Scala",
-  crossScalaVersions := Seq("2.11.11", scalaVersion.value),
+  crossScalaVersions := Seq("2.11.12", scalaVersion.value),
   scalacOptions in (Compile, doc) ++= Seq("-no-link-warnings") // Suppresses problems with Scaladoc @throws links
   //  as discussed in http://www.scala-archive.org/Scaladoc-2-11-quot-throws-tag-quot-cannot-find-any-member-to-link-td4641850.html
 )
