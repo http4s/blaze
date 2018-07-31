@@ -67,6 +67,6 @@ projects.
 Blaze is licensed under the Apache 2 license. See the [LICENSE][license] file in the root project directory for more information.
 
 [http4s]: https://github.com/http4s/http4s
-[jetty]: http://http://www.eclipse.org/jetty/
+[jetty]: http://www.eclipse.org/jetty/
 [license]: https://github.com/http4s/http4s/blob/master/LICENSE
 [netty]: http://netty.io/
