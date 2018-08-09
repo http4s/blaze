@@ -208,7 +208,7 @@ class ServerParserSpec extends Specification {
 
     "need input on partial headers" in {
       val p = new Parser()
-      p.parseHeaders(headers.slice(0, 20)) should_== (false)
+      p.parseHeaders(headers.substring(0, 20)) should_== (false)
       p.parseheaders(headers.substring(20)) should_== (true)
       p.h.result should_== (l_headers.map { case (a, b) => (a.trim, b.trim)})
     }
@@ -324,7 +324,7 @@ class ServerParserSpec extends Specification {
 
       while (!p.contentComplete()) {
         p.parsecontent(b)
-        if (b.limit < blim) b.limit(b.limit() + 1)
+        if (b.limit() < blim) b.limit(b.limit() + 1)
       }
 
       p.contentComplete() should_== (true)
@@ -357,7 +357,7 @@ class ServerParserSpec extends Specification {
 
       while (!p.contentComplete()) {
         p.parsecontent(b)
-        if (b.limit < blim) b.limit(b.limit() + 1)
+        if (b.limit() < blim) b.limit(b.limit() + 1)
       }
       p.h.result should_== (("Foo", "") :: Nil)
       p.contentComplete() should_== (true)

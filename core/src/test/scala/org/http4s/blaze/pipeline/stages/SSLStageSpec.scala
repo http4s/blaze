@@ -243,7 +243,9 @@ class SSLStageSpec extends Specification {
           assert(handShakeBuffer == null)
           handShakeBuffer = o
 
-        case NEED_UNWRAP => ()
+        // wildcard case includes NEED_UNWRAP, but also NEED_UNWRAP_AGAIN which is new in JDK 9.
+        // need wildcard to be source-compatible and exhaustiveness-warning-free on both 8 and 9
+        case _  => ()
       }
     }
 

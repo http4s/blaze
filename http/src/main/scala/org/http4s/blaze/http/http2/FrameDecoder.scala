@@ -41,8 +41,8 @@ private class FrameDecoder(localSettings: Http2Settings, listener: FrameListener
       BufferUnderflow
     } else { // full frame. Decode.
       // set frame sizes in the ByteBuffer and decode
-      val oldLimit = buffer.limit
-      val endOfFrame = buffer.position + len
+      val oldLimit = buffer.limit()
+      val endOfFrame = buffer.position() + len
       buffer.limit(endOfFrame)
 
       try frameType match {
@@ -309,7 +309,7 @@ private object FrameDecoder {
       Error(
         PROTOCOL_ERROR.goaway(s"Padding ($padding) exceeds payload length: ${buffer.remaining}"))
     } else {
-      buffer.limit(buffer.limit - padding)
+      buffer.limit(buffer.limit() - padding)
       Continue
     }
 
