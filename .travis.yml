@@ -1,11 +1,13 @@
 language: scala
 
-scala:
-  - 2.12.6
-  - 2.11.12
-
-jdk:
-  - oraclejdk8
+matrix:
+  include:
+  - jdk: oraclejdk8
+    scala: 2.12.6
+  - jdk: oraclejdk8
+    scala: 2.11.12
+  - jdk: oraclejdk10
+    scala: 2.12.6
 env:
   global:
     secure: GFb3iprmlEb7iy5kA2vCdEMgxMOrWrSPnzLMoU9bCase/5UvNXp0quHzwDlLO9oqj2x+VRBRgJNngYyGB5HU0sRjlvgd2FXAwb5xn3LvGHHJB+j0oVxaYO2DuMeRG9MWuds+IN9EPbmbv36lFHc5NzZZG2ZI9v5+wAJjnCy8QOQ=
