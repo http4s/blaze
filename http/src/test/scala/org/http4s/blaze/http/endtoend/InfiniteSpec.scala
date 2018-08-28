@@ -1,19 +1,16 @@
 package org.http4s.blaze.http.endtoend
 
-import org.specs2.mutable.Specification
-
+import io.netty.handler.codec.http.HttpHeaders
 import java.nio.charset.StandardCharsets
-import java.util.concurrent.atomic._
 import java.util.concurrent.TimeUnit
-
+import java.util.concurrent.atomic._
 import org.asynchttpclient._
-
 import org.http4s.blaze.http._
 import org.http4s.blaze.http.endtoend.scaffolds._
-
-import scala.util._
+import org.specs2.mutable.Specification
 import scala.concurrent._
 import scala.concurrent.duration._
+import scala.util._
 
 class InfiniteSpec extends Specification {
 
@@ -76,9 +73,9 @@ class InfiniteSpec extends Specification {
               else
                 AsyncHandler.State.ABORT
             }
-            override def onHeadersReceived(headers: HttpResponseHeaders) = {
-              require(headers.getHeaders.get("transfer-encoding") == "chunked")
-              require(headers.getHeaders.get("content-length") == null)
+            override def onHeadersReceived(headers: HttpHeaders) = {
+              require(headers.get("transfer-encoding") == "chunked")
+              require(headers.get("content-length") == null)
               AsyncHandler.State.CONTINUE
             }
             override def onThrowable(e: Throwable) = ()
