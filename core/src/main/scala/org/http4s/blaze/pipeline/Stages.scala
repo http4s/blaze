@@ -63,6 +63,7 @@ sealed trait Stage {
     */
   def inboundCommand(cmd: InboundCommand): Unit = cmd match {
     case Connected => stageStartup()
+    case Disconnected => logger.debug("Received Disconnected command")
     case _ => logger.warn(s"$name received unhandled inbound command: $cmd")
   }
 }
