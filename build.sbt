@@ -20,6 +20,7 @@ lazy val blaze = project.in(file("."))
 
 lazy val core = Project("blaze-core", file("core"))
   .enablePlugins(BuildInfoPlugin)
+  .disablePlugins(TpolecatPlugin)
   .settings(commonSettings)
   .settings(
     libraryDependencies ++= Seq(log4s),
@@ -37,8 +38,10 @@ lazy val core = Project("blaze-core", file("core"))
     buildInfoOptions += BuildInfoOption.BuildTime
   )
 
+
 lazy val http = Project("blaze-http", file("http"))
   .settings(commonSettings)
+  .disablePlugins(TpolecatPlugin)
   .settings(
     // General Dependencies
     libraryDependencies ++= Seq(
@@ -63,6 +66,7 @@ lazy val http = Project("blaze-http", file("http"))
 
 lazy val examples = Project("blaze-examples",file("examples"))
   .enablePlugins(DisablePublishingPlugin)
+  .disablePlugins(TpolecatPlugin)
   .settings(commonSettings)
   .settings(Revolver.settings)
   .settings(
