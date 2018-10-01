@@ -43,7 +43,7 @@ Useful asynchronous processing is done through the construction of a pipeline. A
 stages that perform operations such as decoding/encoding, SSL encryption, buffering, etc. The pipeline is constructed
 in a type safe manner using the `PipelineBuilder` types.
 
-blaze is a pull based framework as opposed to the reactor and actor models found in other systems. Therefor, 
+blaze is a pull based framework as opposed to the reactor and actor models found in other systems. Therefore, 
 data flow is typically controlled by the tail of the pipeline. Data is written and requested using the `Future`
 type found in the Scala standard library.
 
