@@ -47,18 +47,26 @@ sealed trait Stage {
 
   /** Shuts down the stage, deallocating resources, etc.
     *
-    * This method will be called when the stages receives a `close` call.
+    * It will be called when the stage receives a [[Disconnected]]
+    * command unless [[inboundCommand]] is overridden.  This method
+    * should not send or [[Disconnected]] commands.
+    *
+    * It is possible that this will not be called due to failure of
+    * other stages to propagate shutdown commands. Conversely, it is
+    * also possible for this to be called more than once due to the
+    * reception of multiple shutdown commands. It is therefore
+    * recommended that the method be idempotent.
     */
   protected def stageShutdown(): Unit =
     logger.debug(s"Shutting down.")
 
   /** Handle basic startup and shutdown commands.
-    * This should clearly be overridden in all cases except possibly TailStages
     *
     * @param cmd a command originating from the channel
     */
   def inboundCommand(cmd: InboundCommand): Unit = cmd match {
     case Connected => stageStartup()
+    case Disconnected => stageShutdown()
     case _ => logger.warn(s"$name received unhandled inbound command: $cmd")
   }
 }
