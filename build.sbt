@@ -80,4 +80,4 @@ def addAlpnPath(attList: Keys.Classpath): Seq[String] = {
   } yield { println(s"Alpn path: $path"); "-Xbootclasspath/p:" + path}
 }
 
-addCommandAlias("validate", ";test ;unusedCompileDependencies ;mimaReportBinaryIssues")
+addCommandAlias("validate", ";test ;unusedCompileDependenciesTest ;mimaReportBinaryIssues")
