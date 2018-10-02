@@ -45,17 +45,9 @@ lazy val http = Project("blaze-http", file("http"))
   .settings(
     // General Dependencies
     libraryDependencies ++= Seq(
-      http4sWebsocket,
       twitterHPACK,
       alpn_api
     ),
-    // Version Specific Dependencies
-    libraryDependencies ++= {
-      VersionNumber(scalaBinaryVersion.value).numbers match {
-        case Seq(2, 10) => Seq.empty
-        case _ => Seq(scalaXml)
-      }
-    },
     // Test Dependencies
     libraryDependencies ++= Seq(
       asyncHttpClient,
@@ -73,7 +65,7 @@ lazy val examples = Project("blaze-examples",file("examples"))
     // necessary to add ALPN classes to boot classpath
     fork := true,
     // Adds ALPN to the boot classpath for Http2 support
-    libraryDependencies += alpn_boot,
+    libraryDependencies += alpn_boot % Runtime,
     javaOptions in run ++= addAlpnPath((managedClasspath in Runtime).value)
 
   ).dependsOn(http)
@@ -88,4 +80,4 @@ def addAlpnPath(attList: Keys.Classpath): Seq[String] = {
   } yield { println(s"Alpn path: $path"); "-Xbootclasspath/p:" + path}
 }
 
-addCommandAlias("validate", ";test ;mimaReportBinaryIssues")
+addCommandAlias("validate", ";test ;coverageOff ;unusedCompileDependenciesTest ;mimaReportBinaryIssues")
