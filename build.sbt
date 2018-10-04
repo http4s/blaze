@@ -4,6 +4,7 @@ import BlazePlugin._
 organization in ThisBuild := "org.http4s"
 
 lazy val commonSettings = Seq(
+  dependencyCheckFailBuildOnCVSS := 3.9f,
   version := "0.14.0-SNAPSHOT",
   description := "NIO Framework for Scala",
   crossScalaVersions := Seq("2.11.12", scalaVersion.value),
@@ -46,7 +47,7 @@ lazy val http = Project("blaze-http", file("http"))
     // General Dependencies
     libraryDependencies ++= Seq(
       twitterHPACK,
-      alpn_api
+      alpn_api % Provided
     ),
     // Test Dependencies
     libraryDependencies ++= Seq(
@@ -56,7 +57,7 @@ lazy val http = Project("blaze-http", file("http"))
     ).map(_ % Test)
   ).dependsOn(core % "test->test;compile->compile")
 
-lazy val examples = Project("blaze-examples",file("examples"))
+lazy val examples = Project("blaze-examples", file("examples"))
   .enablePlugins(DisablePublishingPlugin)
   .disablePlugins(TpolecatPlugin)
   .settings(commonSettings)
@@ -67,7 +68,6 @@ lazy val examples = Project("blaze-examples",file("examples"))
     // Adds ALPN to the boot classpath for Http2 support
     libraryDependencies += alpn_boot % Runtime,
     javaOptions in run ++= addAlpnPath((managedClasspath in Runtime).value)
-
   ).dependsOn(http)
 
 
