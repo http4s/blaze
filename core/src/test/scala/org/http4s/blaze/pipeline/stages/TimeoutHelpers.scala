@@ -1,16 +1,33 @@
-package org.http4s.blaze.pipeline.stages
+package org.http4s.blaze.pipeline
+package stages
 
-import org.specs2.mutable.Specification
-import org.http4s.blaze.pipeline.{Command, LeafBuilder}
 import java.nio.ByteBuffer
 import java.nio.charset.StandardCharsets
-
+import java.util.concurrent.atomic.AtomicReference
+import java.util.function.UnaryOperator
+import org.http4s.blaze.pipeline.Command.InboundCommand
+import org.http4s.blaze.pipeline.{Command, LeafBuilder}
 import org.specs2.matcher.MatchResult
-
-import scala.concurrent.{Await, Future}
+import org.specs2.mutable.Specification
 import scala.concurrent.duration._
+import scala.concurrent.{Await, Future}
 
 abstract class TimeoutHelpers extends Specification {
+
+  final class TimeoutTail[A](val name: String) extends TailStage[A] {
+    val inboundCommandsReceived: AtomicReference[Vector[InboundCommand]] =
+      new AtomicReference(Vector.empty)
+
+    override def inboundCommand(cmd: InboundCommand) {
+      inboundCommandsReceived.updateAndGet(new UnaryOperator[Vector[InboundCommand]] {
+        def apply(v: Vector[InboundCommand]) = v :+ cmd
+      })
+      cmd match {
+        case TimeoutStageBase.TimedOut(_) => closePipeline(None)
+        case _ => // no-op
+      }
+    }
+  }
   
   def genDelayStage(timeout: Duration): TimeoutStageBase[ByteBuffer]
 
@@ -28,8 +45,8 @@ abstract class TimeoutHelpers extends Specification {
   def slow(duration: Duration): DelayHead[ByteBuffer] =
     new DelayHead[ByteBuffer](duration) { def next() = newBuff }
 
-  def makePipeline(delay: Duration, timeout: Duration): BasicTail[ByteBuffer] = {
-    val leaf = new BasicTail[ByteBuffer]("TestTail")
+  def makePipeline(delay: Duration, timeout: Duration): TimeoutTail[ByteBuffer] = {
+    val leaf = new TimeoutTail[ByteBuffer]("TestTail")
     val head = slow(delay)
     LeafBuilder(leaf)
       .prepend(genDelayStage(timeout))

@@ -1,12 +1,14 @@
-package org.http4s.blaze.pipeline.stages
+package org.http4s.blaze.pipeline
+package stages
 
 import java.util.concurrent.TimeoutException
 import scala.annotation.tailrec
 import scala.concurrent.Future
 import scala.concurrent.duration.Duration
-import org.http4s.blaze.pipeline.MidStage
+import org.http4s.blaze.pipeline.Command.InboundCommand
 import org.http4s.blaze.util.{Cancellable, TickWheelExecutor}
 import java.util.concurrent.atomic.AtomicReference
+import scala.concurrent.duration.Duration
 
 abstract class TimeoutStageBase[T](timeout: Duration, exec: TickWheelExecutor)
     extends MidStage[T, T] { stage =>
@@ -25,9 +27,7 @@ abstract class TimeoutStageBase[T](timeout: Duration, exec: TickWheelExecutor)
 
   private val killswitch = new Runnable {
     override def run(): Unit = {
-      val ex = new TimeoutException(
-        s"Timeout of $timeout triggered. Killing pipeline.")
-      closePipeline(Some(ex))
+      sendInboundCommand(TimeoutStageBase.TimedOut(timeout))
     }
   }
 
@@ -65,9 +65,11 @@ abstract class TimeoutStageBase[T](timeout: Duration, exec: TickWheelExecutor)
   final protected def startTimeout(): Unit = resetTimeout()
 }
 
-private object TimeoutStageBase {
+object TimeoutStageBase {
   // Represents the situation where the pipeline has been closed.
-  val closedTag = new Cancellable {
+  private[TimeoutStageBase] val closedTag = new Cancellable {
     override def cancel(): Unit = ()
   }
+
+  final case class TimedOut(timeout: Duration) extends InboundCommand
 }
