@@ -1,7 +1,7 @@
-package org.http4s.blaze.pipeline.stages
+package org.http4s.blaze.pipeline
+package stages
 
 import java.nio.ByteBuffer
-import org.http4s.blaze.pipeline.Command
 import scala.concurrent.duration._
 
 class QuietTimeoutStageSpec extends TimeoutHelpers {
@@ -20,25 +20,19 @@ class QuietTimeoutStageSpec extends TimeoutHelpers {
     "timeout properly" in {
       val pipe = makePipeline(delay = 10.seconds, timeout = 100.milliseconds)
       checkFuture(pipe.channelRead(), 5.second) should throwA[Command.EOF.type]
-      pipe.inboundCommandsReceived.get must contain(TimeoutStageBase.TimedOut(100.milliseconds))
-    }
-
-    "not timeout if the delay stage is removed" in {
-      val pipe = makePipeline(2.seconds, 1.second)
-      val f = pipe.channelRead()
-      pipe.findOutboundStage(classOf[TimeoutStageBase[ByteBuffer]]).get.removeStage
-      checkFuture(f, 5.second)
-      pipe.closePipeline(None)
-      pipe.inboundCommandsReceived.get must not contain(TimeoutStageBase.TimedOut(1.second))
+      isTimedOut(pipe) must beTrue
     }
 
     "not schedule timeouts after the pipeline has been shut down" in {
       val pipe = makePipeline(delay = 10.seconds, timeout = 1.second)
       val f = pipe.channelRead()
       pipe.closePipeline(None)
-
       checkFuture(f, 5.second) should throwA[Command.EOF.type]
-      pipe.inboundCommandsReceived.get must not contain(TimeoutStageBase.TimedOut(1.second))
+      isTimedOut(pipe) must beFalse
     }
+  }
+
+  private def isTimedOut[A](pipe: Tail[A]) = {
+    pipe.findOutboundStage(classOf[QuietTimeoutStage[_]]).get.timedOut.value.isDefined
   }
 }

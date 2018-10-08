@@ -2,13 +2,13 @@ package org.http4s.blaze.pipeline
 package stages
 
 import java.util.concurrent.TimeoutException
-import scala.annotation.tailrec
-import scala.concurrent.Future
-import scala.concurrent.duration.FiniteDuration
+import java.util.concurrent.atomic.AtomicReference
 import org.http4s.blaze.pipeline.Command.InboundCommand
 import org.http4s.blaze.util.{Cancellable, TickWheelExecutor}
-import java.util.concurrent.atomic.AtomicReference
+import scala.annotation.tailrec
+import scala.concurrent.{Future, Promise}
 import scala.concurrent.duration.Duration
+import scala.concurrent.duration.FiniteDuration
 
 abstract class TimeoutStageBase[T](timeout: FiniteDuration, exec: TickWheelExecutor)
     extends MidStage[T, T] { stage =>
@@ -17,15 +17,16 @@ abstract class TimeoutStageBase[T](timeout: FiniteDuration, exec: TickWheelExecu
 
   override def name: String = s"${this.getClass.getName} Stage: $timeout"
 
+  private[this] val timedOutPromise = Promise[Unit]
+  val timedOut: Future[Unit] = timedOutPromise.future
+
   /////////// Private impl bits //////////////////////////////////////////
 
   private val lastTimeout =
     new AtomicReference[Cancellable](Cancellable.NoopCancel)
 
   private val killswitch = new Runnable {
-    override def run(): Unit = {
-      sendInboundCommand(TimeoutStageBase.TimedOut(timeout))
-    }
+    override def run(): Unit = timedOutPromise.trySuccess(())
   }
 
   @tailrec
@@ -67,6 +68,4 @@ object TimeoutStageBase {
   private[TimeoutStageBase] val closedTag = new Cancellable {
     override def cancel(): Unit = ()
   }
-
-  final case class TimedOut(timeout: Duration) extends InboundCommand
 }

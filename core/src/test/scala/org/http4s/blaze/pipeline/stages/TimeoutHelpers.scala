@@ -5,30 +5,28 @@ import java.nio.ByteBuffer
 import java.nio.charset.StandardCharsets
 import java.util.concurrent.atomic.AtomicReference
 import java.util.function.UnaryOperator
-import org.http4s.blaze.pipeline.Command.InboundCommand
 import org.http4s.blaze.pipeline.{Command, LeafBuilder}
+import org.http4s.blaze.pipeline.Command.InboundCommand
+import org.http4s.blaze.util.Execution.directec
 import org.specs2.matcher.MatchResult
 import org.specs2.mutable.Specification
-import scala.concurrent.duration._
 import scala.concurrent.{Await, Future}
+import scala.concurrent.duration._
+import scala.util.{Success, Failure}
 
 abstract class TimeoutHelpers extends Specification {
 
   final class TimeoutTail[A](val name: String) extends TailStage[A] {
-    val inboundCommandsReceived: AtomicReference[Vector[InboundCommand]] =
-      new AtomicReference(Vector.empty)
-
-    override def inboundCommand(cmd: InboundCommand) {
-      inboundCommandsReceived.updateAndGet(new UnaryOperator[Vector[InboundCommand]] {
-        def apply(v: Vector[InboundCommand]) = v :+ cmd
+    override protected def stageStartup(): Unit = {
+      implicit val ec = directec
+      super.stageStartup()
+      findOutboundStage(classOf[TimeoutStageBase[_]]).foreach(_.timedOut.onComplete {
+        case Success(()) => closePipeline(None)
+        case Failure(t) => closePipeline(Some(t))
       })
-      cmd match {
-        case TimeoutStageBase.TimedOut(_) => closePipeline(None)
-        case _ => // no-op
-      }
     }
   }
-  
+
   def genDelayStage(timeout: FiniteDuration): TimeoutStageBase[ByteBuffer]
 
   def newBuff: ByteBuffer = ByteBuffer.wrap("Foo".getBytes(StandardCharsets.UTF_8))
