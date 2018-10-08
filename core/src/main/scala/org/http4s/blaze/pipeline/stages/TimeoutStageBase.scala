@@ -4,19 +4,16 @@ package stages
 import java.util.concurrent.TimeoutException
 import scala.annotation.tailrec
 import scala.concurrent.Future
-import scala.concurrent.duration.Duration
+import scala.concurrent.duration.FiniteDuration
 import org.http4s.blaze.pipeline.Command.InboundCommand
 import org.http4s.blaze.util.{Cancellable, TickWheelExecutor}
 import java.util.concurrent.atomic.AtomicReference
 import scala.concurrent.duration.Duration
 
-abstract class TimeoutStageBase[T](timeout: Duration, exec: TickWheelExecutor)
+abstract class TimeoutStageBase[T](timeout: FiniteDuration, exec: TickWheelExecutor)
     extends MidStage[T, T] { stage =>
 
   import TimeoutStageBase.closedTag
-
-  // Constructor
-  require(timeout.isFinite() && timeout.toMillis != 0, s"Invalid timeout: $timeout")
 
   override def name: String = s"${this.getClass.getName} Stage: $timeout"
 

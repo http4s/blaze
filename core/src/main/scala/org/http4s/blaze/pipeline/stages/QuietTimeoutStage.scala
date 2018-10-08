@@ -4,10 +4,10 @@ import org.http4s.blaze.util.Execution._
 import org.http4s.blaze.util.TickWheelExecutor
 
 import scala.concurrent.Future
-import scala.concurrent.duration.Duration
+import scala.concurrent.duration.FiniteDuration
 
 /** Shut down the pipeline after a period of inactivity */
-class QuietTimeoutStage[T](timeout: Duration, exec: TickWheelExecutor = scheduler)
+class QuietTimeoutStage[T](timeout: FiniteDuration, exec: TickWheelExecutor = scheduler)
     extends TimeoutStageBase[T](timeout, exec) {
 
   ////////////////////////////////////////////////////////////////////////////////

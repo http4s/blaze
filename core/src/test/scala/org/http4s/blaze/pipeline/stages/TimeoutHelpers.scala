@@ -29,7 +29,7 @@ abstract class TimeoutHelpers extends Specification {
     }
   }
   
-  def genDelayStage(timeout: Duration): TimeoutStageBase[ByteBuffer]
+  def genDelayStage(timeout: FiniteDuration): TimeoutStageBase[ByteBuffer]
 
   def newBuff: ByteBuffer = ByteBuffer.wrap("Foo".getBytes(StandardCharsets.UTF_8))
 
@@ -45,7 +45,7 @@ abstract class TimeoutHelpers extends Specification {
   def slow(duration: Duration): DelayHead[ByteBuffer] =
     new DelayHead[ByteBuffer](duration) { def next() = newBuff }
 
-  def makePipeline(delay: Duration, timeout: Duration): TimeoutTail[ByteBuffer] = {
+  def makePipeline(delay: Duration, timeout: FiniteDuration): TimeoutTail[ByteBuffer] = {
     val leaf = new TimeoutTail[ByteBuffer]("TestTail")
     val head = slow(delay)
     LeafBuilder(leaf)
