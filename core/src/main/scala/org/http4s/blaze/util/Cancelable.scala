@@ -1,17 +1,17 @@
 package org.http4s.blaze.util
 
-object Cancellable {
+object Cancelable {
 
-  /** Cancellable which does nothing */
-  val NoopCancel = new Cancellable {
+  /** Cancelable which does nothing */
+  val NoopCancel = new Cancelable {
     def cancel(): Unit = ()
   }
 }
 
 /** Type that can be canceled. */
-trait Cancellable {
+trait Cancelable {
 
-  /** Attempt to cancel this `Cancellable`.
+  /** Attempt to cancel this `Cancelable`.
     *
     * Cancellation is not guaranteed.
     */
