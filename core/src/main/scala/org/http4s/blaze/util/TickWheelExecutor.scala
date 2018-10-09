@@ -75,7 +75,7 @@ class TickWheelExecutor(wheelSize: Int = DefaultWheelSize, tick: Duration = 200.
     * @return a [[Cancellable]]. This is not a `java.util.concurrent.Cancellable`,
     *         which is a richer interface.
     */
-  def schedule(r: Runnable, timeout: Duration): Cancellable =
+  def schedule(r: Runnable, timeout: Duration): Cancelable =
     schedule(r, Execution.directec, timeout)
 
   /** Schedule the `Runnable` on the [[TickWheelExecutor]]
@@ -89,10 +89,10 @@ class TickWheelExecutor(wheelSize: Int = DefaultWheelSize, tick: Duration = 200.
     * @return a [[Cancellable]]. This is not a `java.util.concurrent.Cancellable`,
     *         which is a richer interface.
     */
-  def schedule(r: Runnable, ec: ExecutionContext, timeout: Duration): Cancellable =
+  def schedule(r: Runnable, ec: ExecutionContext, timeout: Duration): Cancelable =
     if (alive) {
       if (!timeout.isFinite) { // This will never timeout, so don't schedule it.
-        Cancellable.NoopCancel
+        Cancelable.NoopCancel
       } else {
         val millis = timeout.toMillis
         if (millis > 0) {
@@ -110,7 +110,7 @@ class TickWheelExecutor(wheelSize: Int = DefaultWheelSize, tick: Duration = 200.
         } else { // we can submit the task right now! Not sure why you would want to do this...
           try ec.execute(r)
           catch { case NonFatal(t) => onNonFatal(t) }
-          Cancellable.NoopCancel
+          Cancelable.NoopCancel
         }
       }
     } else sys.error("TickWheelExecutor is shutdown")
@@ -217,7 +217,7 @@ class TickWheelExecutor(wheelSize: Int = DefaultWheelSize, tick: Duration = 200.
       var prev: Node,
       var next: Node,
       var canceled: Boolean = false
-  ) extends Cancellable {
+  ) extends Cancelable {
 
     /** Remove this node from its linked list */
     def unlink(): Unit = {
