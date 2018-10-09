@@ -4,18 +4,14 @@ package stages
 import java.util.concurrent.TimeoutException
 import java.util.concurrent.atomic.AtomicReference
 import org.http4s.blaze.pipeline.Command.InboundCommand
-import org.http4s.blaze.util.{Cancellable, TickWheelExecutor}
+import org.http4s.blaze.util.{Cancelable, TickWheelExecutor}
 import scala.annotation.tailrec
 import scala.concurrent.{Future, Promise}
-import scala.concurrent.duration.Duration
 import scala.concurrent.duration.FiniteDuration
+import scala.util.Try
 
-abstract class TimeoutStageBase[T](timeout: FiniteDuration, exec: TickWheelExecutor)
-    extends MidStage[T, T] { stage =>
-
-  import TimeoutStageBase.closedTag
-
-  override def name: String = s"${this.getClass.getName} Stage: $timeout"
+trait TimeoutStage[I, O] extends MidStage[I, O] { stage =>
+  import TimeoutStage.closedTag
 
   private[this] val timedOutPromise = Promise[Unit]
   val timedOut: Future[Unit] = timedOutPromise.future
@@ -23,14 +19,10 @@ abstract class TimeoutStageBase[T](timeout: FiniteDuration, exec: TickWheelExecu
   /////////// Private impl bits //////////////////////////////////////////
 
   private val lastTimeout =
-    new AtomicReference[Cancellable](Cancellable.NoopCancel)
-
-  private val killswitch = new Runnable {
-    override def run(): Unit = timedOutPromise.trySuccess(())
-  }
+    new AtomicReference[Cancelable](Cancelable.NoopCancel)
 
   @tailrec
-  final def setAndCancel(next: Cancellable): Unit = {
+  final def setAndCancel(next: Cancelable): Unit = {
     val prev = lastTimeout.getAndSet(next)
     if (prev == closedTag && next != closedTag) {
       // woops... we submitted a new cancellation when we were closed!
@@ -38,14 +30,6 @@ abstract class TimeoutStageBase[T](timeout: FiniteDuration, exec: TickWheelExecu
       setAndCancel(closedTag)
     } else prev.cancel()
   }
-
-  /////////// Pass through implementations ////////////////////////////////
-
-  override def readRequest(size: Int): Future[T] = channelRead(size)
-
-  override def writeRequest(data: T): Future[Unit] = channelWrite(data)
-
-  override def writeRequest(data: Seq[T]): Future[Unit] = channelWrite(data)
 
   /////////// Protected impl bits //////////////////////////////////////////
 
@@ -55,17 +39,19 @@ abstract class TimeoutStageBase[T](timeout: FiniteDuration, exec: TickWheelExecu
   }
 
   final protected def resetTimeout(): Unit =
-    setAndCancel(exec.schedule(killswitch, timeout))
+    setAndCancel(scheduleTimeout(timedOutPromise.tryComplete))
+
+  protected def scheduleTimeout(cb: Try[Unit] => Unit): Cancelable
 
   final protected def cancelTimeout(): Unit =
-    setAndCancel(Cancellable.NoopCancel)
+    setAndCancel(Cancelable.NoopCancel)
 
   final protected def startTimeout(): Unit = resetTimeout()
 }
 
-object TimeoutStageBase {
+object TimeoutStage {
   // Represents the situation where the pipeline has been closed.
-  private[TimeoutStageBase] val closedTag = new Cancellable {
+  private val closedTag = new Cancelable {
     override def cancel(): Unit = ()
   }
 }

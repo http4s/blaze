@@ -2,11 +2,19 @@ package org.http4s.blaze.pipeline
 package stages
 
 import java.nio.ByteBuffer
+import org.http4s.blaze.util.TickWheelExecutor
+import org.specs2.specification.BeforeAfterAll
 import scala.concurrent.duration._
 
-class QuietTimeoutStageSpec extends TimeoutHelpers {
+class QuietTimeoutStageSpec extends TimeoutHelpers with BeforeAfterAll {
 
-  override def genDelayStage(timeout: FiniteDuration): TimeoutStageBase[ByteBuffer] = new QuietTimeoutStage[ByteBuffer](timeout)
+  var scheduler: TickWheelExecutor = null
+
+  override def beforeAll() = { scheduler = new TickWheelExecutor() }
+  override def afterAll() = scheduler.shutdown()
+
+  override def genDelayStage(timeout: FiniteDuration): TimeoutStage[String, String] =
+    QuietTimeoutStage[String](timeout, scheduler)
 
   "A QuietTimeoutStage" should {
     "not timeout with propper intervals" in {

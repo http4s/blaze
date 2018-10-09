@@ -20,31 +20,26 @@ abstract class TimeoutHelpers extends Specification {
     override protected def stageStartup(): Unit = {
       implicit val ec = directec
       super.stageStartup()
-      findOutboundStage(classOf[TimeoutStageBase[_]]).foreach(_.timedOut.onComplete {
+      findOutboundStage(classOf[TimeoutStage[_, _]]).foreach(_.timedOut.onComplete {
         case Success(()) => closePipeline(None)
         case Failure(t) => closePipeline(Some(t))
       })
     }
   }
 
-  def genDelayStage(timeout: FiniteDuration): TimeoutStageBase[ByteBuffer]
+  def genDelayStage(timeout: FiniteDuration): TimeoutStage[String, String]
 
-  def newBuff: ByteBuffer = ByteBuffer.wrap("Foo".getBytes(StandardCharsets.UTF_8))
+  val chunk = "Chunk"
 
-  def checkBuff(buff: ByteBuffer): MatchResult[Any] = {
-    StandardCharsets.UTF_8.decode(buff).toString should_== "Foo"
+  def checkFuture[A](f: Future[A], timeout: Duration = 2.seconds): MatchResult[Any] = {
+    Await.result(f, timeout) must_== chunk
   }
 
-  def checkFuture(f: Future[ByteBuffer], timeout: Duration = 2.seconds): MatchResult[Any] = {
-    val r = Await.result(f, timeout)
-    checkBuff(r)
-  }
+  def slow(duration: Duration): DelayHead[String] =
+    new DelayHead[String](duration) { def next() = chunk }
 
-  def slow(duration: Duration): DelayHead[ByteBuffer] =
-    new DelayHead[ByteBuffer](duration) { def next() = newBuff }
-
-  def makePipeline(delay: Duration, timeout: FiniteDuration): TimeoutTail[ByteBuffer] = {
-    val leaf = new TimeoutTail[ByteBuffer]("TestTail")
+  def makePipeline(delay: Duration, timeout: FiniteDuration): TimeoutTail[String] = {
+    val leaf = new TimeoutTail[String]("TestTail")
     val head = slow(delay)
     LeafBuilder(leaf)
       .prepend(genDelayStage(timeout))
