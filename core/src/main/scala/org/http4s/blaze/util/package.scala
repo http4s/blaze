@@ -6,4 +6,9 @@ package object util {
   private[blaze] def bug(message: String): AssertionError =
     new AssertionError(
       s"This is a bug. Please report to https://github.com/http4s/blaze/issues: ${message}")
+
+  @deprecated("Renamed to `Cancelable`", "0.19.0-M6")
+  type Cancellable = Cancelable
+  @deprecated("Renamed to `Cancelable`", "0.19.0-M6")
+  val Cancellable = Cancelable
 }
