@@ -204,7 +204,7 @@ class TickWheelExecutor(wheelSize: Int = DefaultWheelSize, tick: Duration = 200.
       node.insertAfter(head)
   }
 
-  /** A Link in a single linked list which can also be passed to the user as a Cancellable
+  /** A Link in a single linked list which can also be passed to the user as a Cancelable
     * @param r [[java.lang.Runnable]] which will be executed after the expired time
     * @param ec [[scala.concurrent.ExecutionContext]] on which to execute the Runnable
     * @param expiration time in milliseconds after which this Node is expired
