@@ -12,7 +12,7 @@ import org.http4s.blaze.http.{
 import org.http4s.blaze.http.util.UrlTools.UrlComposition
 import org.http4s.blaze.pipeline.stages.SSLStage
 import org.http4s.blaze.pipeline.{Command, HeadStage, LeafBuilder}
-import org.http4s.blaze.util.Execution
+import org.http4s.blaze.util.{Execution, FutureUnit}
 import org.log4s.getLogger
 
 import scala.concurrent.Future
@@ -48,7 +48,7 @@ private[http] final class BasicHttp1ClientSessionManager(config: HttpClientConfi
   }
 
   /** Close the `SessionManager` and free any resources */
-  override def close(): Future[Unit] = Future.successful(())
+  override def close(): Future[Unit] = FutureUnit
 
   // Build the http/1.x pipeline, including ssl if necessary
   // TODO: this would be useful for a pooled SessionPool as well.

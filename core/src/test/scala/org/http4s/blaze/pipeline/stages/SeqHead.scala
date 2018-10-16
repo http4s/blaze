@@ -1,8 +1,8 @@
 package org.http4s.blaze.pipeline.stages
 
 import org.http4s.blaze.pipeline.HeadStage
+import org.http4s.blaze.util.{FutureEOF, FutureUnit}
 import scala.concurrent.Future
-import org.http4s.blaze.pipeline.Command.EOF
 
 class SeqHead[O](private var data: Seq[O]) extends HeadStage[O] {
 
@@ -23,11 +23,11 @@ class SeqHead[O](private var data: Seq[O]) extends HeadStage[O] {
       data = data.tail
       Future.successful(h)
     }
-    else Future.failed(EOF)
+    else FutureEOF
   }
 
   def writeRequest(data: O): Future[Unit] = lock.synchronized {
     acc :+= data
-    Future.successful(())
+    FutureUnit
   }
 }

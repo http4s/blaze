@@ -3,7 +3,7 @@ package org.http4s.blaze.http.http2.server
 import java.nio.ByteBuffer
 import org.http4s.blaze.http.http2.{DataFrame, HeadersFrame, Priority, StreamFrame}
 import org.http4s.blaze.pipeline.Command
-import org.http4s.blaze.util.BufferTools
+import org.http4s.blaze.util.{BufferTools, FutureUnit}
 import org.specs2.mutable.Specification
 import scala.concurrent.Future
 import scala.util.{Failure, Success}
@@ -44,7 +44,7 @@ class AbstractBodyWriterSpec extends Specification {
     override protected def flushMessage(msg: Seq[StreamFrame]): Future[Unit] = {
       assert(flushed.isEmpty)
       flushed = Some(msg)
-      Future.successful(())
+      FutureUnit
     }
   }
 

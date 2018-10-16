@@ -4,6 +4,7 @@ import java.nio.ByteBuffer
 import java.util
 
 import org.http4s.blaze.pipeline.TailStage
+import org.http4s.blaze.util.FutureUnit
 import org.log4s.getLogger
 
 import scala.collection.mutable.ArrayBuffer
@@ -36,7 +37,7 @@ private final class WriteControllerImpl(
   def close(): Future[Unit] = state match {
     case Idle =>
       state = Closed
-      Future.successful(())
+      FutureUnit
 
     case Flushing =>
       val p = Promise[Unit]
@@ -47,7 +48,7 @@ private final class WriteControllerImpl(
       p.future
 
     case Closed =>
-      Future.successful(())
+      FutureUnit
   }
 
   private[this] def pendingInterests: Boolean =
