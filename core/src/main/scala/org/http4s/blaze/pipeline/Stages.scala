@@ -351,7 +351,6 @@ trait MidStage[I, O] extends Tail[I] with Head[O] {
 
       _nextStage = null
       _prevStage = null
-    } else
-      logger.warn(s"Cannot remove a disconnected stage ${this.getClass.getSimpleName}")
+    }
   }
 }
