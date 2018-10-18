@@ -345,13 +345,15 @@ trait MidStage[I, O] extends Tail[I] with Head[O] {
     stageShutdown()
 
     if (_prevStage != null && _nextStage != null) {
+      logger.debug(s"Removed mid-stage: ${name}")
       val me: MidStage[I, I] = ev(this)
       _prevStage._nextStage = me._nextStage
       me._nextStage._prevStage = me._prevStage
 
       _nextStage = null
       _prevStage = null
-    } else
-      logger.warn(s"Cannot remove a disconnected stage ${this.getClass.getSimpleName}")
+    } else {
+      logger.debug(s"Attempted to remove a disconnected mid-stage: ${name}")
+    }
   }
 }
