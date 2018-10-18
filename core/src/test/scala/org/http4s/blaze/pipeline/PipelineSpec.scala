@@ -1,6 +1,6 @@
 package org.http4s.blaze.pipeline
 
-import org.http4s.blaze.util.Execution
+import org.http4s.blaze.util.{Execution, FutureUnit}
 import org.specs2.mutable._
 import scala.concurrent.{Future, Await}
 import scala.concurrent.duration._
@@ -18,7 +18,7 @@ class PipelineSpec extends Specification {
     var lastWrittenInt: Int = 0
     def writeRequest(data: Int): Future[Unit] = {
       lastWrittenInt = data
-      Future.successful(())
+      FutureUnit
     }
     def readRequest(size: Int): Future[Int] = Future(54)
   }

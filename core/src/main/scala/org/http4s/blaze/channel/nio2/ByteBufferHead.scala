@@ -2,7 +2,7 @@ package org.http4s.blaze.channel.nio2
 
 import org.http4s.blaze.channel.ChannelHead
 import org.http4s.blaze.pipeline.Command._
-import org.http4s.blaze.util.BufferTools
+import org.http4s.blaze.util.{BufferTools, FutureUnit}
 
 import scala.concurrent.{Future, Promise}
 
@@ -26,7 +26,7 @@ private[nio2] final class ByteBufferHead(channel: AsynchronousSocketChannel, buf
 
   override def writeRequest(data: Seq[ByteBuffer]): Future[Unit] = closeReason match {
     case Some(cause) => Future.failed(cause)
-    case None if data.isEmpty => Future.successful(())
+    case None if data.isEmpty => FutureUnit
     case None =>
       val p = Promise[Unit]
       val srcs = data.toArray

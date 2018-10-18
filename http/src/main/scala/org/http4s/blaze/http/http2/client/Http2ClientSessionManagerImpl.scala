@@ -11,7 +11,7 @@ import org.http4s.blaze.http.http2._
 import org.http4s.blaze.http.util.UrlTools
 import org.http4s.blaze.pipeline.stages.SSLStage
 import org.http4s.blaze.pipeline.{Command, HeadStage, LeafBuilder}
-import org.http4s.blaze.util.Execution
+import org.http4s.blaze.util.{Execution, FutureUnit}
 import org.log4s.getLogger
 
 import scala.collection.mutable
@@ -77,7 +77,7 @@ private[http] class Http2ClientSessionManagerImpl(
       sessions
     }
 
-    sessions.foldLeft(Future.successful(())) { (acc, s) =>
+    sessions.foldLeft(FutureUnit) { (acc, s) =>
       // we turn it into a Future outside of the Future.flatMap
       // to ensure that closeNow is called on each session
       val f = s.flatMap(_.closeNow())(Execution.directec)

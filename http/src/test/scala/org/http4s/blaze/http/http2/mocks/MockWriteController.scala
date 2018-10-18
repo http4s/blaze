@@ -3,6 +3,7 @@ package org.http4s.blaze.http.http2.mocks
 import java.nio.ByteBuffer
 
 import org.http4s.blaze.http.http2.{WriteController, WriteInterest}
+import org.http4s.blaze.util.FutureUnit
 
 import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
@@ -21,7 +22,7 @@ private[http2] class MockWriteController extends WriteController {
   /** Drain any existing messages with the future resolving on completion */
   override def close(): Future[Unit] = {
     closeCalled = true
-    Future.successful(())
+    FutureUnit
   }
 
   /** Queue multiple buffers for writing */

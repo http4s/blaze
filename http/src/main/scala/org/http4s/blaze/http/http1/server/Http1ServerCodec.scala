@@ -8,7 +8,7 @@ import org.http4s.blaze.http.util.HeaderTools
 import org.http4s.blaze.http.util.HeaderTools.SpecialHeaders
 import org.http4s.blaze.pipeline.Command.EOF
 import org.http4s.blaze.pipeline.TailStage
-import org.http4s.blaze.util.{BufferTools, Execution}
+import org.http4s.blaze.util.{BufferTools, Execution, FutureEOF}
 import org.log4s.getLogger
 
 import scala.collection.mutable.{ArrayBuffer, ListBuffer}
@@ -131,7 +131,7 @@ private final class Http1ServerCodec(maxNonBodyBytes: Int, pipeline: TailStage[B
         override def apply(): Future[ByteBuffer] = lock.synchronized {
           if (discarded || parser.contentComplete()) {
             BufferTools.emptyFutureBuffer
-          } else if (thisRequest != requestId) Future.failed(EOF)
+          } else if (thisRequest != requestId) FutureEOF
           else {
             val buf = parser.parseBody(buffered)
             if (buf.hasRemaining) Future.successful(buf)

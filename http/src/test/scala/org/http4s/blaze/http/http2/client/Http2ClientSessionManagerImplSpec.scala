@@ -4,6 +4,7 @@ import org.http4s.blaze.http.HttpClientSession.{Closed, Ready, ReleaseableRespon
 import org.http4s.blaze.http.http2.Http2Settings
 import org.http4s.blaze.http.util.UrlTools.UrlComposition
 import org.http4s.blaze.http.{Http2ClientSession, _}
+import org.http4s.blaze.util.FutureUnit
 import org.specs2.mutable.Specification
 
 import scala.collection.mutable
@@ -67,7 +68,7 @@ class Http2ClientSessionManagerImplSpec extends Specification {
         override def dispatch(request: HttpRequest): Future[ReleaseableResponse] = ???
         override def close(within: Duration): Future[Unit] = {
           closed = true
-          Future.successful(())
+          FutureUnit
         }
         override def ping(): Future[Duration] = ???
         override def status: Status = Closed

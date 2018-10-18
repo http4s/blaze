@@ -7,8 +7,7 @@ import java.nio.charset.StandardCharsets
 
 import org.http4s.blaze.pipeline.Command.Connected
 import org.http4s.blaze.pipeline.LeafBuilder
-import org.http4s.blaze.util.{BufferTools, GenericSSLContext}
-import org.http4s.blaze.util.Execution
+import org.http4s.blaze.util.{BufferTools, Execution, FutureUnit, GenericSSLContext}
 import org.specs2.mutable.Specification
 
 import scala.concurrent.duration._
@@ -342,14 +341,14 @@ class SSLStageSpec extends Specification {
                     // assert(writeBuffer == null)
                     writeBuffer = data
                   }
-                  Future.successful(())
+                  FutureUnit
                 }
               }
 
               f.flatMap { _ =>
                 handShake()
                 if (data.hasRemaining) go(data)
-                else Future.successful(())
+                else FutureUnit
               }
           }
         } catch { case t: Throwable => Future.failed(t) }

@@ -5,8 +5,8 @@ import scala.concurrent.{Future, Promise}
 import scala.concurrent.duration.Duration
 import org.log4s.getLogger
 import Command._
+import org.http4s.blaze.util.{Execution, FutureUnit}
 import org.http4s.blaze.util.Execution.directec
-import org.http4s.blaze.util.Execution
 import scala.util.control.NonFatal
 
 /*         Stages are formed from the three fundamental types. They essentially form a
@@ -240,7 +240,7 @@ sealed trait Head[O] extends Stage {
     * @return a `Future` that resolves when the data has been handled.
     */
   def writeRequest(data: Seq[O]): Future[Unit] =
-    data.foldLeft[Future[Unit]](Future.successful(())) { (f, d) =>
+    data.foldLeft[Future[Unit]](FutureUnit) { (f, d) =>
       f.flatMap(_ => writeRequest(d))(directec)
     }
 
