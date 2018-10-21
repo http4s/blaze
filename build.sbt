@@ -27,7 +27,8 @@ lazy val core = Project("blaze-core", file("core"))
     libraryDependencies ++= Seq(
       specs2,
       specs2Mock,
-      logbackClassic
+      specs2Scalacheck,
+      logbackClassic,
     ).map(_ % Test),
     buildInfoPackage := "org.http4s.blaze",
     buildInfoKeys := Seq[BuildInfoKey](
