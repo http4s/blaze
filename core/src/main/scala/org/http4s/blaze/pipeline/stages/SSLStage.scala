@@ -135,11 +135,15 @@ final class SSLStage(engine: SSLEngine, maxWrite: Int = 1024 * 1024)
   // cleans up any pending requests
   private[this] def handshakeFailure(t: Throwable): Unit = {
     val start = System.nanoTime
-    val results = handshakeQueue.result(); handshakeQueue.clear();
-    results.foreach {
-      case DelayedRead(_, p) => p.failure(t)
-      case DelayedWrite(_, p) => p.failure(t)
-    }
+    val results = handshakeQueue.result()
+    handshakeQueue.clear()
+    if (results.isEmpty)
+      logger.error(t)(s"Handshake failure with no pending results")
+    else
+      results.foreach {
+        case DelayedRead(_, p) => p.failure(t)
+        case DelayedWrite(_, p) => p.failure(t)
+      }
     logger.trace(s"${engine.##}: handshakeFailure completed in ${System.nanoTime - start}ns")
   }
 
@@ -182,7 +186,7 @@ final class SSLStage(engine: SSLEngine, maxWrite: Int = 1024 * 1024)
           o.flip()
 
           if (r.bytesProduced < 1)
-            logger.warn(s"SSL Handshake WRAP produced 0 bytes.\n$r")
+            handshakeFailure(new SSLException(s"SSL Handshake WRAP produced 0 bytes: $r"))
 
           channelWrite(copyBuffer(o)).onComplete {
             case Success(_) => sslHandshake(data, r.getHandshakeStatus)
@@ -190,7 +194,7 @@ final class SSLStage(engine: SSLEngine, maxWrite: Int = 1024 * 1024)
           }(serialExec)
 
         // Finished with the handshake: continue what we were doing.
-        case _ =>
+        case HandshakeStatus.FINISHED =>
           assert(readLeftover == null)
           readLeftover = data
           val pendingOps = handshakeQueue.result(); handshakeQueue.clear()
@@ -199,6 +203,9 @@ final class SSLStage(engine: SSLEngine, maxWrite: Int = 1024 * 1024)
             case DelayedRead(sz, p) => doRead(sz, p)
             case DelayedWrite(d, p) => doWrite(d, p)
           }
+
+        case HandshakeStatus.NOT_HANDSHAKING =>
+          handshakeFailure(util.bug(s"Unexpected status: ${r}"))
       }
 
     val start = System.nanoTime
