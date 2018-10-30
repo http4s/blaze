@@ -259,7 +259,7 @@ private final class NIO1SocketServerGroup private (
   private[this] def handleClientChannel(
       clientChannel: SocketChannel,
       service: SocketPipelineBuilder
-  ): Unit = {
+  ): Unit = try {
     clientChannel.configureBlocking(false)
     channelOptions.applyToChannel(clientChannel)
 
@@ -287,5 +287,14 @@ private final class NIO1SocketServerGroup private (
     }
 
     loop.initChannel(NIO1Channel(clientChannel), fromKey)
+  }
+  catch {
+    case NonFatal(t) =>
+      logger.error(t)("Error handling client channel. Closing.")
+      try clientChannel.close()
+      catch {
+        case NonFatal(t2) =>
+          logger.error(t2)("Error closing client channel after error")
+      }
   }
 }
