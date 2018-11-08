@@ -194,7 +194,7 @@ final class SSLStage(engine: SSLEngine, maxWrite: Int = 1024 * 1024)
           }(serialExec)
 
         // Finished with the handshake: continue what we were doing.
-        case HandshakeStatus.FINISHED =>
+        case HandshakeStatus.FINISHED | HandshakeStatus.NOT_HANDSHAKING =>
           assert(readLeftover == null)
           readLeftover = data
           val pendingOps = handshakeQueue.result(); handshakeQueue.clear()
@@ -204,8 +204,8 @@ final class SSLStage(engine: SSLEngine, maxWrite: Int = 1024 * 1024)
             case DelayedWrite(d, p) => doWrite(d, p)
           }
 
-        case HandshakeStatus.NOT_HANDSHAKING =>
-          handshakeFailure(util.bug(s"Unexpected status: ${r}"))
+        case status =>
+          handshakeFailure(util.bug(s"Unexpected status: ${status}"))
       }
 
     val start = System.nanoTime
