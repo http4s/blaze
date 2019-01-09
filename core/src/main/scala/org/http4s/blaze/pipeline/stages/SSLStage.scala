@@ -183,9 +183,10 @@ final class SSLStage(engine: SSLEngine, maxWrite: Int = 1024 * 1024)
         case HandshakeStatus.NEED_WRAP =>
           val o = getScratchBuffer(maxBuffer)
           val r = engine.wrap(emptyBuffer, o)
+          logger.trace(s"SSL Handshake Status after wrap: $r")
           o.flip()
 
-          if (r.bytesProduced < 1)
+          if (r.bytesProduced < 1 && r.getHandshakeStatus != HandshakeStatus.FINISHED)
             handshakeFailure(new SSLException(s"SSL Handshake WRAP produced 0 bytes: $r"))
 
           channelWrite(copyBuffer(o)).onComplete {
