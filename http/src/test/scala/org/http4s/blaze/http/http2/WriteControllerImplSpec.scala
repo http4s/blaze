@@ -57,7 +57,7 @@ class WriteControllerImplSpec extends Specification {
 
       writeController.write(mockData(0)) must beTrue
 
-      val Write(Seq(d1), p1) = tail.written.dequeue()
+      val Write(collection.Seq(d1), p1) = tail.written.dequeue()
       d1 must_== mockData(0)
 
       // write it again, twice, but it won't flush until p1 is finished
@@ -116,7 +116,7 @@ class WriteControllerImplSpec extends Specification {
 
       interest.calls must_== 1
 
-      val Write(Seq(d1), p1) = tail.written.dequeue()
+      val Write(collection.Seq(d1), p1) = tail.written.dequeue()
       d1 must_== mockData(0)
 
       p1.trySuccess(())
@@ -137,7 +137,7 @@ class WriteControllerImplSpec extends Specification {
 
       interest1.calls must_== 1
 
-      val Write(Seq(data), p) = tail.written.dequeue()
+      val Write(collection.Seq(data), p) = tail.written.dequeue()
       data must_== mockData(0)
 
       p.trySuccess(())
