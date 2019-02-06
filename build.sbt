@@ -5,10 +5,10 @@ organization in ThisBuild := "org.http4s"
 
 lazy val commonSettings = Seq(
   description := "NIO Framework for Scala",
-  scalaVersion := "2.12.7",
-  crossScalaVersions := Seq("2.11.12", scalaVersion.value),
-  scalacOptions in (Compile, doc) ++= Seq("-no-link-warnings") // Suppresses problems with Scaladoc @throws links
-  //  as discussed in http://www.scala-archive.org/Scaladoc-2-11-quot-throws-tag-quot-cannot-find-any-member-to-link-td4641850.html
+  scalaVersion := "2.12.8",
+  crossScalaVersions := Seq("2.11.12", scalaVersion.value, "2.13.0-M5"),
+  scalacOptions := scalacOptionsFor(scalaVersion.value),
+  scalacOptions in Test -= "-Ywarn-dead-code" // because mockito
 )
 
 /* Projects */

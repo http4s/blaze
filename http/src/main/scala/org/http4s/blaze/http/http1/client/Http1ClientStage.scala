@@ -383,6 +383,7 @@ private[http] final class Http1ClientStage(config: HttpClientConfig)
   private def handleError(phase: String, err: Throwable): Unit = {
     logger.debug(err)(s"Phase $phase resulted in an error. Current state: $state")
     closeNow()
+    ()
   }
 
   private def illegalState(phase: String, state: State): Nothing = {

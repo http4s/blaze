@@ -6,6 +6,7 @@ import java.nio.ByteBuffer
 import scala.concurrent.Await
 import scala.concurrent.duration._
 import org.http4s.blaze.pipeline.LeafBuilder
+import org.http4s.blaze.util.ImmutableArray
 
 class ByteToObjectStageSpec extends Specification {
 
@@ -17,7 +18,7 @@ class ByteToObjectStageSpec extends Specification {
     val maxBufferSize: Int = -1
     def name: String = "TestCodec"
 
-    def messageToBuffer(in: Msg): Seq[ByteBuffer] = {
+    def messageToBuffer(in: Msg): collection.Seq[ByteBuffer] = {
       val b = ByteBuffer.allocate(3)
       b.put(in.tag)
       in match {
@@ -130,7 +131,7 @@ class ByteToObjectStageSpec extends Specification {
         b
       }
 
-      val c = buildPipeline(buffs)
+      val c = buildPipeline(ImmutableArray(buffs))
       Await.result(c.readRequest(-1), 2.seconds) should_== One(1)
       Await.result(c.readRequest(-1), 2.seconds) should_== Two(2)
     }

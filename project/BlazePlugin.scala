@@ -29,7 +29,7 @@ object BlazePlugin extends AutoPlugin {
     releaseVersion := { ver =>
       Version(ver).map(_.withoutQualifier.string).getOrElse(versionFormatError(ver))
     },
-    scalaVersion := (sys.env.get("TRAVIS_SCALA_VERSION") orElse sys.env.get("SCALA_VERSION") getOrElse "2.12.6"),
+    scalaVersion := (sys.env.get("TRAVIS_SCALA_VERSION") orElse sys.env.get("SCALA_VERSION") getOrElse "2.12.8"),
     jvmTarget := {
       VersionNumber(scalaVersion.value).numbers match {
         case Seq(2, 10, _*) => "1.7"
@@ -50,31 +50,10 @@ object BlazePlugin extends AutoPlugin {
       (test in (Test, scalafmt)).value
       ()
     },
-    scalacOptions in Compile ++= Seq(
-      "-Yno-adapted-args" // Curiously missing from RigPlugin
-    ) ++ {
-      // https://issues.scala-lang.org/browse/SI-8340
-      CrossVersion.partialVersion(scalaVersion.value) match {
-        case Some((2, n)) if n >= 11 => Seq(
-          "-Ywarn-numeric-widen",
-          "-Ypartial-unification" // Needed on 2.11 for Either, good idea in general
-        )
-        case _ => Seq.empty
-      }
-    },
     javacOptions ++= Seq(
       "-source", jvmTarget.value,
       "-target", jvmTarget.value
     ),
-    scalacOptions ++= Seq(
-      "-feature",
-      "-deprecation",
-      "-unchecked",
-      "-language:implicitConversions",
-      s"-target:jvm-${jvmTarget.value}"
-    ),
-    // Lots of Dead Code in Tests
-    scalacOptions in Test -= "-Ywarn-dead-code",
     fork in run := true,
     mimaFailOnProblem := blazeMimaVersion.value.isDefined,
     mimaPreviousArtifacts := mimaPreviousVersion(version.value).map { pv =>

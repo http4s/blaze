@@ -1,9 +1,6 @@
 package org.http4s.blaze.channel
 
 import java.net.InetSocketAddress
-import java.util.Date
-
-import org.log4s.getLogger
 
 import scala.util.Try
 

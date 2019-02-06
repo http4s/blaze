@@ -106,7 +106,7 @@ abstract class BaseChannelSpec extends Specification {
 
     override protected def stageStartup(): Unit = {
       val f = if (batch) channelWrite(Seq.empty) else channelWrite(ByteBuffer.allocate(0))
-      writeResult.tryCompleteWith(f)
+      writeResult.completeWith(f)
       f.onComplete(_ => closePipeline(None))(Execution.directec)
     }
   }

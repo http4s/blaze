@@ -9,7 +9,6 @@ import org.http4s.blaze.http._
 import org.http4s.blaze.http.endtoend.scaffolds._
 import org.specs2.mutable.Specification
 import scala.concurrent._
-import scala.concurrent.duration._
 import scala.util._
 
 class InfiniteSpec extends Specification {

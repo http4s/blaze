@@ -59,7 +59,7 @@ private[http] final class ServerStage(
       case (HeaderNames.ContentLength, v) =>
         try Success(java.lang.Long.valueOf(v))
         catch {
-          case t: NumberFormatException =>
+          case _: NumberFormatException =>
             Failure(PROTOCOL_ERROR.rst(streamId, s"Invalid content-length: $v."))
         }
     }

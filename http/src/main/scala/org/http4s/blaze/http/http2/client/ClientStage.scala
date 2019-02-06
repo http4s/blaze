@@ -1,11 +1,12 @@
-package org.http4s.blaze.http.http2.client
+package org.http4s.blaze
+package http
+package http2
+package client
 
 import java.nio.ByteBuffer
 
-import org.http4s.blaze.http.{ClientResponse, _}
 import org.http4s.blaze.http.HttpClientSession.ReleaseableResponse
 import org.http4s.blaze.http.util.UrlTools.UrlComposition
-import org.http4s.blaze.http.http2._
 import org.http4s.blaze.pipeline.{Command, TailStage}
 import org.http4s.blaze.util.{BufferTools, Execution}
 
@@ -135,7 +136,7 @@ private class ClientStage(request: HttpRequest) extends TailStage[StreamFrame] {
 
   private def collectResponseFromHeaders(
       body: BodyReader,
-      hs: Seq[(String, String)]): Try[ReleaseableResponse] = {
+      hs: Headers): Try[ReleaseableResponse] = {
     logger.debug(s"Received response headers: $hs")
 
     val regularHeaders = new VectorBuilder[(String, String)]

@@ -1,20 +1,17 @@
 package org.http4s.blaze.http.http2
 
 import java.nio.ByteBuffer
-import java.nio.charset.StandardCharsets
 
 import org.http4s.blaze.http.HttpClientSession
 import org.http4s.blaze.http.http2.ProtocolFrame.GoAway
-import org.http4s.blaze.http.http2.mocks.{MockFrameListener, MockByteBufferHeadStage}
+import org.http4s.blaze.http.http2.mocks.MockByteBufferHeadStage
 import org.http4s.blaze.pipeline.stages.BasicTail
-import org.http4s.blaze.pipeline.{HeadStage, LeafBuilder}
+import org.http4s.blaze.pipeline.LeafBuilder
 import org.http4s.blaze.util.{BufferTools, Execution}
 import org.specs2.mutable.Specification
 
-import scala.collection.mutable
 import scala.concurrent.duration._
 import scala.concurrent.duration.Duration
-import scala.concurrent.{Future, Promise}
 import scala.util.{Failure, Success}
 
 class ConnectionImplSpec extends Specification {
@@ -158,7 +155,7 @@ class ConnectionImplSpec extends Specification {
         val ctx = new Ctx
         import ctx._
 
-        val f = connection.drainSession(Duration.Inf)
+        connection.drainSession(Duration.Inf)
 
         decodeGoAway(head.consumeOutboundByteBuf()) must beLike {
           case GoAway(0, Http2SessionException(code, _)) => code must_== Http2Exception.NO_ERROR.code

@@ -20,7 +20,7 @@ trait ByteToObjectStage[O] extends MidStage[ByteBuffer, O] {
     * @param in object to decode
     * @return sequence of ByteBuffers to pass to the head
     */
-  def messageToBuffer(in: O): Seq[ByteBuffer]
+  def messageToBuffer(in: O): collection.Seq[ByteBuffer]
 
   /** Method that decodes ByteBuffers to objects. None reflects not enough data to decode a message
     * Any unused data in the ByteBuffer will be recycled and available for the next read.
@@ -37,7 +37,7 @@ trait ByteToObjectStage[O] extends MidStage[ByteBuffer, O] {
 
   /////////////////////////////////////////////////////////////////////////////
 
-  override def writeRequest(data: Seq[O]): Future[Unit] =
+  override def writeRequest(data: collection.Seq[O]): Future[Unit] =
     try channelWrite(data.flatMap(messageToBuffer))
     catch {
       case NonFatal(t) =>

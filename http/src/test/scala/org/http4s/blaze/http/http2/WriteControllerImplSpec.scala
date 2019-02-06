@@ -25,7 +25,7 @@ class WriteControllerImplSpec extends Specification {
     }
   }
 
-  private case class Write(data: Seq[ByteBuffer], p: Promise[Unit])
+  private case class Write(data: collection.Seq[ByteBuffer], p: Promise[Unit])
 
   private class MockTail extends TailStage[ByteBuffer] {
     override def name: String = "MockTail"
@@ -35,7 +35,7 @@ class WriteControllerImplSpec extends Specification {
     override def channelWrite(data: ByteBuffer): Future[Unit] =
       channelWrite(data::Nil)
 
-    override def channelWrite(data: Seq[ByteBuffer]): Future[Unit] = {
+    override def channelWrite(data: collection.Seq[ByteBuffer]): Future[Unit] = {
       val p = Promise[Unit]
       written += Write(data, p)
       p.future
@@ -57,7 +57,7 @@ class WriteControllerImplSpec extends Specification {
 
       writeController.write(mockData(0)) must beTrue
 
-      val Write(Seq(d1), p1) = tail.written.dequeue()
+      val Write(collection.Seq(d1), p1) = tail.written.dequeue()
       d1 must_== mockData(0)
 
       // write it again, twice, but it won't flush until p1 is finished
@@ -116,7 +116,7 @@ class WriteControllerImplSpec extends Specification {
 
       interest.calls must_== 1
 
-      val Write(Seq(d1), p1) = tail.written.dequeue()
+      val Write(collection.Seq(d1), p1) = tail.written.dequeue()
       d1 must_== mockData(0)
 
       p1.trySuccess(())
@@ -137,7 +137,7 @@ class WriteControllerImplSpec extends Specification {
 
       interest1.calls must_== 1
 
-      val Write(Seq(data), p) = tail.written.dequeue()
+      val Write(collection.Seq(data), p) = tail.written.dequeue()
       data must_== mockData(0)
 
       p.trySuccess(())

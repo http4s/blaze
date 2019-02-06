@@ -25,7 +25,7 @@ class QuietTimeoutStage[T](timeout: Duration, exec: TickWheelExecutor = schedule
     f
   }
 
-  override def writeRequest(data: Seq[T]): Future[Unit] = {
+  override def writeRequest(data: collection.Seq[T]): Future[Unit] = {
     val f = channelWrite(data)
     f.onComplete { _ =>
       resetTimeout()

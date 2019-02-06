@@ -1,4 +1,6 @@
-package org.http4s.blaze.http.http2
+package org.http4s.blaze
+package http
+package http2
 
 import java.nio.ByteBuffer
 import org.http4s.blaze.util.BufferTools
@@ -39,7 +41,7 @@ private final class FrameEncoder(remoteSettings: Http2Settings, headerEncoder: H
     * If the data exceeds the peers MAX_FRAME_SIZE setting, it is fragmented
     * into a series of frames.
     */
-  def dataFrame(streamId: Int, endStream: Boolean, data: ByteBuffer): Seq[ByteBuffer] = {
+  def dataFrame(streamId: Int, endStream: Boolean, data: ByteBuffer): collection.Seq[ByteBuffer] = {
     val limit = maxFrameSize
     if (data.remaining <= limit)
       FrameSerializer.mkDataFrame(streamId, endStream, padding = 0, data)
@@ -51,7 +53,7 @@ private final class FrameEncoder(remoteSettings: Http2Settings, headerEncoder: H
         val eos = endStream && !data.hasRemaining
         acc ++= FrameSerializer.mkDataFrame(streamId, eos, padding = 0, thisData)
       }
-      acc.result()
+      acc
     }
   }
 
@@ -65,8 +67,8 @@ private final class FrameEncoder(remoteSettings: Http2Settings, headerEncoder: H
       streamId: Int,
       priority: Priority,
       endStream: Boolean,
-      headers: Seq[(String, String)]
-  ): Seq[ByteBuffer] = {
+      headers: Headers
+  ): collection.Seq[ByteBuffer] = {
     val rawHeaders = headerEncoder.encodeHeaders(headers)
 
     val limit = maxFrameSize
@@ -100,7 +102,7 @@ private final class FrameEncoder(remoteSettings: Http2Settings, headerEncoder: H
         val endHeaders = !rawHeaders.hasRemaining
         acc ++= FrameSerializer.mkContinuationFrame(streamId, endHeaders, continueBuf)
       }
-      acc.result()
+      acc
     }
   }
 }

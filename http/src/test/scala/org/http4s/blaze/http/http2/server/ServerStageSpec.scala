@@ -108,7 +108,7 @@ class ServerStageSpec extends Specification {
       hsMap("content-length") must_== "3"
       p.success(())
 
-      val (DataFrame(false, data), p2) = head.writes.dequeue()
+      val (DataFrame(false, data), _) = head.writes.dequeue()
       data must_== StandardCharsets.UTF_8.encode("foo")
     }
 

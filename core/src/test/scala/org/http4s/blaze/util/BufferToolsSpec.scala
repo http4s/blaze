@@ -294,7 +294,7 @@ class BufferToolsSpec extends Specification {
   private def getDirect(count: Int): Array[ByteBuffer] = getBuffersBase(count, true)
 
   private def getBuffersBase(count: Int, direct: Boolean): Array[ByteBuffer] = {
-    (0 until count).map { i =>
+    (0 until count).map { _ =>
       val buffer = if (direct) ByteBuffer.allocateDirect(4) else ByteBuffer.allocate(4)
       buffer.putInt(4).flip()
       buffer

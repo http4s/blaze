@@ -48,7 +48,7 @@ private class FrameDecoder(localSettings: Http2Settings, listener: FrameListener
       try frameType match {
         case FrameTypes.DATA => decodeDataFrame(buffer, streamId, flags)
         case FrameTypes.HEADERS => decodeHeaderFrame(buffer, streamId, flags)
-        case FrameTypes.PRIORITY => decodePriorityFrame(buffer, streamId, flags)
+        case FrameTypes.PRIORITY => decodePriorityFrame(buffer, streamId)
         case FrameTypes.RST_STREAM => decodeRstStreamFrame(buffer, streamId)
         case FrameTypes.SETTINGS => decodeSettingsFrame(buffer, streamId, flags)
         case FrameTypes.PUSH_PROMISE =>
@@ -87,8 +87,10 @@ private class FrameDecoder(localSettings: Http2Settings, listener: FrameListener
     * @return result of handling the message. If this extension frame is of
     *         unknown type, it MUST be ignored by spec.
     */
-  def onExtensionFrame(code: Byte, streamId: Int, flags: Byte, buffer: ByteBuffer): Result =
+  def onExtensionFrame(code: Byte, streamId: Int, flags: Byte, buffer: ByteBuffer): Result = {
+    val _ = (code, streamId, flags, buffer)
     Continue
+  }
 
   //////////////// Decoding algorithms ///////////////////////////////////////////////////////////
 
@@ -149,7 +151,7 @@ private class FrameDecoder(localSettings: Http2Settings, listener: FrameListener
     }
 
   //////////// PRIORITY ///////////////
-  private[this] def decodePriorityFrame(buffer: ByteBuffer, streamId: Int, flags: Byte): Result =
+  private[this] def decodePriorityFrame(buffer: ByteBuffer, streamId: Int): Result =
     if (streamId == 0) {
       Error(PROTOCOL_ERROR.goaway("Priority frame with stream id 0x0"))
     } else if (buffer.remaining != 5) { // Make sure the frame has the right amount of data

@@ -104,14 +104,14 @@ sealed trait Tail[I] extends Stage {
   }
 
   /** Write a collection of outbound messages to the pipeline */
-  def channelWrite(data: Seq[I]): Future[Unit] =
+  def channelWrite(data: collection.Seq[I]): Future[Unit] =
     if (_prevStage != null) {
       try _prevStage.writeRequest(data)
       catch { case t: Throwable => Future.failed(t) }
     } else _stageDisconnected()
 
   /** Write a collection of outbound messages to the pipeline with a timeout */
-  final def channelWrite(data: Seq[I], timeout: Duration): Future[Unit] = {
+  final def channelWrite(data: collection.Seq[I], timeout: Duration): Future[Unit] = {
     val f = channelWrite(data)
     checkTimeout(timeout, f)
   }
@@ -183,7 +183,7 @@ sealed trait Tail[I] extends Stage {
 
   /** Arranges a timeout for a write request */
   private def checkTimeout[T](timeout: Duration, f: Future[T]): Future[T] =
-    if (timeout.isFinite()) {
+    if (timeout.isFinite) {
       val p = Promise[T]
       scheduleTimeout(p, f, timeout)
       p.future
@@ -239,7 +239,7 @@ sealed trait Head[O] extends Stage {
     * It is generally assumed that the order of elements has meaning.
     * @return a `Future` that resolves when the data has been handled.
     */
-  def writeRequest(data: Seq[O]): Future[Unit] =
+  def writeRequest(data: collection.Seq[O]): Future[Unit] =
     data.foldLeft[Future[Unit]](FutureUnit) { (f, d) =>
       f.flatMap(_ => writeRequest(d))(directec)
     }

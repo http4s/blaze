@@ -94,7 +94,7 @@ class Http2ClientSessionManagerImplSpec extends Specification {
       val manager = managerWithSession(null) // not not important
       val fSession = manager.acquireSession(req.copy(url = "http://www.foo.com/bar"))
       fSession.value must beLike {
-        case Some(Failure(ex: IllegalArgumentException)) => ok
+        case Some(Failure(_: IllegalArgumentException)) => ok
       }
     }
   }

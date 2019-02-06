@@ -1,6 +1,6 @@
 package org.http4s.blaze.http.http2
 
-private object StreamIdManager {
+private[http2] object StreamIdManager {
 
   /** Create a new [[StreamIdManager]] */
   def apply(isClient: Boolean): StreamIdManager = create(isClient, 0)

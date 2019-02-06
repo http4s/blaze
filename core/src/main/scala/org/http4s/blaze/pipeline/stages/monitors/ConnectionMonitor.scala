@@ -3,7 +3,7 @@ package org.http4s.blaze.pipeline.stages.monitors
 import java.nio.ByteBuffer
 import java.util.concurrent.atomic.AtomicBoolean
 
-import org.http4s.blaze.channel.{SocketConnection, SocketPipelineBuilder}
+import org.http4s.blaze.channel.SocketPipelineBuilder
 import org.http4s.blaze.pipeline.MidStage
 import org.http4s.blaze.util.Execution
 import org.http4s.blaze.util.Execution.directec
@@ -47,7 +47,7 @@ abstract class ConnectionMonitor {
       channelWrite(data)
     }
 
-    override def writeRequest(data: Seq[ByteBuffer]): Future[Unit] = {
+    override def writeRequest(data: collection.Seq[ByteBuffer]): Future[Unit] = {
       bytesOutBound(data.foldLeft(0)((i, b) => i + b.remaining()).toLong)
       channelWrite(data)
     }

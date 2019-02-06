@@ -3,7 +3,7 @@ package org.http4s.blaze.http.http2
 import java.nio.ByteBuffer
 import java.nio.charset.StandardCharsets
 
-private object bits {
+private[http2] object bits {
 
   val LengthFieldSize: Int = 3
   val HeaderSize: Int = 9

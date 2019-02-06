@@ -3,7 +3,7 @@ package org.http4s.blaze
 import scala.concurrent.Future
 
 package object http {
-  type Headers = Seq[(String, String)]
+  type Headers = collection.Seq[(String, String)]
   type Url = String
   type Method = String
 

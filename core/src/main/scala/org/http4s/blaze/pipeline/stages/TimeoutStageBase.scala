@@ -14,7 +14,7 @@ abstract class TimeoutStageBase[T](timeout: Duration, exec: TickWheelExecutor)
   import TimeoutStageBase.closedTag
 
   // Constructor
-  require(timeout.isFinite() && timeout.toMillis != 0, s"Invalid timeout: $timeout")
+  require(timeout.isFinite && timeout.toMillis != 0, s"Invalid timeout: $timeout")
 
   override def name: String = s"${this.getClass.getName} Stage: $timeout"
 
@@ -47,7 +47,7 @@ abstract class TimeoutStageBase[T](timeout: Duration, exec: TickWheelExecutor)
 
   override def writeRequest(data: T): Future[Unit] = channelWrite(data)
 
-  override def writeRequest(data: Seq[T]): Future[Unit] = channelWrite(data)
+  override def writeRequest(data: collection.Seq[T]): Future[Unit] = channelWrite(data)
 
   /////////// Protected impl bits //////////////////////////////////////////
 

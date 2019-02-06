@@ -6,7 +6,7 @@ import org.http4s.blaze.http.http2.PseudoHeaders._
 import scala.collection.mutable.ArrayBuffer
 
 /** Tool for turning a HEADERS frame into a request */
-private object RequestParser {
+private[server] object RequestParser {
 
   def makeRequest(hs: Headers, body: BodyReader): Either[String, HttpRequest] = {
     val normalHeaders =
@@ -60,7 +60,7 @@ private object RequestParser {
           case _ if !HeaderNames.validH2HeaderKey(k) =>
             error += s"Invalid header key: $k. "
 
-          case header =>
+          case _ =>
             normalHeaders += h
         }
     }
@@ -75,7 +75,7 @@ private object RequestParser {
     }
 
     if (0 < error.length) Left(error)
-    else Right(HttpRequest(method, path, 2, 0, normalHeaders.result(), body))
+    else Right(HttpRequest(method, path, 2, 0, normalHeaders, body))
   }
 
   private[this] def isPseudo(key: String): Boolean =

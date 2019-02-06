@@ -140,7 +140,7 @@ object Http2Settings {
       case MAX_FRAME_SIZE(size) if 16384 > size || size > 16777215 =>
         Some(Http2Exception.PROTOCOL_ERROR.goaway(s"Invalid MAX_FRAME_SIZE: $size"))
 
-      case Setting(code, value) if value < 0 =>
+      case Setting(_, value) if value < 0 =>
         Some(
           Http2Exception.PROTOCOL_ERROR.goaway(
             s"Integer overflow for setting ${setting.name}: ${value}"))

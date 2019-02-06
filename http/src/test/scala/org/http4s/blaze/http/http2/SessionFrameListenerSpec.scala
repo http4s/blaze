@@ -5,7 +5,6 @@ import scala.language.reflectiveCalls
 import org.http4s.blaze.http.Headers
 import org.http4s.blaze.http.http2.Http2Exception._
 import org.http4s.blaze.http.http2.mocks.MockStreamManager
-import org.http4s.blaze.pipeline.Command.EOF
 import org.http4s.blaze.pipeline.LeafBuilder
 import org.http4s.blaze.pipeline.stages.BasicTail
 import org.http4s.blaze.util.BufferTools
@@ -96,7 +95,7 @@ class SessionFrameListenerSpec extends Specification {
         val tools = new MockTools(isClient = true) {
           var sId, pId = -1
           var hss: Headers = Nil
-          override lazy val streamManager = new MockStreamManager(false) {
+          override lazy val streamManager = new MockStreamManager() {
             override def handlePushPromise(
               streamId: Int,
               promisedId: Int,
@@ -179,7 +178,7 @@ class SessionFrameListenerSpec extends Specification {
       "delegates to the StreamManager" >> {
         val tools = new MockTools(true) {
           var observedCause: Option[Http2StreamException] = None
-          override lazy val streamManager = new MockStreamManager(false) {
+          override lazy val streamManager = new MockStreamManager() {
             override def rstStream(cause: Http2StreamException) = {
               observedCause = Some(cause)
               Continue
@@ -200,7 +199,7 @@ class SessionFrameListenerSpec extends Specification {
       "delegates to the StreamManager" >> {
         val tools = new MockTools(true) {
           var observedIncrement: Option[(Int, Int)] = None
-          override lazy val streamManager = new MockStreamManager(false) {
+          override lazy val streamManager = new MockStreamManager() {
             override def flowWindowUpdate(streamId: Int, sizeIncrement: Int) = {
               observedIncrement = Some(streamId -> sizeIncrement)
               Continue

@@ -6,7 +6,6 @@ import java.nio.{ByteBuffer, CharBuffer}
 import org.http4s.blaze.http._
 import org.http4s.blaze.http.util.HeaderTools
 import org.http4s.blaze.http.util.HeaderTools.SpecialHeaders
-import org.http4s.blaze.pipeline.Command.EOF
 import org.http4s.blaze.pipeline.TailStage
 import org.http4s.blaze.util.{BufferTools, Execution, FutureEOF}
 import org.log4s.getLogger
@@ -271,7 +270,6 @@ private final class Http1ServerCodec(maxNonBodyBytes: Int, pipeline: TailStage[B
 
     private var cache = new ArrayBuffer[ByteBuffer](4)
     private var cachedBytes: Int = 0
-    private var closed = false
     private var written: Long = 0L
 
     // constructor business
@@ -325,7 +323,6 @@ private final class Http1ServerCodec(maxNonBodyBytes: Int, pipeline: TailStage[B
       if (cache.nonEmpty)
         doFlush().map(_ => selectComplete(forceClose))(Execution.directec)
       else {
-        closed = true
         selectComplete(forceClose) match {
           case Reload => FutureReload
           case Close => FutureClose

@@ -229,7 +229,7 @@ private[nio1] final class NIO1HeadStage(
   final override def writeRequest(data: ByteBuffer): Future[Unit] =
     writeRequest(data :: Nil)
 
-  final override def writeRequest(data: Seq[ByteBuffer]): Future[Unit] = {
+  final override def writeRequest(data: collection.Seq[ByteBuffer]): Future[Unit] = {
     logger.trace(s"NIO1HeadStage Write Request: $data")
     val p = Promise[Unit]
     selectorLoop.executeTask(new selectorLoop.LoopRunnable {

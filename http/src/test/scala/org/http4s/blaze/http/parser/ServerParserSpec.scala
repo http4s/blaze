@@ -236,7 +236,7 @@ class ServerParserSpec extends Specification {
       val p = new Parser()
       val b = strToBuffer(mockFiniteLength)
 
-      val blim = b.limit()
+      b.limit()
 
       b.limit(1)
 
