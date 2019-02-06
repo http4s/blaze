@@ -28,7 +28,7 @@ object BufferTools {
   }
 
   /** Merge the `ByteBuffer`s into a single buffer */
-  def joinBuffers(buffers: Seq[ByteBuffer]): ByteBuffer = buffers match {
+  def joinBuffers(buffers: collection.Seq[ByteBuffer]): ByteBuffer = buffers match {
     case Seq() => emptyBuffer
     case Seq(b) => b
     case _ =>
@@ -136,8 +136,8 @@ object BufferTools {
     * @param buffers `ByteBuffer`s to check for data
     * @return true if they are empty, false if there is data remaining
     */
-  def checkEmpty(buffers: TraversableOnce[ByteBuffer]): Boolean =
-    !buffers.exists(_.hasRemaining)
+  def checkEmpty(buffers: Iterable[ByteBuffer]): Boolean =
+    !buffers.iterator.exists(_.hasRemaining)
 
   /** Make a String from the collection of ByteBuffers */
   def mkString(buffers: Seq[ByteBuffer], charset: Charset = StandardCharsets.UTF_8): String = {

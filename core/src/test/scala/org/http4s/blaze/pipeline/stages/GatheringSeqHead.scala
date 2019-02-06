@@ -13,6 +13,7 @@ class GatheringSeqHead[O](items: Seq[O]) extends SeqHead[O](items) {
       case None => sys.error("Invalid state!")
       case Some(p) =>
         p.success(this.results)
+        ()
     }
   }
 

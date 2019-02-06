@@ -14,11 +14,11 @@ import scala.concurrent.duration._
   *       https://www.eclipse.org/jetty/documentation/9.3.x/alpn-chapter.html
   *       for more information.
   */
-object H2ClientTwitterExample extends H2ClientExample("https://twitter.com/", 20, 30.seconds)
+object H2ClientTwitterExample extends H2ClientExample(20, 30.seconds)
 
-object H2ClientGoogleExample extends H2ClientExample("https://www.google.com/", 20, 30.seconds)
+object H2ClientGoogleExample extends H2ClientExample(20, 30.seconds)
 
-abstract class H2ClientExample(url: String, count: Int, timeout: Duration) {
+abstract class H2ClientExample(count: Int, timeout: Duration) {
 
   protected implicit val ec = scala.concurrent.ExecutionContext.global
 
@@ -49,7 +49,7 @@ abstract class H2ClientExample(url: String, count: Int, timeout: Duration) {
     val duration = System.currentTimeMillis - start
 
     val length = resps.foldLeft(0) {
-      case (acc, (i, len)) =>
+      case (acc, (_, len)) =>
         acc + len
     }
 

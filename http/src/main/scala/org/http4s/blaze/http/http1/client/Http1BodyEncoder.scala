@@ -2,8 +2,7 @@ package org.http4s.blaze.http.http1.client
 
 import java.nio.ByteBuffer
 import java.nio.charset.StandardCharsets
-
-import org.http4s.blaze.util.BufferTools
+import org.http4s.blaze.util.{BufferTools, ImmutableArray}
 
 // Different encoders for the message body, either regular or transfer-encoding
 private trait Http1BodyEncoder {
@@ -14,7 +13,7 @@ private trait Http1BodyEncoder {
   def finish(): ByteBuffer
 }
 
-private object Http1BodyEncoder {
+private[client] object Http1BodyEncoder {
 
   // TODO: this should enforce conformance of the length-header
   object IdentityEncoder extends Http1BodyEncoder {
@@ -30,7 +29,7 @@ private object Http1BodyEncoder {
     override def encode(buffer: ByteBuffer): Seq[ByteBuffer] = {
       val len = buffer.remaining()
       if (len == 0) Nil
-      else Array(getLengthBuffer(len), buffer)
+      else ImmutableArray(Array(getLengthBuffer(len), buffer))
     }
 
     private def getLengthBuffer(length: Int): ByteBuffer = {

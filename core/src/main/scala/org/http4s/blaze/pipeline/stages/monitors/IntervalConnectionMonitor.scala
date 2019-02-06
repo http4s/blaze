@@ -5,7 +5,7 @@ import scala.concurrent.duration.Duration
 class IntervalConnectionMonitor(val interval: Duration) extends ConnectionMonitor {
 
   require(
-    interval.isFinite() && interval.toNanos > 1,
+    interval.isFinite && interval.toNanos > 1,
     "Duration must be Finite and greater than 1 ns")
 
   private val alpha = 1.0 / (interval.toNanos + 1).toDouble

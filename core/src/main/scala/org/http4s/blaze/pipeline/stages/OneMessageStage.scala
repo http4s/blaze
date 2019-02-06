@@ -1,7 +1,6 @@
 package org.http4s.blaze.pipeline.stages
 
 import org.http4s.blaze.pipeline.MidStage
-
 import scala.concurrent.Future
 
 /** Holds a single element that when read, will eject itself
@@ -23,6 +22,6 @@ class OneMessageStage[T](element: T) extends MidStage[T, T] {
   override def writeRequest(data: T): Future[Unit] =
     channelWrite(data)
 
-  override def writeRequest(data: Seq[T]): Future[Unit] =
+  override def writeRequest(data: collection.Seq[T]): Future[Unit] =
     channelWrite(data)
 }

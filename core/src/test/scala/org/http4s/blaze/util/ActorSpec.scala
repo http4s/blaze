@@ -41,9 +41,9 @@ class ActorSpec extends Specification {
         latch.countDown()
       }, global)
 
-      for(i <- 0 until senders) {
+      for(_ <- 0 until senders) {
         global.execute(new Runnable {
-          override def run(): Unit = for (i <- 0 until messages) {
+          override def run(): Unit = for (_ <- 0 until messages) {
             a ! Continuation { _ => latch.countDown() }
           }
         })

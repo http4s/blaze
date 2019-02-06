@@ -60,6 +60,7 @@ class TaskQueueSpec extends Specification {
           if (0 < remaining) {
             count.incrementAndGet()
             q.enqueueTask(new SelfEqueuer(remaining - 1))
+            ()
           }
         }
       }

@@ -77,7 +77,7 @@ object ResponseParser {
 
   /** Make a String representation of the ByteBuffer, without modifying the buffer. */
   def bufferToString(in: ByteBuffer): String = {
-    val sb = StringBuilder.newBuilder
+    val sb = new StringBuilder()
     val buffer = in.asReadOnlyBuffer()  // Don't want to modify the original buffers positions or content
     while(buffer.hasRemaining) {
       sb.append(buffer.get().toChar)

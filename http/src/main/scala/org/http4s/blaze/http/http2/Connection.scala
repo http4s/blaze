@@ -1,6 +1,5 @@
 package org.http4s.blaze.http.http2
 
-import org.http4s.blaze.http.Http2ClientSession
 import org.http4s.blaze.http.HttpClientSession.Status
 import org.http4s.blaze.pipeline.HeadStage
 

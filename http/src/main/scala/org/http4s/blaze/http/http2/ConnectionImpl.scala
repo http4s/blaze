@@ -5,7 +5,7 @@ import java.nio.ByteBuffer
 import org.http4s.blaze.http.HttpClientSession
 import org.http4s.blaze.http.HttpClientSession.Status
 import org.http4s.blaze.pipeline.Command.EOF
-import org.http4s.blaze.pipeline.{Command, HeadStage, LeafBuilder, TailStage}
+import org.http4s.blaze.pipeline.{HeadStage, LeafBuilder, TailStage}
 import org.http4s.blaze.util.{BufferTools, Execution, SerialExecutionContext}
 
 import scala.annotation.tailrec

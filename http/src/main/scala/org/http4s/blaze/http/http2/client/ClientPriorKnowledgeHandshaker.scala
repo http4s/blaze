@@ -6,7 +6,7 @@ import org.http4s.blaze.http.Http2ClientSession
 import org.http4s.blaze.http.http2._
 import org.http4s.blaze.http.http2.Http2Settings.Setting
 import org.http4s.blaze.pipeline.stages.{BasicTail, OneMessageStage}
-import org.http4s.blaze.pipeline.{Command, LeafBuilder}
+import org.http4s.blaze.pipeline.LeafBuilder
 import org.http4s.blaze.util.BufferTools
 
 import scala.concurrent.{ExecutionContext, Future, Promise}
@@ -36,7 +36,7 @@ private[http] class ClientPriorKnowledgeHandshaker(
 
   override protected def stageStartup(): Unit = {
     logger.debug("initiating handshake")
-    session.tryCompleteWith(handshake())
+    session.completeWith(handshake())
     ()
   }
 
@@ -72,7 +72,7 @@ private[http] class ClientPriorKnowledgeHandshaker(
   }
 }
 
-private object ClientPriorKnowledgeHandshaker {
+private[client] object ClientPriorKnowledgeHandshaker {
 
   val DefaultClientSettings: Seq[Setting] = Vector(
     Http2Settings.ENABLE_PUSH(0) /*false*/

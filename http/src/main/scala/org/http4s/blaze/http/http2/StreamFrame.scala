@@ -1,4 +1,6 @@
-package org.http4s.blaze.http.http2
+package org.http4s.blaze
+package http
+package http2
 
 import java.nio.ByteBuffer
 
@@ -25,7 +27,7 @@ case class DataFrame(endStream: Boolean, data: ByteBuffer) extends StreamFrame {
   * @param endStream signal if this is the last frame of the stream
   * @param headers attached headers
   */
-case class HeadersFrame(priority: Priority, endStream: Boolean, headers: Seq[(String, String)])
+case class HeadersFrame(priority: Priority, endStream: Boolean, headers: Headers)
     extends StreamFrame {
   override def flowBytes: Int = 0
 }

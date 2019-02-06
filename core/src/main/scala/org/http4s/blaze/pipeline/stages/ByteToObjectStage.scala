@@ -37,7 +37,7 @@ trait ByteToObjectStage[O] extends MidStage[ByteBuffer, O] {
 
   /////////////////////////////////////////////////////////////////////////////
 
-  override def writeRequest(data: Seq[O]): Future[Unit] =
+  override def writeRequest(data: collection.Seq[O]): Future[Unit] =
     try channelWrite(data.flatMap(messageToBuffer))
     catch {
       case NonFatal(t) =>

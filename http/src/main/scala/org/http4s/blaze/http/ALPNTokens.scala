@@ -1,6 +1,6 @@
 package org.http4s.blaze.http
 
-private object ALPNTokens {
+private[http] object ALPNTokens {
   // protocol strings for known HTTP implementations
   val HTTP_1_1 = "http/1.1"
   val H2 = "h2"

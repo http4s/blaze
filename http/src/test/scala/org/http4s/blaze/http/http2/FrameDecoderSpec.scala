@@ -1,12 +1,12 @@
 package org.http4s.blaze.http.http2
 
 import java.nio.ByteBuffer
-
 import org.http4s.blaze.http.http2.Http2Settings.Setting
 import org.http4s.blaze.http.http2.Priority.Dependent
 import org.http4s.blaze.http.http2.bits.Flags
 import org.http4s.blaze.http.http2.mocks.MockFrameListener
 import org.specs2.mutable.Specification
+import scala.language.reflectiveCalls
 
 class FrameDecoderSpec extends Specification {
 
@@ -213,7 +213,7 @@ class FrameDecoderSpec extends Specification {
 
       dec.decodeBuffer(testData) must_== Continue
       listener.streamId must beSome(1)
-      listener.priority must beSome(Priority.NoPriority)
+      listener.priority must beSome(Priority.NoPriority: Priority)
       listener.endHeaders must beSome(false)
       listener.endStream must beSome(false)
       listener.buffer must_== ByteBuffer.wrap(new Array(8))
@@ -253,7 +253,7 @@ class FrameDecoderSpec extends Specification {
 
       dec.decodeBuffer(testData) must_== Continue
       listener.streamId must beSome(1)
-      listener.priority must beSome(Priority.NoPriority)
+      listener.priority must beSome(Priority.NoPriority: Priority)
       listener.endHeaders must beSome(false)
       listener.endStream must beSome(false)
       listener.buffer must_== ByteBuffer.wrap(new Array(7))
@@ -295,7 +295,7 @@ class FrameDecoderSpec extends Specification {
 
       dec.decodeBuffer(testData) must_== Continue
       listener.streamId must beSome(1)
-      listener.priority must beSome(Priority.NoPriority)
+      listener.priority must beSome(Priority.NoPriority: Priority)
       listener.endHeaders must beSome(false)
       listener.endStream must beSome(false)
       listener.buffer must_== buffer()

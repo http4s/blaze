@@ -8,7 +8,7 @@ import org.http4s.blaze.util.BufferTools._
 import scala.concurrent.{Await, Awaitable}
 import scala.concurrent.duration._
 
-private object CodecUtils {
+private[http2] object CodecUtils {
 
   def await[T](awaitable: Awaitable[T]): T = Await.result(awaitable, 5.seconds)
 
@@ -33,6 +33,6 @@ private object CodecUtils {
 
   class TestFrameDecoder(val listener: FrameListener) extends FrameDecoder(Http2Settings.default, listener)
 
-  def decoder(h: FrameListener, inHeaders: Boolean = false): TestFrameDecoder =
+  def decoder(h: FrameListener): TestFrameDecoder =
     new TestFrameDecoder(h)
 }

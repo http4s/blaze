@@ -14,7 +14,9 @@ private[blaze] class ReadPool[T] {
   private[this] val offerQ = new util.ArrayDeque[T]()
 
   /** Useful for tracking when a message was consumed */
-  def messageConsumed(t: T): Unit = ()
+  def messageConsumed(t: T): Unit = {
+    val _ = t
+  }
 
   final def queuedMessages: Int = offerQ.size
 

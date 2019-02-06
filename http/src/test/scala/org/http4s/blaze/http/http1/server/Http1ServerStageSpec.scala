@@ -46,7 +46,7 @@ class Http1ServerStageSpec extends Specification {
         go(t)
     }
 
-    go(requests.to[List])
+    go(requests.toList)
     acc.result()
   }
 

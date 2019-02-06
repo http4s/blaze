@@ -1,6 +1,5 @@
 package org.http4s.blaze.http.http2.mocks
 
-import org.http4s.blaze.pipeline.Command.EOF
 import org.http4s.blaze.pipeline.HeadStage
 import scala.collection.mutable
 import scala.concurrent.{Future, Promise}

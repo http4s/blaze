@@ -1,4 +1,6 @@
-package org.http4s.blaze.http.http2
+package org.http4s.blaze
+package http
+package http2
 
 import java.nio.ByteBuffer
 import java.util
@@ -54,16 +56,17 @@ private abstract class StreamStateImpl(session: SessionCore) extends StreamState
   private[this] var receivedEndStream: Boolean = false
 
   override def readRequest(size: Int): Future[StreamFrame] = {
+    val _ = size
     val p = Promise[StreamFrame]
     // Move the work into the session executor
     session.serialExecutor.execute(new Runnable {
-      override def run(): Unit = invokeStreamRead(size, p)
+      override def run(): Unit = invokeStreamRead(p)
     })
 
     p.future
   }
 
-  private[this] def invokeStreamRead(size: Int, p: Promise[StreamFrame]): Unit =
+  private[this] def invokeStreamRead(p: Promise[StreamFrame]): Unit =
     if (pendingRead != null) {
       doCloseWithError(Some(INTERNAL_ERROR.rst(streamId)))
       p.failure(
@@ -135,7 +138,7 @@ private abstract class StreamStateImpl(session: SessionCore) extends StreamState
     }
 
   /** Must be called by the [[WriteController]] from within the session executor */
-  final override def performStreamWrite(): Seq[ByteBuffer] = {
+  final override def performStreamWrite(): collection.Seq[ByteBuffer] = {
     interestRegistered = false
 
     // Nothing waiting to go out, so return fast
@@ -223,7 +226,7 @@ private abstract class StreamStateImpl(session: SessionCore) extends StreamState
   final override def invokeInboundHeaders(
       priority: Priority,
       endStream: Boolean,
-      headers: Seq[(String, String)]): MaybeError =
+      headers: Headers): MaybeError =
     if (receivedEndStream) {
       // https://tools.ietf.org/html/rfc7540#section-5.1 section 'half-closed'
       Error(STREAM_CLOSED.rst(streamId, s"Stream($streamId received HEADERS frame after EOS"))
@@ -287,7 +290,7 @@ private abstract class StreamStateImpl(session: SessionCore) extends StreamState
           logger.debug(ex)(s"Stream ($streamId) closed but not sending RST")
           ()
 
-        case Some(ex: Http2SessionException) =>
+        case Some(_: Http2SessionException) =>
           logger.info(s"Stream($streamId) finished with session exception")
           session.invokeShutdownWithError(http2Ex, "streamFinished")
 

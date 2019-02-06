@@ -4,7 +4,6 @@ import java.nio.ByteBuffer
 import java.nio.charset.StandardCharsets
 import org.http4s.blaze.http.parser.BaseExceptions.BadCharacter
 import org.http4s.blaze.http.{BodyReader, HttpClientConfig, HttpClientSession, HttpRequest}
-import org.http4s.blaze.pipeline.Command.EOF
 import org.http4s.blaze.pipeline.{Command, HeadStage, LeafBuilder}
 import org.http4s.blaze.util.{BufferTools, ReadPool}
 import org.specs2.mutable.Specification
@@ -50,7 +49,7 @@ class Http1ClientStageSpec extends Specification {
 
     override def readRequest(size: Int): Future[ByteBuffer] = readP.read()
 
-    override def writeRequest(data: Seq[ByteBuffer]): Future[Unit] =
+    override def writeRequest(data: collection.Seq[ByteBuffer]): Future[Unit] =
       writeRequest(BufferTools.joinBuffers(data))
 
     override def writeRequest(data: ByteBuffer): Future[Unit] = {

@@ -14,7 +14,7 @@ class StreamStateImplSpec extends Specification {
     val sessionConsumed = new scala.collection.mutable.Queue[Int]
 
     class MockTools extends mocks.MockTools(isClient = false) {
-      override lazy val streamManager: MockStreamManager = new MockStreamManager(isClient = false)
+      override lazy val streamManager: MockStreamManager = new MockStreamManager()
 
       override lazy val sessionFlowControl: SessionFlowControl =
         new ObservingSessionFlowControl(this) {
@@ -255,7 +255,7 @@ class StreamStateImplSpec extends Specification {
       streamState.invokeInboundHeaders(Priority.NoPriority, false, hs) must_== Continue
 
       f1.value must beLike {
-        case Some(Success(HeadersFrame(Priority.NoPriority, false, hss))) => hs must_== hs
+        case Some(Success(HeadersFrame(Priority.NoPriority, false, hss))) => hss must_== hs
       }
     }
 

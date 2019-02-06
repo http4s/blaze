@@ -61,7 +61,7 @@ final class SSLStage(engine: SSLEngine, maxWrite: Int = 1024 * 1024)
 
   /////////////////////////////////////////////////////////////////////
 
-  override def writeRequest(data: Seq[ByteBuffer]): Future[Unit] =
+  override def writeRequest(data: collection.Seq[ByteBuffer]): Future[Unit] =
     writeArray(data.toArray)
 
   override def writeRequest(data: ByteBuffer): Future[Unit] =
@@ -282,10 +282,10 @@ final class SSLStage(engine: SSLEngine, maxWrite: Int = 1024 * 1024)
       val out = new ArrayBuffer[ByteBuffer]
       writeLoop(data, out) match {
         case SSLSuccess if BufferTools.checkEmpty(data) =>
-          p.completeWith(channelWrite(out)); ()
+          p.completeWith(channelWrite(out.toSeq)); ()
 
         case SSLSuccess => // must have more data to write
-          channelWrite(out).onComplete {
+          channelWrite(out.toSeq).onComplete {
             case Success(_) => doWrite(data, p)
             case Failure(t) => p.failure(t); ()
           }(serialExec)
@@ -294,7 +294,7 @@ final class SSLStage(engine: SSLEngine, maxWrite: Int = 1024 * 1024)
           handshakeQueue += DelayedWrite(data, p)
           val readData = takeQueuedBytes()
           if (out.nonEmpty) { // need to write
-            channelWrite(out).onComplete {
+            channelWrite(out.toSeq).onComplete {
               case Success(_) => sslHandshake(readData, r)
               case Failure(t) => p.failure(t)
             }(serialExec)

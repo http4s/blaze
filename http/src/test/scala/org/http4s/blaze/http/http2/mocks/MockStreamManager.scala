@@ -6,7 +6,7 @@ import org.http4s.blaze.http.http2.{Result, MaybeError, _}
 import scala.collection.mutable
 import scala.concurrent.Future
 
-private[http2] class MockStreamManager(isClient: Boolean) extends StreamManager {
+private[http2] class MockStreamManager() extends StreamManager {
   override def size: Int = 0
 
   val finishedStreams = new mutable.Queue[StreamState]

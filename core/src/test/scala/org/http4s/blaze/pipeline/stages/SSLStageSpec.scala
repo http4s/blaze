@@ -55,7 +55,7 @@ class SSLStageSpec extends Specification {
        */
       class TestStage extends SSLSeqHead(Seq(mkBuffer(s)), headEng) {
         var multipleWrite = false
-        override def writeRequest(data: Seq[ByteBuffer]): Future[Unit] = {
+        override def writeRequest(data: collection.Seq[ByteBuffer]): Future[Unit] = {
           if (data.length > 1) multipleWrite = true
           super.writeRequest(data)
         }
@@ -278,7 +278,7 @@ class SSLStageSpec extends Specification {
               checkHandshaking()
               Future.successful(o)
 
-            case status =>
+            case _ =>
               if (debug) println("Need to handshake: " + o)
 
               if (o.hasRemaining) Future.successful(o)
@@ -331,7 +331,7 @@ class SSLStageSpec extends Specification {
               }
               else super.writeRequest(o)
 
-            case status =>
+            case _ =>
               val f = {
                 if (o.hasRemaining) {
                   super.writeRequest(o).flatMap(_ => writeRequest(data))

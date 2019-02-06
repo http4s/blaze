@@ -1,4 +1,6 @@
-package org.http4s.blaze.http.http2
+package org.http4s.blaze
+package http
+package http2
 
 import java.nio.ByteBuffer
 
@@ -67,7 +69,7 @@ class FrameEncoderSpec extends Specification with Mockito {
     "not fragment headers if they fit into a single frame" >> {
       val tools = new MockTools(true) {
         override lazy val headerEncoder: HeaderEncoder = new HeaderEncoder(100) {
-          override def encodeHeaders(hs: Seq[(String, String)]): ByteBuffer = zeroBuffer(15)
+          override def encodeHeaders(hs: Headers): ByteBuffer = zeroBuffer(15)
         }
       }
       val listener = mockListener()
@@ -90,7 +92,7 @@ class FrameEncoderSpec extends Specification with Mockito {
     "fragment headers if they don't fit into one frame" >> {
       val tools = new MockTools(true) {
         override lazy val headerEncoder: HeaderEncoder = new HeaderEncoder(100) {
-          override def encodeHeaders(hs: Seq[(String, String)]): ByteBuffer = zeroBuffer(15)
+          override def encodeHeaders(hs: Headers): ByteBuffer = zeroBuffer(15)
         }
       }
       val listener = mockListener()
@@ -112,7 +114,7 @@ class FrameEncoderSpec extends Specification with Mockito {
     "fragmenting HEADERS frames considers priority info size" >> {
       val tools = new MockTools(true) {
         override lazy val headerEncoder: HeaderEncoder = new HeaderEncoder(100) {
-          override def encodeHeaders(hs: Seq[(String, String)]): ByteBuffer = zeroBuffer(10)
+          override def encodeHeaders(hs: Headers): ByteBuffer = zeroBuffer(10)
         }
       }
       val listener = mockListener()

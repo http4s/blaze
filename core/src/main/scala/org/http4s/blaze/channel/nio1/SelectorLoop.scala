@@ -111,6 +111,7 @@ final class SelectorLoop(
 
       case TaskQueue.FirstEnqueued =>
         selector.wakeup()
+        ()
 
       case TaskQueue.Closed =>
         throw new RejectedExecutionException("This SelectorLoop is closed.")

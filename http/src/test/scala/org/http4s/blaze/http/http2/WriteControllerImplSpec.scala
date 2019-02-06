@@ -25,7 +25,7 @@ class WriteControllerImplSpec extends Specification {
     }
   }
 
-  private case class Write(data: Seq[ByteBuffer], p: Promise[Unit])
+  private case class Write(data: collection.Seq[ByteBuffer], p: Promise[Unit])
 
   private class MockTail extends TailStage[ByteBuffer] {
     override def name: String = "MockTail"
@@ -35,7 +35,7 @@ class WriteControllerImplSpec extends Specification {
     override def channelWrite(data: ByteBuffer): Future[Unit] =
       channelWrite(data::Nil)
 
-    override def channelWrite(data: Seq[ByteBuffer]): Future[Unit] = {
+    override def channelWrite(data: collection.Seq[ByteBuffer]): Future[Unit] = {
       val p = Promise[Unit]
       written += Write(data, p)
       p.future

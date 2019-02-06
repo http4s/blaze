@@ -1,7 +1,6 @@
 package org.http4s.blaze.http.http2.mocks
 
 import org.http4s.blaze.http.http2._
-import org.http4s.blaze.pipeline.LeafBuilder
 import org.http4s.blaze.util.Execution
 
 import scala.concurrent.ExecutionContext

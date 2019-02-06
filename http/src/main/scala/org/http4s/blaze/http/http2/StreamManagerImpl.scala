@@ -2,7 +2,6 @@ package org.http4s.blaze.http.http2
 
 import org.http4s.blaze.http._
 import org.http4s.blaze.http.http2.Http2Exception.{PROTOCOL_ERROR, REFUSED_STREAM}
-import org.http4s.blaze.pipeline.Command.EOF
 import org.http4s.blaze.pipeline.{Command, LeafBuilder}
 import scala.collection.mutable.HashMap
 import scala.concurrent.{Future, Promise}
@@ -219,17 +218,16 @@ private final class StreamManagerImpl(
 
       case None =>
         logger.debug(reason)(s"StreamManager.goaway($lastHandledOutboundStream)")
-        val unhandledStreams = streams.filterKeys { id =>
-          lastHandledOutboundStream < id && session.idManager.isOutboundId(id)
-        }
 
-        unhandledStreams.foreach {
-          case (id, stream) =>
+        streams.foreach {
+          case (id, stream) if lastHandledOutboundStream < id && session.idManager.isOutboundId(id) =>
             // We remove the stream first so that we don't send a RST back to
             // the peer, since they have discarded the stream anyway.
             streams.remove(id)
             val ex = Http2Exception.REFUSED_STREAM.rst(id, reason.msg)
             stream.doCloseWithError(Some(ex))
+          case _ =>
+            // Working around change to filterKeys in 2.13
         }
 
         val p = Promise[Unit]

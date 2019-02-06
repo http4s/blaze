@@ -20,6 +20,7 @@ private class SessionFlowControlImpl(
 
   // exposed for testing
   protected def onSessonBytesConsumed(consumed: Int): Unit = {
+    val _ = consumed
     val sessionUpdate = flowStrategy.checkSession(this)
     if (0 < sessionUpdate) {
       sessionInboundAcked(sessionUpdate)
@@ -40,6 +41,7 @@ private class SessionFlowControlImpl(
     * @param consumed number of bytes consumed
     */
   protected def onStreamBytesConsumed(stream: StreamFlowWindow, consumed: Int): Unit = {
+    val _ = consumed
     val update = flowStrategy.checkStream(stream)
     if (0 < update.session) {
       sessionInboundAcked(update.session)

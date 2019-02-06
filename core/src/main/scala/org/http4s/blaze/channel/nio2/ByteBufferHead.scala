@@ -24,7 +24,7 @@ private[nio2] final class ByteBufferHead(channel: AsynchronousSocketChannel, buf
   override def writeRequest(data: ByteBuffer): Future[Unit] =
     writeRequest(data :: Nil)
 
-  override def writeRequest(data: Seq[ByteBuffer]): Future[Unit] = closeReason match {
+  override def writeRequest(data: collection.Seq[ByteBuffer]): Future[Unit] = closeReason match {
     case Some(cause) => Future.failed(cause)
     case None if data.isEmpty => FutureUnit
     case None =>
@@ -84,6 +84,7 @@ private[nio2] final class ByteBufferHead(channel: AsynchronousSocketChannel, buf
 
           case i if i < 0 =>
             p.failure(EOF)
+            ()
 
           case _ =>
             scratchBuffer.flip()

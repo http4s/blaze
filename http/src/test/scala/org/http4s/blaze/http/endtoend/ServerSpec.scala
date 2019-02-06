@@ -91,7 +91,7 @@ abstract class BaseServerSpec(isSecure: Boolean) extends Specification {
     "echo headers" in {
       val hs = Seq("special1" -> "val1", "special2" -> "val2")
       newServer(service) { address =>
-        val Response(prelude, body) = client.runGet(makeUrl(address, "/headers"), hs)
+        val Response(_, body) = client.runGet(makeUrl(address, "/headers"), hs)
         new String(body, StandardCharsets.UTF_8) must_== "special1: val1\nspecial2: val2\n"
       }
     }

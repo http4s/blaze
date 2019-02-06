@@ -1,4 +1,6 @@
-package org.http4s.blaze.http.http2
+package org.http4s.blaze
+package http
+package http2
 
 import java.nio.ByteBuffer
 
@@ -26,7 +28,7 @@ private trait StreamState extends HeadStage[StreamFrame] with WriteInterest {
   def outboundFlowWindowChanged(): Unit
 
   /** Must be called by the [[WriteController]] from within the session executor */
-  def performStreamWrite(): Seq[ByteBuffer]
+  def performStreamWrite(): collection.Seq[ByteBuffer]
 
   /** Called by the session when a DATA frame has been received from the remote peer */
   def invokeInboundData(endStream: Boolean, data: ByteBuffer, flowBytes: Int): MaybeError
@@ -35,7 +37,7 @@ private trait StreamState extends HeadStage[StreamFrame] with WriteInterest {
   def invokeInboundHeaders(
       priority: Priority,
       endStream: Boolean,
-      headers: Seq[(String, String)]): MaybeError
+      headers: Headers): MaybeError
 
   /** Close the stream, possible due to an error */
   def doCloseWithError(cause: Option[Throwable]): Unit

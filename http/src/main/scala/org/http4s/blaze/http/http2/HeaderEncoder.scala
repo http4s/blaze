@@ -1,4 +1,6 @@
-package org.http4s.blaze.http.http2
+package org.http4s.blaze
+package http
+package http2
 
 import java.io.ByteArrayOutputStream
 import java.nio.ByteBuffer
@@ -20,7 +22,7 @@ class HeaderEncoder(initialMaxTableSize: Int) {
     encoder.setMaxHeaderTableSize(os, max)
 
   /** Encode the headers into the payload of a HEADERS frame */
-  def encodeHeaders(hs: Seq[(String, String)]): ByteBuffer = {
+  def encodeHeaders(hs: Headers): ByteBuffer = {
     hs.foreach {
       case (k, v) =>
         val keyBytes = k.getBytes(US_ASCII)

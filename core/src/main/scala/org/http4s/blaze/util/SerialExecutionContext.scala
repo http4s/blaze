@@ -10,12 +10,9 @@ import scala.concurrent.ExecutionContext
   *
   * @param parent `ExecutionContext` with which to perform the work, which may consist
   *              of many tasks queued in the `SerialExecutionContext`.
-  * @param maxIterationsBeforeReschedule Maximum number of tasks to execute before
-  *                                      rescheduling work in the `parent`.
   */
 class SerialExecutionContext(
-    parent: ExecutionContext,
-    maxIterationsBeforeReschedule: Int = SerialExecutionContext.DefaultMaxIterations
+    parent: ExecutionContext
 ) extends ExecutionContext {
 
   private[this] val actor = new Actor[Runnable](parent) {
@@ -29,8 +26,4 @@ class SerialExecutionContext(
 
   override def reportFailure(cause: Throwable): Unit =
     parent.reportFailure(cause)
-}
-
-private object SerialExecutionContext {
-  private val DefaultMaxIterations = Actor.DefaultMaxIterations
 }

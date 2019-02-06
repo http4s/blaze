@@ -1,7 +1,6 @@
 package org.http4s.blaze.http.http2
 
 import org.http4s.blaze.http.http2.Http2Exception._
-import org.http4s.blaze.pipeline.Command.EOF
 import org.http4s.blaze.pipeline.{Command, LeafBuilder, TailStage}
 import org.specs2.mutable.Specification
 import scala.util.Failure
@@ -10,7 +9,7 @@ class StreamManagerImplSpec extends Specification {
 
   private class MockTools(isClient: Boolean) extends mocks.MockTools(isClient) {
     override lazy val streamManager: StreamManager = new StreamManagerImpl(this,
-      if (isClient) None else Some(newInboundStream(_))
+      if (isClient) None else Some(_ => newInboundStream())
     )
 
     var connects: Int = 0
@@ -23,7 +22,7 @@ class StreamManagerImplSpec extends Specification {
       }
     }
 
-    private def newInboundStream(streamId: Int) = LeafBuilder(tail)
+    private def newInboundStream() = LeafBuilder(tail)
   }
 
   "StreamManagerImpl" should {
@@ -61,7 +60,7 @@ class StreamManagerImplSpec extends Specification {
         val os4 = tools.streamManager.newOutboundStream()
 
         // each needs to write some data to initialize
-        val f2 = os2.writeRequest(HeadersFrame(Priority.NoPriority, false, Seq.empty))
+        os2.writeRequest(HeadersFrame(Priority.NoPriority, false, Seq.empty))
         val f4 = os4.writeRequest(HeadersFrame(Priority.NoPriority, false, Seq.empty))
 
         val f = tools.streamManager.drain(2, Http2Exception.NO_ERROR.goaway("bye-bye"))

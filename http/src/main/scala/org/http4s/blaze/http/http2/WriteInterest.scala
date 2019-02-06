@@ -14,5 +14,5 @@ private trait WriteInterest {
     * @note this method will be called by the `WriteController` from within
     *       the sessions serial executor.
     */
-  def performStreamWrite(): Seq[ByteBuffer]
+  def performStreamWrite(): collection.Seq[ByteBuffer]
 }
