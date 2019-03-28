@@ -38,7 +38,7 @@ sealed trait Stage {
   /** Start the stage, allocating resources etc.
     *
     * This method should not effect other stages by sending commands etc unless it creates them.
-    * It is not impossible that the stage will receive other commands besides [[Connected]]
+    * It is not impossible that the stage will receive other commands besides `Connected`
     * before this method is called. It is not impossible for this method to be called multiple
     * times by misbehaving stages. It is therefore recommended that the method be idempotent.
     */
@@ -47,9 +47,9 @@ sealed trait Stage {
 
   /** Shuts down the stage, deallocating resources, etc.
     *
-    * It will be called when the stage receives a [[Disconnected]]
+    * It will be called when the stage receives a `Disconnected`
     * command unless [[inboundCommand]] is overridden.  This method
-    * should not send or [[Disconnected]] commands.
+    * should not send or `Disconnected` commands.
     *
     * It is possible that this will not be called due to failure of
     * other stages to propagate shutdown commands. Conversely, it is
