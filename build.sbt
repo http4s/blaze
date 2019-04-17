@@ -6,7 +6,7 @@ organization in ThisBuild := "org.http4s"
 lazy val commonSettings = Seq(
   description := "NIO Framework for Scala",
   scalaVersion := "2.12.8",
-  crossScalaVersions := Seq("2.11.12", scalaVersion.value, "2.13.0-M5"),
+  crossScalaVersions := Seq("2.11.12", scalaVersion.value, "2.13.0-RC1"),
   scalacOptions := scalacOptionsFor(scalaVersion.value),
   scalacOptions in Test -= "-Ywarn-dead-code" // because mockito
 )
