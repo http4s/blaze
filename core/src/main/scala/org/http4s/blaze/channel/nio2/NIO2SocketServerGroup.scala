@@ -4,11 +4,10 @@ import java.net.InetSocketAddress
 import java.nio.channels._
 import java.util.Date
 import java.util.concurrent.ThreadFactory
-import java.util.concurrent.atomic.AtomicInteger
 
 import org.http4s.blaze.channel._
 import org.http4s.blaze.pipeline.Command.Connected
-import org.http4s.blaze.util.Execution
+import org.http4s.blaze.util.{BasicThreadFactory, Execution}
 import org.log4s.getLogger
 
 import scala.util.{Failure, Success, Try}
@@ -25,21 +24,16 @@ object NIO2SocketServerGroup {
   def fixedGroup(
       workerThreads: Int = DefaultPoolSize,
       bufferSize: Int = DefaultBufferSize,
-      channelOptions: ChannelOptions = ChannelOptions.DefaultOptions
+      channelOptions: ChannelOptions = ChannelOptions.DefaultOptions,
+      threadFactory: ThreadFactory = DefaultThreadFactory
   ): NIO2SocketServerGroup = {
-    val factory = new ThreadFactory {
-      val i = new AtomicInteger(0)
-      override def newThread(r: Runnable): Thread = {
-        val t = new Thread(r, "blaze-nio2-fixed-pool-" + i.getAndIncrement())
-        t.setDaemon(false)
-        t
-      }
-    }
-
     val group =
-      AsynchronousChannelGroup.withFixedThreadPool(workerThreads, factory)
+      AsynchronousChannelGroup.withFixedThreadPool(workerThreads, threadFactory)
     apply(bufferSize, Some(group), channelOptions)
   }
+
+  private val DefaultThreadFactory =
+    BasicThreadFactory(prefix = s"blaze-nio2-fixed-pool", daemonThreads = false)
 
   /** Create a new NIO2 SocketServerGroup
     *
