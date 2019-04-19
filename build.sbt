@@ -8,7 +8,8 @@ lazy val commonSettings = Seq(
   scalaVersion := "2.12.8",
   crossScalaVersions := Seq("2.11.12", scalaVersion.value, "2.13.0-M5"),
   scalacOptions := scalacOptionsFor(scalaVersion.value),
-  scalacOptions in Test -= "-Ywarn-dead-code" // because mockito
+  scalacOptions in Test -= "-Ywarn-dead-code", // because mockito
+  scalacOptions in (Compile, doc) += "-no-link-warnings"
 )
 
 /* Projects */

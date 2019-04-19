@@ -12,11 +12,11 @@ import scala.util.{Failure, Success}
 
 /** Http1 Server tail stage
   *
-  * [[TailStage]] capable of decoding requests, obtaining results from the [[HttpService]],
-  * rendering the response and, if possible, restarting to continue serving requests on the
-  * this connection.
+  * `TailStage` capable of decoding requests, obtaining results from
+  * the [[HttpService]], rendering the response and, if possible,
+  * restarting to continue serving requests on the this connection.
   *
-  * Keep-Alive is supported and managed automatically by this stage via the [[Http1ServerCodec]]
+  * Keep-Alive is supported and managed automatically by this stage via the `Http1ServerCodec`
   * which examines the http version, and `connection`, `content-length`, and `transfer-encoding`
   * headers to determine if the connection can be reused for a subsequent dispatch.
   */

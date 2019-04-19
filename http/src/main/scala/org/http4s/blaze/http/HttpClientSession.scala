@@ -14,17 +14,17 @@ sealed trait HttpClientSession {
 
   /** Dispatch a [[HttpRequest]]
     *
-    * The resultant [[ReleaseableResponse]] contains a
+    * The resultant `ReleaseableResponse` contains a
     */
   def dispatch(request: HttpRequest): Future[ReleaseableResponse]
 
-  /** Get the [[Status]] of session */
+  /** Get the `Status` of session */
   def status: Status
 
-  /** Return whether the client session is in the [[Ready]] state */
+  /** Return whether the client session is in the `Ready` state */
   final def isReady: Boolean = status == Ready
 
-  /** Return whether the client session is in the [[Closed]] state */
+  /** Return whether the client session is in the `Closed` state */
   final def isClosed: Boolean = status == Closed
 
   /** Close the session within the specified duration.

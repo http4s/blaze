@@ -21,7 +21,7 @@ import scala.util.control.{ControlThrowable, NonFatal}
   * @param bufferSize Size of the scratch buffer instantiated for this thread.
   * @param threadFactory Factory to make the `Thread` instance to run the loop.
   *
-  * @note when the `SelectorLoop` is closed all registered [[Selectable]]s
+  * @note when the `SelectorLoop` is closed all registered `Selectable`s
   *       are closed with it.
   */
 final class SelectorLoop(
@@ -126,7 +126,7 @@ final class SelectorLoop(
   /** Initialize a new `Selectable` channel
     *
     * The `SelectableChannel` is added to the selector loop the
-    * [[Selectable]] will be notified when it has events ready.
+    * `Selectable` will be notified when it has events ready.
     *
     * @note the underlying `SelectableChannel` _must_ be
     *       configured in non-blocking mode.
