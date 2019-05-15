@@ -8,12 +8,14 @@ lazy val commonSettings = Seq(
   scalaVersion := "2.12.8",
   crossScalaVersions := Seq("2.11.12", scalaVersion.value, "2.13.0-RC1"),
   scalacOptions := scalacOptionsFor(scalaVersion.value),
-  scalacOptions in Test -= "-Ywarn-dead-code" // because mockito
+  scalacOptions in Test -= "-Ywarn-dead-code", // because mockito
+  scalacOptions in (Compile, doc) += "-no-link-warnings"
 )
 
 /* Projects */
 lazy val blaze = project.in(file("."))
     .enablePlugins(DisablePublishingPlugin)
+    .disablePlugins(MimaPlugin)
     .settings(cancelable in Global := true)
     .settings(commonSettings)
     .aggregate(core, http, examples)
@@ -58,7 +60,7 @@ lazy val http = Project("blaze-http", file("http"))
 
 lazy val examples = Project("blaze-examples",file("examples"))
   .enablePlugins(DisablePublishingPlugin)
-  .disablePlugins(TpolecatPlugin)
+  .disablePlugins(MimaPlugin, TpolecatPlugin)
   .settings(commonSettings)
   .settings(Revolver.settings)
   .settings(

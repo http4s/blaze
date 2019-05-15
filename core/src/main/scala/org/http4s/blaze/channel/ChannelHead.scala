@@ -26,9 +26,10 @@ object ChannelHead {
 
   // If the connection is forcibly closed, we might get an IOException with one of the following messages
   private[blaze] val brokePipeMessages = Set(
-    "Connection timed out", // Found on linux NIO1
+    "Connection timed out", // Found on Linux NIO1
     "Connection reset by peer", // Found on Linux
-    "An existing connection was forcibly closed by the remote host", // Found on windows
-    "Broken pipe" // also found on Linux
+    "An existing connection was forcibly closed by the remote host", // Found on Windows
+    "Broken pipe", // also found on Linux
+    "The specified network name is no longer available.\r\n" // Found on Windows NIO2
   )
 }
