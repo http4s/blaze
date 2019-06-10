@@ -5,6 +5,7 @@ import org.http4s.blaze.pipeline.Command._
 import org.http4s.blaze.util.{BufferTools, FutureUnit}
 
 import scala.concurrent.{Future, Promise}
+import scala.util.control.NonFatal
 
 import java.nio.channels._
 import java.nio.ByteBuffer
@@ -101,7 +102,7 @@ private[nio2] final class ByteBufferHead(channel: AsynchronousSocketChannel, buf
       logger.debug(e)("Channel Group was shutdown")
       EOF
 
-    case e: Throwable => super.checkError(e)
+    case NonFatal(t) => super.checkError(t)
   }
 
   override protected def doClosePipeline(cause: Option[Throwable]): Unit = {

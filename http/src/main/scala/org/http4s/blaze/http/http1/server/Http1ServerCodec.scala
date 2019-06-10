@@ -13,6 +13,7 @@ import org.log4s.getLogger
 import scala.collection.mutable.{ArrayBuffer, ListBuffer}
 import scala.concurrent.{Future, Promise}
 import scala.util.{Failure, Success, Try}
+import scala.util.control.NonFatal
 
 /**
   * Parses messages from the pipeline.
@@ -52,7 +53,7 @@ private final class Http1ServerCodec(maxNonBodyBytes: Int, pipeline: TailStage[B
           p.future
         }
       } catch {
-        case t: Throwable =>
+        case NonFatal(t) =>
           shutdown()
           Future.failed(t)
       }
@@ -168,7 +169,7 @@ private final class Http1ServerCodec(maxNonBodyBytes: Int, pipeline: TailStage[B
               ()
             }
           } catch {
-            case t: Throwable =>
+            case NonFatal(t) =>
               shutdown()
               p.tryFailure(t)
           }

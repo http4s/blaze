@@ -12,6 +12,7 @@ import org.specs2.mutable.Specification
 
 import scala.concurrent.duration._
 import scala.concurrent._
+import scala.util.control.NonFatal
 
 class SSLStageSpec extends Specification {
 
@@ -288,7 +289,7 @@ class SSLStageSpec extends Specification {
               }
           }
         } catch {
-          case t: Throwable => println(t); Future.failed(t)
+          case NonFatal(t) => println(t); Future.failed(t)
         }
       }
 
@@ -351,7 +352,7 @@ class SSLStageSpec extends Specification {
                 else FutureUnit
               }
           }
-        } catch { case t: Throwable => Future.failed(t) }
+        } catch { case NonFatal(t) => Future.failed(t) }
       }
 
       val b = {
