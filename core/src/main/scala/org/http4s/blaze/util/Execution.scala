@@ -107,7 +107,14 @@ object Execution {
         running = false
       } else {
         try r.run()
-        catch { case NonFatal(t) => reportFailure(t) }
+        catch {
+          case NonFatal(t) => reportFailure(t)
+          case t: Throwable =>
+            // In case someone catches t against all advice of
+            // NonFatal, leave the trampoline in a good state.
+            next()
+            throw t
+        }
         run()
       }
     }
