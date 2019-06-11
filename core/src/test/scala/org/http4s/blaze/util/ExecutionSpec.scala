@@ -1,16 +1,17 @@
 package org.http4s.blaze.util
 
 import org.specs2.mutable.Specification
-import Execution.{directec, trampoline}
 
 class ExecutionSpec extends Specification {
+  private def trampoline = Execution.trampoline
+
   def toRunnable(f: => Unit): Runnable = new Runnable {
     override def run(): Unit = f
   }
 
-  "trampoline" should {
-    def submit(f: => Unit): Unit = trampoline.execute(toRunnable(f))
+  def submit(f: => Unit): Unit = trampoline.execute(toRunnable(f))
 
+  "Thread Local Executor" should {
     "submit a working job" in {
       var i = 0
 
@@ -87,22 +88,6 @@ class ExecutionSpec extends Specification {
       go(0)
 
       i must be equalTo(iterations)
-    }
-
-    "not catch fatal exceptions" in {
-      submit {
-        throw new VirtualMachineError("FATAL!") {}
-      } must throwAn[Error]
-    }
-  }
-
-  "directec" should {
-    def submit(f: => Unit): Unit = directec.execute(toRunnable(f))
-
-    "not catch fatal exceptions" in {
-      submit {
-        throw new VirtualMachineError("FATAL!") {}
-      } must throwAn[VirtualMachineError]
     }
   }
 }
