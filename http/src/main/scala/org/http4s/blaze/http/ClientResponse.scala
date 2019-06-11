@@ -7,6 +7,7 @@ import org.http4s.blaze.util.{BufferTools, Execution}
 
 import scala.collection.mutable.ArrayBuffer
 import scala.concurrent.Future
+import scala.util.control.NonFatal
 
 /** HTTP response received by the client
   *
@@ -40,7 +41,7 @@ object ClientResponse {
             try {
               val bodyString = Charset.forName(encoding).decode(b).toString()
               Future.successful(bodyString)
-            } catch { case e: Throwable => Future.failed(e) }
+            } catch { case NonFatal(t) => Future.failed(t) }
           }
         }(Execution.trampoline)
 

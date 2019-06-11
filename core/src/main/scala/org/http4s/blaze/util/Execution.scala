@@ -8,6 +8,7 @@ import org.log4s.getLogger
 import scala.annotation.tailrec
 import scala.concurrent.duration.Duration
 import scala.util.Try
+import scala.util.control.NonFatal
 
 /** Special `ExecutionContext` instances.
   */
@@ -106,7 +107,9 @@ object Execution {
         running = false
       } else {
         try r.run()
-        catch { case e: Throwable => reportFailure(e) }
+        catch {
+          case NonFatal(t) => reportFailure(t)
+        }
         run()
       }
     }

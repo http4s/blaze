@@ -94,7 +94,7 @@ sealed trait Tail[I] extends Stage {
   def channelWrite(data: I): Future[Unit] =
     if (_prevStage != null) {
       try _prevStage.writeRequest(data)
-      catch { case t: Throwable => Future.failed(t) }
+      catch { case NonFatal(t) => Future.failed(t) }
     } else _stageDisconnected()
 
   /** Write a single outbound message to the pipeline with a timeout */
@@ -107,7 +107,7 @@ sealed trait Tail[I] extends Stage {
   def channelWrite(data: collection.Seq[I]): Future[Unit] =
     if (_prevStage != null) {
       try _prevStage.writeRequest(data)
-      catch { case t: Throwable => Future.failed(t) }
+      catch { case NonFatal(t) => Future.failed(t) }
     } else _stageDisconnected()
 
   /** Write a collection of outbound messages to the pipeline with a timeout */
@@ -255,7 +255,7 @@ sealed trait Head[O] extends Stage {
     if (next != null) {
       try next.inboundCommand(cmd)
       catch {
-        case t: Throwable =>
+        case NonFatal(t) =>
           logger.error(t)("Exception caught when attempting inbound command")
           closePipeline(Some(t))
       }

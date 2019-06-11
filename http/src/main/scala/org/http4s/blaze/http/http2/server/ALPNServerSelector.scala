@@ -7,6 +7,7 @@ import org.eclipse.jetty.alpn.ALPN
 import org.http4s.blaze.pipeline.{LeafBuilder, TailStage, Command => Cmd}
 import org.http4s.blaze.util.Execution.trampoline
 import scala.util.{Failure, Success}
+import scala.util.control.NonFatal
 
 /** Dynamically inject an appropriate pipeline using ALPN
   *
@@ -45,7 +46,7 @@ final class ALPNServerSelector(
       this.replaceTail(b, true)
       ()
     } catch {
-      case t: Throwable =>
+      case NonFatal(t) =>
         logger.error(t)("Failure building pipeline")
         closePipeline(Some(t))
     }

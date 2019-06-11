@@ -8,6 +8,7 @@ import org.http4s.blaze.pipeline.{Command => Cmd, LeafBuilder, TailStage}
 import org.http4s.blaze.util.Execution._
 import scala.collection.JavaConverters._
 import scala.util.{Failure, Success}
+import scala.util.control.NonFatal
 
 class ALPNClientSelector(
     engine: SSLEngine,
@@ -41,7 +42,7 @@ class ALPNClientSelector(
       this.replaceTail(tail, true)
       ()
     } catch {
-      case t: Throwable =>
+      case NonFatal(t) =>
         logger.error(t)("Failure building pipeline")
         closePipeline(Some(t))
     }

@@ -174,8 +174,8 @@ final class SelectorLoop(
         logger.error(e)("Selector unexpectedly closed")
         close()
 
-      case e: Throwable =>
-        logger.error(e)("Unhandled exception in selector loop")
+      case NonFatal(t) =>
+        logger.error(t)("Unhandled exception in selector loop")
         close()
     }
 
@@ -209,7 +209,7 @@ final class SelectorLoop(
           logger.error(t)("Error performing channel operations. Closing channel.")
           try selectable.close(Some(t))
           catch {
-            case t: Throwable =>
+            case NonFatal(t) =>
               logger.error(t)("Fatal error shutting down pipeline")
           }
       }

@@ -8,6 +8,7 @@ import scala.annotation.tailrec
 import scala.collection.mutable.{ArrayBuffer, Buffer, ListBuffer}
 import scala.concurrent.{Future, Promise}
 import scala.util.{Failure, Success}
+import scala.util.control.NonFatal
 import org.http4s.blaze.pipeline.MidStage
 import org.http4s.blaze.pipeline.Command.EOF
 import org.http4s.blaze.util
@@ -216,7 +217,7 @@ final class SSLStage(engine: SSLEngine, maxWrite: Int = 1024 * 1024)
         logger.warn(t)("SSLException in SSL handshake")
         handshakeFailure(t)
 
-      case t: Throwable =>
+      case NonFatal(t) =>
         logger.error(t)("Error in SSL handshake")
         handshakeFailure(t)
     }
@@ -267,7 +268,7 @@ final class SSLStage(engine: SSLEngine, maxWrite: Int = 1024 * 1024)
         logger.trace(t)("SSLException during read loop")
         SSLFailure(t)
 
-      case t: Throwable =>
+      case NonFatal(t) =>
         logger.trace(t)("Error in SSL read loop")
         SSLFailure(t)
     }
@@ -349,7 +350,7 @@ final class SSLStage(engine: SSLEngine, maxWrite: Int = 1024 * 1024)
         logger.trace(t)("SSLException during writeLoop")
         SSLFailure(t)
 
-      case t: Throwable =>
+      case NonFatal(t) =>
         logger.trace(t)("Error in SSL writeLoop")
         SSLFailure(t)
     }
