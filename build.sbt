@@ -6,17 +6,43 @@ organization in ThisBuild := "org.http4s"
 lazy val commonSettings = Seq(
   description := "NIO Framework for Scala",
   scalaVersion := "2.12.8",
-  crossScalaVersions := Seq("2.11.12", scalaVersion.value, "2.13.0-M5"),
+  crossScalaVersions := Seq("2.11.12", scalaVersion.value, "2.13.0-M5", "2.13.0"),
   scalacOptions := scalacOptionsFor(scalaVersion.value),
-  scalacOptions in Test -= "-Ywarn-dead-code", // because mockito
-  scalacOptions in (Compile, doc) += "-no-link-warnings"
+  scalacOptions := {
+    val opts = scalacOptions.value
+    // Flags changed between 2.13.0-M5 and 2.13.  Trust that they're
+    // well covered elsewhere and disable the ones that aren't on the
+    // milestone.
+    scalaVersion.value match {
+      case "2.13.0-M5" =>
+        opts
+          .filterNot(Set("-Xlint:deprecation"))
+          .filterNot(_.startsWith("-W"))
+      case _ =>
+        opts
+    }
+  },
+  scalacOptions in Test ~= (_.filterNot(Set("-Ywarn-dead-code", "-Wdead-code"))), // because mockito
+  scalacOptions in (Compile, doc) += "-no-link-warnings",
+  unmanagedSourceDirectories in Compile ++= {
+    (unmanagedSourceDirectories in Compile).value.map { dir =>
+      val sv = scalaVersion.value
+      CrossVersion.binaryScalaVersion(sv) match {
+        // 2.13.0-M5 doesn't have the JdkConverters introduced by 2.13.0
+        case "2.11" | "2.12" | "2.13.0-M5" => file(dir.getPath ++ "-2.11-2.12")
+        case _ => file(dir.getPath ++ "-2.13")
+      }
+    }
+  },
 )
 
 /* Projects */
 lazy val blaze = project.in(file("."))
-    .enablePlugins(DisablePublishingPlugin)
     .disablePlugins(MimaPlugin)
-    .settings(cancelable in Global := true)
+    .settings(
+      cancelable in Global := true,
+      skip in publish := true,
+    )
     .settings(commonSettings)
     .aggregate(core, http, examples)
 
@@ -25,7 +51,7 @@ lazy val core = Project("blaze-core", file("core"))
   .disablePlugins(TpolecatPlugin)
   .settings(commonSettings)
   .settings(
-    libraryDependencies ++= Seq(log4s),
+    libraryDependencies ++= Seq(log4s(scalaVersion.value)),
     libraryDependencies ++= Seq(
       specs2,
       specs2Mock,
@@ -59,7 +85,6 @@ lazy val http = Project("blaze-http", file("http"))
   ).dependsOn(core % "test->test;compile->compile")
 
 lazy val examples = Project("blaze-examples",file("examples"))
-  .enablePlugins(DisablePublishingPlugin)
   .disablePlugins(MimaPlugin, TpolecatPlugin)
   .settings(commonSettings)
   .settings(Revolver.settings)
@@ -68,8 +93,8 @@ lazy val examples = Project("blaze-examples",file("examples"))
     fork := true,
     // Adds ALPN to the boot classpath for Http2 support
     libraryDependencies += alpn_boot % Runtime,
-    javaOptions in run ++= addAlpnPath((managedClasspath in Runtime).value)
-
+    javaOptions in run ++= addAlpnPath((managedClasspath in Runtime).value),
+    skip in publish := true
   ).dependsOn(http)
 
 
@@ -82,4 +107,4 @@ def addAlpnPath(attList: Keys.Classpath): Seq[String] = {
   } yield { println(s"Alpn path: $path"); "-Xbootclasspath/p:" + path}
 }
 
-addCommandAlias("validate", ";test ;coverageOff ;unusedCompileDependenciesTest ;mimaReportBinaryIssues")
+addCommandAlias("validate", ";test ;unusedCompileDependenciesTest ;mimaReportBinaryIssues")

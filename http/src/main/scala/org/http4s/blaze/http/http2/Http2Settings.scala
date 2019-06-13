@@ -178,7 +178,7 @@ object Http2Settings {
 }
 
 /** Internal mutable representation of the [[Http2Settings]] */
-private final class MutableHttp2Settings private (
+private[blaze] final class MutableHttp2Settings private (
     var headerTableSize: Int,
     var initialWindowSize: Int,
     var pushEnabled: Boolean,

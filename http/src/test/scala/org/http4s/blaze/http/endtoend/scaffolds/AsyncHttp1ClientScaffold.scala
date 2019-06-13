@@ -4,8 +4,7 @@ import java.util.concurrent.TimeUnit
 
 import org.asynchttpclient.{Dsl, Request, RequestBuilder, Response}
 import org.http4s.blaze.http.{HttpRequest, HttpResponsePrelude}
-
-import scala.collection.JavaConverters._
+import org.http4s.blaze.internal.compat.CollectionConverters._
 import scala.concurrent.Await
 import scala.concurrent.duration.Duration
 

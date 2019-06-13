@@ -276,7 +276,7 @@ class FrameSerializerSpec extends Specification with ScalaCheck {
     implicit lazy val arbGoAway: Arbitrary[GoAwayFrame] = Arbitrary(
       for {
         lastStream <- Gen.choose(0, Int.MaxValue)
-        err <- Gen.choose(0l, 0xffffffffl)
+        err <- Gen.choose(0L, 0xffffffffL)
         dataSize <- Gen.choose(0, 256)
         bytes <- Gen.listOfN(dataSize, Gen.choose(Byte.MinValue, Byte.MaxValue))
       } yield GoAwayFrame(lastStream, err, bytes.toArray)
