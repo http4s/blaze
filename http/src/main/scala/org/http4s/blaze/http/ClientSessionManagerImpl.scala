@@ -5,12 +5,12 @@ import org.http4s.blaze.http.ClientSessionManagerImpl._
 import org.http4s.blaze.http.HttpClientSession.{Closed, ReleaseableResponse, Status}
 import org.http4s.blaze.http.http1.client.Http1ClientStage
 import org.http4s.blaze.http.util.UrlTools.UrlComposition
+import org.http4s.blaze.internal.compat.CollectionConverters._
 import org.http4s.blaze.pipeline.stages.SSLStage
 import org.http4s.blaze.pipeline.{Command, LeafBuilder}
 import org.http4s.blaze.util.{Execution, FutureUnit}
 import org.log4s.getLogger
 
-import scala.collection.JavaConverters._
 import scala.concurrent.duration.Duration
 import scala.concurrent.{Future, Promise}
 import scala.util.control.NonFatal

@@ -4,9 +4,9 @@ import java.nio.ByteBuffer
 import java.util
 import javax.net.ssl.SSLEngine
 import org.eclipse.jetty.alpn.ALPN
+import org.http4s.blaze.internal.compat.CollectionConverters._
 import org.http4s.blaze.pipeline.{Command => Cmd, LeafBuilder, TailStage}
 import org.http4s.blaze.util.Execution._
-import scala.collection.JavaConverters._
 import scala.util.{Failure, Success}
 
 class ALPNClientSelector(

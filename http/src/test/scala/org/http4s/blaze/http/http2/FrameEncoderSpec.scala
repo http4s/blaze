@@ -15,7 +15,7 @@ class FrameEncoderSpec extends Specification with Mockito {
   private def mockListener() = mock[FrameListener]
 
   // increase the ID by 25 to lift it out of the normal h2 exception codes
-  private def ReturnTag(id: Int): Error = Error(Http2Exception.errorGenerator(id.toLong + 25l).goaway())
+  private def ReturnTag(id: Int): Error = Error(Http2Exception.errorGenerator(id.toLong + 25L).goaway())
 
   "Http2FrameEncoder" >> {
     "not fragment data frames if they fit into a single frame" >> {

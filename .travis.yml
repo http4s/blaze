@@ -2,12 +2,14 @@ language: scala
 
 matrix:
   include:
-  - jdk: oraclejdk8
+  - jdk: openjdk8
     scala: 2.12.8
-  - jdk: oraclejdk8
+  - jdk: openjdk8
     scala: 2.11.12
-  - jdk: oraclejdk8
-    scala: 2.13.0-RC2
+  - jdk: openjdk8
+    scala: 2.13.0-M5
+  - jdk: openjdk8
+    scala: 2.13.0
   - jdk: openjdk11
     scala: 2.12.8
 env:

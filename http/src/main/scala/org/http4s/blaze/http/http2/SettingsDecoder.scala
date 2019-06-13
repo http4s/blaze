@@ -8,7 +8,7 @@ import org.http4s.blaze.http.http2.bits.{Flags, FrameTypes}
 /** Utility for decoding a settings frame
   * @see https://tools.ietf.org/html/rfc7540#section-6.5
   */
-private object SettingsDecoder {
+private[blaze] object SettingsDecoder {
 
   /** Representation of a settings frame
     *

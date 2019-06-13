@@ -58,7 +58,7 @@ private trait Connection {
   def onClose: Future[Unit]
 }
 
-private object Connection {
+private[blaze] object Connection {
   sealed abstract class State extends Product with Serializable {
     final def closing: Boolean = !running
     final def running: Boolean = this == Running

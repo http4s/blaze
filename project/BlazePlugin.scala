@@ -70,10 +70,15 @@ object BlazePlugin extends AutoPlugin {
     else Some(s"$x.$y.${z.toInt - 1}")
   }
 
+  def log4sVersion(sv: String) = CrossVersion.binaryScalaVersion(sv) match {
+    case "2.13.0-M5" => "1.7.0"
+    case _ => "1.8.2"
+  }
+
   lazy val logbackClassic      = "ch.qos.logback"             %  "logback-classic"     % "1.2.3"
   lazy val twitterHPACK        = "com.twitter"                %  "hpack"               % "1.0.2"
   lazy val asyncHttpClient     = "org.asynchttpclient"        %  "async-http-client"   % "2.10.0"
-  lazy val log4s               = "org.log4s"                  %% "log4s"               % "1.7.0"
+  def log4s(sv: String)        = "org.log4s"                  %% "log4s"               % log4sVersion(sv)
   lazy val scalacheck          = "org.scalacheck"             %% "scalacheck"          % "1.14.0"
   lazy val specs2              = "org.specs2"                 %% "specs2-core"         % "4.5.1"
   lazy val specs2Mock          = "org.specs2"                 %% "specs2-mock"         % specs2.revision

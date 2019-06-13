@@ -4,6 +4,7 @@ import java.nio.ByteBuffer
 import java.util
 import javax.net.ssl.SSLEngine
 import org.eclipse.jetty.alpn.ALPN
+import org.http4s.blaze.internal.compat.CollectionConverters._
 import org.http4s.blaze.pipeline.{LeafBuilder, TailStage, Command => Cmd}
 import org.http4s.blaze.util.Execution.trampoline
 import scala.util.{Failure, Success}
@@ -51,8 +52,6 @@ final class ALPNServerSelector(
     }
 
   private class ServerProvider extends ALPN.ServerProvider {
-    import scala.collection.JavaConverters._
-
     override def select(protocols: util.List[String]): String = {
       logger.debug("Available protocols: " + protocols)
       val s = selector(protocols.asScala.toSet)

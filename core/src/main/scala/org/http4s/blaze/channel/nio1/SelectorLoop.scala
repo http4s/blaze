@@ -9,6 +9,7 @@ import java.util.{Set => JSet}
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.{Executor, RejectedExecutionException, ThreadFactory}
 
+import org.http4s.blaze.internal.compat.CollectionConverters._
 import org.http4s.blaze.util.TaskQueue
 import org.log4s.getLogger
 
@@ -217,7 +218,6 @@ final class SelectorLoop(
   }
 
   private[this] def killSelector(): Unit = {
-    import scala.collection.JavaConverters._
     // We first close all the associated keys and then close
     // the `Selector` which will then be essentially useless.
     try {
