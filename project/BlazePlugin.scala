@@ -35,7 +35,7 @@ object BlazePlugin extends AutoPlugin {
       }
     },
     // Setting Key To Show Mima Version Checked
-    blazeMimaVersion := mimaPreviousVersion(version.value),
+    blazeMimaVersion := mimaPreviousVersion(version.value, scalaVersion.value),
 
     scalafmtVersion := "1.4.0",
     scalafmt in Test := {
@@ -54,17 +54,23 @@ object BlazePlugin extends AutoPlugin {
     ),
     fork in run := true,
     mimaFailOnProblem := blazeMimaVersion.value.isDefined,
-    mimaPreviousArtifacts := mimaPreviousVersion(version.value).map { pv =>
+    mimaPreviousArtifacts := mimaPreviousVersion(version.value, scalaVersion.value).map { pv =>
       organization.value % (normalizedName.value + "_" + scalaBinaryVersion.value) % pv
     }.toSet,
     mimaBinaryIssueFilters ++= Seq()
   )
 
 
-  def mimaPreviousVersion(currentVersion: String): Option[String] = {
+  def mimaPreviousVersion(currentVersion: String, scalaVersion: String): Option[String] = {
     val Version = """(\d+)\.(\d+)\.(\d+).*""".r
     val Version(x, y, z) = currentVersion
     if (z == "0") None
+    else if (CrossVersion.binaryScalaVersion(scalaVersion) == "2.13") {
+      currentVersion match {
+        case "0.14.5" | "0.14.5-SNAPSHOT" => None
+        case _ => Some(s"$x.$y.${z.toInt - 1}")
+      }
+    }
     else Some(s"$x.$y.${z.toInt - 1}")
   }
 
