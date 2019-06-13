@@ -9,8 +9,6 @@ import com.typesafe.tools.mima.plugin.MimaPlugin, MimaPlugin.autoImport._
 
 import sbtrelease._
 import sbtrelease.ReleasePlugin.autoImport._
-import verizon.build.RigPlugin
-
 
 object BlazePlugin extends AutoPlugin {
 
@@ -22,7 +20,7 @@ object BlazePlugin extends AutoPlugin {
 
   override def trigger = allRequirements
 
-  override def requires = RigPlugin && MimaPlugin && ReleasePlugin
+  override def requires = MimaPlugin && ReleasePlugin
 
   override lazy val projectSettings: Seq[Setting[_]] = Seq(
     // Override rig's default of the Travis build number being the bugfix number

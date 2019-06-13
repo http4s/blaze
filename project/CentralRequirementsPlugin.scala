@@ -1,7 +1,6 @@
 package org.http4s.build
 
 import sbt._, Keys._
-import verizon.build.RigPlugin
 import xerial.sbt.Sonatype.autoImport.sonatypeProfileName
 
 object CentralRequirementsPlugin extends AutoPlugin {
@@ -9,8 +8,6 @@ object CentralRequirementsPlugin extends AutoPlugin {
   // tells sbt to automatically enable this plugin where ever
   // the sbt-rig plugin is enabled (which should be all sub-modules)
   override def trigger = allRequirements
-
-  override def requires = RigPlugin
 
   override lazy val projectSettings = Seq(
     sonatypeProfileName := "org.http4s",

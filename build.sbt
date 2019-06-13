@@ -38,9 +38,11 @@ lazy val commonSettings = Seq(
 
 /* Projects */
 lazy val blaze = project.in(file("."))
-    .enablePlugins(DisablePublishingPlugin)
     .disablePlugins(MimaPlugin)
-    .settings(cancelable in Global := true)
+    .settings(
+      cancelable in Global := true,
+      skip in publish := true,
+    )
     .settings(commonSettings)
     .aggregate(core, http, examples)
 
@@ -83,7 +85,6 @@ lazy val http = Project("blaze-http", file("http"))
   ).dependsOn(core % "test->test;compile->compile")
 
 lazy val examples = Project("blaze-examples",file("examples"))
-  .enablePlugins(DisablePublishingPlugin)
   .disablePlugins(MimaPlugin, TpolecatPlugin)
   .settings(commonSettings)
   .settings(Revolver.settings)
@@ -92,8 +93,8 @@ lazy val examples = Project("blaze-examples",file("examples"))
     fork := true,
     // Adds ALPN to the boot classpath for Http2 support
     libraryDependencies += alpn_boot % Runtime,
-    javaOptions in run ++= addAlpnPath((managedClasspath in Runtime).value)
-
+    javaOptions in run ++= addAlpnPath((managedClasspath in Runtime).value),
+    skip in publish := true
   ).dependsOn(http)
 
 
