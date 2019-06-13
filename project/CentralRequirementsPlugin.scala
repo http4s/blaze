@@ -29,7 +29,15 @@ object CentralRequirementsPlugin extends AutoPlugin {
         Some("scm:git:git@github.com:http4s/blaze.git")
       )
     ),
-    startYear := Some(2014)
+    startYear := Some(2014),
+
+    publishTo := {
+      val nexus = "https://oss.sonatype.org/"
+      if (isSnapshot.value)
+        Some("snapshots" at nexus + "content/repositories/snapshots")
+      else
+        Some("releases"  at nexus + "service/local/staging/deploy/maven2")
+    },
   )
 
 }
