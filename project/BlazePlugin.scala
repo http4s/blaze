@@ -65,12 +65,6 @@ object BlazePlugin extends AutoPlugin {
     val Version = """(\d+)\.(\d+)\.(\d+).*""".r
     val Version(x, y, z) = currentVersion
     if (z == "0") None
-    else if (CrossVersion.binaryScalaVersion(scalaVersion) == "2.13") {
-      currentVersion match {
-        case "0.14.5" | "0.14.5-SNAPSHOT" => None
-        case _ => Some(s"$x.$y.${z.toInt - 1}")
-      }
-    }
     else Some(s"$x.$y.${z.toInt - 1}")
   }
 
