@@ -3,8 +3,6 @@ package org.http4s.build
 import sbt._
 import Keys._
 
-import com.lucidchart.sbt.scalafmt.ScalafmtCorePlugin
-import com.lucidchart.sbt.scalafmt.ScalafmtCorePlugin.autoImport._
 import com.typesafe.tools.mima.plugin.MimaPlugin, MimaPlugin.autoImport._
 
 import sbtrelease._
@@ -37,17 +35,6 @@ object BlazePlugin extends AutoPlugin {
     // Setting Key To Show Mima Version Checked
     blazeMimaVersion := mimaPreviousVersion(version.value, scalaVersion.value),
 
-    scalafmtVersion := "1.4.0",
-    scalafmt in Test := {
-      (scalafmt in Compile).value
-      (scalafmt in Test).value
-      ()
-    },
-    test in (Test, scalafmt) := {
-      (test in (Compile, scalafmt)).value
-      (test in (Test, scalafmt)).value
-      ()
-    },
     javacOptions ++= Seq(
       "-source", jvmTarget.value,
       "-target", jvmTarget.value
