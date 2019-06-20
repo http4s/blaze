@@ -11,14 +11,13 @@ import scala.concurrent.{Await, Future}
 import scala.concurrent.duration._
 
 abstract class TimeoutHelpers extends Specification {
-  
+
   def genDelayStage(timeout: Duration): TimeoutStageBase[ByteBuffer]
 
   def newBuff: ByteBuffer = ByteBuffer.wrap("Foo".getBytes(StandardCharsets.UTF_8))
 
-  def checkBuff(buff: ByteBuffer): MatchResult[Any] = {
+  def checkBuff(buff: ByteBuffer): MatchResult[Any] =
     StandardCharsets.UTF_8.decode(buff).toString should_== "Foo"
-  }
 
   def checkFuture(f: Future[ByteBuffer], timeout: Duration = 2.seconds): MatchResult[Any] = {
     val r = Await.result(f, timeout)

@@ -19,7 +19,7 @@ class ExecutionSpec extends Specification {
         i += 1
       }
 
-      i must be equalTo(1)
+      (i must be).equalTo(1)
     }
 
     "submit multiple working jobs" in {
@@ -31,7 +31,7 @@ class ExecutionSpec extends Specification {
         }
       }
 
-      i must be equalTo(10)
+      (i must be).equalTo(10)
     }
 
     "submit jobs from within a job" in {
@@ -45,7 +45,7 @@ class ExecutionSpec extends Specification {
         }
       }
 
-      i must be equalTo(10)
+      (i must be).equalTo(10)
     }
 
     "submit a failing job" in {
@@ -56,7 +56,7 @@ class ExecutionSpec extends Specification {
         i += 1
       }
 
-      i must be equalTo(0)
+      (i must be).equalTo(0)
     }
 
     "interleave failing and successful `Runnables`" in {
@@ -65,13 +65,12 @@ class ExecutionSpec extends Specification {
       submit {
         for (j <- 0 until 10) {
           submit {
-            if (j % 2 == 0) submit { i += 1 }
-            else submit { sys.error("Boom") }
+            if (j % 2 == 0) submit { i += 1 } else submit { sys.error("Boom") }
           }
         }
       }
 
-      i must  be equalTo(5)
+      (i must be).equalTo(5)
     }
 
     "Not blow the stack" in {
@@ -81,13 +80,13 @@ class ExecutionSpec extends Specification {
       def go(j: Int): Unit = submit {
         if (j < iterations) {
           i += 1
-          go(j+1)
+          go(j + 1)
         }
       }
 
       go(0)
 
-      i must be equalTo(iterations)
+      (i must be).equalTo(iterations)
     }
   }
 }

@@ -10,7 +10,7 @@ import org.http4s.blaze.util.BufferTools
 
 class ResponseParser extends Http1ClientParser {
 
-  val headers = new ListBuffer[(String,String)]
+  val headers = new ListBuffer[(String, String)]
 
   var code: Int = -1
   var reason = ""
@@ -30,7 +30,7 @@ class ResponseParser extends Http1ClientParser {
     if (!headersComplete()) sys.error("Headers didn't complete!")
 
     val body = new ListBuffer[ByteBuffer]
-    while(!this.contentComplete() && buffer.hasRemaining) {
+    while (!this.contentComplete() && buffer.hasRemaining) {
       body += parseContent(buffer)
     }
 
@@ -40,7 +40,7 @@ class ResponseParser extends Http1ClientParser {
         buf.get(b)
         b
       }
-      val bytes = body.foldLeft(Array[Byte]()) ((c1, c2) => c1 ++ toArray(c2))
+      val bytes = body.foldLeft(Array[Byte]())((c1, c2) => c1 ++ toArray(c2))
       new String(bytes, StandardCharsets.ISO_8859_1)
     }
 
@@ -51,17 +51,17 @@ class ResponseParser extends Http1ClientParser {
     (status, headers, bp)
   }
 
-
   override protected def headerComplete(name: String, value: String): Boolean = {
-    headers += ((name,value))
+    headers += ((name, value))
     false
   }
 
-  override protected def submitResponseLine(code: Int,
-                                            reason: String,
-                                            scheme: String,
-                                            majorversion: Int,
-                                            minorversion: Int): Unit = {
+  override protected def submitResponseLine(
+      code: Int,
+      reason: String,
+      scheme: String,
+      majorversion: Int,
+      minorversion: Int): Unit = {
     this.code = code
     this.reason = reason
     this.majorversion = majorversion
@@ -70,16 +70,18 @@ class ResponseParser extends Http1ClientParser {
 }
 
 object ResponseParser {
-  def apply(buff: Seq[ByteBuffer]): (Int, Headers, String) = new ResponseParser().parseResponse(buff)
+  def apply(buff: Seq[ByteBuffer]): (Int, Headers, String) =
+    new ResponseParser().parseResponse(buff)
   def apply(buff: ByteBuffer): (Int, Headers, String) = parseBuffer(buff)
 
-  def parseBuffer(buff: ByteBuffer): (Int, Headers, String) = new ResponseParser().parseResponseBuffer(buff)
+  def parseBuffer(buff: ByteBuffer): (Int, Headers, String) =
+    new ResponseParser().parseResponseBuffer(buff)
 
   /** Make a String representation of the ByteBuffer, without modifying the buffer. */
   def bufferToString(in: ByteBuffer): String = {
     val sb = new StringBuilder()
-    val buffer = in.asReadOnlyBuffer()  // Don't want to modify the original buffers positions or content
-    while(buffer.hasRemaining) {
+    val buffer = in.asReadOnlyBuffer() // Don't want to modify the original buffers positions or content
+    while (buffer.hasRemaining) {
       sb.append(buffer.get().toChar)
     }
     sb.result()

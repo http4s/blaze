@@ -31,13 +31,14 @@ class ClientStageSpec extends Specification {
 
   "ClientStage" >> {
     "make appropriate pseudo headers" >> {
-      ClientStage.makeHeaders(request) must_== Try(Vector(
-        Method -> "GET",
-        Scheme -> "https",
-        Authority -> "foo.com",
-        Path -> "/Foo?Bar",
-        "not-lower-case" -> "Value"
-      ))
+      ClientStage.makeHeaders(request) must_== Try(
+        Vector(
+          Method -> "GET",
+          Scheme -> "https",
+          Authority -> "foo.com",
+          Path -> "/Foo?Bar",
+          "not-lower-case" -> "Value"
+        ))
     }
 
     "Mark the first HEADERS frame as EOS if there isn't a body" >> {

@@ -13,15 +13,15 @@ class WriteControllerImplSpec extends Specification {
 
   private def mockData(i: Int): ByteBuffer =
     ByteBuffer.wrap {
-    (0 to i).map(_.toByte).toArray
-  }
+      (0 to i).map(_.toByte).toArray
+    }
 
   private class MockInterest extends WriteInterest {
     var calls = 0
 
     def performStreamWrite(): Seq[ByteBuffer] = {
       calls += 1
-      mockData(calls - 1)::Nil
+      mockData(calls - 1) :: Nil
     }
   }
 
@@ -33,7 +33,7 @@ class WriteControllerImplSpec extends Specification {
     val written = mutable.Queue.empty[Write]
 
     override def channelWrite(data: ByteBuffer): Future[Unit] =
-      channelWrite(data::Nil)
+      channelWrite(data :: Nil)
 
     override def channelWrite(data: collection.Seq[ByteBuffer]): Future[Unit] = {
       val p = Promise[Unit]

@@ -9,7 +9,6 @@ import scala.concurrent.duration._
 import scala.util.{Failure, Success}
 import scala.concurrent.Promise
 
-
 class MapTail[A](f: A => A) extends TailStage[A] {
   override def name = "MapTail"
 
@@ -19,15 +18,16 @@ class MapTail[A](f: A => A) extends TailStage[A] {
     p.future
   }
 
-  private def innerLoop(p: Promise[Unit]): Unit = {
-    channelRead(-1, 10.seconds).flatMap { a =>
-      channelWrite(f(a))
-    }.onComplete{
-      case Success(_)   => innerLoop(p)
-      case Failure(EOF) => p.success(())
-      case e            => p.complete(e)
-    }
-  }
+  private def innerLoop(p: Promise[Unit]): Unit =
+    channelRead(-1, 10.seconds)
+      .flatMap { a =>
+        channelWrite(f(a))
+      }
+      .onComplete {
+        case Success(_) => innerLoop(p)
+        case Failure(EOF) => p.success(())
+        case e => p.complete(e)
+      }
 }
 
 class EchoTail[A] extends MapTail[A](identity)

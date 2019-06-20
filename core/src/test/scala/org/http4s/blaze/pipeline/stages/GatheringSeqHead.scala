@@ -3,7 +3,6 @@ package org.http4s.blaze.pipeline.stages
 import org.http4s.blaze.pipeline.Command
 import scala.concurrent.{Future, Promise}
 
-
 class GatheringSeqHead[O](items: Seq[O]) extends SeqHead[O](items) {
 
   private var result: Option[Promise[Seq[O]]] = None

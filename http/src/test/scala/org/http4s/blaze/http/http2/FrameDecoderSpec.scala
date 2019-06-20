@@ -29,7 +29,11 @@ class FrameDecoderSpec extends Specification {
       var endStream: Option[Boolean] = None
       var data: ByteBuffer = null
       var flowSize: Option[Int] = None
-      override def onDataFrame(streamId: Int, endStream: Boolean, data: ByteBuffer, flowSize: Int): Result = {
+      override def onDataFrame(
+          streamId: Int,
+          endStream: Boolean,
+          data: ByteBuffer,
+          flowSize: Int): Result = {
         this.streamId = Some(streamId)
         this.endStream = Some(endStream)
         this.data = data
@@ -41,8 +45,7 @@ class FrameDecoderSpec extends Specification {
     "Decode basic frame" >> {
       // UNKONWN Frame:
       // Length: 8, Type: 0x16, Flags: 0, R: 0, StreamID: 0
-      val testData = buffer(
-        0x00, 0x00, 0x08, // length
+      val testData = buffer(0x00, 0x00, 0x08, // length
         0x00, // type
         0x00, // flags
         0x00, 0x00, 0x00, 0x01, // streamId
@@ -65,7 +68,7 @@ class FrameDecoderSpec extends Specification {
         0x00, // type
         0x00, // flags
         0x00, 0x00, 0x00, 0x01 // streamId
-        ) // no data
+      ) // no data
       val listener = new DataListener
       val dec = new FrameDecoder(Http2Settings.default, listener)
       dec.decodeBuffer(testData) must_== Continue
@@ -80,11 +83,23 @@ class FrameDecoderSpec extends Specification {
       // UNKONWN Frame:
       // Length: 8, Type: 0x16, Flags: 0, R: 0, StreamID: 0
       val testData = buffer(
-        0x00, 0x00, 0x08, // length
+        0x00,
+        0x00,
+        0x08, // length
         0x00, // type
         Flags.END_STREAM, // flags
-        0x00, 0x00, 0x00, 0x01, // streamId
-        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00)
+        0x00,
+        0x00,
+        0x00,
+        0x01, // streamId
+        0x00,
+        0x00,
+        0x00,
+        0x00,
+        0x00,
+        0x00,
+        0x00,
+        0x00)
       val listener = new DataListener
       val dec = new FrameDecoder(Http2Settings.default, listener)
       dec.decodeBuffer(testData) must_== Continue
@@ -96,12 +111,23 @@ class FrameDecoderSpec extends Specification {
       // UNKONWN Frame:
       // Length: 8, Type: 0x16, Flags: 0, R: 0, StreamID: 0
       val testData = buffer(
-        0x00, 0x00, 0x08, // length
+        0x00,
+        0x00,
+        0x08, // length
         0x00, // type
         Flags.PADDED, // flags
-        0x00, 0x00, 0x00, 0x01, // streamId
+        0x00,
+        0x00,
+        0x00,
+        0x01, // streamId
         0x00, // padding length
-        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00)
+        0x00,
+        0x00,
+        0x00,
+        0x00,
+        0x00,
+        0x00,
+        0x00)
       val listener = new DataListener
       val dec = new FrameDecoder(Http2Settings.default, listener)
       dec.decodeBuffer(testData) must_== Continue
@@ -116,12 +142,23 @@ class FrameDecoderSpec extends Specification {
       // UNKONWN Frame:
       // Length: 8, Type: 0x16, Flags: 0, R: 0, StreamID: 0
       val testData = buffer(
-        0x00, 0x00, 0x08, // length
+        0x00,
+        0x00,
+        0x08, // length
         0x00, // type
         Flags.PADDED, // flags
-        0x00, 0x00, 0x00, 0x01, // streamId
+        0x00,
+        0x00,
+        0x00,
+        0x01, // streamId
         0x07, // padding length
-        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00)
+        0x00,
+        0x00,
+        0x00,
+        0x00,
+        0x00,
+        0x00,
+        0x00)
       val listener = new DataListener
       val dec = new FrameDecoder(Http2Settings.default, listener)
       dec.decodeBuffer(testData) must_== Continue
@@ -136,12 +173,23 @@ class FrameDecoderSpec extends Specification {
       // UNKONWN Frame:
       // Length: 8, Type: 0x16, Flags: 0, R: 0, StreamID: 0
       val testData = buffer(
-        0x00, 0x00, 0x08, // length
+        0x00,
+        0x00,
+        0x08, // length
         0x00, // type
         Flags.PADDED, // flags
-        0x00, 0x00, 0x00, 0x01, // streamId
+        0x00,
+        0x00,
+        0x00,
+        0x01, // streamId
         0x08, // padding length
-        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00)
+        0x00,
+        0x00,
+        0x00,
+        0x00,
+        0x00,
+        0x00,
+        0x00)
       val listener = new DataListener
       val dec = new FrameDecoder(Http2Settings.default, listener)
       dec.decodeBuffer(testData) must beLike {
@@ -151,8 +199,7 @@ class FrameDecoderSpec extends Specification {
 
     "not allow DATA on stream 0" >> {
       // DATA frame:
-      val testData = buffer(
-        0x00, 0x00, 0x08, // length
+      val testData = buffer(0x00, 0x00, 0x08, // length
         0x00, // type
         0x00, // flags
         0x00, 0x00, 0x00, 0x00, // streamId
@@ -186,11 +233,12 @@ class FrameDecoderSpec extends Specification {
       var endStream: Option[Boolean] = None
       var buffer: ByteBuffer = null
 
-      override def onHeadersFrame(streamId: Int,
-                                  priority: Priority,
-                                  end_headers: Boolean,
-                                  end_stream: Boolean,
-                                  buffer: ByteBuffer): Result = {
+      override def onHeadersFrame(
+          streamId: Int,
+          priority: Priority,
+          end_headers: Boolean,
+          end_stream: Boolean,
+          buffer: ByteBuffer): Result = {
         this.streamId = Some(streamId)
         this.priority = Some(priority)
         this.endHeaders = Some(end_headers)
@@ -202,8 +250,7 @@ class FrameDecoderSpec extends Specification {
 
     "basic HEADERS" >> {
       // HEADERS frame:
-      val testData = buffer(
-        0x00, 0x00, 0x08, // length
+      val testData = buffer(0x00, 0x00, 0x08, // length
         0x01, // type
         0x00, // flags
         0x00, 0x00, 0x00, 0x01, // streamId
@@ -222,13 +269,24 @@ class FrameDecoderSpec extends Specification {
     "basic HEADERS with exclusive priority" >> {
       // HEADERS frame:
       val testData = buffer(
-        0x00, 0x00, 0x08, // length
+        0x00,
+        0x00,
+        0x08, // length
         0x01, // type
         Flags.PRIORITY, // flags
-        0x00, 0x00, 0x00, 0x01, // streamId
-        (1 << 7).toByte, 0x00, 0x00, 0x02, // stream dependency, exclusive
+        0x00,
+        0x00,
+        0x00,
+        0x01, // streamId
+        (1 << 7).toByte,
+        0x00,
+        0x00,
+        0x02, // stream dependency, exclusive
         0xff.toByte, // weight
-        0x00, 0x00, 0x00)
+        0x00,
+        0x00,
+        0x00
+      )
       val listener = new HeadersListener
       val dec = new FrameDecoder(Http2Settings.default, listener)
 
@@ -243,11 +301,23 @@ class FrameDecoderSpec extends Specification {
     "basic HEADERS with pad length 0" >> {
       // HEADERS frame:
       val testData = buffer(
-        0x00, 0x00, 0x08, // length
+        0x00,
+        0x00,
+        0x08, // length
         0x01, // type
         Flags.PADDED, // flags
-        0x00, 0x00, 0x00, 0x01, // streamId
-        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00)
+        0x00,
+        0x00,
+        0x00,
+        0x01, // streamId
+        0x00,
+        0x00,
+        0x00,
+        0x00,
+        0x00,
+        0x00,
+        0x00,
+        0x00)
       val listener = new HeadersListener
       val dec = new FrameDecoder(Http2Settings.default, listener)
 
@@ -262,14 +332,24 @@ class FrameDecoderSpec extends Specification {
     "basic HEADERS with padding" >> {
       // HEADERS frame:
       val testData = buffer(
-        0x00, 0x00, 0x08, // length
+        0x00,
+        0x00,
+        0x08, // length
         0x01, // type
         (Flags.PADDED | Flags.PRIORITY).toByte, // flags
-        0x00, 0x00, 0x00, 0x01, // streamId
+        0x00,
+        0x00,
+        0x00,
+        0x01, // streamId
         0x01, // padding of 1
-        0x00, 0x00, 0x00, 0x02, // dependent stream 2, non-exclusive
+        0x00,
+        0x00,
+        0x00,
+        0x02, // dependent stream 2, non-exclusive
         0x02, // weight 3
-        0x00, 0x01)
+        0x00,
+        0x01
+      )
       val listener = new HeadersListener
       val dec = new FrameDecoder(Http2Settings.default, listener)
 
@@ -284,12 +364,23 @@ class FrameDecoderSpec extends Specification {
     "basic HEADERS with padding of remaining size" >> {
       // HEADERS frame:
       val testData = buffer(
-        0x00, 0x00, 0x08, // length
+        0x00,
+        0x00,
+        0x08, // length
         0x01, // type
         Flags.PADDED, // flags
-        0x00, 0x00, 0x00, 0x01, // streamId
+        0x00,
+        0x00,
+        0x00,
+        0x01, // streamId
         0x07, // padding of 7
-        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01)
+        0x00,
+        0x00,
+        0x00,
+        0x00,
+        0x00,
+        0x00,
+        0x01)
       val listener = new HeadersListener
       val dec = new FrameDecoder(Http2Settings.default, listener)
 
@@ -303,8 +394,7 @@ class FrameDecoderSpec extends Specification {
 
     "not allow HEADERS on stream 0" >> {
       // HEADERS frame:
-      val testData = buffer(
-        0x00, 0x00, 0x08, // length
+      val testData = buffer(0x00, 0x00, 0x08, // length
         0x01, // type
         0x00, // flags
         0x00, 0x00, 0x00, 0x00, // streamId
@@ -320,13 +410,24 @@ class FrameDecoderSpec extends Specification {
     "HEADERS with priority on itself" >> {
       // HEADERS frame:
       val testData = buffer(
-        0x00, 0x00, 0x08, // length
+        0x00,
+        0x00,
+        0x08, // length
         0x01, // type
         Flags.PRIORITY, // flags
-        0x00, 0x00, 0x00, 0x01, // streamId
-        0x00, 0x00, 0x00, 0x01, // dependent stream 1, non-exclusive
+        0x00,
+        0x00,
+        0x00,
+        0x01, // streamId
+        0x00,
+        0x00,
+        0x00,
+        0x01, // dependent stream 1, non-exclusive
         0x02, // weight 3
-        0x00, 0x00, 0x01)
+        0x00,
+        0x00,
+        0x01
+      )
       val listener = new HeadersListener
       val dec = new FrameDecoder(Http2Settings.default, listener)
 
@@ -338,13 +439,24 @@ class FrameDecoderSpec extends Specification {
     "HEADERS with dependency on stream 0" >> {
       // HEADERS frame:
       val testData = buffer(
-        0x00, 0x00, 0x08, // length
+        0x00,
+        0x00,
+        0x08, // length
         0x01, // type
         Flags.PRIORITY, // flags
-        0x00, 0x00, 0x00, 0x01, // streamId
-        0x00, 0x00, 0x00, 0x00, // dependent stream 0, non-exclusive
+        0x00,
+        0x00,
+        0x00,
+        0x01, // streamId
+        0x00,
+        0x00,
+        0x00,
+        0x00, // dependent stream 0, non-exclusive
         0x02, // weight 3
-        0x00, 0x00, 0x01)
+        0x00,
+        0x00,
+        0x01
+      )
       val listener = new HeadersListener
       val dec = new FrameDecoder(Http2Settings.default, listener)
 
@@ -372,13 +484,11 @@ class FrameDecoderSpec extends Specification {
 
     "simple PRIORITY frame" >> {
       // PRIORITY frame:
-      val testData = buffer(
-        0x00, 0x00, 0x05, // length
+      val testData = buffer(0x00, 0x00, 0x05, // length
         0x02, // type
         0x00, // flags
         0x00, 0x00, 0x00, 0x01, // streamId
-        0x00, 0x00, 0x00, 0x02,
-        0x00)
+        0x00, 0x00, 0x00, 0x02, 0x00)
       val listener = new PriorityListener
       val dec = new FrameDecoder(Http2Settings.default, listener)
 
@@ -390,11 +500,19 @@ class FrameDecoderSpec extends Specification {
     "simple PRIORITY frame with exclusive" >> {
       // PRIORITY frame:
       val testData = buffer(
-        0x00, 0x00, 0x05, // length
+        0x00,
+        0x00,
+        0x05, // length
         0x02, // type
         0x00, // flags
-        0x00, 0x00, 0x00, 0x01, // streamId
-        (1 << 7).toByte, 0x00, 0x00, 0x02, // stream dependency 2
+        0x00,
+        0x00,
+        0x00,
+        0x01, // streamId
+        (1 << 7).toByte,
+        0x00,
+        0x00,
+        0x02, // stream dependency 2
         0x00)
       val listener = new PriorityListener
       val dec = new FrameDecoder(Http2Settings.default, listener)
@@ -406,8 +524,7 @@ class FrameDecoderSpec extends Specification {
 
     "frame with dependent stream being itself" >> {
       // PRIORITY frame:
-      val testData = buffer(
-        0x00, 0x00, 0x05, // length
+      val testData = buffer(0x00, 0x00, 0x05, // length
         0x02, // type
         0x00, // flags
         0x00, 0x00, 0x00, 0x01, // streamId
@@ -423,13 +540,12 @@ class FrameDecoderSpec extends Specification {
 
     "frame with too large of body" >> {
       // PRIORITY frame:
-      val testData = buffer(
-        0x00, 0x00, 0x06, // length
+      val testData = buffer(0x00, 0x00, 0x06, // length
         0x02, // type
         0x00, // flags
         0x00, 0x00, 0x00, 0x01, // streamId
         0x00, 0x00, 0x00, 0x02, // stream dependency
-        0x00,  // weight
+        0x00, // weight
         0x11) // extra byte
       val listener = new PriorityListener
       val dec = new FrameDecoder(Http2Settings.default, listener)
@@ -447,7 +563,7 @@ class FrameDecoderSpec extends Specification {
         0x00, // flags
         0x00, 0x00, 0x00, 0x01, // streamId
         0x00, 0x00, 0x00, 0x02 // stream dependency
-        ) // missing weight
+      ) // missing weight
       val listener = new PriorityListener
       val dec = new FrameDecoder(Http2Settings.default, listener)
 
@@ -578,10 +694,15 @@ class FrameDecoderSpec extends Specification {
     "simple frame ack" >> {
       // SETTING frame:
       val testData = buffer(
-        0x00, 0x00, 0x00, // length
+        0x00,
+        0x00,
+        0x00, // length
         0x04, // type
         Flags.ACK, // flags
-        0x00, 0x00, 0x00, 0x00 // streamId
+        0x00,
+        0x00,
+        0x00,
+        0x00 // streamId
         // body
       )
       val listener = new SettingsListener
@@ -629,12 +750,21 @@ class FrameDecoderSpec extends Specification {
     "settings frame with settings and ack" >> {
       // SETTING frame:
       val testData = buffer(
-        0x00, 0x00, 0x06, // length
+        0x00,
+        0x00,
+        0x06, // length
         0x04, // type
         Flags.ACK, // flags
-        0x00, 0x00, 0x00, 0x00, // streamId
-        0x00, 0x00, // key
-        0x00, 0x00, 0x00, 0x01 // value
+        0x00,
+        0x00,
+        0x00,
+        0x00, // streamId
+        0x00,
+        0x00, // key
+        0x00,
+        0x00,
+        0x00,
+        0x01 // value
         // body
       )
       val listener = new SettingsListener
@@ -653,7 +783,7 @@ class FrameDecoderSpec extends Specification {
         0x00, // flags
         0x00, 0x00, 0x00, 0x01, // streamId
         // body
-        0x00, 0x00,0x00,0x00
+        0x00, 0x00, 0x00, 0x00
       ) // missing weight
       val listener = new SettingsListener
       val dec = new FrameDecoder(Http2Settings.default, listener)
@@ -670,7 +800,11 @@ class FrameDecoderSpec extends Specification {
       var promisedId: Option[Int] = None
       var endHeaders: Option[Boolean] = None
       var data: ByteBuffer = null
-      override def onPushPromiseFrame(streamId: Int, promisedId: Int, end_headers: Boolean, data: ByteBuffer): Result = {
+      override def onPushPromiseFrame(
+          streamId: Int,
+          promisedId: Int,
+          end_headers: Boolean,
+          data: ByteBuffer): Result = {
         this.streamId = Some(streamId)
         this.promisedId = Some(promisedId)
         this.endHeaders = Some(end_headers)
@@ -712,12 +846,20 @@ class FrameDecoderSpec extends Specification {
     "simple frame with end headers" >> {
       // PUSH_PROMISE frame:
       val testData = buffer(
-        0x00, 0x00, 0x04, // length
+        0x00,
+        0x00,
+        0x04, // length
         0x05, // type
         Flags.END_HEADERS, // flags
-        0x00, 0x00, 0x00, 0x01, // streamId
+        0x00,
+        0x00,
+        0x00,
+        0x01, // streamId
         // body
-        0x00, 0x00, 0x00, 0x02 // promised id
+        0x00,
+        0x00,
+        0x00,
+        0x02 // promised id
       )
       val listener = new PushListener
       val dec = new FrameDecoder(Http2Settings.default, listener)
@@ -732,13 +874,21 @@ class FrameDecoderSpec extends Specification {
     "frame with padding of 0" >> {
       // PUSH_PROMISE frame:
       val testData = buffer(
-        0x00, 0x00, 0x05, // length
+        0x00,
+        0x00,
+        0x05, // length
         0x05, // type
         Flags.PADDED, // flags
-        0x00, 0x00, 0x00, 0x01, // streamId
+        0x00,
+        0x00,
+        0x00,
+        0x01, // streamId
         // body
         0x00, // pad length
-        0x00, 0x00, 0x00, 0x02 // promised id
+        0x00,
+        0x00,
+        0x00,
+        0x02 // promised id
       )
       val listener = new PushListener
       val dec = new FrameDecoder(Http2Settings.default, listener)
@@ -753,13 +903,21 @@ class FrameDecoderSpec extends Specification {
     "frame with padding of 1 and body" >> {
       // PUSH_PROMISE frame:
       val testData = buffer(
-        0x00, 0x00, 0x07, // length
+        0x00,
+        0x00,
+        0x07, // length
         0x05, // type
         Flags.PADDED, // flags
-        0x00, 0x00, 0x00, 0x01, // streamId
+        0x00,
+        0x00,
+        0x00,
+        0x01, // streamId
         // body
         0x01, // pad length
-        0x00, 0x00, 0x00, 0x02, // promised id
+        0x00,
+        0x00,
+        0x00,
+        0x02, // promised id
         0x00,
         0x01 // the padding
       )
@@ -868,13 +1026,24 @@ class FrameDecoderSpec extends Specification {
     "simple frame ack" >> {
       // PUSH_PROMISE frame:
       val testData = buffer(
-        0x00, 0x00, 0x08, // length
+        0x00,
+        0x00,
+        0x08, // length
         0x06, // type
         Flags.ACK, // flags
-        0x00, 0x00, 0x00, 0x00, // streamId
+        0x00,
+        0x00,
+        0x00,
+        0x00, // streamId
         // body
-        0x00, 0x00, 0x00, 0x00, // opaque data
-        0x00, 0x00, 0x00, 0x00
+        0x00,
+        0x00,
+        0x00,
+        0x00, // opaque data
+        0x00,
+        0x00,
+        0x00,
+        0x00
       )
       val listener = new PingListener
       val dec = new FrameDecoder(Http2Settings.default, listener)
@@ -947,7 +1116,10 @@ class FrameDecoderSpec extends Specification {
       var lastStream: Option[Int] = None
       var errorCode: Option[Long] = None
       var debugData: Option[Array[Byte]] = None
-      override def onGoAwayFrame(lastStream: Int, errorCode: Long, debugData: Array[Byte]): Result = {
+      override def onGoAwayFrame(
+          lastStream: Int,
+          errorCode: Long,
+          debugData: Array[Byte]): Result = {
         this.lastStream = Some(lastStream)
         this.errorCode = Some(errorCode)
         this.debugData = Some(debugData)
@@ -972,7 +1144,7 @@ class FrameDecoderSpec extends Specification {
         0x00, 0x00, 0x00, 0x00, // streamId
         // body
         0x00, 0x00, 0x00, 0x01, // last stream
-        0x00, 0x00, 0x00, 0x00  // error code
+        0x00, 0x00, 0x00, 0x00 // error code
       )
       val listener = new GoAwayListener
       val dec = new FrameDecoder(Http2Settings.default, listener)
@@ -992,7 +1164,7 @@ class FrameDecoderSpec extends Specification {
         0x00, 0x00, 0x00, 0x00, // streamId
         // body
         0x00, 0x00, 0x00, 0x01, // last stream
-        0x00, 0x00, 0x00, 0x00,  // error code
+        0x00, 0x00, 0x00, 0x00, // error code
         0x01
       )
       val listener = new GoAwayListener
@@ -1013,7 +1185,7 @@ class FrameDecoderSpec extends Specification {
         0x00, 0x00, 0x00, 0x01, // streamId
         // body
         0x00, 0x00, 0x00, 0x01, // last stream
-        0x00, 0x00, 0x00, 0x00,  // error code
+        0x00, 0x00, 0x00, 0x00, // error code
         0x01
       )
       val listener = new GoAwayListener
@@ -1138,7 +1310,10 @@ class FrameDecoderSpec extends Specification {
       var streamId: Option[Int] = None
       var endHeaders: Option[Boolean] = None
       var data: ByteBuffer = null
-      override def onContinuationFrame(streamId: Int, endHeaders: Boolean, data: ByteBuffer): Result = {
+      override def onContinuationFrame(
+          streamId: Int,
+          endHeaders: Boolean,
+          data: ByteBuffer): Result = {
         this.streamId = Some(streamId)
         this.endHeaders = Some(endHeaders)
         this.data = data
@@ -1190,10 +1365,15 @@ class FrameDecoderSpec extends Specification {
     "end_headers" >> {
       // PUSH_PROMISE frame:
       val testData = buffer(
-        0x00, 0x00, 0x01, // length
+        0x00,
+        0x00,
+        0x01, // length
         0x09, // type
         Flags.END_HEADERS, // flags
-        0x00, 0x00, 0x00, 0x01, // streamId
+        0x00,
+        0x00,
+        0x00,
+        0x01, // streamId
         // body
         0x01 // increment
       )
@@ -1209,10 +1389,15 @@ class FrameDecoderSpec extends Specification {
     "not in headers sequence" >> {
       // PUSH_PROMISE frame:
       val testData = buffer(
-        0x00, 0x00, 0x01, // length
+        0x00,
+        0x00,
+        0x01, // length
         0x09, // type
         Flags.END_HEADERS, // flags
-        0x00, 0x00, 0x00, 0x01, // streamId
+        0x00,
+        0x00,
+        0x00,
+        0x01, // streamId
         // body
         0x01 // increment
       )
@@ -1232,8 +1417,7 @@ class FrameDecoderSpec extends Specification {
 
       // UNKONWN Frame:
       // Length: 8, Type: 0x16, Flags: 0, R: 0, StreamID: 0
-      val testData = buffer(
-        0x00, 0x00, 0x08, // length
+      val testData = buffer(0x00, 0x00, 0x08, // length
         0x16, // type
         0x00, // flags
         0x00, 0x00, 0x00, 0x00, // streamId
@@ -1246,7 +1430,11 @@ class FrameDecoderSpec extends Specification {
         var flags: Option[Byte] = None
         var streamId: Option[Int] = None
 
-        override def onExtensionFrame(_code: Byte, _streamId: Int, _flags: Byte, buffer: ByteBuffer): Result = {
+        override def onExtensionFrame(
+            _code: Byte,
+            _streamId: Int,
+            _flags: Byte,
+            buffer: ByteBuffer): Result = {
           data = buffer
           code = Some(_code)
           streamId = Some(_streamId)

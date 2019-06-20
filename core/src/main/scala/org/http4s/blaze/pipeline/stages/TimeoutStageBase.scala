@@ -25,8 +25,7 @@ abstract class TimeoutStageBase[T](timeout: Duration, exec: TickWheelExecutor)
 
   private val killswitch = new Runnable {
     override def run(): Unit = {
-      val ex = new TimeoutException(
-        s"Timeout of $timeout triggered. Killing pipeline.")
+      val ex = new TimeoutException(s"Timeout of $timeout triggered. Killing pipeline.")
       closePipeline(Some(ex))
     }
   }

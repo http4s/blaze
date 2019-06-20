@@ -20,10 +20,11 @@ class HeaderAggregatingFrameListenerSpec extends Specification {
   "HEADERS frame with compressors" should {
     def dec(sId: Int, p: Priority, es: Boolean, hs: Headers): TestFrameDecoder =
       decoder(new MockHeaderAggregatingFrameListener {
-        override def onCompleteHeadersFrame(streamId: Int,
-                                            priority: Priority,
-                                            end_stream: Boolean,
-                                            headers: Headers): Result = {
+        override def onCompleteHeadersFrame(
+            streamId: Int,
+            priority: Priority,
+            end_stream: Boolean,
+            headers: Headers): Result = {
           sId must_== streamId
           p must_== priority
           es must_== end_stream
@@ -61,7 +62,13 @@ class HeaderAggregatingFrameListenerSpec extends Specification {
 
     "Make a round trip with a continuation frame" in {
       val hs = Seq("foo" -> "bar", "biz" -> "baz")
-      val bs = FrameSerializer.mkHeaderFrame(1, Priority.NoPriority, false, true, 0, BufferTools.emptyBuffer)
+      val bs = FrameSerializer.mkHeaderFrame(
+        1,
+        Priority.NoPriority,
+        false,
+        true,
+        0,
+        BufferTools.emptyBuffer)
 
       val decoder = dec(1, Priority.NoPriority, true, hs)
 
@@ -78,7 +85,8 @@ class HeaderAggregatingFrameListenerSpec extends Specification {
     "Make a round trip with a continuation frame" in {
       val hs1 = Seq("foo" -> "bar")
       val hs2 = Seq("biz" -> "baz")
-      val bs = FrameSerializer.mkHeaderFrame(1, Priority.NoPriority, false, true, 0, encodeHeaders(hs1))
+      val bs =
+        FrameSerializer.mkHeaderFrame(1, Priority.NoPriority, false, true, 0, encodeHeaders(hs1))
 
       val decoder = dec(1, Priority.NoPriority, true, hs1 ++ hs2)
 
@@ -93,7 +101,13 @@ class HeaderAggregatingFrameListenerSpec extends Specification {
     }
 
     "Fail on invalid frame sequence (bad streamId)" in {
-      val bs = FrameSerializer.mkHeaderFrame(1, Priority.NoPriority, false, true, 0, BufferTools.emptyBuffer)
+      val bs = FrameSerializer.mkHeaderFrame(
+        1,
+        Priority.NoPriority,
+        false,
+        true,
+        0,
+        BufferTools.emptyBuffer)
 
       val decoder = dec(1, Priority.NoPriority, true, Seq())
 
@@ -107,7 +121,13 @@ class HeaderAggregatingFrameListenerSpec extends Specification {
     }
 
     "Fail on invalid frame sequence (wrong frame type)" in {
-      val bs = FrameSerializer.mkHeaderFrame(1, Priority.NoPriority, false, true, 0, BufferTools.emptyBuffer)
+      val bs = FrameSerializer.mkHeaderFrame(
+        1,
+        Priority.NoPriority,
+        false,
+        true,
+        0,
+        BufferTools.emptyBuffer)
 
       val decoder = dec(1, Priority.NoPriority, true, Seq())
 
@@ -126,15 +146,16 @@ class HeaderAggregatingFrameListenerSpec extends Specification {
 
     def dec(sId: Int, pId: Int, end_h: Boolean) =
       decoder(new MockFrameListener(false) {
-        override def onPushPromiseFrame(streamId: Int,
-                                        promisedId: Int,
-                                        end_headers: Boolean,
-                                        data: ByteBuffer): Result = {
+        override def onPushPromiseFrame(
+            streamId: Int,
+            promisedId: Int,
+            end_headers: Boolean,
+            data: ByteBuffer): Result = {
 
           sId must_== streamId
           pId must_== promisedId
           end_h must_== end_headers
-          assert(compare(data::Nil, dat::Nil))
+          assert(compare(data :: Nil, dat :: Nil))
           Continue
         }
       })
@@ -152,26 +173,27 @@ class HeaderAggregatingFrameListenerSpec extends Specification {
     }
 
     "fail on bad stream ID" in {
-      FrameSerializer.mkPushPromiseFrame(0 , 2, true, -10, dat) must throwA[Exception]
+      FrameSerializer.mkPushPromiseFrame(0, 2, true, -10, dat) must throwA[Exception]
     }
 
     "fail on bad promised stream ID" in {
-      FrameSerializer.mkPushPromiseFrame(1 , 0, true, -10, dat) must throwA[Exception]
-      FrameSerializer.mkPushPromiseFrame(1 , 3, true, -10, dat) must throwA[Exception]
+      FrameSerializer.mkPushPromiseFrame(1, 0, true, -10, dat) must throwA[Exception]
+      FrameSerializer.mkPushPromiseFrame(1, 3, true, -10, dat) must throwA[Exception]
     }
 
     "fail on bad padding" in {
-      FrameSerializer.mkPushPromiseFrame(1 , 2, true, -10, dat) must throwA[Exception]
-      FrameSerializer.mkPushPromiseFrame(1 , 2, true, 500, dat) must throwA[Exception]
+      FrameSerializer.mkPushPromiseFrame(1, 2, true, -10, dat) must throwA[Exception]
+      FrameSerializer.mkPushPromiseFrame(1, 2, true, 500, dat) must throwA[Exception]
     }
   }
 
   "PUSH_PROMISE frame with header decoder" should {
     def dec(sId: Int, pId: Int, hs: Headers) =
       decoder(new MockHeaderAggregatingFrameListener {
-        override def onCompletePushPromiseFrame(streamId: Int,
-                                                promisedId: Int,
-                                                headers: Headers): Result = {
+        override def onCompletePushPromiseFrame(
+            streamId: Int,
+            promisedId: Int,
+            headers: Headers): Result = {
           sId must_== streamId
           pId must_== promisedId
           hs must_== headers

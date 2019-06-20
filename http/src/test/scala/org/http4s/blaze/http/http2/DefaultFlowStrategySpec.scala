@@ -13,8 +13,8 @@ class DefaultFlowStrategySpec extends Specification with Mockito {
 
   def session(window: Int, unconsumed: Int): SessionFlowControl = {
     val sessionFlowControl = mock[SessionFlowControl]
-    sessionFlowControl.sessionInboundWindow returns window
-    sessionFlowControl.sessionUnconsumedBytes returns unconsumed
+    sessionFlowControl.sessionInboundWindow.returns(window)
+    sessionFlowControl.sessionUnconsumedBytes.returns(unconsumed)
     sessionFlowControl
   }
 
@@ -38,55 +38,55 @@ class DefaultFlowStrategySpec extends Specification with Mockito {
       val sessionFlowControl = session(2, 2)
 
       val streamFlowWindow = mock[StreamFlowWindow]
-      streamFlowWindow.sessionFlowControl returns sessionFlowControl
-      streamFlowWindow.streamInboundWindow returns 2
-      streamFlowWindow.streamUnconsumedBytes returns 0
+      streamFlowWindow.sessionFlowControl.returns(sessionFlowControl)
+      streamFlowWindow.streamInboundWindow.returns(2)
+      streamFlowWindow.streamUnconsumedBytes.returns(0)
 
-      newStrategy().checkStream(streamFlowWindow) must_==   FlowStrategy.increment(0, 0)
+      newStrategy().checkStream(streamFlowWindow) must_== FlowStrategy.increment(0, 0)
     }
 
     "not update stream if the window has dropped to half but not the bytes consumed" in {
       val sessionFlowControl = session(2, 2)
 
       val streamFlowWindow = mock[StreamFlowWindow]
-      streamFlowWindow.sessionFlowControl returns sessionFlowControl
-      streamFlowWindow.streamInboundWindow returns 1
-      streamFlowWindow.streamUnconsumedBytes returns 1
+      streamFlowWindow.sessionFlowControl.returns(sessionFlowControl)
+      streamFlowWindow.streamInboundWindow.returns(1)
+      streamFlowWindow.streamUnconsumedBytes.returns(1)
 
-      newStrategy().checkStream(streamFlowWindow) must_==   FlowStrategy.increment(0, 0)
+      newStrategy().checkStream(streamFlowWindow) must_== FlowStrategy.increment(0, 0)
     }
 
     "not update stream if the window has dropped to half but not the bytes consumed" in {
       val sessionFlowControl = session(2, 2)
 
       val streamFlowWindow = mock[StreamFlowWindow]
-      streamFlowWindow.sessionFlowControl returns sessionFlowControl
-      streamFlowWindow.streamInboundWindow returns 1
-      streamFlowWindow.streamUnconsumedBytes returns 1
+      streamFlowWindow.sessionFlowControl.returns(sessionFlowControl)
+      streamFlowWindow.streamInboundWindow.returns(1)
+      streamFlowWindow.streamUnconsumedBytes.returns(1)
 
-      newStrategy().checkStream(streamFlowWindow) must_==   FlowStrategy.increment(0, 0)
+      newStrategy().checkStream(streamFlowWindow) must_== FlowStrategy.increment(0, 0)
     }
 
     "update stream if the window has dropped to half" in {
       val sessionFlowControl = session(2, 2)
 
       val streamFlowWindow = mock[StreamFlowWindow]
-      streamFlowWindow.sessionFlowControl returns sessionFlowControl
-      streamFlowWindow.streamInboundWindow returns 1
-      streamFlowWindow.streamUnconsumedBytes returns 0
+      streamFlowWindow.sessionFlowControl.returns(sessionFlowControl)
+      streamFlowWindow.streamInboundWindow.returns(1)
+      streamFlowWindow.streamUnconsumedBytes.returns(0)
 
-      newStrategy().checkStream(streamFlowWindow) must_==   FlowStrategy.increment(0, 1)
+      newStrategy().checkStream(streamFlowWindow) must_== FlowStrategy.increment(0, 1)
     }
 
     "update session when considering a stream update" in {
       val sessionFlowControl = session(1, 0)
 
       val streamFlowWindow = mock[StreamFlowWindow]
-      streamFlowWindow.sessionFlowControl returns sessionFlowControl
-      streamFlowWindow.streamInboundWindow returns 2
-      streamFlowWindow.streamUnconsumedBytes returns 0
+      streamFlowWindow.sessionFlowControl.returns(sessionFlowControl)
+      streamFlowWindow.streamInboundWindow.returns(2)
+      streamFlowWindow.streamUnconsumedBytes.returns(0)
 
-      newStrategy().checkStream(streamFlowWindow) must_==   FlowStrategy.increment(1, 0)
+      newStrategy().checkStream(streamFlowWindow) must_== FlowStrategy.increment(1, 0)
     }
   }
 }

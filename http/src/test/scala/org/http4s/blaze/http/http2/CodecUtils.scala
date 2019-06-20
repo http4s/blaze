@@ -18,7 +18,7 @@ private[http2] object CodecUtils {
   def mkData(size: Int): ByteBuffer = {
     val s = byteData
     val buff = ByteBuffer.allocate(size)
-    while(buff.hasRemaining) buff.put(s, 0, math.min(buff.remaining(), s.length))
+    while (buff.hasRemaining) buff.put(s, 0, math.min(buff.remaining(), s.length))
     buff.flip()
     buff
   }
@@ -31,7 +31,8 @@ private[http2] object CodecUtils {
     b1.equals(b2)
   }
 
-  class TestFrameDecoder(val listener: FrameListener) extends FrameDecoder(Http2Settings.default, listener)
+  class TestFrameDecoder(val listener: FrameListener)
+      extends FrameDecoder(Http2Settings.default, listener)
 
   def decoder(h: FrameListener): TestFrameDecoder =
     new TestFrameDecoder(h)

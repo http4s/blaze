@@ -14,7 +14,7 @@ class StreamIdManagerSpec extends Specification {
 
       "Yield odd number streams" in {
         val manager = newManager()
-        forall (0 until 100) { _ =>
+        forall(0 until 100) { _ =>
           val Some(id) = manager.takeOutboundId()
           id % 2 must_== 1
         }
@@ -22,7 +22,7 @@ class StreamIdManagerSpec extends Specification {
 
       "Not allow an outbound stream id overflow" in {
         // Int.MaxValue == 2147483647
-        val manager = StreamIdManager.create(/* isClient */ true, Int.MaxValue - 1)
+        val manager = StreamIdManager.create( /* isClient */ true, Int.MaxValue - 1)
 
         manager.isIdleOutboundId(Int.MaxValue) must beTrue
 
@@ -51,9 +51,9 @@ class StreamIdManagerSpec extends Specification {
         manager.observeInboundId(4) must beTrue // fast forward
 
         manager.isIdleInboundId(4) must beFalse // just observed it
-        manager.isIdleInboundId(6) must beTrue  // a real idle stream id
+        manager.isIdleInboundId(6) must beTrue // a real idle stream id
 
-        manager.isIdleInboundId(0) must beFalse  // not a valid stream id
+        manager.isIdleInboundId(0) must beFalse // not a valid stream id
         manager.isIdleInboundId(15) must beFalse // inbounds are odd for the client
       }
 
@@ -79,7 +79,7 @@ class StreamIdManagerSpec extends Specification {
 
       "Yield even number streams" in {
         val manager = newManager()
-        forall (0 until 100) { _ =>
+        forall(0 until 100) { _ =>
           val Some(id) = manager.takeOutboundId()
           id % 2 must_== 0
         }
@@ -87,7 +87,7 @@ class StreamIdManagerSpec extends Specification {
 
       "Not allow a stream id overflow" in {
         // Int.MaxValue == 2147483647
-        val manager = StreamIdManager.create(/* isClient */ false, Int.MaxValue - 3)
+        val manager = StreamIdManager.create( /* isClient */ false, Int.MaxValue - 3)
 
         manager.isIdleOutboundId(Int.MaxValue - 1) must beTrue
 
@@ -114,9 +114,9 @@ class StreamIdManagerSpec extends Specification {
         manager.observeInboundId(5) must beTrue // fast forward
 
         manager.isIdleInboundId(5) must beFalse // just observed it
-        manager.isIdleInboundId(7) must beTrue  // a real idle stream id
+        manager.isIdleInboundId(7) must beTrue // a real idle stream id
 
-        manager.isIdleInboundId(0) must beFalse  // not a valid stream id
+        manager.isIdleInboundId(0) must beFalse // not a valid stream id
         manager.isIdleInboundId(16) must beFalse // inbounds are odd for the client
       }
     }

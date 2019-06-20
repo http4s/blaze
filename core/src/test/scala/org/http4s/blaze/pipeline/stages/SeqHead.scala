@@ -22,8 +22,7 @@ class SeqHead[O](private var data: Seq[O]) extends HeadStage[O] {
       val h = data.head
       data = data.tail
       Future.successful(h)
-    }
-    else FutureEOF
+    } else FutureEOF
   }
 
   def writeRequest(data: O): Future[Unit] = lock.synchronized {

@@ -79,19 +79,20 @@ private abstract class AbstractBodyWriter(private var hs: Headers) extends BodyW
       }
     }
     if (wasClosed) InternalWriter.ClosedChannelException
-    else cause match {
-      case Some(ex) =>
-        fail(ex)
-        InternalWriter.CachedSuccess
+    else
+      cause match {
+        case Some(ex) =>
+          fail(ex)
+          InternalWriter.CachedSuccess
 
-      case None =>
-        if (hsToFlush != null) {
-          val frame = HeadersFrame(Priority.NoPriority, true, hsToFlush)
-          flushMessage(frame)
-        } else {
-          val frame = DataFrame(true, BufferTools.emptyBuffer)
-          flushMessage(frame)
-        }
-    }
+        case None =>
+          if (hsToFlush != null) {
+            val frame = HeadersFrame(Priority.NoPriority, true, hsToFlush)
+            flushMessage(frame)
+          } else {
+            val frame = DataFrame(true, BufferTools.emptyBuffer)
+            flushMessage(frame)
+          }
+      }
   }
 }

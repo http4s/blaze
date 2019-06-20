@@ -37,33 +37,37 @@ abstract class BaseServerSpec(isSecure: Boolean) extends Specification {
   val service: HttpService = { request =>
     request.url match {
       case "/hello" => Future.successful(RouteAction.Ok(helloWorld))
-      case "/headers" => Future.successful {
-        val str = request.headers
-          .filter(_._1.startsWith("special"))
-          .foldLeft("") { case (acc, (k, v)) => acc + s"$k: $v\n" }
+      case "/headers" =>
+        Future.successful {
+          val str = request.headers
+            .filter(_._1.startsWith("special"))
+            .foldLeft("") { case (acc, (k, v)) => acc + s"$k: $v\n" }
 
-        RouteAction.Ok(str)
-      }
+          RouteAction.Ok(str)
+        }
 
-      case "/streaming" => Future.successful {
-        var remaining = 1000
-        RouteAction.Streaming(200, "OK", Nil) {
-          if (remaining == 0) Future.successful(BufferTools.emptyBuffer)
-          else {
-            remaining -= 1
-            Future.successful(StandardCharsets.UTF_8.encode(s"remaining: $remaining\n"))
+      case "/streaming" =>
+        Future.successful {
+          var remaining = 1000
+          RouteAction.Streaming(200, "OK", Nil) {
+            if (remaining == 0) Future.successful(BufferTools.emptyBuffer)
+            else {
+              remaining -= 1
+              Future.successful(StandardCharsets.UTF_8.encode(s"remaining: $remaining\n"))
+            }
           }
         }
-      }
 
-      case "/post" if request.method == "POST" => request.body.accumulate().map { bytes =>
-        val body = StandardCharsets.UTF_8.decode(bytes).toString
-        RouteAction.Ok(s"You posted: $body")
-      }
+      case "/post" if request.method == "POST" =>
+        request.body.accumulate().map { bytes =>
+          val body = StandardCharsets.UTF_8.decode(bytes).toString
+          RouteAction.Ok(s"You posted: $body")
+        }
 
-      case "/echo" if request.method == "POST" => Future.successful {
-        RouteAction.Streaming(200, "OK", Nil)(request.body())
-      }
+      case "/echo" if request.method == "POST" =>
+        Future.successful {
+          RouteAction.Streaming(200, "OK", Nil)(request.body())
+        }
 
       case url => Future.successful(RouteAction.Ok(s"url: $url"))
     }
@@ -83,7 +87,9 @@ abstract class BaseServerSpec(isSecure: Boolean) extends Specification {
       newServer(service) { address =>
         val Response(resp, body) = client.runGet(makeUrl(address, "/hello"))
         new String(body, StandardCharsets.UTF_8) must_== helloWorld
-        val clen = resp.headers.collectFirst { case (k, v) if k.equalsIgnoreCase("content-length") => v }
+        val clen = resp.headers.collectFirst {
+          case (k, v) if k.equalsIgnoreCase("content-length") => v
+        }
         clen must beSome(helloWorld.length.toString)
       }
     }
@@ -98,9 +104,11 @@ abstract class BaseServerSpec(isSecure: Boolean) extends Specification {
 
     "stream a response body" in {
       newServer(service) { address =>
-        val Response(_,body) = client.runGet(makeUrl(address, "/streaming"))
+        val Response(_, body) = client.runGet(makeUrl(address, "/streaming"))
         val responseString = new String(body, StandardCharsets.UTF_8)
-        responseString must_== (0 until 1000).foldRight(""){ (remaining, acc) => acc + s"remaining: $remaining\n" }
+        responseString must_== (0 until 1000).foldRight("") { (remaining, acc) =>
+          acc + s"remaining: $remaining\n"
+        }
       }
     }
 

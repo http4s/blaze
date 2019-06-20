@@ -8,7 +8,8 @@ import org.http4s.blaze.http.http2.mocks.MockFrameListener
 
 private[http2] object ProtocolFrameDecoder {
 
-  private[this] class Listener(inHeaderSequence: Boolean) extends MockFrameListener(inHeaderSequence) {
+  private[this] class Listener(inHeaderSequence: Boolean)
+      extends MockFrameListener(inHeaderSequence) {
     var frame: ProtocolFrame = ProtocolFrame.Empty
 
     override def onGoAwayFrame(lastStream: Int, errorCode: Long, debugData: Array[Byte]): Result = {
@@ -29,9 +30,9 @@ private[http2] object ProtocolFrameDecoder {
   }
 
   def decode(
-    buffer: ByteBuffer,
-    inHeadersSequence: Boolean = false,
-    maxFrameSize: Int = Http2Settings.default.maxFrameSize
+      buffer: ByteBuffer,
+      inHeadersSequence: Boolean = false,
+      maxFrameSize: Int = Http2Settings.default.maxFrameSize
   ): ProtocolFrame = {
     val listener = new Listener(inHeadersSequence)
     val decoder = new FrameDecoder(toSettings(maxFrameSize), listener)
@@ -43,8 +44,7 @@ private[http2] object ProtocolFrameDecoder {
     }
   }
 
-  private[this] def toSettings(maxFrameSize: Int): Http2Settings = {
+  private[this] def toSettings(maxFrameSize: Int): Http2Settings =
     if (maxFrameSize == Http2Settings.default.maxFrameSize) Http2Settings.default
     else Http2Settings.default.copy(maxFrameSize = maxFrameSize)
-  }
 }

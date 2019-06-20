@@ -259,42 +259,42 @@ private final class NIO1SocketServerGroup private (
   private[this] def handleClientChannel(
       clientChannel: SocketChannel,
       service: SocketPipelineBuilder
-  ): Unit = try {
-    clientChannel.configureBlocking(false)
-    channelOptions.applyToChannel(clientChannel)
+  ): Unit =
+    try {
+      clientChannel.configureBlocking(false)
+      channelOptions.applyToChannel(clientChannel)
 
-    val address = clientChannel.getRemoteAddress
-    val loop = selectorPool.nextLoop()
-    val conn = NIO1Connection(clientChannel)
+      val address = clientChannel.getRemoteAddress
+      val loop = selectorPool.nextLoop()
+      val conn = NIO1Connection(clientChannel)
 
-    // From within the selector loop, constructs a pipeline or
-    // just closes the socket if the pipeline builder rejects it.
-    def fromKey(key: SelectionKey): Selectable = {
-      val head = new NIO1HeadStage(clientChannel, loop, key)
-      service(conn).onComplete {
-        case Success(tail) =>
-          tail.base(head)
-          head.inboundCommand(Command.Connected)
-          logger.info(s"Accepted connection from $address")
+      // From within the selector loop, constructs a pipeline or
+      // just closes the socket if the pipeline builder rejects it.
+      def fromKey(key: SelectionKey): Selectable = {
+        val head = new NIO1HeadStage(clientChannel, loop, key)
+        service(conn).onComplete {
+          case Success(tail) =>
+            tail.base(head)
+            head.inboundCommand(Command.Connected)
+            logger.info(s"Accepted connection from $address")
 
-        case Failure(ex) =>
-          // Service rejection isn't a network failure, so we close with None
-          head.close(None)
-          logger.info(ex)(s"Rejected connection from $address")
-      }(loop)
+          case Failure(ex) =>
+            // Service rejection isn't a network failure, so we close with None
+            head.close(None)
+            logger.info(ex)(s"Rejected connection from $address")
+        }(loop)
 
-      head
-    }
-
-    loop.initChannel(NIO1Channel(clientChannel), fromKey)
-  }
-  catch {
-    case NonFatal(t) =>
-      logger.error(t)("Error handling client channel. Closing.")
-      try clientChannel.close()
-      catch {
-        case NonFatal(t2) =>
-          logger.error(t2)("Error closing client channel after error")
+        head
       }
-  }
+
+      loop.initChannel(NIO1Channel(clientChannel), fromKey)
+    } catch {
+      case NonFatal(t) =>
+        logger.error(t)("Error handling client channel. Closing.")
+        try clientChannel.close()
+        catch {
+          case NonFatal(t2) =>
+            logger.error(t2)("Error closing client channel after error")
+        }
+    }
 }

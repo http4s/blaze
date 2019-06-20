@@ -15,7 +15,8 @@ class SessionFrameListenerSpec extends Specification {
 
   private class MockTools(isClient: Boolean) extends mocks.MockTools(isClient) {
     lazy val headerDecoder: HeaderDecoder =
-      new HeaderDecoder(localSettings.maxHeaderListSize,
+      new HeaderDecoder(
+        localSettings.maxHeaderListSize,
         true, // discard overflow headers
         localSettings.headerTableSize)
 
@@ -52,7 +53,9 @@ class SessionFrameListenerSpec extends Specification {
       "initiate a new stream for idle inbound stream (server)" >> {
         val head = new BasicTail[StreamFrame]("")
         val tools = new MockTools(isClient = false) {
-          override lazy val newInboundStream = Some { _: Int => LeafBuilder(head) }
+          override lazy val newInboundStream = Some { _: Int =>
+            LeafBuilder(head)
+          }
         }
 
         tools.streamManager.get(1) must beNone
@@ -97,9 +100,9 @@ class SessionFrameListenerSpec extends Specification {
           var hss: Headers = Nil
           override lazy val streamManager = new MockStreamManager() {
             override def handlePushPromise(
-              streamId: Int,
-              promisedId: Int,
-              headers: Headers
+                streamId: Int,
+                promisedId: Int,
+                headers: Headers
             ) = {
               sId = streamId
               pId = promisedId
@@ -228,9 +231,8 @@ class SessionFrameListenerSpec extends Specification {
         val tools = new MockTools(true) {
           var observedAck: Option[Array[Byte]] = None
           override lazy val pingManager = new PingManager(this) {
-            override def pingAckReceived(data: Array[Byte]): Unit = {
+            override def pingAckReceived(data: Array[Byte]): Unit =
               observedAck = Some(data)
-            }
           }
         }
         val data = (0 until 8).map(_.toByte).toArray
@@ -259,17 +261,13 @@ class SessionFrameListenerSpec extends Specification {
         val tools = new MockTools(true) {
           var observedGoAway: Option[(Int, Http2SessionException)] = None
           override def invokeGoAway(
-            lastHandledOutboundStream: Int,
-            reason: Http2SessionException
-          ): Unit = {
+              lastHandledOutboundStream: Int,
+              reason: Http2SessionException
+          ): Unit =
             observedGoAway = Some(lastHandledOutboundStream -> reason)
-          }
         }
 
-        tools.frameListener.onGoAwayFrame(
-          1,
-          NO_ERROR.code,
-          "lol".getBytes(StandardCharsets.UTF_8)) must_== Continue
+        tools.frameListener.onGoAwayFrame(1, NO_ERROR.code, "lol".getBytes(StandardCharsets.UTF_8)) must_== Continue
 
         tools.observedGoAway must beLike {
           case Some((1, Http2SessionException(NO_ERROR.code, "lol"))) => ok

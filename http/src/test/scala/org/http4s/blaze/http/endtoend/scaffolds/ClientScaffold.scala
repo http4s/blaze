@@ -15,7 +15,8 @@ private[endtoend] abstract class ClientScaffold(majorVersion: Int, minorVersion:
   def runRequest(request: HttpRequest): Response
 
   final def runGet(url: String, headers: Headers = Nil): Response = {
-    val request = HttpRequest("GET", url, majorVersion, minorVersion, headers, BodyReader.EmptyBodyReader)
+    val request =
+      HttpRequest("GET", url, majorVersion, minorVersion, headers, BodyReader.EmptyBodyReader)
     runRequest(request)
   }
 

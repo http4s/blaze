@@ -312,6 +312,7 @@ sealed trait Head[O] extends Stage {
 trait TailStage[I] extends Tail[I]
 
 trait HeadStage[O] extends Head[O] {
+
   /** Close the channel with an error
     *
     * @note EOF is a valid error to close the channel with and signals normal termination.

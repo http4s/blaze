@@ -13,8 +13,8 @@ import org.http4s.blaze.util.Actor.DefaultMaxIterations
   * is very undesirable for this library.
   */
 private[blaze] abstract class Actor[M](
-  ec: ExecutionContext,
-  maxTasksBeforeReschedule: Int = DefaultMaxIterations
+    ec: ExecutionContext,
+    maxTasksBeforeReschedule: Int = DefaultMaxIterations
 ) {
   require(maxTasksBeforeReschedule > 0)
 

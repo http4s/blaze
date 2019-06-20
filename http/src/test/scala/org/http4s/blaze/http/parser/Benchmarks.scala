@@ -11,13 +11,13 @@ class Benchmarks extends Specification {
 
   val request = "POST /enlighten/calais.asmx HTTP/1.1\r\n"
 
-  val headers =  "From: someuser@jmarshall.com  \r\n" +
+  val headers = "From: someuser@jmarshall.com  \r\n" +
     "HOST: www.foo.com\r\n" +
     "User-Agent: HTTPTool/1.0  \r\n" +
     "Some-Header\r\n" +
     "\r\n"
 
-  val body    = "hello world"
+  val body = "hello world"
   val chunked = "Transfer-Encoding: chunked\r\n"
 
   val mockChunked = request + chunked + headers + toChunk(body) + toChunk(", " + body + " again!") + "0 \r\n" + "\r\n"
@@ -47,7 +47,7 @@ class Benchmarks extends Specification {
     }
     val end = System.currentTimeMillis()
 
-    if (end - start > 0) println(s"Parsed ${i/(end - start)}K req/sec")
+    if (end - start > 0) println(s"Parsed ${i / (end - start)}K req/sec")
     else println("Result to fast to give accurate performance measurement")
   }
 
@@ -65,10 +65,9 @@ class Benchmarks extends Specification {
         b
       }
 
-      override def headerComplete(name: String, value: String): Boolean = {
+      override def headerComplete(name: String, value: String): Boolean =
         //println(s"Header($name, $value)")
         super.headerComplete(name, value)
-      }
 
       //      override def submitRequestLine(methodString: String, uri: String, scheme: String, majorversion: Int, minorversion: Int): Unit = {
       //        println(s"Request($methodString, $uri, $scheme/$majorversion.$minorversion)")
@@ -76,20 +75,18 @@ class Benchmarks extends Specification {
       //      }
     }
 
-
     val b = ByteBuffer.wrap(mockChunked.getBytes(StandardCharsets.UTF_8))
     val blim = b.limit()
     val reconstructed = body + ", " + body + " again!"
 
-    def iteration(remaining: Int): Unit =  {
+    def iteration(remaining: Int): Unit = {
       b.position(0)
 
       if (remaining % 250000 == 0) println(s"Iteration $remaining")
 
       b.limit(blim - 20)
 
-
-      assert(p.parseLine(b))// should equal(true)
+      assert(p.parseLine(b)) // should equal(true)
       assert(p.requestLineComplete())
 
       p.parseheaders(b) //should equal(true)
