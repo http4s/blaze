@@ -28,7 +28,8 @@ private[http2] class MockStreamManager() extends StreamManager {
 
   override def get(streamId: Int): Option[StreamState] = None
 
-  override def drain(lastHandledOutboundStream: Int, reason: Http2SessionException): Future[Unit] = ???
+  override def drain(lastHandledOutboundStream: Int, reason: Http2SessionException): Future[Unit] =
+    ???
 
   override def rstStream(cause: Http2StreamException): MaybeError = Continue
 
@@ -36,4 +37,3 @@ private[http2] class MockStreamManager() extends StreamManager {
 
   override def isEmpty: Boolean = ???
 }
-

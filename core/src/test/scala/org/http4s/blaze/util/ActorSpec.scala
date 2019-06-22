@@ -20,7 +20,7 @@ class ActorSpec extends Specification {
     override protected def act(message: Msg): Unit = message match {
       case OptMsg(Some(-1)) => throw E("Fail.")
       case OptMsg(Some(_)) => ???
-      case OptMsg(None)   => ()
+      case OptMsg(None) => ()
       case Continuation(f) =>
         f("Completed")
         ()
@@ -41,15 +41,17 @@ class ActorSpec extends Specification {
         latch.countDown()
       }, global)
 
-      for(_ <- 0 until senders) {
+      for (_ <- 0 until senders) {
         global.execute(new Runnable {
           override def run(): Unit = for (_ <- 0 until messages) {
-            a ! Continuation { _ => latch.countDown() }
+            a ! Continuation { _ =>
+              latch.countDown()
+            }
           }
         })
       }
 
-      latch.await(15, TimeUnit.SECONDS)  must beTrue
+      latch.await(15, TimeUnit.SECONDS) must beTrue
       if (flag.get != null) {
         throw flag.get
       }
@@ -93,20 +95,18 @@ class ActorSpec extends Specification {
       implicit val ec = Execution.trampoline
 
       lazy val a1: Actor[Int] = new Actor[Int](ec) {
-        override protected def act(i: Int): Unit = {
+        override protected def act(i: Int): Unit =
           if (i == 0) latch.countDown()
-          else  a2 ! (i - 1)
-        }
+          else a2 ! (i - 1)
       }
 
       lazy val a2: Actor[Int] = new Actor[Int](ec) {
-        override protected def act(i: Int): Unit = {
+        override protected def act(i: Int): Unit =
           if (i == 0) latch.countDown()
-          else  a2 ! (i - 1)
-        }
+          else a2 ! (i - 1)
       }
 
-      a1 ! 100000    // start
+      a1 ! 100000 // start
       latch.await(15, TimeUnit.SECONDS) must beTrue
     }
   }
@@ -116,7 +116,7 @@ class ActorSpec extends Specification {
       val latch = new CountDownLatch(1)
 
       actor(_ => ???, global) ! Continuation(_ => latch.countDown())
-      latch.await(10, TimeUnit.SECONDS)  must beTrue
+      latch.await(10, TimeUnit.SECONDS) must beTrue
     }
 
     "Deal with exceptions properly" in {

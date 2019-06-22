@@ -26,7 +26,7 @@ class ByteToObjectStageSpec extends Specification {
         case Two(short) => b.putShort(short)
       }
       b.flip
-      b::Nil
+      b :: Nil
     }
 
     def bufferToMessage(in: ByteBuffer): Option[Msg] = {
@@ -60,7 +60,6 @@ class ByteToObjectStageSpec extends Specification {
     b.put(1.toByte).putShort(2.toShort).flip()
     b
   }
-
 
   def buildPipeline(buffs: Seq[ByteBuffer]): MsgCodec = {
     val head = new SeqHead(buffs)
@@ -106,7 +105,7 @@ class ByteToObjectStageSpec extends Specification {
     }
 
     "Decode a series of buffers" in {
-      val c = buildPipeline(oneBuffer::twoBuffer::Nil)
+      val c = buildPipeline(oneBuffer :: twoBuffer :: Nil)
       Await.result(c.readRequest(-1), 2.seconds) should_== One(1)
       Await.result(c.readRequest(-1), 2.seconds) should_== Two(2)
     }
@@ -116,7 +115,7 @@ class ByteToObjectStageSpec extends Specification {
       b.put(oneBuffer).put(twoBuffer)
       b.flip()
 
-      val c = buildPipeline(b::Nil)
+      val c = buildPipeline(b :: Nil)
       Await.result(c.readRequest(-1), 2.seconds) should_== One(1)
       Await.result(c.readRequest(-1), 2.seconds) should_== Two(2)
     }
@@ -125,7 +124,7 @@ class ByteToObjectStageSpec extends Specification {
       val b = ByteBuffer.allocate(oneBuffer.remaining() + twoBuffer.remaining())
       b.put(oneBuffer).put(twoBuffer)
 
-      val buffs = b.array().map{ byte =>
+      val buffs = b.array().map { byte =>
         val b = ByteBuffer.allocate(1)
         b.put(byte).flip()
         b

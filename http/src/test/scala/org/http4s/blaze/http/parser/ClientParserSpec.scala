@@ -5,22 +5,23 @@ import org.specs2.mutable._
 import java.nio.charset.StandardCharsets.ISO_8859_1
 import scala.collection.mutable.ListBuffer
 import java.nio.ByteBuffer
-import org.http4s.blaze.http.parser.BaseExceptions.{InvalidState, BadMessage}
+import org.http4s.blaze.http.parser.BaseExceptions.{BadMessage, InvalidState}
 
 class ClientParserSpec extends Specification {
 
   val resp = "HTTP/1.1 200 OK\r\n"
 
-  val l_headers = ("From", "someuser@jmarshall.com  ")::
-    ("HOST", "www.foo.com")::
-    ("User-Agent", "HTTPTool/1.0  ")::
-    ("Some-Header", "")::Nil
+  val l_headers = ("From", "someuser@jmarshall.com  ") ::
+    ("HOST", "www.foo.com") ::
+    ("User-Agent", "HTTPTool/1.0  ") ::
+    ("Some-Header", "") :: Nil
 
-  val l_headersstr = l_headers.map{ case (a, b) => a + (if(b.length > 0) {": " + b} else "")}
+  val l_headersstr = l_headers
+    .map { case (a, b) => a + (if (b.length > 0) { ": " + b } else "") }
     .mkString("\r\n") + "\r\n\r\n"
 
   val body = "Hello world!"
-  
+
   val content_length = s"Content-Length: ${body.length}\r\n"
 
   def wrap(bytes: Array[Byte]) = ByteBuffer.wrap(bytes)
@@ -35,7 +36,12 @@ class ClientParserSpec extends Specification {
 
     def parseResponse(b: ByteBuffer) = this.parseResponseLine(b)
 
-    def submitResponseLine(code: Int, reason: String, scheme: String, majorversion: Int, minorversion: Int): Unit = {
+    def submitResponseLine(
+        code: Int,
+        reason: String,
+        scheme: String,
+        majorversion: Int,
+        minorversion: Int): Unit = {
       this.code = code
       this.reason = reason
       this.scheme = scheme
@@ -120,7 +126,7 @@ class ClientParserSpec extends Specification {
       val badLf = "HTTP/1.1 200 OK\r\r\n"
       p.parseResponse(wrap(badLf.getBytes(ISO_8859_1))) should throwA[BadMessage]
     }
-    
+
     "not fail on missing reason" in {
       val p = new TestParser
       val missingReason = "HTTP/1.1 200 \r\n"
@@ -128,7 +134,7 @@ class ClientParserSpec extends Specification {
       p.responseLineComplete() should_== true
       p.code should_== 200
       p.reason should_== ""
-      
+
       p.reset()
       val missingReasonAndSpace = "HTTP/1.1 200\r\n"
       p.parseResponse(wrap(missingReasonAndSpace.getBytes(ISO_8859_1))) should_== true
@@ -144,7 +150,6 @@ class ClientParserSpec extends Specification {
       p.parseResponse(wrap(resp.getBytes(ISO_8859_1))) should throwA[InvalidState]
     }
 
-
     "Parse headers" in {
       val p = new TestParser
       val msg = resp + l_headersstr
@@ -158,10 +163,12 @@ class ClientParserSpec extends Specification {
       p.parseheaders(bts) should_== (true)
       p.headersComplete() should_== (true)
 
-      val stripedh = l_headers.map{ case (a, b) => (a.trim, b.trim) }
-      p.headers.foldLeft(true){ (a, b) => a && stripedh.contains(b) } should_==(true)
+      val stripedh = l_headers.map { case (a, b) => (a.trim, b.trim) }
+      p.headers.foldLeft(true) { (a, b) =>
+        a && stripedh.contains(b)
+      } should_== (true)
     }
-    
+
     "Parse a body with defined length" in {
       val p = new TestParser
       val full = resp + content_length + l_headersstr + body
@@ -173,38 +180,38 @@ class ClientParserSpec extends Specification {
       p.parseResponse(bts) should_== (true)
       p.parseheaders(bts) should_== (true)
 
-      p.contentComplete() should_==(false)
+      p.contentComplete() should_== (false)
 
       val out = p.parsebody(bts)
-      out.remaining() should_==(body.length)
+      out.remaining() should_== (body.length)
 
-      ISO_8859_1.decode(out).toString should_==(body)
+      ISO_8859_1.decode(out).toString should_== (body)
     }
 
     "Parse a chunked body" in {
 
       val p = new TestParser
       val full = resp + "Transfer-Encoding: chunked\r\n" + l_headersstr +
-                  Integer.toHexString(body.length) + "\r\n" +
-                  body + "\r\n" +
-                  "0\r\n" +
-                  "\r\n"
+        Integer.toHexString(body.length) + "\r\n" +
+        body + "\r\n" +
+        "0\r\n" +
+        "\r\n"
 
       val bts = wrap(full.getBytes(ISO_8859_1))
 
       p.parseResponse(bts) should_== (true)
       p.parseheaders(bts) should_== (true)
 
-      p.contentComplete() should_==(false)
+      p.contentComplete() should_== (false)
 
       val out = p.parsebody(bts)
-      out.remaining() should_==(body.length)
+      out.remaining() should_== (body.length)
 
-      p.contentComplete() should_==(false)
-      p.parsebody(bts).remaining() should_==(0)
-      p.contentComplete() should_==(true)
+      p.contentComplete() should_== (false)
+      p.parsebody(bts).remaining() should_== (0)
+      p.contentComplete() should_== (true)
 
-      ISO_8859_1.decode(out).toString should_==(body)
+      ISO_8859_1.decode(out).toString should_== (body)
     }
 
     "Parse a body with without Content-Length or Transfer-Encoding" in {
@@ -216,14 +223,14 @@ class ClientParserSpec extends Specification {
       p.parseResponse(bts) should_== (true)
       p.parseheaders(bts) should_== (true)
 
-      p.contentComplete() should_==(false)
+      p.contentComplete() should_== (false)
 
       val out = p.parsebody(bts)
-      out.remaining() should_==(body.length)
+      out.remaining() should_== (body.length)
 
-      p.contentComplete() should_==(false)
+      p.contentComplete() should_== (false)
 
-      ISO_8859_1.decode(out).toString should_==(body)
+      ISO_8859_1.decode(out).toString should_== (body)
     }
 
     "Parse a body with a Content-Length and `Transfer-Encoding: identity` header" in {
@@ -234,14 +241,14 @@ class ClientParserSpec extends Specification {
       p.parseResponse(bts) should_== (true)
       p.parseheaders(bts) should_== (true)
 
-      p.contentComplete() should_==(false)
+      p.contentComplete() should_== (false)
 
       val out = p.parsebody(bts)
-      out.remaining() should_==(body.length)
+      out.remaining() should_== (body.length)
 
-      p.contentComplete() should_==(true)
+      p.contentComplete() should_== (true)
 
-      ISO_8859_1.decode(out).toString should_==(body)
+      ISO_8859_1.decode(out).toString should_== (body)
     }
   }
 

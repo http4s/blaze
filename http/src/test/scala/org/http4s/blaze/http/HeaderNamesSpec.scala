@@ -2,7 +2,6 @@ package org.http4s.blaze.http
 
 import org.specs2.mutable.Specification
 
-
 class HeaderNamesSpec extends Specification {
 
   "HeaderNames.validH2HeaderKey" should {

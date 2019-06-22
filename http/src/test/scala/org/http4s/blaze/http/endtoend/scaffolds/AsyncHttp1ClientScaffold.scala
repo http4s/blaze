@@ -12,11 +12,13 @@ import scala.concurrent.duration.Duration
   *
   * @param timeout timeout for request. Must be finite and greater than 0
   */
-private[endtoend] final class AsyncHttp1ClientScaffold(timeout: Duration) extends ClientScaffold(1, 1) {
+private[endtoend] final class AsyncHttp1ClientScaffold(timeout: Duration)
+    extends ClientScaffold(1, 1) {
   require(timeout.isFinite && timeout.length > 0)
 
   private val client = Dsl.asyncHttpClient(
-    Dsl.config()
+    Dsl
+      .config()
       .setMaxConnections(500)
       .setMaxConnectionsPerHost(200)
       .setPooledConnectionIdleTimeout(100)
@@ -35,8 +37,9 @@ private[endtoend] final class AsyncHttp1ClientScaffold(timeout: Duration) extend
     val requestBuilder = new RequestBuilder()
     requestBuilder.setUrl(request.url)
     requestBuilder.setMethod(request.method)
-    request.headers.foreach { case (k, v) =>
-      requestBuilder.setHeader(k, v)
+    request.headers.foreach {
+      case (k, v) =>
+        requestBuilder.setHeader(k, v)
     }
 
     requestBuilder.setBody(body)
@@ -53,14 +56,13 @@ private[endtoend] final class AsyncHttp1ClientScaffold(timeout: Duration) extend
   }
 
   // Not afraid to block: this is for testing.
-  private[this] def runAsyncHttpRequest(request: Request): Response = {
-    client.prepareRequest(request)
+  private[this] def runAsyncHttpRequest(request: Request): Response =
+    client
+      .prepareRequest(request)
       .execute()
       .toCompletableFuture
       .get(timeout.toMillis, TimeUnit.MILLISECONDS)
-  }
 
-  def close(): Unit = {
+  def close(): Unit =
     client.close()
-  }
 }

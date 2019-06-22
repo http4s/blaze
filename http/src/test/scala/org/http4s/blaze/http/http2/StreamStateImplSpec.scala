@@ -22,7 +22,9 @@ class StreamStateImplSpec extends Specification {
             sessionConsumed += consumed
             ()
           }
-          override protected def onStreamBytesConsumed(stream: StreamFlowWindow, consumed: Int): Unit = {
+          override protected def onStreamBytesConsumed(
+              stream: StreamFlowWindow,
+              consumed: Int): Unit = {
             streamConsumed += consumed
             ()
           }
@@ -44,7 +46,7 @@ class StreamStateImplSpec extends Specification {
 
       val f = streamState.writeRequest(DataFrame(true, BufferTools.emptyBuffer))
 
-      tools.writeController.observedInterests.result must_== streamState::Nil
+      tools.writeController.observedInterests.result must_== streamState :: Nil
       tools.writeController.observedInterests.clear()
       f.isCompleted must beFalse
     }
@@ -55,7 +57,7 @@ class StreamStateImplSpec extends Specification {
 
       val f = streamState.writeRequest(DataFrame(true, BufferTools.emptyBuffer))
 
-      tools.writeController.observedInterests.result must_== streamState::Nil
+      tools.writeController.observedInterests.result must_== streamState :: Nil
       tools.writeController.observedInterests.clear()
       f.isCompleted must beFalse
 
@@ -69,7 +71,7 @@ class StreamStateImplSpec extends Specification {
 
       val f1 = streamState.writeRequest(DataFrame(true, BufferTools.emptyBuffer))
       f1.isCompleted must beFalse
-      tools.writeController.observedInterests.result must_== streamState::Nil
+      tools.writeController.observedInterests.result must_== streamState :: Nil
 
       val currentSize = tools.writeController.observedWrites.length
 
@@ -81,7 +83,6 @@ class StreamStateImplSpec extends Specification {
           case other => ko(s"Should have closed everything down: $other")
         }
       }
-
 
       tools.streamManager.finishedStreams.dequeue() must_== streamState
       // Should have written a RST frame
@@ -175,7 +176,10 @@ class StreamStateImplSpec extends Specification {
       streamConsumed must beEmpty
 
       // We should count the flow bytes size, not the actual buffer size
-      streamState.invokeInboundData(endStream = false, data = BufferTools.allocate(1), flowBytes = 1) must_== Continue
+      streamState.invokeInboundData(
+        endStream = false,
+        data = BufferTools.allocate(1),
+        flowBytes = 1) must_== Continue
 
       streamConsumed.dequeue() must_== 1
     }
@@ -189,7 +193,10 @@ class StreamStateImplSpec extends Specification {
       streamState.readRequest(1).isCompleted must beTrue // headers
 
       // We should count the flow bytes size, not the actual buffer size
-      streamState.invokeInboundData(endStream = false, data = BufferTools.allocate(1), flowBytes = 1)
+      streamState.invokeInboundData(
+        endStream = false,
+        data = BufferTools.allocate(1),
+        flowBytes = 1)
 
       // Haven't consumed the data yet
       streamConsumed.isEmpty must beTrue
@@ -206,7 +213,8 @@ class StreamStateImplSpec extends Specification {
 
       tools.sessionFlowControl.sessionInboundAcked(10)
 
-      assert(streamState.flowWindow.streamInboundWindow < tools.sessionFlowControl.sessionInboundWindow)
+      assert(
+        streamState.flowWindow.streamInboundWindow < tools.sessionFlowControl.sessionInboundWindow)
 
       // Need to open the stream
       streamState.invokeInboundHeaders(Priority.NoPriority, false, Seq.empty) must_== Continue
@@ -216,7 +224,8 @@ class StreamStateImplSpec extends Specification {
         endStream = false,
         data = BufferTools.emptyBuffer,
         flowBytes = streamState.flowWindow.streamInboundWindow + 1) must beLike {
-        case Error(ex: Http2SessionException) => ex.code must_== Http2Exception.FLOW_CONTROL_ERROR.code
+        case Error(ex: Http2SessionException) =>
+          ex.code must_== Http2Exception.FLOW_CONTROL_ERROR.code
       }
     }
 
@@ -229,7 +238,8 @@ class StreamStateImplSpec extends Specification {
 
       streamState.flowWindow.streamInboundAcked(10)
 
-      assert(streamState.flowWindow.streamInboundWindow > tools.sessionFlowControl.sessionInboundWindow)
+      assert(
+        streamState.flowWindow.streamInboundWindow > tools.sessionFlowControl.sessionInboundWindow)
 
       // Need to open the stream
       streamState.invokeInboundHeaders(Priority.NoPriority, false, Seq.empty) must_== Continue
@@ -239,7 +249,8 @@ class StreamStateImplSpec extends Specification {
         endStream = false,
         data = BufferTools.emptyBuffer,
         flowBytes = tools.sessionFlowControl.sessionInboundWindow + 1) must beLike {
-        case Error(ex: Http2SessionException) => ex.code must_== Http2Exception.FLOW_CONTROL_ERROR.code
+        case Error(ex: Http2SessionException) =>
+          ex.code must_== Http2Exception.FLOW_CONTROL_ERROR.code
       }
     }
 

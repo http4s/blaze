@@ -7,7 +7,6 @@ import scala.concurrent.Await
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration._
 
-
 class HttpClientSpec extends Specification {
 
   val client = HttpClient.pooledHttpClient
@@ -18,7 +17,9 @@ class HttpClientSpec extends Specification {
       val path = "https://github.com/"
       val hs = Seq("host" -> "github.com")
 
-      val f = client.GET(path, hs){ r => ClientResponse.stringBody(r).map((_, r.code)) }
+      val f = client.GET(path, hs) { r =>
+        ClientResponse.stringBody(r).map((_, r.code))
+      }
       val (body, code) = Await.result(f, 10.seconds)
       println(s"Body: $body")
       code must_== 200

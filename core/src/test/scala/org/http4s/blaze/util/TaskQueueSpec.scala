@@ -56,13 +56,12 @@ class TaskQueueSpec extends Specification {
       val count = new AtomicInteger(0)
 
       class SelfEqueuer(remaining: Int) extends Runnable {
-        override def run(): Unit = {
+        override def run(): Unit =
           if (0 < remaining) {
             count.incrementAndGet()
             q.enqueueTask(new SelfEqueuer(remaining - 1))
             ()
           }
-        }
       }
 
       q.enqueueTask(new SelfEqueuer(10))

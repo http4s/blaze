@@ -4,10 +4,10 @@ import org.http4s.blaze.http.http2.{SessionCore, SessionFlowControlImpl, StreamF
 
 /** Extends the [[SessionFlowControlImpl]] class but makes a couple critical methods no-ops */
 private[http2] class ObservingSessionFlowControl(
-  session: SessionCore
+    session: SessionCore
 ) extends SessionFlowControlImpl(
-  session = session,
-  flowStrategy = null /* only used on two overridden methods */) {
+      session = session,
+      flowStrategy = null /* only used on two overridden methods */ ) {
   override protected def onSessonBytesConsumed(consumed: Int): Unit = ()
   override protected def onStreamBytesConsumed(stream: StreamFlowWindow, consumed: Int): Unit = ()
 }

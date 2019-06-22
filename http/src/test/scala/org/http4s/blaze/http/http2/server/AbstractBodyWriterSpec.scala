@@ -39,7 +39,7 @@ class AbstractBodyWriterSpec extends Specification {
       failedReason = Some(cause)
     }
 
-    override protected def flushMessage(msg: StreamFrame): Future[Unit] = flushMessage(msg::Nil)
+    override protected def flushMessage(msg: StreamFrame): Future[Unit] = flushMessage(msg :: Nil)
 
     override protected def flushMessage(msg: Seq[StreamFrame]): Future[Unit] = {
       assert(flushed.isEmpty)

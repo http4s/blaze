@@ -39,13 +39,11 @@ private[http2] class MockTools(isClient: Boolean) extends SessionCore {
 
   var drainGracePeriod: Option[Duration] = None
 
-  override def invokeDrain(gracePeriod: Duration): Unit = {
+  override def invokeDrain(gracePeriod: Duration): Unit =
     drainGracePeriod = Some(gracePeriod)
-  }
 
-  override def invokeGoAway(lastHandledOutboundStream: Int, reason: Http2SessionException): Unit = ???
+  override def invokeGoAway(lastHandledOutboundStream: Int, reason: Http2SessionException): Unit =
+    ???
 
   override def invokeShutdownWithError(ex: Option[Throwable], phase: String): Unit = ???
 }
-
-

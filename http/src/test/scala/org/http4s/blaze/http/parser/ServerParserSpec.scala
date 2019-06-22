@@ -6,14 +6,15 @@ import org.specs2.mutable._
 
 import java.nio.ByteBuffer
 import org.http4s.blaze.http.parser.BodyAndHeaderParser.EndOfContent
-import org.http4s.blaze.http.parser.BaseExceptions.{InvalidState, BadMessage}
+import org.http4s.blaze.http.parser.BaseExceptions.{BadMessage, InvalidState}
 import scala.collection.mutable.ListBuffer
 
 class ServerParserSpec extends Specification {
 
   implicit def strToBuffer(str: String) = ByteBuffer.wrap(str.getBytes(StandardCharsets.ISO_8859_1))
 
-  class Parser(maxReq: Int = 1034, maxHeader: Int = 1024) extends Http1ServerParser(maxReq, maxHeader, 1) {
+  class Parser(maxReq: Int = 1034, maxHeader: Int = 1024)
+      extends Http1ServerParser(maxReq, maxHeader, 1) {
 
     val sb = new StringBuilder
 
@@ -35,7 +36,12 @@ class ServerParserSpec extends Specification {
 
     var minorv = -1
 
-    def submitRequestLine(methodString: String, uri: String, scheme: String, majorversion: Int, minorversion: Int) = {
+    def submitRequestLine(
+        methodString: String,
+        uri: String,
+        scheme: String,
+        majorversion: Int,
+        minorversion: Int) = {
       //      println(s"$methodString, $uri, $scheme/$majorversion.$minorversion")
       minorv = minorversion
       false
@@ -50,25 +56,24 @@ class ServerParserSpec extends Specification {
 
   def toChunk(str: String): String = s"${Integer.toHexString(str.length)}\r\n${str}\r\n"
 
-
   val l_headers = ("From", "someuser@jmarshall.com  ") ::
     ("HOST", "www.foo.com") ::
     ("User-Agent", "HTTPTool/1.0  ") ::
     ("Some-Header", "") :: Nil
-
 
   val request = "POST /enlighten/calais.asmx HTTP/1.1\r\n"
   val host = "HOST: www.foo.com\r\n"
 
   val http10 = "GET /path/file.html HTTP/1.0\r\n"
 
-  def buildHeaderString(hs: Seq[(String, String)]): String = {
+  def buildHeaderString(hs: Seq[(String, String)]): String =
     hs.foldLeft(new StringBuilder) { (sb, h) =>
-      sb.append(h._1)
-      if (h._2.length > 0) sb.append(": " + h._2)
-      sb.append("\r\n")
-    }.append("\r\n").result
-  }
+        sb.append(h._1)
+        if (h._2.length > 0) sb.append(": " + h._2)
+        sb.append("\r\n")
+      }
+      .append("\r\n")
+      .result
 
   val headers = buildHeaderString(l_headers)
 
@@ -110,7 +115,6 @@ class ServerParserSpec extends Specification {
       p.parseLine("is.asmx HTTP/1.1\r\n") should_== (true)
     }
 
-
     "Parse the request line for HTTPS" in {
       val p = new Parser()
       p.parseLine("POST /enlighten/calais.asmx HTTPS/1.1\r\n") should_== (true)
@@ -146,7 +150,8 @@ class ServerParserSpec extends Specification {
       val p = new Parser()
       val line = "GET /enlighten/calais.asmx HTTPS/1.0\r\n"
       p.parseLine(line) must_== true
-      p.parseheaders(buildHeaderString(Seq("content-length" -> "1", "content-length" -> "2"))) should throwA[BadMessage]
+      p.parseheaders(buildHeaderString(Seq("content-length" -> "1", "content-length" -> "2"))) should throwA[
+        BadMessage]
     }
 
     "Match Http1.0 requests" in {
@@ -168,7 +173,7 @@ class ServerParserSpec extends Specification {
       p.parseLine(line)
       p.parseheaders(headers) should_== (true)
       p.getContentType should_== (EndOfContent.END)
-      p.h.result should_== (l_headers.map { case (a, b) => (a.trim, b.trim)})
+      p.h.result should_== (l_headers.map { case (a, b) => (a.trim, b.trim) })
     }
 
     "Fail on non-ascii char in header name" in {
@@ -199,7 +204,8 @@ class ServerParserSpec extends Specification {
     }
 
     "Accept headers without values" in {
-      val hsStr = "If-Modified-Since\r\nIf-Modified-Since:\r\nIf-Modified-Since: \r\nIf-Modified-Since:\t\r\n\r\n"
+      val hsStr =
+        "If-Modified-Since\r\nIf-Modified-Since:\r\nIf-Modified-Since: \r\nIf-Modified-Since:\t\r\n\r\n"
       val p = new Parser()
       p.parseheaders(hsStr) should_== (true)
       p.getContentType should_== (EndOfContent.END) // since the headers didn't indicate any content
@@ -210,7 +216,7 @@ class ServerParserSpec extends Specification {
       val p = new Parser()
       p.parseHeaders(headers.substring(0, 20)) should_== (false)
       p.parseheaders(headers.substring(20)) should_== (true)
-      p.h.result should_== (l_headers.map { case (a, b) => (a.trim, b.trim)})
+      p.h.result should_== (l_headers.map { case (a, b) => (a.trim, b.trim) })
     }
 
     "Parse a full request" in {
@@ -226,7 +232,6 @@ class ServerParserSpec extends Specification {
       p.parsecontent(b) should_!= (null)
       p.sb.result() should_== (body)
       p.contentComplete() should_== (true)
-
 
       p.reset()
       p.requestLineComplete() should_== (false)
@@ -311,7 +316,6 @@ class ServerParserSpec extends Specification {
       b.position(0)
       p.sb.clear()
 
-
       while (!p.requestLineComplete() && !p.parseLine(b)) {
         b.limit(b.limit() + 1)
       }
@@ -341,7 +345,6 @@ class ServerParserSpec extends Specification {
       b.limit(1)
       b.position(0)
       p.sb.clear()
-
 
       while (!p.requestLineComplete() && !p.parseLine(b)) {
         b.limit(b.limit() + 1)

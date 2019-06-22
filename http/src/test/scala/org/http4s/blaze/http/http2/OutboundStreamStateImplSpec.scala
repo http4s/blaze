@@ -55,7 +55,8 @@ class OutboundStreamStateImplSpec extends Specification {
       tools.drainGracePeriod must_== Some(Duration.Inf)
       streamManager.size must_== 0
       f.value must beLike {
-        case Some(Failure(ex: Http2StreamException)) => ex.code must_== Http2Exception.REFUSED_STREAM.code
+        case Some(Failure(ex: Http2StreamException)) =>
+          ex.code must_== Http2Exception.REFUSED_STREAM.code
       }
     }
 
@@ -66,7 +67,8 @@ class OutboundStreamStateImplSpec extends Specification {
       val f = streamState.writeRequest(HeadersFrame(Priority.NoPriority, true, Seq.empty))
       streamManager.size must_== 0
       f.value must beLike {
-        case Some(Failure(ex: Http2StreamException)) => ex.code must_== Http2Exception.REFUSED_STREAM.code
+        case Some(Failure(ex: Http2StreamException)) =>
+          ex.code must_== Http2Exception.REFUSED_STREAM.code
       }
     }
   }

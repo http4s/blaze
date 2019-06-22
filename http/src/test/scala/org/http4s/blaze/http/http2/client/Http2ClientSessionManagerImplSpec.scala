@@ -15,16 +15,19 @@ import scala.util.{Failure, Success}
 class Http2ClientSessionManagerImplSpec extends Specification {
   private val connectionId = ClientSessionManagerImpl.ConnectionId("https", "www.foo.com")
 
-  private val req = HttpRequest("GET", "https://www.foo.com/bar", 1, 1, Seq.empty, BodyReader.EmptyBodyReader)
+  private val req =
+    HttpRequest("GET", "https://www.foo.com/bar", 1, 1, Seq.empty, BodyReader.EmptyBodyReader)
 
-  private def cacheWithSession(session: Http2ClientSession): mutable.Map[String, Future[Http2ClientSession]] = {
+  private def cacheWithSession(
+      session: Http2ClientSession): mutable.Map[String, Future[Http2ClientSession]] = {
     val map = new mutable.HashMap[String, Future[Http2ClientSession]]()
     map.put(connectionId.authority, Future.successful(session))
 
     map
   }
 
-  private def managerWithCache(cache: mutable.Map[String, Future[Http2ClientSession]]): Http2ClientSessionManagerImpl =
+  private def managerWithCache(
+      cache: mutable.Map[String, Future[Http2ClientSession]]): Http2ClientSessionManagerImpl =
     new Http2ClientSessionManagerImpl(HttpClientConfig.Default, Http2Settings.default, cache)
 
   private def managerWithSession(session: Http2ClientSession): Http2ClientSessionManagerImpl =
@@ -77,10 +80,11 @@ class Http2ClientSessionManagerImplSpec extends Specification {
 
       val cache = cacheWithSession(bad)
       val markerEx = new Exception("marker")
-      val manager = new Http2ClientSessionManagerImpl(HttpClientConfig.Default, Http2Settings.default, cache) {
-        override protected def acquireSession(url: UrlComposition): Future[Http2ClientSession] =
-          Future.failed(markerEx)
-      }
+      val manager =
+        new Http2ClientSessionManagerImpl(HttpClientConfig.Default, Http2Settings.default, cache) {
+          override protected def acquireSession(url: UrlComposition): Future[Http2ClientSession] =
+            Future.failed(markerEx)
+        }
 
       // if we get the marker it's because we tried to make a new session
       manager.acquireSession(req).value must beLike {

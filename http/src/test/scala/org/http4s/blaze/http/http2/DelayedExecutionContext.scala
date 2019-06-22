@@ -7,13 +7,11 @@ class DelayedExecutionContext extends ExecutionContext {
 
   private[this] val pending = new mutable.Queue[Runnable]()
 
-  def executeOne(): Unit = {
+  def executeOne(): Unit =
     if (!pending.isEmpty) pending.dequeue().run()
-  }
 
-  def executeAll(): Unit = {
-    while(!pending.isEmpty) executeOne()
-  }
+  def executeAll(): Unit =
+    while (!pending.isEmpty) executeOne()
 
   override def execute(runnable: Runnable): Unit = {
     pending += runnable

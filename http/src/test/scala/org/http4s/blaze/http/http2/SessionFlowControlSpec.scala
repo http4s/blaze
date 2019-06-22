@@ -7,15 +7,14 @@ import org.specs2.mutable.Specification
 class SessionFlowControlSpec extends Specification {
 
   private class TestSessionFlowControl(session: SessionCore)
-    extends SessionFlowControlImpl(session, null) {
+      extends SessionFlowControlImpl(session, null) {
     var sessionConsumed: Int = 0
 
     var streamThatConsumed: StreamFlowWindow = null
     var streamConsumed: Int = 0
 
-    override protected def onSessonBytesConsumed(consumed: Int): Unit = {
+    override protected def onSessonBytesConsumed(consumed: Int): Unit =
       this.sessionConsumed = consumed
-    }
 
     override protected def onStreamBytesConsumed(stream: StreamFlowWindow, consumed: Int): Unit = {
       streamThatConsumed = stream
@@ -29,7 +28,7 @@ class SessionFlowControlSpec extends Specification {
   }
 
   private def flowControl(local: Http2Settings, remote: Http2Settings): TestSessionFlowControl = {
-    val core = new MockTools(true /* doesn't matter */) {
+    val core = new MockTools(true /* doesn't matter */ ) {
       override lazy val remoteSettings: MutableHttp2Settings = MutableHttp2Settings(remote)
       override lazy val localSettings: MutableHttp2Settings = MutableHttp2Settings(local)
     }
@@ -111,7 +110,7 @@ class SessionFlowControlSpec extends Specification {
     // https://tools.ietf.org/html/rfc7540#section-6.9
     "session outbound deposits of 0 throw Http2Exception with flag FLOW_CONTROL" in {
       val flow = flowControl()
-      flow.sessionOutboundAcked(0) must be like {
+      (flow.sessionOutboundAcked(0) must be).like {
         case Some(Http2SessionException(code, _)) => code must_== Http2Exception.PROTOCOL_ERROR.code
       }
     }
@@ -120,8 +119,9 @@ class SessionFlowControlSpec extends Specification {
     "session outbound deposits that overflow the window throw Http2Exception with flag FLOW_CONTROL" in {
       val flow = flowControl()
       val overflowBy1 = Int.MaxValue - flow.sessionOutboundWindow + 1
-      flow.sessionOutboundAcked(overflowBy1) must be like {
-        case Some(Http2SessionException(code, _)) => code must_== Http2Exception.FLOW_CONTROL_ERROR.code
+      (flow.sessionOutboundAcked(overflowBy1) must be).like {
+        case Some(Http2SessionException(code, _)) =>
+          code must_== Http2Exception.FLOW_CONTROL_ERROR.code
       }
     }
   }
@@ -239,7 +239,7 @@ class SessionFlowControlSpec extends Specification {
     "outbound deposits of 0 throw Http2Exception with flag FLOW_CONTROL" in {
       val flow = flowControl().newStreamFlowWindow(1)
 
-      flow.streamOutboundAcked(0) must be like {
+      (flow.streamOutboundAcked(0) must be).like {
         case Some(Http2SessionException(code, _)) => code must_== Http2Exception.PROTOCOL_ERROR.code
       }
     }
@@ -249,7 +249,7 @@ class SessionFlowControlSpec extends Specification {
       val flow = flowControl().newStreamFlowWindow(1)
 
       val overflowBy1 = Int.MaxValue - flow.streamOutboundWindow + 1
-      flow.streamOutboundAcked(overflowBy1) must be like {
+      (flow.streamOutboundAcked(overflowBy1) must be).like {
         case Some(Http2StreamException(streamId, code, _)) =>
           streamId must_== flow.streamId
           code must_== Http2Exception.FLOW_CONTROL_ERROR.code

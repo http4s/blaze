@@ -8,9 +8,8 @@ import scala.util.Failure
 class StreamManagerImplSpec extends Specification {
 
   private class MockTools(isClient: Boolean) extends mocks.MockTools(isClient) {
-    override lazy val streamManager: StreamManager = new StreamManagerImpl(this,
-      if (isClient) None else Some(_ => newInboundStream())
-    )
+    override lazy val streamManager: StreamManager =
+      new StreamManagerImpl(this, if (isClient) None else Some(_ => newInboundStream()))
 
     var connects: Int = 0
 
@@ -40,7 +39,9 @@ class StreamManagerImplSpec extends Specification {
         tools.streamManager.forceClose(Some(ex))
 
         // further calls to drain should happen immediately
-        tools.streamManager.drain(100, Http2Exception.NO_ERROR.goaway("whatever")).isCompleted must beTrue
+        tools.streamManager
+          .drain(100, Http2Exception.NO_ERROR.goaway("whatever"))
+          .isCompleted must beTrue
 
         // Since the streams are closed stream operations should fail
         val hs = HeadersFrame(Priority.NoPriority, false, Seq.empty)
@@ -89,8 +90,8 @@ class StreamManagerImplSpec extends Specification {
           .newOutboundStream()
           .writeRequest(HeadersFrame(Priority.NoPriority, false, Seq.empty))
           .value must beLike {
-            case Some(Failure(ex: Http2StreamException)) => ex.code must_== REFUSED_STREAM.code
-          }
+          case Some(Failure(ex: Http2StreamException)) => ex.code must_== REFUSED_STREAM.code
+        }
       }
     }
 
@@ -197,11 +198,10 @@ class StreamManagerImplSpec extends Specification {
         }
 
         "results in GOAWAY(PROTOCOL_ERROR) for update on idle stream" in {
-          new MockTools(isClient = true)
-            .streamManager
+          new MockTools(isClient = true).streamManager
             .flowWindowUpdate(1, 1) must beLike {
-              case Error(ex: Http2SessionException) => ex.code must_== PROTOCOL_ERROR.code
-            }
+            case Error(ex: Http2SessionException) => ex.code must_== PROTOCOL_ERROR.code
+          }
         }
       }
 
@@ -218,8 +218,7 @@ class StreamManagerImplSpec extends Specification {
         val tools = new MockTools(isClient = false)
 
         val Right(s) = tools.streamManager.newInboundStream(1)
-        s.flowWindow.streamOutboundAcked(
-          Int.MaxValue - s.flowWindow.streamOutboundWindow) must beNone
+        s.flowWindow.streamOutboundAcked(Int.MaxValue - s.flowWindow.streamOutboundWindow) must beNone
 
         tools.streamManager.flowWindowUpdate(streamId = 1, sizeIncrement = 1) must beLike {
           case Error(ex: Http2StreamException) => ex.code must_== FLOW_CONTROL_ERROR.code
@@ -262,17 +261,15 @@ class StreamManagerImplSpec extends Specification {
     "PUSH_PROMISE frames are rejected by default by the client" in {
       val tools = new MockTools(isClient = true)
 
-      tools.streamManager.newOutboundStream()
+      tools.streamManager
+        .newOutboundStream()
         .writeRequest(HeadersFrame(Priority.NoPriority, true, Seq.empty))
 
-      tools.streamManager.handlePushPromise(
-        streamId = 1,
-        promisedId = 2,
-        headers = Seq.empty) must beLike {
-          case Error(ex: Http2StreamException) =>
-            ex.code must_== REFUSED_STREAM.code
-            ex.stream must_== 2
-        }
+      tools.streamManager.handlePushPromise(streamId = 1, promisedId = 2, headers = Seq.empty) must beLike {
+        case Error(ex: Http2StreamException) =>
+          ex.code must_== REFUSED_STREAM.code
+          ex.stream must_== 2
+      }
     }
 
     "PUSH_PROMISE frames are rejected by the server" in {

@@ -25,11 +25,14 @@ class Http1ServerStageSpec extends Specification {
     @tailrec
     def go(requests: List[HttpRequest]): Unit = requests match {
       case Nil => // break loop
-      case h::t =>
+      case h :: t =>
         val s = s"${h.method} ${h.url} HTTP/1.1\r\n"
-        val hs = h.headers.foldLeft(s){ (acc, h) => acc + s"${h._1}: ${h._2}\r\n"}
+        val hs = h.headers.foldLeft(s) { (acc, h) =>
+          acc + s"${h._1}: ${h._2}\r\n"
+        }
 
-        acc += StandardCharsets.UTF_8.encode(hs + (if (t.isEmpty) "connection: close\r\n\r\n" else "\r\n"))
+        acc += StandardCharsets.UTF_8.encode(
+          hs + (if (t.isEmpty) "connection: close\r\n\r\n" else "\r\n"))
 
         val body = h.body
 
@@ -52,13 +55,13 @@ class Http1ServerStageSpec extends Specification {
 
   private def runPipeline(requests: HttpRequest*): ByteBuffer = {
     val leaf = new Http1ServerStage(service, HttpServerStageConfig())
-    val head = new GatheringSeqHead[ByteBuffer](renderRequests(requests:_*))
+    val head = new GatheringSeqHead[ByteBuffer](renderRequests(requests: _*))
     LeafBuilder(leaf).base(head)
 
     BufferTools.joinBuffers(Await.result(head.go(), 10.seconds))
   }
 
-  private def service(request: HttpRequest): Future[RouteAction] = {
+  private def service(request: HttpRequest): Future[RouteAction] =
     request.url match {
       case _ if request.method == "POST" =>
         request.body.accumulate().map { body =>
@@ -67,9 +70,9 @@ class Http1ServerStageSpec extends Specification {
         }
 
       case "/ping" => Future.successful(RouteAction.Ok("ping response"))
-      case "/pong" => Future.successful(RouteAction.Ok("pong response", Seq("connection" -> "close")))
+      case "/pong" =>
+        Future.successful(RouteAction.Ok("pong response", Seq("connection" -> "close")))
     }
-  }
 
   "HttpServerStage" should {
     "respond to a simple ping" in {
@@ -107,7 +110,8 @@ class Http1ServerStageSpec extends Specification {
 
     "run a request with a body" in {
       val b = StandardCharsets.UTF_8.encode("data")
-      val req = HttpRequest("POST", "/foo", 1, 1, Seq("content-length" -> "4"), BodyReader.singleBuffer(b))
+      val req =
+        HttpRequest("POST", "/foo", 1, 1, Seq("content-length" -> "4"), BodyReader.singleBuffer(b))
 
       val resp = runPipeline(req)
 

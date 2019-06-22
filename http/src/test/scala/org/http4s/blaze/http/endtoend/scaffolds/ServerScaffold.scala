@@ -15,7 +15,8 @@ abstract class ServerScaffold {
   final def apply[T](f: InetSocketAddress => T): T = {
     val group = NIO2SocketServerGroup()
 
-    val ch = group.bind(new InetSocketAddress(0), _ => Future.successful(newLeafBuilder()))
+    val ch = group
+      .bind(new InetSocketAddress(0), _ => Future.successful(newLeafBuilder()))
       .getOrElse(sys.error("Failed to start server."))
 
     try f(ch.socketAddress)

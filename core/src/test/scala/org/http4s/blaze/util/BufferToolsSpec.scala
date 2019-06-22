@@ -227,7 +227,7 @@ class BufferToolsSpec extends Specification {
     "fast forward an entire array" in {
       val buffers = getBuffers(4)
 
-      BufferTools.fastForwardBuffers(buffers, 4*4) must_== true
+      BufferTools.fastForwardBuffers(buffers, 4 * 4) must_== true
       forall(buffers) { buffer =>
         buffer.remaining must_== 0
       }
@@ -246,7 +246,7 @@ class BufferToolsSpec extends Specification {
       val buffers = getBuffers(2)
       BufferTools.fastForwardBuffers(buffers, 10) must_== false
 
-      forall(buffers){ buffer =>
+      forall(buffers) { buffer =>
         buffer.remaining must_== 0
       }
     }
@@ -293,11 +293,10 @@ class BufferToolsSpec extends Specification {
 
   private def getDirect(count: Int): Array[ByteBuffer] = getBuffersBase(count, true)
 
-  private def getBuffersBase(count: Int, direct: Boolean): Array[ByteBuffer] = {
+  private def getBuffersBase(count: Int, direct: Boolean): Array[ByteBuffer] =
     (0 until count).map { _ =>
       val buffer = if (direct) ByteBuffer.allocateDirect(4) else ByteBuffer.allocate(4)
       buffer.putInt(4).flip()
       buffer
     }.toArray
-  }
 }

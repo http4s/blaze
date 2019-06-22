@@ -220,14 +220,15 @@ private final class StreamManagerImpl(
         logger.debug(reason)(s"StreamManager.goaway($lastHandledOutboundStream)")
 
         streams.foreach {
-          case (id, stream) if lastHandledOutboundStream < id && session.idManager.isOutboundId(id) =>
+          case (id, stream)
+              if lastHandledOutboundStream < id && session.idManager.isOutboundId(id) =>
             // We remove the stream first so that we don't send a RST back to
             // the peer, since they have discarded the stream anyway.
             streams.remove(id)
             val ex = Http2Exception.REFUSED_STREAM.rst(id, reason.msg)
             stream.doCloseWithError(Some(ex))
           case _ =>
-            // Working around change to filterKeys in 2.13
+          // Working around change to filterKeys in 2.13
         }
 
         val p = Promise[Unit]

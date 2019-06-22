@@ -29,28 +29,30 @@ class InfiniteSpec extends Specification {
 
       val service: HttpService = { request =>
         request.url match {
-          case "/infinite" => Future.successful {
-            new RouteAction {
-              override def handle[T <: BodyWriter](responder: (HttpResponsePrelude) => T) = {
-                val writer = responder(HttpResponsePrelude(200, "OK", Nil))
-                val p = Promise[T#Finished]
-                def go(): Unit = {
-                  writer.write(StandardCharsets.UTF_8.encode((0 to packetSize).map(_ => 'X').mkString))
-                    .flatMap(_ => writer.flush())
-                    .onComplete {
-                      case Success(_) =>
-                        bytesSentCount.addAndGet(packetSize)
-                        go()
-                      case Failure(e) =>
-                        streamInterrupted.set(true)
-                        p.tryFailure(e)
-                    }
+          case "/infinite" =>
+            Future.successful {
+              new RouteAction {
+                override def handle[T <: BodyWriter](responder: (HttpResponsePrelude) => T) = {
+                  val writer = responder(HttpResponsePrelude(200, "OK", Nil))
+                  val p = Promise[T#Finished]
+                  def go(): Unit =
+                    writer
+                      .write(
+                        StandardCharsets.UTF_8.encode((0 to packetSize).map(_ => 'X').mkString))
+                      .flatMap(_ => writer.flush())
+                      .onComplete {
+                        case Success(_) =>
+                          bytesSentCount.addAndGet(packetSize)
+                          go()
+                        case Failure(e) =>
+                          streamInterrupted.set(true)
+                          p.tryFailure(e)
+                      }
+                  ec.execute(new Runnable { def run(): Unit = go() })
+                  p.future
                 }
-                ec.execute(new Runnable { def run(): Unit = go() })
-                p.future
               }
             }
-          }
         }
       }
 
@@ -61,25 +63,30 @@ class InfiniteSpec extends Specification {
 
         // Interrupt this request client side after we received 10MB
         val completed =
-          client.executeRequest(request, new AsyncHandler[Boolean] {
-            override def onStatusReceived(status: HttpResponseStatus) = {
-              require(status.getStatusCode == 200)
-              AsyncHandler.State.CONTINUE
-            }
-            override def onBodyPartReceived(part: HttpResponseBodyPart) = {
-              if(bytesReceivedCount.addAndGet(part.length) < (packetSize * 10))
-                AsyncHandler.State.CONTINUE
-              else
-                AsyncHandler.State.ABORT
-            }
-            override def onHeadersReceived(headers: HttpHeaders) = {
-              require(headers.get("transfer-encoding") == "chunked")
-              require(headers.get("content-length") == null)
-              AsyncHandler.State.CONTINUE
-            }
-            override def onThrowable(e: Throwable) = ()
-            override def onCompleted() = true
-          }).toCompletableFuture.get(10, TimeUnit.SECONDS)
+          client
+            .executeRequest(
+              request,
+              new AsyncHandler[Boolean] {
+                override def onStatusReceived(status: HttpResponseStatus) = {
+                  require(status.getStatusCode == 200)
+                  AsyncHandler.State.CONTINUE
+                }
+                override def onBodyPartReceived(part: HttpResponseBodyPart) =
+                  if (bytesReceivedCount.addAndGet(part.length) < (packetSize * 10))
+                    AsyncHandler.State.CONTINUE
+                  else
+                    AsyncHandler.State.ABORT
+                override def onHeadersReceived(headers: HttpHeaders) = {
+                  require(headers.get("transfer-encoding") == "chunked")
+                  require(headers.get("content-length") == null)
+                  AsyncHandler.State.CONTINUE
+                }
+                override def onThrowable(e: Throwable) = ()
+                override def onCompleted() = true
+              }
+            )
+            .toCompletableFuture
+            .get(10, TimeUnit.SECONDS)
         client.close()
 
         completed must beTrue
@@ -88,7 +95,8 @@ class InfiniteSpec extends Specification {
         // properly cleaned its resources
         eventually {
           streamInterrupted.get must beTrue
-          (System.currentTimeMillis - lastMessageSentAt.get) must beGreaterThanOrEqualTo(1000.toLong)
+          (System.currentTimeMillis - lastMessageSentAt.get) must beGreaterThanOrEqualTo(
+            1000.toLong)
         }
 
         bytesReceivedCount.get must beGreaterThanOrEqualTo(packetSize * 10)

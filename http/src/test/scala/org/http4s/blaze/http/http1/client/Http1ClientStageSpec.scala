@@ -52,15 +52,14 @@ class Http1ClientStageSpec extends Specification {
     override def writeRequest(data: collection.Seq[ByteBuffer]): Future[Unit] =
       writeRequest(BufferTools.joinBuffers(data))
 
-    override def writeRequest(data: ByteBuffer): Future[Unit] = {
+    override def writeRequest(data: ByteBuffer): Future[Unit] =
       writes match {
         case Some(_) => Future.failed(new IllegalStateException())
         case None =>
           val p = Promise[Unit]
-          writes = Some(Write(data,p))
+          writes = Some(Write(data, p))
           p.future
       }
-    }
 
     override def name: String = "TestHead"
   }
@@ -101,15 +100,20 @@ class Http1ClientStageSpec extends Specification {
     }
 
     "Send a prelude on a simple request HTTP/1.0 request" in {
-      checkPrelude(HttpRequest("GET", "/home", 1, 0, Seq(), BodyReader.EmptyBodyReader)
-      ) must_== "GET /home HTTP/1.0\r\n\r\n"
+      checkPrelude(HttpRequest("GET", "/home", 1, 0, Seq(), BodyReader.EmptyBodyReader)) must_== "GET /home HTTP/1.0\r\n\r\n"
 
-      checkPrelude(HttpRequest("GET", "http://foo.com/home", 1, 0, Seq(), BodyReader.EmptyBodyReader)
-      ) must_== "GET /home HTTP/1.0\r\n\r\n"
+      checkPrelude(HttpRequest(
+        "GET",
+        "http://foo.com/home",
+        1,
+        0,
+        Seq(),
+        BodyReader.EmptyBodyReader)) must_== "GET /home HTTP/1.0\r\n\r\n"
     }
 
     "Send a prelude on a simple HTTP/1.1 request without a host header" in {
-      val request = HttpRequest("GET", "http://foo.com/home", 1, 1, Seq(), BodyReader.EmptyBodyReader)
+      val request =
+        HttpRequest("GET", "http://foo.com/home", 1, 1, Seq(), BodyReader.EmptyBodyReader)
       checkPrelude(request) must_== "GET /home HTTP/1.1\r\nHost:foo.com\r\n\r\n"
     }
 
@@ -120,13 +124,23 @@ class Http1ClientStageSpec extends Specification {
 
     "Send a prelude on a simple HTTP/1.1 request with a body with content-length" in {
       val request = HttpRequest(
-        "POST", "http://foo.com/home", 1, 1, Seq("Content-Length" -> "3"), toBodyReader("cat"))
+        "POST",
+        "http://foo.com/home",
+        1,
+        1,
+        Seq("Content-Length" -> "3"),
+        toBodyReader("cat"))
       checkPrelude(request) must_== "POST /home HTTP/1.1\r\nContent-Length:3\r\nHost:foo.com\r\n\r\n"
     }
 
     "Send a prelude on a simple HTTP/1.1 request with a body with Transfer-Encoding" in {
       val request = HttpRequest(
-        "POST", "http://foo.com/home", 1, 1, Seq("Transfer-Encoding" -> "chunked"), toBodyReader("cat"))
+        "POST",
+        "http://foo.com/home",
+        1,
+        1,
+        Seq("Transfer-Encoding" -> "chunked"),
+        toBodyReader("cat"))
       checkPrelude(request) must_== "POST /home HTTP/1.1\r\nTransfer-Encoding:chunked\r\nHost:foo.com\r\n\r\n"
     }
   }
@@ -134,11 +148,14 @@ class Http1ClientStageSpec extends Specification {
   "http1ClientStage request encoding" should {
     "encodes a request with content-length" in {
       val (head, tail) = buildPair()
-      val f = tail.dispatch(HttpRequest(
-        "POST",
-        "http://foo.com/home",
-        1, 1,
-        Seq("Content-Length" -> "3"), toBodyReader("foo")))
+      val f = tail.dispatch(
+        HttpRequest(
+          "POST",
+          "http://foo.com/home",
+          1,
+          1,
+          Seq("Content-Length" -> "3"),
+          toBodyReader("foo")))
       head.consumeWrite() must beSome(
         "POST /home HTTP/1.1\r\n" +
           "Content-Length:3\r\n" +
@@ -148,8 +165,9 @@ class Http1ClientStageSpec extends Specification {
       tail.status must_== HttpClientSession.Busy
       head.consumeWrite() must beSome("foo")
       tail.status must_== HttpClientSession.Busy // Haven't sent a response
-      head.offerInbound("HTTP/1.1 200 OK\r\n" +
-        "Content-Length:0\r\n\r\n")
+      head.offerInbound(
+        "HTTP/1.1 200 OK\r\n" +
+          "Content-Length:0\r\n\r\n")
 
       await(f)
       tail.status must_== HttpClientSession.Ready
@@ -157,11 +175,14 @@ class Http1ClientStageSpec extends Specification {
 
     "encodes a request with transfer-encoding" in {
       val (head, tail) = buildPair()
-      val f = tail.dispatch(HttpRequest(
-        "POST",
-        "http://foo.com/home",
-        1, 1,
-        Seq("Transfer-Encoding" -> "chunked"), toBodyReader("foo")))
+      val f = tail.dispatch(
+        HttpRequest(
+          "POST",
+          "http://foo.com/home",
+          1,
+          1,
+          Seq("Transfer-Encoding" -> "chunked"),
+          toBodyReader("foo")))
       head.consumeWrite() must beSome(
         "POST /home HTTP/1.1\r\n" +
           "Transfer-Encoding:chunked\r\n" +
@@ -172,8 +193,9 @@ class Http1ClientStageSpec extends Specification {
       head.consumeWrite() must beSome("3\r\nfoo")
       head.consumeWrite() must beSome("0\r\n\r\n")
       tail.status must_== HttpClientSession.Busy // Haven't sent a response
-      head.offerInbound("HTTP/1.1 200 OK\r\n" +
-        "Content-Length:0\r\n\r\n")
+      head.offerInbound(
+        "HTTP/1.1 200 OK\r\n" +
+          "Content-Length:0\r\n\r\n")
 
       await(f)
       tail.status must_== HttpClientSession.Ready
@@ -181,11 +203,8 @@ class Http1ClientStageSpec extends Specification {
 
     "Adds Transfer-Encoding if request has body but no content-length" in {
       val (head, tail) = buildPair()
-      val f = tail.dispatch(HttpRequest(
-        "POST",
-        "http://foo.com/home",
-        1, 1,
-        Seq(), toBodyReader("foo")))
+      val f =
+        tail.dispatch(HttpRequest("POST", "http://foo.com/home", 1, 1, Seq(), toBodyReader("foo")))
       head.consumeWrite() must beSome(
         "POST /home HTTP/1.1\r\n" +
           "Host:foo.com\r\n" +
@@ -196,8 +215,9 @@ class Http1ClientStageSpec extends Specification {
       head.consumeWrite() must beSome("3\r\nfoo")
       head.consumeWrite() must beSome("0\r\n\r\n")
       tail.status must_== HttpClientSession.Busy // Haven't sent a response
-      head.offerInbound("HTTP/1.1 200 OK\r\n" +
-        "Content-Length:0\r\n\r\n")
+      head.offerInbound(
+        "HTTP/1.1 200 OK\r\n" +
+          "Content-Length:0\r\n\r\n")
 
       await(f)
       tail.status must_== HttpClientSession.Ready
@@ -214,11 +234,7 @@ class Http1ClientStageSpec extends Specification {
         }
       }
       val (head, tail) = buildPair()
-      val f = tail.dispatch(HttpRequest(
-        "POST",
-        "http://foo.com/home",
-        1, 1,
-        Seq(), reader))
+      val f = tail.dispatch(HttpRequest("POST", "http://foo.com/home", 1, 1, Seq(), reader))
 
       head.pendingWrite().get.p.tryFailure(new Throwable("boom"))
       head.close()
@@ -239,11 +255,7 @@ class Http1ClientStageSpec extends Specification {
       }
     }
     val (head, tail) = buildPair()
-    val f = tail.dispatch(HttpRequest(
-      "POST",
-      "http://foo.com/home",
-      1, 1,
-      Seq(), reader))
+    val f = tail.dispatch(HttpRequest("POST", "http://foo.com/home", 1, 1, Seq(), reader))
 
     // Accept the prelude
     head.consumeWrite() must beSome(
@@ -263,12 +275,14 @@ class Http1ClientStageSpec extends Specification {
   "Http1ClientStage response parsing" should {
     "passes prelude parser failures to the response" in {
       val (head, tail) = buildPair()
-      val f = tail.dispatch(HttpRequest("GET", "http://foo.com/home", 1, 1, Seq(), BodyReader.EmptyBodyReader))
+      val f = tail.dispatch(
+        HttpRequest("GET", "http://foo.com/home", 1, 1, Seq(), BodyReader.EmptyBodyReader))
       head.consumeWrite() must beSome
 
-      head.offerInbound("HTTP/1.1 200 OK\r" + // missing a \n after the \r
-        "Content-Length: 3\r\n\r\n" +
-        "foo")
+      head.offerInbound(
+        "HTTP/1.1 200 OK\r" + // missing a \n after the \r
+          "Content-Length: 3\r\n\r\n" +
+          "foo")
 
       await(f) must throwA[BadCharacter]
       tail.status must_== HttpClientSession.Closed
@@ -276,15 +290,18 @@ class Http1ClientStageSpec extends Specification {
 
     "passes chunked encoding failures to the BodyReader" in {
       val (head, tail) = buildPair()
-      val f = tail.dispatch(HttpRequest("GET", "http://foo.com/home", 1, 1, Seq(), BodyReader.EmptyBodyReader))
+      val f = tail.dispatch(
+        HttpRequest("GET", "http://foo.com/home", 1, 1, Seq(), BodyReader.EmptyBodyReader))
       head.consumeWrite() must beSome
 
-      head.offerInbound("HTTP/1.1 200 OK\r\n" +
-        "Transfer-Encoding: chunked\r\n\r\n")
-      head.offerInbound(  // split it into a prelude and body to make sure we trampoline through a read
-        "3\r" + // missing trailing '\n'
-        "foo\r\n" +
-        "0\r\n\r\n")
+      head.offerInbound(
+        "HTTP/1.1 200 OK\r\n" +
+          "Transfer-Encoding: chunked\r\n\r\n")
+      head
+        .offerInbound( // split it into a prelude and body to make sure we trampoline through a read
+          "3\r" + // missing trailing '\n'
+            "foo\r\n" +
+            "0\r\n\r\n")
 
       val r = await(f)
       r.code must_== 200
@@ -297,12 +314,14 @@ class Http1ClientStageSpec extends Specification {
 
     "receive a simple response with body" in {
       val (head, tail) = buildPair()
-      val f = tail.dispatch(HttpRequest("GET", "http://foo.com/home", 1, 1, Seq(), BodyReader.EmptyBodyReader))
+      val f = tail.dispatch(
+        HttpRequest("GET", "http://foo.com/home", 1, 1, Seq(), BodyReader.EmptyBodyReader))
       head.consumeWrite() must beSome
 
-      head.offerInbound("HTTP/1.1 200 OK\r\n" +
-        "Content-Length: 3\r\n\r\n" +
-        "foo")
+      head.offerInbound(
+        "HTTP/1.1 200 OK\r\n" +
+          "Content-Length: 3\r\n\r\n" +
+          "foo")
 
       val r = await(f)
       r.code must_== 200
@@ -315,11 +334,13 @@ class Http1ClientStageSpec extends Specification {
 
     "receive a simple response without body" in {
       val (head, tail) = buildPair()
-      val f = tail.dispatch(HttpRequest("GET", "http://foo.com/home", 1, 1, Seq(), BodyReader.EmptyBodyReader))
+      val f = tail.dispatch(
+        HttpRequest("GET", "http://foo.com/home", 1, 1, Seq(), BodyReader.EmptyBodyReader))
       head.consumeWrite() must beSome
 
-      head.offerInbound("HTTP/1.1 200 OK\r\n" +
-        "Content-Length: 0\r\n\r\n")
+      head.offerInbound(
+        "HTTP/1.1 200 OK\r\n" +
+          "Content-Length: 0\r\n\r\n")
 
       val r = await(f)
       r.code must_== 200
@@ -332,15 +353,17 @@ class Http1ClientStageSpec extends Specification {
 
     "parses a chunked encoded body" in {
       val (head, tail) = buildPair()
-      val f = tail.dispatch(HttpRequest("GET", "http://foo.com/home", 1, 1, Seq(), BodyReader.EmptyBodyReader))
+      val f = tail.dispatch(
+        HttpRequest("GET", "http://foo.com/home", 1, 1, Seq(), BodyReader.EmptyBodyReader))
       head.consumeWrite() must beSome
 
-      head.offerInbound("HTTP/1.1 200 OK\r\n" +
-        "Transfer-Encoding: chunked\r\n\r\n")
+      head.offerInbound(
+        "HTTP/1.1 200 OK\r\n" +
+          "Transfer-Encoding: chunked\r\n\r\n")
       head.offerInbound(
         "3\r\n" +
-        "foo\r\n" +
-        "0\r\n\r\n")
+          "foo\r\n" +
+          "0\r\n\r\n")
 
       val r = await(f)
       r.code must_== 200
@@ -353,11 +376,13 @@ class Http1ClientStageSpec extends Specification {
 
     "parses a HEAD response" in {
       val (head, tail) = buildPair()
-      val r1 = tail.dispatch(HttpRequest("HEAD", "http://foo.com/home", 1, 1, Seq(), BodyReader.EmptyBodyReader))
+      val r1 = tail.dispatch(
+        HttpRequest("HEAD", "http://foo.com/home", 1, 1, Seq(), BodyReader.EmptyBodyReader))
       head.consumeWrite() must beSome
 
-      head.offerInbound("HTTP/1.1 200 OK\r\n" +
-        "Transfer-Encoding: chunked\r\n\r\n")
+      head.offerInbound(
+        "HTTP/1.1 200 OK\r\n" +
+          "Transfer-Encoding: chunked\r\n\r\n")
 
       val f1 = await(r1)
       f1.code must_== 200
@@ -370,14 +395,16 @@ class Http1ClientStageSpec extends Specification {
       tail.status must_== HttpClientSession.Ready
 
       // Dispatch another request after the HEAD
-      val r2 = tail.dispatch(HttpRequest("GET", "http://foo.com/home", 1, 1, Seq(), BodyReader.EmptyBodyReader))
+      val r2 = tail.dispatch(
+        HttpRequest("GET", "http://foo.com/home", 1, 1, Seq(), BodyReader.EmptyBodyReader))
       head.consumeWrite() must beSome
 
-      head.offerInbound("HTTP/1.1 200 OK\r\n" +
-        "Transfer-Encoding: chunked\r\n\r\n" +
-        "3\r\n" +
-        "foo\r\n" +
-        "0\r\n\r\n")
+      head.offerInbound(
+        "HTTP/1.1 200 OK\r\n" +
+          "Transfer-Encoding: chunked\r\n\r\n" +
+          "3\r\n" +
+          "foo\r\n" +
+          "0\r\n\r\n")
 
       val f2 = await(r2)
       f2.code must_== 200
@@ -392,7 +419,8 @@ class Http1ClientStageSpec extends Specification {
     "parses 204 and 304 responses" in {
       forall(Seq(100, 204, 304)) { code =>
         val (head, tail) = buildPair()
-        val r1 = tail.dispatch(HttpRequest("GET", "http://foo.com/home", 1, 1, Seq(), BodyReader.EmptyBodyReader))
+        val r1 = tail.dispatch(
+          HttpRequest("GET", "http://foo.com/home", 1, 1, Seq(), BodyReader.EmptyBodyReader))
         head.consumeWrite() must beSome
 
         head.offerInbound(s"HTTP/1.1 $code STATUS\r\n\r\n")
@@ -408,14 +436,16 @@ class Http1ClientStageSpec extends Specification {
         tail.status must_== HttpClientSession.Ready
 
         // Dispatch another request after the HEAD
-        val r2 = tail.dispatch(HttpRequest("GET", "http://foo.com/home", 1, 1, Seq(), BodyReader.EmptyBodyReader))
+        val r2 = tail.dispatch(
+          HttpRequest("GET", "http://foo.com/home", 1, 1, Seq(), BodyReader.EmptyBodyReader))
         head.consumeWrite() must beSome
 
-        head.offerInbound("HTTP/1.1 200 OK\r\n" +
-          "Transfer-Encoding: chunked\r\n\r\n" +
-          "3\r\n" +
-          "foo\r\n" +
-          "0\r\n\r\n")
+        head.offerInbound(
+          "HTTP/1.1 200 OK\r\n" +
+            "Transfer-Encoding: chunked\r\n\r\n" +
+            "3\r\n" +
+            "foo\r\n" +
+            "0\r\n\r\n")
 
         val f2 = await(r2)
         f2.code must_== 200
@@ -430,11 +460,13 @@ class Http1ClientStageSpec extends Specification {
 
     "parses an empty response then a chunked encoded response" in {
       val (head, tail) = buildPair()
-      val f1 = tail.dispatch(HttpRequest("GET", "http://foo.com/home", 1, 1, Seq(), BodyReader.EmptyBodyReader))
+      val f1 = tail.dispatch(
+        HttpRequest("GET", "http://foo.com/home", 1, 1, Seq(), BodyReader.EmptyBodyReader))
       head.consumeWrite() must beSome // consume the request
 
-      head.offerInbound("HTTP/1.1 200 OK\r\n" +
-        "Content-Length: 0\r\n\r\n")
+      head.offerInbound(
+        "HTTP/1.1 200 OK\r\n" +
+          "Content-Length: 0\r\n\r\n")
 
       val r1 = await(f1)
       r1.code must_== 200
@@ -443,11 +475,13 @@ class Http1ClientStageSpec extends Specification {
       tail.status must_== HttpClientSession.Ready
 
       // Next dispatch
-      val f2 = tail.dispatch(HttpRequest("GET", "http://foo.com/home", 1, 1, Seq(), BodyReader.EmptyBodyReader))
+      val f2 = tail.dispatch(
+        HttpRequest("GET", "http://foo.com/home", 1, 1, Seq(), BodyReader.EmptyBodyReader))
       head.consumeWrite() must beSome // consume the request
 
-      head.offerInbound("HTTP/1.1 200 OK\r\n" +
-        "Transfer-Encoding: chunked\r\n\r\n")
+      head.offerInbound(
+        "HTTP/1.1 200 OK\r\n" +
+          "Transfer-Encoding: chunked\r\n\r\n")
       head.offerInbound(
         "3\r\n" +
           "foo\r\n" +

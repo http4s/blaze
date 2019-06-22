@@ -26,7 +26,7 @@ class ByteBufferInputStreamSpec extends Specification {
 
     "read byte when available" in {
       val range = 0 until 10
-      val is = fromBytes(range.map(_.toByte):_*)
+      val is = fromBytes(range.map(_.toByte): _*)
       forall(range) { i =>
         is.read() must_== i
       }
@@ -36,7 +36,7 @@ class ByteBufferInputStreamSpec extends Specification {
     }
 
     "handle mark and reset apporpriately" in {
-      val is = fromBytes((0 until 10).map(_.toByte):_*)
+      val is = fromBytes((0 until 10).map(_.toByte): _*)
 
       is.markSupported must beTrue
 

@@ -7,7 +7,6 @@ import java.nio.ByteBuffer
 import scala.util.{Failure, Success}
 import org.http4s.blaze.pipeline.Command.EOF
 
-
 class EchoStage extends TailStage[ByteBuffer] {
 
   def name: String = "EchoStage"
@@ -16,8 +15,8 @@ class EchoStage extends TailStage[ByteBuffer] {
 
   private implicit def ec = util.Execution.trampoline
 
-  final override def stageStartup(): Unit = {
-    channelRead().onComplete{
+  final override def stageStartup(): Unit =
+    channelRead().onComplete {
       case Success(buff) =>
         val b = ByteBuffer.allocate(buff.remaining() + msg.length)
         b.put(msg).put(buff).flip()
@@ -28,5 +27,4 @@ class EchoStage extends TailStage[ByteBuffer] {
       case Failure(EOF) => logger.debug("Channel closed.")
       case Failure(t) => logger.error(t)("Channel read failed")
     }
-  }
 }
