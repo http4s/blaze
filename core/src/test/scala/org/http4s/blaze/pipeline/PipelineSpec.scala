@@ -2,7 +2,7 @@ package org.http4s.blaze.pipeline
 
 import org.http4s.blaze.util.{Execution, FutureUnit}
 import org.specs2.mutable._
-import scala.concurrent.{Future, Await}
+import scala.concurrent.{Await, Future}
 import scala.concurrent.duration._
 
 class PipelineSpec extends Specification {
@@ -25,11 +25,10 @@ class PipelineSpec extends Specification {
 
   class IntToString extends MidStage[Int, String] {
     def name = "IntToString"
-    def readRequest(size: Int): Future[String] = channelRead(1) map (_.toString)
-    def writeRequest(data: String): Future[Unit] = {
+    def readRequest(size: Int): Future[String] = channelRead(1).map(_.toString)
+    def writeRequest(data: String): Future[Unit] =
       try channelWrite(data.toInt)
       catch { case t: NumberFormatException => Future.failed(t) }
-    }
   }
 
   class Noop[T] extends MidStage[T, T] {

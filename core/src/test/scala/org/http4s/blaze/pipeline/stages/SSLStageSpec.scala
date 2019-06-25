@@ -47,7 +47,7 @@ class SSLStageSpec extends Specification {
 
     "Split large buffers" in {
       val (headEng, stageEng) = mkClientServerEngines
-      val s = "Fo"*(stageEng.getSession.getPacketBufferSize*0.75).toInt
+      val s = "Fo" * (stageEng.getSession.getPacketBufferSize * 0.75).toInt
 
       /* The detection of splitting the buffer is seen by checking the write
        * output: if its flushing, the output should only be single buffers for
@@ -81,7 +81,7 @@ class SSLStageSpec extends Specification {
 
       val (headEng, stageEng) = mkClientServerEngines
 
-      val strs = 0 until 10 map (_.toString)
+      val strs = (0 until 10).map(_.toString)
       val head = new SSLSeqHead(strs.map(mkBuffer), headEng)
       val tail = new EchoTail[ByteBuffer]
       LeafBuilder(tail)
@@ -100,7 +100,9 @@ class SSLStageSpec extends Specification {
 
       val (headEng, stageEng) = mkClientServerEngines
 
-      val strs = 0 until 10 map { i => "Buffer " + i + ", " }
+      val strs = (0 until 10).map { i =>
+        "Buffer " + i + ", "
+      }
       val head = new SSLSeqHead(strs.map(mkBuffer), headEng)
       val tail = new EchoTail[ByteBuffer]
       LeafBuilder(tail)
@@ -118,8 +120,11 @@ class SSLStageSpec extends Specification {
     "Handle empty buffers gracefully" in {
       val (headEng, stageEng) = mkClientServerEngines
 
-      val strs = 0 until 10 map { i => "Buffer " + i + ", " }
-      val head = new SSLSeqHead(strs.flatMap(s => Seq(mkBuffer(s), BufferTools.emptyBuffer)), headEng)
+      val strs = (0 until 10).map { i =>
+        "Buffer " + i + ", "
+      }
+      val head =
+        new SSLSeqHead(strs.flatMap(s => Seq(mkBuffer(s), BufferTools.emptyBuffer)), headEng)
       val tail = new EchoTail[ByteBuffer]
       LeafBuilder(tail)
         .prepend(new SSLStage(stageEng))
@@ -137,7 +142,9 @@ class SSLStageSpec extends Specification {
 
       val (headEng, stageEng) = mkClientServerEngines
 
-      val strs = 0 until 100 map { i => "Buffer " + i + ", " }
+      val strs = (0 until 100).map { i =>
+        "Buffer " + i + ", "
+      }
       val head = new SSLSeqHead(strs.map(mkBuffer), headEng, 2)
       val tail = new EchoTail[ByteBuffer]
       LeafBuilder(tail)
@@ -156,7 +163,7 @@ class SSLStageSpec extends Specification {
 
       val (headEng, stageEng) = mkClientServerEngines
 
-      val strs = 0 until 100 map (_.toString)
+      val strs = (0 until 100).map(_.toString)
       val head = new SSLSeqHead(strs.map(mkBuffer), headEng, 2)
       val tail = new EchoTail[ByteBuffer]
       LeafBuilder(tail)
@@ -175,8 +182,11 @@ class SSLStageSpec extends Specification {
 
       val (headEng, stageEng) = mkClientServerEngines
 
-      val strs = 0 until 10 map { i => "Buffer " + i + ", " }
-      val head = new SSLSeqHead(strs.flatMap(s => Seq(mkBuffer(s), BufferTools.emptyBuffer)), headEng, 2)
+      val strs = (0 until 10).map { i =>
+        "Buffer " + i + ", "
+      }
+      val head =
+        new SSLSeqHead(strs.flatMap(s => Seq(mkBuffer(s), BufferTools.emptyBuffer)), headEng, 2)
       val tail = new EchoTail[ByteBuffer]
       LeafBuilder(tail)
         .prepend(new SSLStage(stageEng))
@@ -193,14 +203,14 @@ class SSLStageSpec extends Specification {
 
   def mkBuffer(str: String): ByteBuffer =
     ByteBuffer.wrap(str.getBytes(StandardCharsets.UTF_8))
-  
+
   def mkClientServerEngines(): (SSLEngine, SSLEngine) = {
     val clientEng = GenericSSLContext.clientSSLContext().createSSLEngine()
     clientEng.setUseClientMode(true)
 
     val serverEng = GenericSSLContext.serverSSLContext().createSSLEngine()
     serverEng.setUseClientMode(false)
-    
+
     (clientEng, serverEng)
   }
 
@@ -211,7 +221,8 @@ class SSLStageSpec extends Specification {
     * @param engine SSLEngine to use for encryption
     * @param handshakeInterval interval with which to induce another handshake
     */
-  class SSLSeqHead(data: Seq[ByteBuffer], engine: SSLEngine, handshakeInterval: Int = -1) extends SeqHead[ByteBuffer](data) {
+  class SSLSeqHead(data: Seq[ByteBuffer], engine: SSLEngine, handshakeInterval: Int = -1)
+      extends SeqHead[ByteBuffer](data) {
 
     private val lock = new AnyRef
     private val maxNetSize = engine.getSession.getPacketBufferSize
@@ -229,7 +240,7 @@ class SSLStageSpec extends Specification {
 
         case NEED_TASK =>
           var t = engine.getDelegatedTask
-          while(t != null) {
+          while (t != null) {
             t.run()
             t = engine.getDelegatedTask
           }
@@ -245,11 +256,11 @@ class SSLStageSpec extends Specification {
 
         // wildcard case includes NEED_UNWRAP, but also NEED_UNWRAP_AGAIN which is new in JDK 9.
         // need wildcard to be source-compatible and exhaustiveness-warning-free on both 8 and 9
-        case _  => ()
+        case _ => ()
       }
     }
 
-    private def checkHandshaking(): Unit = {
+    private def checkHandshaking(): Unit =
       if (handshakeInterval > 0) { // Induce handshaking.
         count += 1
         if (count % handshakeInterval == 0) {
@@ -257,11 +268,10 @@ class SSLStageSpec extends Specification {
           engine.beginHandshake()
         }
       }
-    }
 
     override def readRequest(size: Int): Future[ByteBuffer] = lock.synchronized {
       if (debug) println("ReadReq: " + engine.getHandshakeStatus)
-      def go(buffer: ByteBuffer): Future[ByteBuffer] = {
+      def go(buffer: ByteBuffer): Future[ByteBuffer] =
         try {
           val o = ByteBuffer.allocate(maxNetSize)
           val r = engine.wrap(buffer, o)
@@ -269,7 +279,7 @@ class SSLStageSpec extends Specification {
 
           // Store any left over buffer
           if (buffer.hasRemaining) {
-            assert (readBuffer == null)
+            assert(readBuffer == null)
             readBuffer = buffer
           }
 
@@ -291,26 +301,23 @@ class SSLStageSpec extends Specification {
         } catch {
           case NonFatal(t) => println(t); Future.failed(t)
         }
-      }
 
       if (handShakeBuffer != null) {
         val b = handShakeBuffer
         handShakeBuffer = null
         Future.successful(b)
-      }
-      else {
+      } else {
         if (readBuffer != null) {
           val b = readBuffer
           readBuffer = null
           go(b)
-        }
-        else super.readRequest(size).flatMap(go)
+        } else super.readRequest(size).flatMap(go)
       }
     }
 
     override def writeRequest(data: ByteBuffer): Future[Unit] = lock.synchronized {
 
-      def go(data: ByteBuffer): Future[Unit] = {
+      def go(data: ByteBuffer): Future[Unit] =
         try {
           //
           val o = ByteBuffer.allocate(maxNetSize)
@@ -327,17 +334,17 @@ class SSLStageSpec extends Specification {
                   assert(writeBuffer == null)
                   writeBuffer = data
                   super.writeRequest(o)
-                }
-                else super.writeRequest(o).flatMap{ _ => writeRequest(data) }
-              }
-              else super.writeRequest(o)
+                } else
+                  super.writeRequest(o).flatMap { _ =>
+                    writeRequest(data)
+                  }
+              } else super.writeRequest(o)
 
             case _ =>
               val f = {
                 if (o.hasRemaining) {
                   super.writeRequest(o).flatMap(_ => writeRequest(data))
-                }
-                else {
+                } else {
                   if (data.hasRemaining) {
                     // assert(writeBuffer == null)
                     writeBuffer = data
@@ -353,7 +360,6 @@ class SSLStageSpec extends Specification {
               }
           }
         } catch { case NonFatal(t) => Future.failed(t) }
-      }
 
       val b = {
         val b = BufferTools.concatBuffers(writeBuffer, data)

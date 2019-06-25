@@ -12,7 +12,12 @@ import scala.util.control.NonFatal
 import org.http4s.blaze.pipeline.MidStage
 import org.http4s.blaze.pipeline.Command.EOF
 import org.http4s.blaze.util
-import org.http4s.blaze.util.{BufferTools, Execution, SerialExecutionContext, ThreadLocalScratchBuffer}
+import org.http4s.blaze.util.{
+  BufferTools,
+  Execution,
+  SerialExecutionContext,
+  ThreadLocalScratchBuffer
+}
 import org.http4s.blaze.util.BufferTools._
 
 private object SSLStage {
@@ -52,8 +57,7 @@ final class SSLStage(engine: SSLEngine, maxWrite: Int = 1024 * 1024)
   }
 
   private[this] val maxNetSize = engine.getSession.getPacketBufferSize
-  private[this] val maxBuffer = math.max(maxNetSize,
-    engine.getSession.getApplicationBufferSize)
+  private[this] val maxBuffer = math.max(maxNetSize, engine.getSession.getApplicationBufferSize)
 
   ///////////// State maintained by the SSLStage //////////////////////
   private[this] val handshakeQueue = new ListBuffer[DelayedOp]
@@ -115,8 +119,8 @@ final class SSLStage(engine: SSLEngine, maxWrite: Int = 1024 * 1024)
           channelRead(if (size > 0) math.max(size, maxNetSize) else size)
             .onComplete {
               case Success(buff) =>
-                  readLeftover = concatBuffers(readLeftover, buff)
-                  doRead(size, p)
+                readLeftover = concatBuffers(readLeftover, buff)
+                doRead(size, p)
 
               case Failure(t) => p.failure(t); ()
             }(serialExec)

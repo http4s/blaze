@@ -8,7 +8,8 @@ import scala.concurrent.duration._
 
 class QuietTimeoutStageSpec extends TimeoutHelpers {
 
-  override def genDelayStage(timeout: Duration): TimeoutStageBase[ByteBuffer] = new QuietTimeoutStage[ByteBuffer](timeout)
+  override def genDelayStage(timeout: Duration): TimeoutStageBase[ByteBuffer] =
+    new QuietTimeoutStage[ByteBuffer](timeout)
 
   "A QuietTimeoutStage" should {
     "not timeout with propper intervals" in {

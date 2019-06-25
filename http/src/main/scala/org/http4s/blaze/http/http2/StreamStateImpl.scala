@@ -244,8 +244,7 @@ private abstract class StreamStateImpl(session: SessionCore) extends StreamState
   //////////////////////////////////////////////////////////////////////
 
   final override protected def doClosePipeline(cause: Option[Throwable]): Unit =
-    session.serialExecutor.execute(
-      new Runnable { def run(): Unit = doCloseWithError(cause) })
+    session.serialExecutor.execute(new Runnable { def run(): Unit = doCloseWithError(cause) })
 
   // Shuts down the stream and calls `StreamManager.streamFinished` with any potential errors.
   // WARNING: this must be called from within the session executor.

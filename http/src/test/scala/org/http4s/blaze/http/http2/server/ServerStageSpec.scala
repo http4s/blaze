@@ -93,7 +93,10 @@ class ServerStageSpec extends Specification {
       head.reads.dequeue().success(DataFrame(false, BufferTools.allocate(1)))
       head.reads.dequeue().success(DataFrame(true, BufferTools.allocate(2)))
 
-      serviceReads.toList must_== List(BufferTools.allocate(1), BufferTools.allocate(2), BufferTools.emptyBuffer)
+      serviceReads.toList must_== List(
+        BufferTools.allocate(1),
+        BufferTools.allocate(2),
+        BufferTools.emptyBuffer)
     }
 
     "The service can write the body" >> {

@@ -6,17 +6,17 @@ import java.nio.charset.StandardCharsets
 import org.http4s.blaze.http.parser.BaseExceptions.BadCharacter
 import org.specs2.mutable.Specification
 
-
 class ParserBaseSpec extends Specification {
 
-  class Base(isLenient: Boolean = false, limit: Int = 1024) extends ParserBase(10*1024, isLenient) {
+  class Base(isLenient: Boolean = false, limit: Int = 1024)
+      extends ParserBase(10 * 1024, isLenient) {
     resetLimit(limit)
   }
 
   "ParserBase.next" should {
     "Provide the next valid char" in {
       val buffer = ByteBuffer.wrap("OK".getBytes(StandardCharsets.UTF_8))
-        new Base().next(buffer, false) must_== 'O'.toByte
+      new Base().next(buffer, false) must_== 'O'.toByte
     }
 
     "Provide the EMPTY_BUFF token on empty ByteBuffer" in {

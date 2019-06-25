@@ -217,7 +217,7 @@ final class SelectorLoop(
     }
   }
 
-  private[this] def killSelector(): Unit = {
+  private[this] def killSelector(): Unit =
     // We first close all the associated keys and then close
     // the `Selector` which will then be essentially useless.
     try {
@@ -237,7 +237,6 @@ final class SelectorLoop(
       case t @ (NonFatal(_) | _: ControlThrowable) =>
         logger.warn(t)("Killing selector resulted in an exception")
     }
-  }
 
   private[this] def getAttachment(key: SelectionKey): Selectable =
     key.attachment match {

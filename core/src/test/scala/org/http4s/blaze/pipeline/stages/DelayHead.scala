@@ -48,8 +48,6 @@ abstract class DelayHead[I](delay: Duration) extends HeadStage[I] {
     p.future
   }
 
-
-
   override def writeRequest(data: I): Future[Unit] = {
     val p = Promise[Unit]
     highresTimer.schedule(new Runnable {

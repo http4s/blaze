@@ -28,7 +28,8 @@ class AbstractBodyReaderSpec extends Specification {
     b
   }
 
-  private class TestBodyReader(length: Long, data: Seq[StreamFrame]) extends AbstractBodyReader(1, length) {
+  private class TestBodyReader(length: Long, data: Seq[StreamFrame])
+      extends AbstractBodyReader(1, length) {
     var failedReason: Option[Throwable] = None
     val reads = new mutable.Queue[StreamFrame]
     reads ++= data
@@ -44,7 +45,8 @@ class AbstractBodyReaderSpec extends Specification {
 
   "AbstractBodyReaderSpec" >> {
     "can read data" >> {
-      val reader = new TestBodyReader(-1, Seq(DataFrame(false, bytes(1)), DataFrame(true, bytes(2))))
+      val reader =
+        new TestBodyReader(-1, Seq(DataFrame(false, bytes(1)), DataFrame(true, bytes(2))))
       now(reader()) must_== bytes(1)
       reader.isExhausted must beFalse
       now(reader()) must_== bytes(2)
@@ -56,13 +58,15 @@ class AbstractBodyReaderSpec extends Specification {
       now(reader()) must_== bytes(1)
       reader.isExhausted must beFalse
       reader().value must beLike {
-        case Some(Failure(ex: Http2StreamException)) => ex.code must_== Http2Exception.PROTOCOL_ERROR.code
+        case Some(Failure(ex: Http2StreamException)) =>
+          ex.code must_== Http2Exception.PROTOCOL_ERROR.code
       }
       reader.isExhausted must beTrue
     }
 
     "discard causes subsequent reads to be empty" >> {
-      val reader = new TestBodyReader(-1, Seq(DataFrame(false, bytes(1)), DataFrame(true, bytes(2))))
+      val reader =
+        new TestBodyReader(-1, Seq(DataFrame(false, bytes(1)), DataFrame(true, bytes(2))))
       now(reader()) must_== bytes(1)
       reader.isExhausted must beFalse
       reader.discard()
@@ -74,7 +78,8 @@ class AbstractBodyReaderSpec extends Specification {
       val data = Seq(HeadersFrame(Priority.NoPriority, false, Seq.empty))
       val reader = new TestBodyReader(-1, data)
       reader().value must beLike {
-        case Some(Failure(ex: Http2StreamException)) => ex.code must_== Http2Exception.PROTOCOL_ERROR.code
+        case Some(Failure(ex: Http2StreamException)) =>
+          ex.code must_== Http2Exception.PROTOCOL_ERROR.code
       }
       reader.isExhausted must beTrue
     }

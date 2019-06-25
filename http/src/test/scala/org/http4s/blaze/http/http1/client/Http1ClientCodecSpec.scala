@@ -16,8 +16,9 @@ class Http1ClientCodecSpec extends Specification {
   "Http1ClientCodec" should {
     "parse a standard prelude" in {
       val codec = new Http1ClientCodec(config)
-      codec.parsePrelude(buffer("HTTP/1.1 200 OK\r\n" +
-        "Content-Length: 10\r\n\r\n")) must beTrue
+      codec.parsePrelude(
+        buffer("HTTP/1.1 200 OK\r\n" +
+          "Content-Length: 10\r\n\r\n")) must beTrue
 
       codec.getResponsePrelude must_== HttpResponsePrelude(200, "OK", Seq("Content-Length" -> "10"))
     }

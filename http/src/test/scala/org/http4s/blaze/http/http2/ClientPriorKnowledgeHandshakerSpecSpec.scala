@@ -10,7 +10,8 @@ import scala.util.{Failure, Success}
 
 class ClientPriorKnowledgeHandshakerSpec extends Specification {
 
-  private def makeHandshaker(localSettings: ImmutableHttp2Settings): ClientPriorKnowledgeHandshaker = {
+  private def makeHandshaker(
+      localSettings: ImmutableHttp2Settings): ClientPriorKnowledgeHandshaker = {
     val flowStrategy = new DefaultFlowStrategy(localSettings)
     new ClientPriorKnowledgeHandshaker(
       localSettings = localSettings,
@@ -18,7 +19,7 @@ class ClientPriorKnowledgeHandshakerSpec extends Specification {
       executor = Execution.trampoline)
   }
 
-  "ClientPriorKnowledgeHandshaker">> {
+  "ClientPriorKnowledgeHandshaker" >> {
     "can perform a handshake" in {
       val localSettings = Http2Settings.default
       val head = new MockByteBufferHeadStage
@@ -72,11 +73,13 @@ class ClientPriorKnowledgeHandshakerSpec extends Specification {
       head.reads.dequeue().success(frame)
 
       ProtocolFrameDecoder.decode(head.consumeOutboundByteBuf()) must beLike {
-        case ProtocolFrame.GoAway(0, cause) => cause.code must_== Http2Exception.FRAME_SIZE_ERROR.code
+        case ProtocolFrame.GoAway(0, cause) =>
+          cause.code must_== Http2Exception.FRAME_SIZE_ERROR.code
       }
 
       handshaker.clientSession.value must beLike {
-        case Some(Failure(ex: Http2Exception)) => ex.code must_== Http2Exception.FRAME_SIZE_ERROR.code
+        case Some(Failure(ex: Http2Exception)) =>
+          ex.code must_== Http2Exception.FRAME_SIZE_ERROR.code
       }
 
       head.disconnected must beTrue

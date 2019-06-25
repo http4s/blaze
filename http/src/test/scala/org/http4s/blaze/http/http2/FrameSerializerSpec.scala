@@ -40,22 +40,28 @@ class FrameSerializerSpec extends Specification with ScalaCheck {
 
     def dec(dataFrame: DataFrame): TestFrameDecoder =
       decoder(new MockFrameListener(false) {
-        override def onDataFrame(streamId: Int, isLast: Boolean,
-                                 data: ByteBuffer, flowSize: Int): Result = {
+        override def onDataFrame(
+            streamId: Int,
+            isLast: Boolean,
+            data: ByteBuffer,
+            flowSize: Int): Result = {
           streamId must_== dataFrame.streamId
           isLast must_== dataFrame.endStream
-          compare(data::Nil, dataFrame.data.duplicate::Nil) must beTrue
+          compare(data :: Nil, dataFrame.data.duplicate :: Nil) must beTrue
           data.remaining must_== dataFrame.data.remaining
           dataFrame.flowSize must_== flowSize
 
           Continue
         }
-    })
+      })
 
     "roundtrip" >> prop { dataFrame: DataFrame =>
       val frame = joinBuffers(
         FrameSerializer.mkDataFrame(
-          dataFrame.streamId, dataFrame.endStream, dataFrame.padding, dataFrame.data.duplicate()))
+          dataFrame.streamId,
+          dataFrame.endStream,
+          dataFrame.padding,
+          dataFrame.data.duplicate()))
       dec(dataFrame).decodeBuffer(frame) == Continue
     }
 
@@ -71,12 +77,12 @@ class FrameSerializerSpec extends Specification with ScalaCheck {
   // This doesn't check header compression
   "HEADERS frame" should {
     case class HeadersFrame(
-     streamId: Int,
-     priority: Priority,
-     endHeaders: Boolean,
-     endStream: Boolean,
-     data: ByteBuffer,
-     padding: Int) {
+        streamId: Int,
+        priority: Priority,
+        endHeaders: Boolean,
+        endStream: Boolean,
+        data: ByteBuffer,
+        padding: Int) {
       def flowSize: Int = data.remaining + padding
     }
 
@@ -84,48 +90,52 @@ class FrameSerializerSpec extends Specification with ScalaCheck {
       for {
         streamId <- Gen.posNum[Int]
         hasDep <- tfGen
-        priority <- (if (hasDep) genPriority.filter(_.dependentStreamId != streamId) else Gen.const(Priority.NoPriority))
+        priority <- (if (hasDep) genPriority.filter(_.dependentStreamId != streamId)
+                     else Gen.const(Priority.NoPriority))
         endHeaders <- tfGen
         endStream <- tfGen
         padding <- Gen.choose(0, 256)
-        bytes <- Gen.choose(0, 16*1024 - padding - (if (hasDep) 5 else 0))
-      } yield HeadersFrame(
-          streamId, priority, endHeaders, endStream, mkData(bytes), padding)
+        bytes <- Gen.choose(0, 16 * 1024 - padding - (if (hasDep) 5 else 0))
+      } yield HeadersFrame(streamId, priority, endHeaders, endStream, mkData(bytes), padding)
     )
 
     def dat = mkData(20)
 
     def dec(headerFrame: HeadersFrame) =
       decoder(new MockFrameListener(false) {
-        override def onHeadersFrame(streamId: Int,
-                                    priority: Priority,
-                                    end_headers: Boolean,
-                                    end_stream: Boolean,
-                                    buffer: ByteBuffer): Result = {
+        override def onHeadersFrame(
+            streamId: Int,
+            priority: Priority,
+            end_headers: Boolean,
+            end_stream: Boolean,
+            buffer: ByteBuffer): Result = {
           headerFrame.streamId must_== streamId
           headerFrame.priority must_== priority
           headerFrame.endHeaders must_== end_headers
           headerFrame.endStream must_== end_stream
-          assert(compare(buffer::Nil, headerFrame.data.duplicate::Nil))
+          assert(compare(buffer :: Nil, headerFrame.data.duplicate :: Nil))
           Continue
         }
-    })
+      })
 
     "roundtrip" >> prop { headerFrame: HeadersFrame =>
-      val buff1 = joinBuffers(FrameSerializer.mkHeaderFrame(
-        headerFrame.streamId,
-        headerFrame.priority,
-        headerFrame.endHeaders,
-        headerFrame.endStream,
-        headerFrame.padding,
-        headerFrame.data.duplicate))
+      val buff1 = joinBuffers(
+        FrameSerializer.mkHeaderFrame(
+          headerFrame.streamId,
+          headerFrame.priority,
+          headerFrame.endHeaders,
+          headerFrame.endStream,
+          headerFrame.padding,
+          headerFrame.data.duplicate))
 
       dec(headerFrame).decodeBuffer(buff1) must_== Continue
     }
 
     "make round trip" in {
-      val buff1 = joinBuffers(FrameSerializer.mkHeaderFrame(1, Priority.NoPriority, true, true, 0, dat))
-      dec(HeadersFrame(1, Priority.NoPriority, true, true, dat, 0)).decodeBuffer(buff1) must_== Continue
+      val buff1 =
+        joinBuffers(FrameSerializer.mkHeaderFrame(1, Priority.NoPriority, true, true, 0, dat))
+      dec(HeadersFrame(1, Priority.NoPriority, true, true, dat, 0))
+        .decodeBuffer(buff1) must_== Continue
       buff1.remaining() must_== 0
 
       val priority = Priority.Dependent(3, false, 6)
@@ -138,17 +148,18 @@ class FrameSerializerSpec extends Specification with ScalaCheck {
       val paddingSize = 10
       val buff = joinBuffers(
         FrameSerializer.mkHeaderFrame(1, Priority.NoPriority, true, true, paddingSize, dat))
-      dec(HeadersFrame(1, Priority.NoPriority, true, true, dat, paddingSize)).decodeBuffer(buff) must_== Continue
+      dec(HeadersFrame(1, Priority.NoPriority, true, true, dat, paddingSize))
+        .decodeBuffer(buff) must_== Continue
     }
 
     "fail on bad stream ID" in {
-      FrameSerializer.mkHeaderFrame(
-        0, Priority.NoPriority, true, true, 0, dat) must throwA[Exception]
+      FrameSerializer.mkHeaderFrame(0, Priority.NoPriority, true, true, 0, dat) must throwA[
+        Exception]
     }
 
     "fail on bad padding" in {
-      FrameSerializer.mkHeaderFrame(
-        1, Priority.NoPriority, true, true, -10, dat) must throwA[Exception]
+      FrameSerializer.mkHeaderFrame(1, Priority.NoPriority, true, true, -10, dat) must throwA[
+        Exception]
     }
   }
 
@@ -284,7 +295,10 @@ class FrameSerializerSpec extends Specification with ScalaCheck {
 
     def dec(goAway: GoAwayFrame) =
       decoder(new MockHeaderAggregatingFrameListener {
-        override def onGoAwayFrame(lastStream: Int, errorCode: Long, debugData: Array[Byte]): Result = {
+        override def onGoAwayFrame(
+            lastStream: Int,
+            errorCode: Long,
+            debugData: Array[Byte]): Result = {
           goAway.lastStream must_== lastStream
           goAway.err must_== errorCode
           assert(util.Arrays.equals(goAway.data, debugData))
@@ -318,8 +332,8 @@ class FrameSerializerSpec extends Specification with ScalaCheck {
       })
 
     "roundtrip" >> prop { updateFrame: WindowUpdateFrame =>
-      val updateBuffer = FrameSerializer.mkWindowUpdateFrame(
-        updateFrame.streamId, updateFrame.increment)
+      val updateBuffer =
+        FrameSerializer.mkWindowUpdateFrame(updateFrame.streamId, updateFrame.increment)
       dec(updateFrame).decodeBuffer(updateBuffer) must_== Continue
     }
 

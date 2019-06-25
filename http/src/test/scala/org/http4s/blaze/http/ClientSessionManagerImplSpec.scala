@@ -12,10 +12,15 @@ class ClientSessionManagerImplSpec extends Specification {
 
   private val connectionId = ClientSessionManagerImpl.ConnectionId("http", "www.foo.com")
 
-  private val req = HttpRequest("GET", "http://www.foo.com/bar", 1, 1, Seq.empty, BodyReader.EmptyBodyReader)
+  private val req =
+    HttpRequest("GET", "http://www.foo.com/bar", 1, 1, Seq.empty, BodyReader.EmptyBodyReader)
 
-  private def cacheWithSessions(sessions: HttpClientSession*): java.util.Map[ClientSessionManagerImpl.ConnectionId, java.util.Collection[HttpClientSession]] = {
-    val map = new java.util.HashMap[ClientSessionManagerImpl.ConnectionId, java.util.Collection[HttpClientSession]]()
+  private def cacheWithSessions(sessions: HttpClientSession*): java.util.Map[
+    ClientSessionManagerImpl.ConnectionId,
+    java.util.Collection[HttpClientSession]] = {
+    val map = new java.util.HashMap[
+      ClientSessionManagerImpl.ConnectionId,
+      java.util.Collection[HttpClientSession]]()
     val coll = new java.util.LinkedList[HttpClientSession]()
     sessions.foreach(coll.add(_))
     map.put(connectionId, coll)
@@ -23,7 +28,7 @@ class ClientSessionManagerImplSpec extends Specification {
   }
 
   private def managerWithSessions(sessions: HttpClientSession*): ClientSessionManagerImpl = {
-    val cache = cacheWithSessions(sessions:_*)
+    val cache = cacheWithSessions(sessions: _*)
     new ClientSessionManagerImpl(cache, HttpClientConfig.Default)
   }
 
@@ -45,7 +50,9 @@ class ClientSessionManagerImplSpec extends Specification {
         override def close(within: Duration): Future[Unit] = ???
         override def status: Status = Ready
       }
-      val cache = new java.util.HashMap[ClientSessionManagerImpl.ConnectionId, java.util.Collection[HttpClientSession]]()
+      val cache = new java.util.HashMap[
+        ClientSessionManagerImpl.ConnectionId,
+        java.util.Collection[HttpClientSession]]()
       val manager = new ClientSessionManagerImpl(cache, HttpClientConfig.Default)
 
       val proxiedSession = ClientSessionManagerImpl.Http1SessionProxy(connectionId, session)

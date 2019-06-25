@@ -15,12 +15,14 @@ class ChannelOptionsSpec extends Specification with Mockito {
       )
 
       val ch = mock[NetworkChannel]
-      ch.setOption(any, any) returns ch
+      ch.setOption(any, any).returns(ch)
 
       options.applyToChannel(ch)
 
-      there was one(ch).setOption(java.net.StandardSocketOptions.TCP_NODELAY, java.lang.Boolean.TRUE)
-      there was one(ch).setOption(java.net.StandardSocketOptions.SO_KEEPALIVE, java.lang.Boolean.FALSE)
+      there.was(
+        one(ch).setOption(java.net.StandardSocketOptions.TCP_NODELAY, java.lang.Boolean.TRUE))
+      there.was(
+        one(ch).setOption(java.net.StandardSocketOptions.SO_KEEPALIVE, java.lang.Boolean.FALSE))
     }
   }
 }
