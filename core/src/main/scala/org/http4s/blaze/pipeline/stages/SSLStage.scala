@@ -56,6 +56,11 @@ final class SSLStage(engine: SSLEngine, maxWrite: Int = 1024 * 1024)
 
   }
 
+  override protected def stageShutdown(): Unit = {
+    engine.closeInbound()
+    engine.closeOutbound()
+  }
+
   private[this] val maxNetSize = engine.getSession.getPacketBufferSize
   private[this] val maxBuffer = math.max(maxNetSize, engine.getSession.getApplicationBufferSize)
 
