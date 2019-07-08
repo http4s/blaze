@@ -56,6 +56,17 @@ final class SSLStage(engine: SSLEngine, maxWrite: Int = 1024 * 1024)
 
   }
 
+  override protected def stageShutdown(): Unit =
+    try {
+      engine.closeInbound()
+      engine.closeOutbound()
+    } catch {
+      case e: SSLException =>
+        //Ignore cleanup errors. Example: With JDK SSLContextImpl, if the connection is closed before even handshake
+        //began(like port scanning), an SSLException might be thrown.
+        logger.debug(e)("Error while closing SSL Engine")
+    }
+
   private[this] val maxNetSize = engine.getSession.getPacketBufferSize
   private[this] val maxBuffer = math.max(maxNetSize, engine.getSession.getApplicationBufferSize)
 
