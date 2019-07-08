@@ -61,7 +61,7 @@ final class SSLStage(engine: SSLEngine, maxWrite: Int = 1024 * 1024)
       engine.closeInbound()
       engine.closeOutbound()
     } catch {
-      case _: Throwable =>
+      case _: SSLException =>
       //Ignore cleanup errors. Example: With JDK SSLContextImpl, if the connection is closed before even handshake
       //began(like port scanning), an SSLException might be thrown.
     }
