@@ -42,7 +42,7 @@ object BlazePlugin extends AutoPlugin {
     fork in run := true,
     mimaFailOnProblem := blazeMimaVersion.value.isDefined,
     mimaPreviousArtifacts := mimaPreviousVersion(version.value, scalaVersion.value).map { pv =>
-      organization.value % (normalizedName.value + "_" + scalaBinaryVersion.value) % pv
+      organization.value %% moduleName.value % pv
     }.toSet,
     mimaBinaryIssueFilters ++= Seq()
   )
