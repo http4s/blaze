@@ -8,7 +8,7 @@ import java.net.{SocketAddress, SocketTimeoutException}
 import org.http4s.blaze.channel.ChannelOptions
 import org.http4s.blaze.util.{Execution, TickWheelExecutor}
 
-import scala.concurrent.duration.FiniteDuration
+import scala.concurrent.duration.{Duration, FiniteDuration}
 import scala.concurrent.{Future, Promise}
 import scala.util.control.NonFatal
 
@@ -25,14 +25,14 @@ final class ClientChannelFactory(
     group: Option[AsynchronousChannelGroup] = None,
     channelOptions: ChannelOptions = ChannelOptions.DefaultOptions,
     scheduler: TickWheelExecutor = Execution.scheduler,
-    connectingTimeout: Option[FiniteDuration] = None) {
+    connectingTimeout: Duration = Duration.Inf) {
 
   // for binary compatibility with <=0.14.6
   def this(
       bufferSize: Int,
       group: Option[AsynchronousChannelGroup],
       channelOptions: ChannelOptions) =
-    this(bufferSize, group, channelOptions, Execution.scheduler, None)
+    this(bufferSize, group, channelOptions, Execution.scheduler, Duration.Inf)
 
   def connect(
       remoteAddress: SocketAddress,
@@ -42,16 +42,21 @@ final class ClientChannelFactory(
     try {
       val ch = AsynchronousSocketChannel.open(group.orNull)
 
-      val scheduledTimeout = connectingTimeout.map { t =>
-        val onTimeout = new Runnable {
-          override def run(): Unit = {
-            val finishedWithTimeout = p.tryFailure(new SocketTimeoutException())
-            if (finishedWithTimeout) {
-              try { ch.close() } catch { case NonFatal(_) => /* we don't care */ }
+      val scheduledTimeout = connectingTimeout match {
+        case d: FiniteDuration =>
+          val onTimeout = new Runnable {
+            override def run(): Unit = {
+              val exception = new SocketTimeoutException(
+                s"An attempt to establish connection with $remoteAddress timed out after $connectingTimeout.")
+              val finishedWithTimeout = p.tryFailure(exception)
+              if (finishedWithTimeout) {
+                try { ch.close() } catch { case NonFatal(_) => /* we don't care */ }
+              }
             }
           }
-        }
-        scheduler.schedule(onTimeout, t)
+          Some(scheduler.schedule(onTimeout, d))
+        case _ =>
+          None
       }
 
       ch.connect(
