@@ -27,6 +27,13 @@ final class ClientChannelFactory(
     scheduler: TickWheelExecutor = Execution.scheduler,
     connectingTimeout: Option[FiniteDuration] = None) {
 
+  // for binary compatibility with <=0.14.6
+  def this(
+      bufferSize: Int,
+      group: Option[AsynchronousChannelGroup],
+      channelOptions: ChannelOptions) =
+    this(bufferSize, group, channelOptions, Execution.scheduler, None)
+
   def connect(
       remoteAddress: SocketAddress,
       bufferSize: Int = bufferSize): Future[HeadStage[ByteBuffer]] = {
