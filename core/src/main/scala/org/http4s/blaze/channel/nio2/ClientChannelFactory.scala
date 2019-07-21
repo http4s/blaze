@@ -43,10 +43,12 @@ final class ClientChannelFactory(
       val ch = AsynchronousSocketChannel.open(group.orNull)
 
       val scheduledTimeout = connectingTimeout.map { t =>
-        val onTimeout: Runnable = () => {
-          val finishedWithTimeout = p.tryFailure(new SocketTimeoutException())
-          if (finishedWithTimeout) {
-            try { ch.close() } catch { case NonFatal(_) => /* we don't care */ }
+        val onTimeout = new Runnable {
+          override def run(): Unit = {
+            val finishedWithTimeout = p.tryFailure(new SocketTimeoutException())
+            if (finishedWithTimeout) {
+              try { ch.close() } catch { case NonFatal(_) => /* we don't care */ }
+            }
           }
         }
         scheduler.schedule(onTimeout, t)
