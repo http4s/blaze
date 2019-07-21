@@ -3,10 +3,12 @@ package org.http4s.blaze.channel.nio2
 import org.http4s.blaze.pipeline.HeadStage
 import java.nio.ByteBuffer
 import java.nio.channels.{AsynchronousChannelGroup, AsynchronousSocketChannel, CompletionHandler}
-import java.net.SocketAddress
+import java.net.{SocketAddress, SocketTimeoutException}
 
 import org.http4s.blaze.channel.ChannelOptions
+import org.http4s.blaze.util.{Execution, TickWheelExecutor}
 
+import scala.concurrent.duration.FiniteDuration
 import scala.concurrent.{Future, Promise}
 import scala.util.control.NonFatal
 
@@ -21,7 +23,9 @@ import scala.util.control.NonFatal
 final class ClientChannelFactory(
     bufferSize: Int = DefaultBufferSize,
     group: Option[AsynchronousChannelGroup] = None,
-    channelOptions: ChannelOptions = ChannelOptions.DefaultOptions) {
+    channelOptions: ChannelOptions = ChannelOptions.DefaultOptions,
+    scheduler: TickWheelExecutor = Execution.scheduler,
+    connectingTimeout: Option[FiniteDuration] = None) {
 
   def connect(
       remoteAddress: SocketAddress,
@@ -30,18 +34,31 @@ final class ClientChannelFactory(
 
     try {
       val ch = AsynchronousSocketChannel.open(group.orNull)
+
+      val scheduledTimeout = connectingTimeout.map { t =>
+        val onTimeout: Runnable = () => {
+          val finishedWithTimeout = p.tryFailure(new SocketTimeoutException())
+          if (finishedWithTimeout) {
+            try { ch.close() } catch { case NonFatal(_) => /* we don't care */ }
+          }
+        }
+        scheduler.schedule(onTimeout, t)
+      }
+
       ch.connect(
         remoteAddress,
         null: Null,
         new CompletionHandler[Void, Null] {
           def failed(exc: Throwable, attachment: Null): Unit = {
-            p.failure(exc)
+            p.tryFailure(exc)
+            scheduledTimeout.foreach(_.cancel())
             ()
           }
 
           def completed(result: Void, attachment: Null): Unit = {
             channelOptions.applyToChannel(ch)
-            p.success(new ByteBufferHead(ch, bufferSize = bufferSize))
+            p.trySuccess(new ByteBufferHead(ch, bufferSize = bufferSize))
+            scheduledTimeout.foreach(_.cancel())
             ()
           }
         }
