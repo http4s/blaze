@@ -6,7 +6,7 @@ import java.nio.channels.{AsynchronousChannelGroup, AsynchronousSocketChannel, C
 import java.net.{SocketAddress, SocketTimeoutException}
 
 import org.http4s.blaze.channel.ChannelOptions
-import org.http4s.blaze.util.{Execution, TickWheelExecutor}
+import org.http4s.blaze.util.{Cancelable, Execution, TickWheelExecutor}
 
 import scala.concurrent.duration.{Duration, FiniteDuration}
 import scala.concurrent.{Future, Promise}
@@ -54,9 +54,9 @@ final class ClientChannelFactory(
               }
             }
           }
-          Some(scheduler.schedule(onTimeout, d))
+          scheduler.schedule(onTimeout, d)
         case _ =>
-          None
+          Cancelable.NoopCancel
       }
 
       ch.connect(
@@ -65,15 +65,13 @@ final class ClientChannelFactory(
         new CompletionHandler[Void, Null] {
           def failed(exc: Throwable, attachment: Null): Unit = {
             p.tryFailure(exc)
-            scheduledTimeout.foreach(_.cancel())
-            ()
+            scheduledTimeout.cancel()
           }
 
           def completed(result: Void, attachment: Null): Unit = {
             channelOptions.applyToChannel(ch)
             p.trySuccess(new ByteBufferHead(ch, bufferSize = bufferSize))
-            scheduledTimeout.foreach(_.cancel())
-            ()
+            scheduledTimeout.cancel()
           }
         }
       )
