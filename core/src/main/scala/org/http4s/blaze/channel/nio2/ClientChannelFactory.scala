@@ -25,7 +25,7 @@ final class ClientChannelFactory(
     group: Option[AsynchronousChannelGroup] = None,
     channelOptions: ChannelOptions = ChannelOptions.DefaultOptions,
     scheduler: TickWheelExecutor = Execution.scheduler,
-    connectingTimeout: Duration = Duration.Inf) {
+    connectTimeout: Duration = Duration.Inf) {
 
   // for binary compatibility with <=0.14.6
   def this(
@@ -42,12 +42,12 @@ final class ClientChannelFactory(
     try {
       val ch = AsynchronousSocketChannel.open(group.orNull)
 
-      val scheduledTimeout = connectingTimeout match {
+      val scheduledTimeout = connectTimeout match {
         case d: FiniteDuration =>
           val onTimeout = new Runnable {
             override def run(): Unit = {
               val exception = new SocketTimeoutException(
-                s"An attempt to establish connection with $remoteAddress timed out after $connectingTimeout.")
+                s"An attempt to establish connection with $remoteAddress timed out after $connectTimeout.")
               val finishedWithTimeout = p.tryFailure(exception)
               if (finishedWithTimeout) {
                 try { ch.close() } catch { case NonFatal(_) => /* we don't care */ }
