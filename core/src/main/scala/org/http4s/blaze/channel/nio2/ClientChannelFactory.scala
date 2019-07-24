@@ -6,9 +6,9 @@ import java.nio.channels.{AsynchronousChannelGroup, AsynchronousSocketChannel, C
 import java.net.{SocketAddress, SocketTimeoutException}
 
 import org.http4s.blaze.channel.ChannelOptions
-import org.http4s.blaze.util.{Cancelable, Execution, TickWheelExecutor}
+import org.http4s.blaze.util.{Execution, TickWheelExecutor}
 
-import scala.concurrent.duration.{Duration, FiniteDuration}
+import scala.concurrent.duration.Duration
 import scala.concurrent.{Future, Promise}
 import scala.util.control.NonFatal
 
@@ -42,22 +42,17 @@ final class ClientChannelFactory(
     try {
       val ch = AsynchronousSocketChannel.open(group.orNull)
 
-      val scheduledTimeout = connectTimeout match {
-        case d: FiniteDuration =>
-          val onTimeout = new Runnable {
-            override def run(): Unit = {
-              val exception = new SocketTimeoutException(
-                s"An attempt to establish connection with $remoteAddress timed out after $connectTimeout.")
-              val finishedWithTimeout = p.tryFailure(exception)
-              if (finishedWithTimeout) {
-                try { ch.close() } catch { case NonFatal(_) => /* we don't care */ }
-              }
-            }
+      val onTimeout = new Runnable {
+        override def run(): Unit = {
+          val exception = new SocketTimeoutException(
+            s"An attempt to establish connection with $remoteAddress timed out after $connectTimeout.")
+          val finishedWithTimeout = p.tryFailure(exception)
+          if (finishedWithTimeout) {
+            try { ch.close() } catch { case NonFatal(_) => /* we don't care */ }
           }
-          scheduler.schedule(onTimeout, d)
-        case _ =>
-          Cancelable.NoopCancel
+        }
       }
+      val scheduledTimeout = scheduler.schedule(onTimeout, connectTimeout)
 
       ch.connect(
         remoteAddress,
