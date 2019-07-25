@@ -141,25 +141,25 @@ class TickWheelExecutor(wheelSize: Int = DefaultWheelSize, val tick: Duration = 
 
     handleTasks() // Deal with scheduling and cancellations
 
-    val now = System.currentTimeMillis()
+    val thisTickTime = System.currentTimeMillis()
     val lastTick = (lastTickTime * _tickInv).toLong
-    val thisTick = (now * _tickInv).toLong
+    val thisTick = (thisTickTime * _tickInv).toLong
     val ticks = math.min(thisTick - lastTick, wheelSize.toLong)
 
     @tailrec
     def go(i: Long): Unit = if (i < ticks) { // will do at least one tick
       val ii = ((lastTick + i) % wheelSize).toInt
       clockFace(ii)
-        .prune(now) // Remove canceled and submit expired tasks from the current spoke
+        .prune(thisTickTime) // Remove canceled and submit expired tasks from the current spoke
       go(i + 1)
     }
     go(0)
 
     if (alive) {
-      // Make up for execution time, unlikely to be significant
-      val left = tickMilli - (System.currentTimeMillis() - now)
-      if (left > 0) Thread.sleep(left)
-      cycle(now)
+      val nextTickTime = (thisTick + 1) * tickMilli
+      val sleep = nextTickTime - System.currentTimeMillis()
+      if (sleep > 0) Thread.sleep(sleep)
+      cycle(thisTickTime)
     } else { // delete all our buckets so we don't hold any references
       for { i <- 0 until wheelSize } clockFace(i) = null
     }
