@@ -17,7 +17,12 @@ class ClientParserSpec extends Specification {
     ("Some-Header", "") :: Nil
 
   val l_headersstr = l_headers
-    .map { case (a, b) => a + (if (b.length > 0) { ": " + b } else "") }
+    .map {
+      case (a, b) =>
+        a + (if (b.length > 0) {
+               ": " + b
+             } else "")
+    }
     .mkString("\r\n") + "\r\n\r\n"
 
   val body = "Hello world!"
