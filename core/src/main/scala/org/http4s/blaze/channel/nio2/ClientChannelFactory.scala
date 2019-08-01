@@ -48,7 +48,9 @@ final class ClientChannelFactory(
             s"An attempt to establish connection with $remoteAddress timed out after $connectTimeout.")
           val finishedWithTimeout = p.tryFailure(exception)
           if (finishedWithTimeout) {
-            try { ch.close() } catch { case NonFatal(_) => /* we don't care */ }
+            try {
+              ch.close()
+            } catch { case NonFatal(_) => /* we don't care */ }
           }
         }
       }

@@ -144,7 +144,7 @@ private final class Http1ServerCodec(maxNonBodyBytes: Int, pipeline: TailStage[B
                   lock.synchronized {
                     buffered = BufferTools.concatBuffers(buffered, buffer)
                     apply()
-                })(Execution.trampoline)
+                  })(Execution.trampoline)
             }
           }
         }

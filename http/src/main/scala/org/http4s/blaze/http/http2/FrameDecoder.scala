@@ -127,7 +127,11 @@ private class FrameDecoder(localSettings: Http2Settings, listener: FrameListener
     if (streamId == 0) {
       Error(PROTOCOL_ERROR.goaway("Headers frame with stream id 0x0"))
     } else {
-      val padding = if (!Flags.PADDED(flags)) 0 else { buffer.get() & 0xff }
+      val padding =
+        if (!Flags.PADDED(flags)) 0
+        else {
+          buffer.get() & 0xff
+        }
 
       val priority =
         if (!Flags.PRIORITY(flags)) Priority.NoPriority
@@ -193,7 +197,11 @@ private class FrameDecoder(localSettings: Http2Settings, listener: FrameListener
     if (streamId == 0) {
       Error(PROTOCOL_ERROR.goaway("PUSH_PROMISE frame with stream id 0x0"))
     } else {
-      val padding = if (!Flags.PADDED(flags)) 0 else { buffer.get() & 0xff }
+      val padding =
+        if (!Flags.PADDED(flags)) 0
+        else {
+          buffer.get() & 0xff
+        }
       val promisedId = getStreamId(buffer)
 
       if (promisedId == 0) {
