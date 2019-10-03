@@ -56,22 +56,28 @@ final class ClientChannelFactory(
       }
       val scheduledTimeout = scheduler.schedule(onTimeout, connectTimeout)
 
-      ch.connect(
-        remoteAddress,
-        null: Null,
-        new CompletionHandler[Void, Null] {
-          def failed(exc: Throwable, attachment: Null): Unit = {
-            p.tryFailure(exc)
-            scheduledTimeout.cancel()
-          }
+      try {
+        ch.connect(
+          remoteAddress,
+          null: Null,
+          new CompletionHandler[Void, Null] {
+            def failed(exc: Throwable, attachment: Null): Unit = {
+              p.tryFailure(exc)
+              scheduledTimeout.cancel()
+            }
 
-          def completed(result: Void, attachment: Null): Unit = {
-            channelOptions.applyToChannel(ch)
-            p.trySuccess(new ByteBufferHead(ch, bufferSize = bufferSize))
-            scheduledTimeout.cancel()
+            def completed(result: Void, attachment: Null): Unit = {
+              channelOptions.applyToChannel(ch)
+              p.trySuccess(new ByteBufferHead(ch, bufferSize = bufferSize))
+              scheduledTimeout.cancel()
+            }
           }
-        }
-      )
+        )
+      } catch {
+        case ex: IllegalArgumentException =>
+          ch.close()
+          throw ex
+      }
     } catch { case NonFatal(t) => p.tryFailure(t) }
 
     p.future
