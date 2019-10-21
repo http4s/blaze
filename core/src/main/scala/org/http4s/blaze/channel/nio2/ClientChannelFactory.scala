@@ -7,6 +7,7 @@ import java.net.{SocketAddress, SocketTimeoutException}
 
 import org.http4s.blaze.channel.ChannelOptions
 import org.http4s.blaze.util.{Execution, TickWheelExecutor}
+import org.log4s.getLogger
 
 import scala.concurrent.duration.Duration
 import scala.concurrent.{Future, Promise}
@@ -26,6 +27,8 @@ final class ClientChannelFactory(
     channelOptions: ChannelOptions = ChannelOptions.DefaultOptions,
     scheduler: TickWheelExecutor = Execution.scheduler,
     connectTimeout: Duration = Duration.Inf) {
+
+  private[this] val logger = getLogger
 
   // for binary compatibility with <=0.14.6
   def this(
@@ -56,26 +59,28 @@ final class ClientChannelFactory(
       }
       val scheduledTimeout = scheduler.schedule(onTimeout, connectTimeout)
 
-      try {
-        ch.connect(
-          remoteAddress,
-          null: Null,
-          new CompletionHandler[Void, Null] {
-            def failed(exc: Throwable, attachment: Null): Unit = {
-              p.tryFailure(exc)
-              scheduledTimeout.cancel()
-            }
+      val completionHandler = new CompletionHandler[Void, Null] {
+        def failed(exc: Throwable, attachment: Null): Unit = {
+          p.tryFailure(exc)
+          scheduledTimeout.cancel()
+        }
 
-            def completed(result: Void, attachment: Null): Unit = {
-              channelOptions.applyToChannel(ch)
-              p.trySuccess(new ByteBufferHead(ch, bufferSize = bufferSize))
-              scheduledTimeout.cancel()
-            }
-          }
-        )
+        def completed(result: Void, attachment: Null): Unit = {
+          channelOptions.applyToChannel(ch)
+          p.trySuccess(new ByteBufferHead(ch, bufferSize = bufferSize))
+          scheduledTimeout.cancel()
+        }
+      }
+
+      try {
+        ch.connect(remoteAddress, null: Null, completionHandler)
       } catch {
         case ex: IllegalArgumentException =>
-          ch.close()
+          try {
+            ch.close()
+          } catch {
+            case NonFatal(e) => logger.error(e)("Failure occurred while closing channel.")
+          }
           throw ex
       }
     } catch { case NonFatal(t) => p.tryFailure(t) }
