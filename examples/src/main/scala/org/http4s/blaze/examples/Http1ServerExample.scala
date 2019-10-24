@@ -44,7 +44,7 @@ object NIO1HttpServer {
   def main(args: Array[String]): Unit = {
     val f =
       NIO1SocketServerGroup.fixedGroup(workerThreads = channel.DefaultPoolSize)
-    new Http1ServerExample(f, 8080) ()
+    new Http1ServerExample(f, 8080)()
       .run()
       .join()
 
@@ -55,7 +55,7 @@ object NIO1HttpServer {
 object NIO2HttpServer {
   def main(args: Array[String]): Unit = {
     val f = NIO2SocketServerGroup()
-    new Http1ServerExample(f, 8080) ()
+    new Http1ServerExample(f, 8080)()
       .run()
       .join()
 
@@ -68,7 +68,7 @@ object SSLHttpServer {
     val sslContext = ExampleKeystore.sslContext()
     val f =
       NIO1SocketServerGroup.fixedGroup(workerThreads = channel.DefaultPoolSize)
-    new Http1ServerExample(f, 4430) ({ builder =>
+    new Http1ServerExample(f, 4430)({ builder =>
       val eng = sslContext.createSSLEngine()
       eng.setUseClientMode(false)
       builder.prepend(new SSLStage(eng, 100 * 1024))
@@ -85,7 +85,7 @@ object ClientAuthSSLHttpServer {
     val sslContext = ExampleKeystore.clientAuthSslContext()
     val f =
       NIO1SocketServerGroup.fixedGroup(workerThreads = channel.DefaultPoolSize)
-    new Http1ServerExample(f, 4430) ({ builder =>
+    new Http1ServerExample(f, 4430)({ builder =>
       val eng = sslContext.createSSLEngine()
       eng.setUseClientMode(false)
       eng.setNeedClientAuth(true)
