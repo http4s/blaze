@@ -5,10 +5,8 @@ import java.net.{InetSocketAddress, URI}
 import scala.util.Try
 
 private[blaze] object UrlTools {
-
   // TODO: we need to make sure to validate this
   case class UrlComposition(uri: URI) {
-
     /** Lower case representation of the scheme */
     val scheme: String = uri.getScheme.toLowerCase
 

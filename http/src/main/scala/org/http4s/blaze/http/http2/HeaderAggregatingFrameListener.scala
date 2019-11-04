@@ -21,7 +21,6 @@ private abstract class HeaderAggregatingFrameListener(
     localSettings: Http2Settings,
     headerDecoder: HeaderDecoder)
     extends FrameListener {
-
   private[this] sealed trait PartialFrame {
     def streamId: Int
     var buffer: ByteBuffer

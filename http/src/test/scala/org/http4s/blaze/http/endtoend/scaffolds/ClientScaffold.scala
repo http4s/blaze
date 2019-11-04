@@ -8,7 +8,6 @@ import org.http4s.blaze.http.{BodyReader, Headers, HttpRequest, HttpResponsePrel
   * Implementations are blocking, or at least block on the final result.
   */
 private[endtoend] abstract class ClientScaffold(majorVersion: Int, minorVersion: Int) {
-
   def close(): Unit
 
   // Don't be afraid to block: this is for testing.

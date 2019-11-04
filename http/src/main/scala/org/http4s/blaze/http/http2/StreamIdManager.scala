@@ -1,7 +1,6 @@
 package org.http4s.blaze.http.http2
 
 private[http2] object StreamIdManager {
-
   /** Create a new [[StreamIdManager]] */
   def apply(isClient: Boolean): StreamIdManager = create(isClient, 0)
 
@@ -20,7 +19,6 @@ private final class StreamIdManager private (
     isClient: Boolean,
     private var nextInbound: Int,
     private var nextOutbound: Int) {
-
   /** Get the last inbound stream to be observed, or 0 if no streams have been processed */
   def lastInboundStream: Int = math.max(0, nextInbound - 2)
 

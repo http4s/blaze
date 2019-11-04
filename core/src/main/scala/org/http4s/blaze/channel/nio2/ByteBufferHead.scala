@@ -15,7 +15,6 @@ import java.lang.{Long => JLong}
 
 private[nio2] final class ByteBufferHead(channel: AsynchronousSocketChannel, bufferSize: Int)
     extends ChannelHead {
-
   def name: String = "ByteBufferHeadStage"
 
   @volatile

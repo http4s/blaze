@@ -11,14 +11,12 @@ import org.http4s.blaze.pipeline.{LeafBuilder, TailStage}
 import org.log4s.getLogger
 
 object ServerSelector {
-
   private val logger = getLogger
 
   def apply(
       engine: SSLEngine,
       service: HttpService,
       config: HttpServerStageConfig): ALPNServerSelector = {
-
     def builder(s: String): LeafBuilder[ByteBuffer] = s match {
       case H2 | H2_14 => LeafBuilder(http2Stage(service, config))
       case _ => LeafBuilder(http1xStage(service, config))

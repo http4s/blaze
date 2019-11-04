@@ -8,7 +8,6 @@ import java.nio.ByteBuffer
 import org.http4s.blaze.http.parser.BaseExceptions.{BadMessage, InvalidState}
 
 class ClientParserSpec extends Specification {
-
   val resp = "HTTP/1.1 200 OK\r\n"
 
   val l_headers = ("From", "someuser@jmarshall.com  ") ::
@@ -194,7 +193,6 @@ class ClientParserSpec extends Specification {
     }
 
     "Parse a chunked body" in {
-
       val p = new TestParser
       val full = resp + "Transfer-Encoding: chunked\r\n" + l_headersstr +
         Integer.toHexString(body.length) + "\r\n" +
@@ -256,5 +254,4 @@ class ClientParserSpec extends Specification {
       ISO_8859_1.decode(out).toString should_== (body)
     }
   }
-
 }

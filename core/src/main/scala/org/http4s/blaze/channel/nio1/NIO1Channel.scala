@@ -7,7 +7,6 @@ import java.nio.channels.SelectableChannel
   * The interface adds a way to cleanup resources other than the channel itself.
   */
 trait NIO1Channel {
-
   /** The underlying java `SelectableChannel` */
   val selectableChannel: SelectableChannel
 

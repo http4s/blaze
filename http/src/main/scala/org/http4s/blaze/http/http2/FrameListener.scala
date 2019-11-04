@@ -15,7 +15,6 @@ import Http2Settings.Setting
   * window increment was 0 or the update was for an idle stream.
   */
 private trait FrameListener {
-
   /** Determine whether we are in the midst of a sequence of header and header continuation frames
     *
     * Each header block is processed as a discrete unit.  Header blocks

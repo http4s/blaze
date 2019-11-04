@@ -17,7 +17,6 @@ private[http] final class ServerStage(
     service: HttpService,
     config: HttpServerStageConfig
 ) extends TailStage[StreamFrame] {
-
   private implicit def _ec =
     Execution.trampoline // for all the onComplete calls
 

@@ -8,7 +8,6 @@ import scala.util.{Failure, Try}
 
 /** Helper to collect errors that we don't care much about */
 private[http] object NormalDisconnect {
-
   def unapply(t: Try[Any]): Option[Exception] = t match {
     case Failure(t) => unapply(t)
     case _ => None

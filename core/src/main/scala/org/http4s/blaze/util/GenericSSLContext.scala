@@ -6,7 +6,6 @@ import javax.net.ssl.{KeyManagerFactory, SSLContext, X509TrustManager}
 
 /** SSL tools */
 object GenericSSLContext {
-
   private class DefaultTrustManager extends X509TrustManager {
     def getAcceptedIssuers(): Array[X509Certificate] =
       new Array[java.security.cert.X509Certificate](0)
@@ -45,5 +44,4 @@ object GenericSSLContext {
     context.init(kmf.getKeyManagers(), null, null)
     context
   }
-
 }

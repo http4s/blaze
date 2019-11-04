@@ -9,7 +9,6 @@ import scala.concurrent.Future
 import scala.util.{Failure, Success}
 
 class AbstractBodyWriterSpec extends Specification {
-
   private val hs = Seq("one" -> "two")
 
   private def hsFrame(eos: Boolean): HeadersFrame = HeadersFrame(Priority.NoPriority, eos, hs)
@@ -29,7 +28,6 @@ class AbstractBodyWriterSpec extends Specification {
   }
 
   private class WriterImpl extends AbstractBodyWriter(hs) {
-
     var flushed: Option[Seq[StreamFrame]] = None
 
     var failedReason: Option[Throwable] = None
@@ -136,5 +134,4 @@ class AbstractBodyWriterSpec extends Specification {
       }
     }
   }
-
 }

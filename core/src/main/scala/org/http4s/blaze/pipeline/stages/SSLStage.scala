@@ -53,7 +53,6 @@ final class SSLStage(engine: SSLEngine, maxWrite: Int = 1024 * 1024)
       closePipeline(Some(cause))
       handshakeFailure(cause)
     }
-
   }
 
   override protected def stageShutdown(): Unit =

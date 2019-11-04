@@ -5,7 +5,6 @@ import org.http4s.blaze.util.{FutureEOF, FutureUnit}
 import scala.concurrent.Future
 
 class SeqHead[O](private var data: Seq[O]) extends HeadStage[O] {
-
   private val lock = new AnyRef
   private var acc: Vector[O] = Vector.empty
 

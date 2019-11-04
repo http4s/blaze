@@ -12,7 +12,6 @@ import org.http4s.blaze.util.{BufferTools, Execution}
 import scala.concurrent.Future
 
 object ExampleService {
-
   private implicit val ec = Execution.trampoline
 
   def service(

@@ -9,7 +9,6 @@ import scala.concurrent.duration.Duration
 import scala.util.Success
 
 class ClientSessionManagerImplSpec extends Specification {
-
   private val connectionId = ClientSessionManagerImpl.ConnectionId("http", "www.foo.com")
 
   private val req =

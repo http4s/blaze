@@ -8,7 +8,6 @@ import scala.concurrent.duration.Duration
 
 /** Representation of the HTTP connection or session */
 private trait Connection {
-
   /** An estimate for the current quality of the connection
     *
     * Quality is intended to provide a metric for health of a session.

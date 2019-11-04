@@ -7,9 +7,7 @@ import scala.concurrent.duration.Duration
 import scala.util.Failure
 
 class OutboundStreamStateImplSpec extends Specification {
-
   private class Ctx(connectionState: Connection.State) {
-
     val streamId = 1
 
     class MockTools extends mocks.MockTools(isClient = true) {
@@ -72,5 +70,4 @@ class OutboundStreamStateImplSpec extends Specification {
       }
     }
   }
-
 }

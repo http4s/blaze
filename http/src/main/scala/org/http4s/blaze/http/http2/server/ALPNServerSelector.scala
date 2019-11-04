@@ -22,7 +22,6 @@ final class ALPNServerSelector(
     selector: Set[String] => String,
     builder: String => LeafBuilder[ByteBuffer]
 ) extends TailStage[ByteBuffer] {
-
   ALPN.put(engine, new ServerProvider)
 
   @volatile

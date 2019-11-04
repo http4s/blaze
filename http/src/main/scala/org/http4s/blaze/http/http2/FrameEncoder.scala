@@ -8,7 +8,6 @@ import scala.collection.mutable.ArrayBuffer
 
 /** A more humane interface for writing HTTP messages. */
 private final class FrameEncoder(remoteSettings: Http2Settings, headerEncoder: HeaderEncoder) {
-
   // Just a shortcut
   private[this] def maxFrameSize: Int = remoteSettings.maxFrameSize
 

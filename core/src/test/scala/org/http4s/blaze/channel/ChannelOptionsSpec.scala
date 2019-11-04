@@ -6,7 +6,6 @@ import org.specs2.mock.Mockito
 import org.specs2.mutable.Specification
 
 class ChannelOptionsSpec extends Specification with Mockito {
-
   "ChannelOptions" should {
     "be set on a NetworkChannel" in {
       val options = ChannelOptions(

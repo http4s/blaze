@@ -7,7 +7,6 @@ import org.http4s.blaze.http.http2.Http2Settings.Setting
 import org.http4s.blaze.http.http2.mocks.MockFrameListener
 
 private[http2] object ProtocolFrameDecoder {
-
   private[this] class Listener(inHeaderSequence: Boolean)
       extends MockFrameListener(inHeaderSequence) {
     var frame: ProtocolFrame = ProtocolFrame.Empty

@@ -12,7 +12,6 @@ import org.specs2.mutable.Specification
 import scala.util.Success
 
 class SessionFrameListenerSpec extends Specification {
-
   private class MockTools(isClient: Boolean) extends mocks.MockTools(isClient) {
     lazy val headerDecoder: HeaderDecoder =
       new HeaderDecoder(

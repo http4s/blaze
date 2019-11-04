@@ -23,7 +23,6 @@ private abstract class ChannelHead extends HeadStage[ByteBuffer] {
 }
 
 object ChannelHead {
-
   // If the connection is forcibly closed, we might get an IOException with one of the following messages
   private[blaze] val brokePipeMessages = Set(
     "Connection timed out", // Found on Linux NIO1

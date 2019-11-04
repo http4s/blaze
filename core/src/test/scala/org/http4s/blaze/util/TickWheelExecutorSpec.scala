@@ -9,7 +9,6 @@ class TickWheelExecutorSpec extends Specification {
   import scala.concurrent.duration._
 
   "TickWheelExecutor" should {
-
     val ec = new TickWheelExecutor(tick = 100.millis)
 
     "Execute a simple task with no delay" in {
@@ -128,5 +127,4 @@ class TickWheelExecutorSpec extends Specification {
       }, Duration.Inf) must throwA[RuntimeException]
     }
   }
-
 }

@@ -4,7 +4,6 @@ package stages
 import scala.concurrent.{Future, Promise}
 
 final class SlowHead[O] extends HeadStage[O] {
-
   override def name: String = "SlowHead"
 
   override protected def doClosePipeline(cause: Option[Throwable]): Unit = ???

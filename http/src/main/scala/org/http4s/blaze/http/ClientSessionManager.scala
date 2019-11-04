@@ -10,7 +10,6 @@ import scala.concurrent.Future
   * @note It is required that the methods on implementations of this interface be thread safe.
   */
 trait ClientSessionManager {
-
   /** Acquire a session that is believe to be healthy.
     *
     * This may be a session that has already existed or it may be a new session.

@@ -15,7 +15,6 @@ import scala.concurrent._
 import scala.util.control.NonFatal
 
 class SSLStageSpec extends Specification {
-
   implicit def ec = Execution.trampoline
 
   def debug = false
@@ -78,7 +77,6 @@ class SSLStageSpec extends Specification {
     }
 
     "Transcode multiple single byte buffers" in {
-
       val (headEng, stageEng) = mkClientServerEngines
 
       val strs = (0 until 10).map(_.toString)
@@ -97,7 +95,6 @@ class SSLStageSpec extends Specification {
     }
 
     "Transcode multiple buffers" in {
-
       val (headEng, stageEng) = mkClientServerEngines
 
       val strs = (0 until 10).map { i =>
@@ -139,7 +136,6 @@ class SSLStageSpec extends Specification {
     }
 
     "Survive aggressive handshaking" in {
-
       val (headEng, stageEng) = mkClientServerEngines
 
       val strs = (0 until 100).map { i =>
@@ -160,7 +156,6 @@ class SSLStageSpec extends Specification {
     }
 
     "Survive aggressive handshaking with single byte buffers" in {
-
       val (headEng, stageEng) = mkClientServerEngines
 
       val strs = (0 until 100).map(_.toString)
@@ -179,7 +174,6 @@ class SSLStageSpec extends Specification {
     }
 
     "Survive aggressive handshaking with empty buffers" in {
-
       val (headEng, stageEng) = mkClientServerEngines
 
       val strs = (0 until 10).map { i =>
@@ -223,7 +217,6 @@ class SSLStageSpec extends Specification {
     */
   class SSLSeqHead(data: Seq[ByteBuffer], engine: SSLEngine, handshakeInterval: Int = -1)
       extends SeqHead[ByteBuffer](data) {
-
     private val lock = new AnyRef
     private val maxNetSize = engine.getSession.getPacketBufferSize
     private var handShakeBuffer: ByteBuffer = null
@@ -316,7 +309,6 @@ class SSLStageSpec extends Specification {
     }
 
     override def writeRequest(data: ByteBuffer): Future[Unit] = lock.synchronized {
-
       def go(data: ByteBuffer): Future[Unit] =
         try {
           //

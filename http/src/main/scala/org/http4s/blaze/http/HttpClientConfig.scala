@@ -19,7 +19,6 @@ case class HttpClientConfig(
     lenientParser: Boolean = false,
     channelGroup: Option[AsynchronousChannelGroup] = None,
     sslContext: Option[SSLContext] = None) {
-
   private lazy val theSslContext =
     sslContext.getOrElse(GenericSSLContext.clientSSLContext())
 

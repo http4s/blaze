@@ -4,7 +4,6 @@ package pipeline
 import scala.util.control.NoStackTrace
 
 object Command {
-
   trait InboundCommand
 
   /** Signals that the pipeline [[HeadStage]] is connected and ready to accept read and write requests */

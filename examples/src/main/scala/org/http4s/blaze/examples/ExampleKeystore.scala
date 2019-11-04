@@ -6,7 +6,6 @@ import javax.net.ssl.{KeyManagerFactory, SSLContext, TrustManagerFactory}
 import org.http4s.blaze.util.BogusKeystore
 
 object ExampleKeystore {
-
   def sslContext(): SSLContext = {
     val ksStream = BogusKeystore.asInputStream()
     assert(ksStream != null)

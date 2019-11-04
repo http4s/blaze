@@ -10,7 +10,6 @@ import scala.util.Try
   *       them before binding any sockets and should be closed.
   */
 trait ServerChannelGroup {
-
   /** Create a [[ServerChannel]] that will serve the service on the specified socket */
   def bind(address: InetSocketAddress, service: SocketPipelineBuilder): Try[ServerChannel]
 

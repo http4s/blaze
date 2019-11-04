@@ -8,7 +8,6 @@ import scala.concurrent.ExecutionContext.global
 import org.specs2.mutable.Specification
 
 class ActorSpec extends Specification {
-
   case class E(msg: String) extends Exception(msg)
 
   sealed trait Msg
@@ -31,7 +30,6 @@ class ActorSpec extends Specification {
   }
 
   "Actor under load" should {
-
     def load(senders: Int, messages: Int): Unit = {
       val flag = new AtomicReference[Throwable]()
       val latch = new CountDownLatch(senders * messages)

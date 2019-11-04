@@ -4,7 +4,6 @@ import java.nio.ByteBuffer
 
 class BenchParser(maxReq: Int = 1034, maxHeader: Int = 1024)
     extends Http1ServerParser(maxReq, maxHeader, 1) {
-
   def parseLine(s: ByteBuffer) = parseRequestLine(s)
 
   def parseheaders(s: ByteBuffer): Boolean = parseHeaders(s)

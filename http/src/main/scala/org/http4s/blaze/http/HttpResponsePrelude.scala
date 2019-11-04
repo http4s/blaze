@@ -7,7 +7,6 @@ package org.http4s.blaze.http
   * @param headers Response headers.
   */
 case class HttpResponsePrelude(code: Int, status: String, headers: Headers) {
-
   private[this] def formatStr(headersString: String): String =
     s"HttpResponsePrelude($code, $status, $headersString)"
 

@@ -12,11 +12,9 @@ import scala.concurrent._
 import scala.util._
 
 class InfiniteSpec extends Specification {
-
   implicit def ec = ExecutionContext.global
 
   "An infinite server response" should {
-
     "be properly cleaned on client close" in {
       val packetSize = 1024
 
@@ -103,7 +101,5 @@ class InfiniteSpec extends Specification {
         bytesSentCount.get must beGreaterThanOrEqualTo(packetSize * 10)
       }
     }
-
   }
-
 }

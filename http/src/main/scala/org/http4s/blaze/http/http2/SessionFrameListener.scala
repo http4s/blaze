@@ -17,7 +17,6 @@ private class SessionFrameListener(
     isClient: Boolean,
     headerDecoder: HeaderDecoder)
     extends HeaderAggregatingFrameListener(session.localSettings, headerDecoder) {
-
   // Concrete methods ////////////////////////////////////////////////////////////////////
 
   override def onCompleteHeadersFrame(

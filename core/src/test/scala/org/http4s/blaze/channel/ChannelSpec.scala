@@ -36,7 +36,6 @@ class NIO2ChannelSpec extends BaseChannelSpec {
 }
 
 abstract class BaseChannelSpec extends Specification {
-
   protected case class ServerPair(group: ServerChannelGroup, channel: ServerChannel)
 
   protected def bind(f: SocketPipelineBuilder): ServerPair

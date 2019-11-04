@@ -6,7 +6,6 @@ import org.http4s.blaze.util.BufferTools
 import org.specs2.mutable.Specification
 
 class HeaderDecoderSpec extends Specification {
-
   private val testHeaders = Seq("foo" -> "bar")
 
   private val headersBlockSize = testHeaders.foldLeft(0) {

@@ -14,7 +14,6 @@ import scala.collection.mutable
 import scala.concurrent.Future
 
 class ServerStageSpec extends Specification {
-
   private implicit def ex = Execution.trampoline
 
   private val goodHeaders = Seq(
@@ -25,7 +24,6 @@ class ServerStageSpec extends Specification {
   )
 
   private class Ctx {
-
     lazy val service: HttpService = { _ =>
       Future.successful(RouteAction.Ok("foo"))
     }
@@ -43,7 +41,6 @@ class ServerStageSpec extends Specification {
   }
 
   "ServerStage" >> {
-
     "fails to start with a non-headers frame" >> {
       val ctx = new Ctx
       import ctx._
@@ -171,5 +168,4 @@ class ServerStageSpec extends Specification {
       head.disconnected must beTrue
     }
   }
-
 }

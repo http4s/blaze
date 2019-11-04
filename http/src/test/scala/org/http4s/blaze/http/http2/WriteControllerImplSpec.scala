@@ -10,7 +10,6 @@ import scala.collection.mutable
 import scala.concurrent.{Future, Promise}
 
 class WriteControllerImplSpec extends Specification {
-
   private def mockData(i: Int): ByteBuffer =
     ByteBuffer.wrap {
       (0 to i).map(_.toByte).toArray
@@ -40,7 +39,6 @@ class WriteControllerImplSpec extends Specification {
       written += Write(data, p)
       p.future
     }
-
   }
 
   private class Ctx {

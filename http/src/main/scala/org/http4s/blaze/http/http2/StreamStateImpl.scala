@@ -22,7 +22,6 @@ import scala.concurrent.{Future, Promise}
   *       streams dispatcher.
   */
 private abstract class StreamStateImpl(session: SessionCore) extends StreamState {
-
   // State associated with the streams inbound data flow
   private[this] val pendingInboundMessages = new util.ArrayDeque[StreamFrame](1)
   private[this] var pendingRead: Promise[StreamFrame] = null

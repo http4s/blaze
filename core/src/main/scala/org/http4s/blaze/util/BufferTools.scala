@@ -7,7 +7,6 @@ import scala.annotation.tailrec
 import scala.concurrent.Future
 
 object BufferTools {
-
   /** Cached empty `ByteBuffer` */
   val emptyBuffer: ByteBuffer = allocate(0)
 
@@ -88,7 +87,6 @@ object BufferTools {
     * @return the resulting view
     */
   def takeSlice(buffer: ByteBuffer, size: Int): ByteBuffer = {
-
     if (size < 0 || size > buffer.remaining()) {
       throw new IllegalArgumentException(s"Invalid size: $size. buffer: $buffer")
     }

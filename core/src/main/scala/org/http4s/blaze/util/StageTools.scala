@@ -9,7 +9,6 @@ import scala.concurrent.{Future, Promise}
 import scala.util.{Failure, Success}
 
 private[http4s] object StageTools {
-
   /** Accumulate bytes from a pipeline
     *
     * @param bytes the minimum number of by bytes desired

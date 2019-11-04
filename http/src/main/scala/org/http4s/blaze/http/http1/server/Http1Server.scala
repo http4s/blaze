@@ -14,7 +14,6 @@ import scala.concurrent.Future
 import scala.util.Try
 
 object Http1Server {
-
   case class GroupAndChannel(group: ServerChannelGroup, channel: ServerChannel)
 
   /** Create a new Http1Server */
@@ -24,7 +23,6 @@ object Http1Server {
       config: HttpServerStageConfig,
       useNio2: Boolean = false,
       workerThreads: Int = channel.DefaultPoolSize): Try[GroupAndChannel] = {
-
     val group: ServerChannelGroup =
       if (useNio2)
         NIO2SocketServerGroup.fixedGroup(workerThreads = workerThreads)

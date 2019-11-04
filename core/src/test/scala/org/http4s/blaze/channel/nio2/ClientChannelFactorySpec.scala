@@ -9,7 +9,6 @@ import scala.concurrent.Await
 import scala.concurrent.duration.DurationDouble
 
 class ClientChannelFactorySpec extends Specification {
-
   "ClientChannelFactory" should {
     "time out" in new FastTickWheelExecutor {
       val factory =

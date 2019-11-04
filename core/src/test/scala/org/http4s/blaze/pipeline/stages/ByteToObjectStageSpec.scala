@@ -9,7 +9,6 @@ import org.http4s.blaze.pipeline.LeafBuilder
 import org.http4s.blaze.util.ImmutableArray
 
 class ByteToObjectStageSpec extends Specification {
-
   sealed trait Msg { def tag: Byte }
   case class One(byte: Byte) extends Msg { def tag = 0 }
   case class Two(short: Short) extends Msg { def tag = 1 }
@@ -70,7 +69,6 @@ class ByteToObjectStageSpec extends Specification {
   }
 
   "ByteToObjectStage" should {
-
     "Encode One frame" in {
       val msg = new MsgCodec().messageToBuffer(One(1)).head
       msg.get should_== 0
@@ -134,7 +132,5 @@ class ByteToObjectStageSpec extends Specification {
       Await.result(c.readRequest(-1), 2.seconds) should_== One(1)
       Await.result(c.readRequest(-1), 2.seconds) should_== Two(2)
     }
-
   }
-
 }

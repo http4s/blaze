@@ -9,7 +9,6 @@ import java.nio.charset.StandardCharsets
 import org.http4s.blaze.util.BufferTools
 
 class ResponseParser extends Http1ClientParser {
-
   val headers = new ListBuffer[(String, String)]
 
   var code: Int = -1

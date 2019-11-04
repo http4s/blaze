@@ -14,7 +14,6 @@ import scala.concurrent.ExecutionContext
 class SerialExecutionContext(
     parent: ExecutionContext
 ) extends ExecutionContext {
-
   private[this] val actor = new Actor[Runnable](parent) {
     override protected def act(work: Runnable): Unit = work.run()
     override protected def onError(t: Throwable, msg: Runnable): Unit =

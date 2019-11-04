@@ -246,7 +246,6 @@ private final class Http1ServerCodec(maxNonBodyBytes: Int, pipeline: TailStage[B
   }
 
   private final class ClosingWriter(var sb: StringBuilder) extends InternalWriter {
-
     override def doWrite(buffer: ByteBuffer): Future[Unit] =
       if (sb == null) pipeline.channelWrite(buffer)
       else {
@@ -268,7 +267,6 @@ private final class Http1ServerCodec(maxNonBodyBytes: Int, pipeline: TailStage[B
 
   private final class FixedLengthBodyWriter(forceClose: Boolean, sb: StringBuilder, len: Long)
       extends InternalWriter {
-
     private var cache = new ArrayBuffer[ByteBuffer](4)
     private var cachedBytes: Int = 0
     private var written: Long = 0L
@@ -338,7 +336,6 @@ private final class Http1ServerCodec(maxNonBodyBytes: Int, pipeline: TailStage[B
       private var prelude: StringBuilder,
       maxCacheSize: Int)
       extends InternalWriter {
-
     // The transfer-encoding header will be the last header, and before each write,
     // we will append a '\r\n{length}\r\n
     prelude.append("transfer-encoding: chunked\r\n")
@@ -401,7 +398,6 @@ private final class Http1ServerCodec(maxNonBodyBytes: Int, pipeline: TailStage[B
     */
   private final class SelectingWriter(forceClose: Boolean, minor: Int, sb: StringBuilder)
       extends InternalWriter {
-
     private val cache = new ListBuffer[ByteBuffer]
     private var cacheSize = 0
     private var underlying: InternalWriter = null

@@ -7,7 +7,6 @@ import java.nio.ByteBuffer
 import org.http4s.blaze.pipeline.HeadStage
 
 private trait StreamState extends HeadStage[StreamFrame] with WriteInterest {
-
   /** Whether the `StreamState` is part of the H2 session
     *
     * This is used by client streams to signal that they haven't yet become

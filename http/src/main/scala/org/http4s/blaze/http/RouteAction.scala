@@ -20,7 +20,6 @@ import scala.util.{Failure, Success}
   * `Future[Writer#Finished]`, ensuring that the writer is closed.
   */
 trait RouteAction {
-
   /** Generate a HTTP response using the passed continuation
     *
     * @param commit function which commits the response prelude and provides an appropriate [[BodyWriter]]
@@ -32,7 +31,6 @@ trait RouteAction {
 }
 
 object RouteAction {
-
   /** generate a streaming HTTP response
     *
     * @param body each invocation should generate the __next__ body chunk. Each chunk will be written

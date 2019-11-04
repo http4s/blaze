@@ -329,7 +329,6 @@ private[http] final class Http1ClientStage(config: HttpClientConfig)
         case Success(_) if !hasBody => p.trySuccess(())
         case Success(_) =>
           p.completeWith(encodeWithBody(firstChunk, request.body, encoder))
-
       }
       p.future
     }
@@ -338,7 +337,6 @@ private[http] final class Http1ClientStage(config: HttpClientConfig)
       firstChunk: ByteBuffer,
       body: BodyReader,
       encoder: Http1BodyEncoder): Future[Unit] = {
-
     // This would be much nicer as a tail recursive loop, but that would
     // cause issues on Scala < 2.12 since it's Future impl isn't tail rec.
     val p = Promise[Unit]
@@ -394,7 +392,6 @@ private[http] final class Http1ClientStage(config: HttpClientConfig)
 }
 
 private object Http1ClientStage {
-
   private sealed trait State
   private sealed trait ClosedState extends State
 

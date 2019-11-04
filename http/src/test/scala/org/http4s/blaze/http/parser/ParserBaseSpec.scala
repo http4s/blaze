@@ -7,7 +7,6 @@ import org.http4s.blaze.http.parser.BaseExceptions.BadCharacter
 import org.specs2.mutable.Specification
 
 class ParserBaseSpec extends Specification {
-
   class Base(isLenient: Boolean = false, limit: Int = 1024)
       extends ParserBase(10 * 1024, isLenient) {
     resetLimit(limit)

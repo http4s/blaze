@@ -14,5 +14,4 @@ object Http2Client {
       Http2ClientSessionManagerImpl(HttpClientConfig.Default, defaultSettings)
     new HttpClientImpl(manager)
   }
-
 }

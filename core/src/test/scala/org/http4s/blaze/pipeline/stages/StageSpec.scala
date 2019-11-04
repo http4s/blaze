@@ -8,7 +8,6 @@ import java.util.concurrent.TimeoutException
 import scala.concurrent.duration._
 
 class StageSpec extends Specification {
-
   def intTail = new TailStage[Int] { def name = "Int Tail" }
   def slow(duration: Duration) = new DelayHead[Int](duration) { def next() = 1 }
 
@@ -35,7 +34,6 @@ class StageSpec extends Specification {
   }
 
   "Support read timeouts" in {
-
     val leaf = slowPipeline
     Await.result(leaf.channelRead(1, 100.milli), 5000.milli) must throwA[TimeoutException]
 
@@ -43,12 +41,9 @@ class StageSpec extends Specification {
   }
 
   "Support write timeouts" in {
-
     val leaf = slowPipeline
     Await.result(leaf.channelWrite(1, 100.milli), 5000.milli) must throwA[TimeoutException]
 
     Await.result(leaf.channelWrite(1, 10.seconds), 10.seconds) should_== (())
-
   }
-
 }

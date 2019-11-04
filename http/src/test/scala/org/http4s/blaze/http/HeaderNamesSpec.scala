@@ -3,7 +3,6 @@ package org.http4s.blaze.http
 import org.specs2.mutable.Specification
 
 class HeaderNamesSpec extends Specification {
-
   "HeaderNames.validH2HeaderKey" should {
     "Match a valid header name" in {
       HeaderNames.validH2HeaderKey("abc") must_== true
@@ -37,5 +36,4 @@ class HeaderNamesSpec extends Specification {
       HeaderNames.validH2HeaderKey("!#$%&'*+-.^_`|~") must_== true
     }
   }
-
 }

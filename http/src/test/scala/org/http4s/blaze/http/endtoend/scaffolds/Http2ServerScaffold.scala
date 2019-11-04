@@ -12,7 +12,6 @@ import org.http4s.blaze.pipeline.{LeafBuilder, TailStage}
   * Prior Knowledge HTTP/2 upgrade pathway
   */
 class Http2ServerScaffold(service: HttpService) extends ServerScaffold {
-
   private def http2Stage(
       service: HttpService,
       config: HttpServerStageConfig): TailStage[ByteBuffer] = {

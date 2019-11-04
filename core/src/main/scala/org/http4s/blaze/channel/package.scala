@@ -7,7 +7,6 @@ import org.http4s.blaze.pipeline.LeafBuilder
 import scala.concurrent.Future
 
 package object channel {
-
   type SocketPipelineBuilder = SocketConnection => Future[LeafBuilder[ByteBuffer]]
 
   /** Default number of threads used to make a new

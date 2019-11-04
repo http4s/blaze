@@ -24,7 +24,6 @@ import scala.util.{Failure, Success, Try}
 import scala.util.control.NonFatal
 
 object NIO1SocketServerGroup {
-
   /** Default size of buffer to use in a [[SelectorLoop]] */
   private[this] val DefaultBufferSize: Int = 64 * 1024
 
@@ -57,7 +56,6 @@ object NIO1SocketServerGroup {
       channelOptions: ChannelOptions = ChannelOptions.DefaultOptions,
       selectorThreadFactory: ThreadFactory = defaultAcceptThreadFactory
   ): ServerChannelGroup = {
-
     val pool = new FixedSelectorPool(workerThreads, bufferSize, selectorThreadFactory)
     val underlying = apply(pool, channelOptions)
 
@@ -93,7 +91,6 @@ private final class NIO1SocketServerGroup private (
     selectorPool: SelectorLoopPool,
     channelOptions: ChannelOptions)
     extends ServerChannelGroup {
-
   private[this] val logger = getLogger
   // Also acts as our intrinsic lock.
   private[this] val listeningSet = new mutable.HashSet[ServerChannelImpl]()
@@ -110,7 +107,6 @@ private final class NIO1SocketServerGroup private (
       ch: ServerChannelImpl,
       service: SocketPipelineBuilder)
       extends Selectable {
-
     // Save it since once the channel is closed, we're in trouble.
     private[this] val closed = new AtomicBoolean(false)
 
@@ -160,7 +156,6 @@ private final class NIO1SocketServerGroup private (
       selectorLoop: SelectorLoop)
       extends ServerChannel
       with NIO1Channel {
-
     @volatile
     private[this] var closed = false
 

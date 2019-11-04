@@ -12,7 +12,6 @@ import scala.concurrent.Future
   * [[HttpClientSession]].
   */
 trait HttpClient extends ClientActions {
-
   /** Release underlying resources associated with the [[HttpClient]]
     *
     * The resultant `Future[Unit]` will resolve once the resources associated
@@ -50,7 +49,6 @@ trait HttpClient extends ClientActions {
 }
 
 object HttpClient {
-
   /** Basic implementation of a HTTP/1.1 client.
     *
     * This client doesn't do any session pooling, so one request = one socket connection.

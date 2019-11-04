@@ -11,7 +11,6 @@ import scala.concurrent.Future
 import scala.util.{Failure, Success}
 
 class AbstractBodyReaderSpec extends Specification {
-
   // We expect all futures to be complete immediately
   private def now[T](f: Future[T]): T = f.value match {
     case Some(Success(t)) => t

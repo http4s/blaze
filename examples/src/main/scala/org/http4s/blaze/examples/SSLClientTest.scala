@@ -7,7 +7,6 @@ import scala.concurrent.duration._
 import org.http4s.blaze.util.Execution
 
 object SSLClientTest {
-
   implicit def ec = Execution.trampoline
 
   def main(args: Array[String]): Unit = {

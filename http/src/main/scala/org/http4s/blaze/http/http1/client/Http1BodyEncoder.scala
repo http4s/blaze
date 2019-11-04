@@ -14,7 +14,6 @@ private trait Http1BodyEncoder {
 }
 
 private[client] object Http1BodyEncoder {
-
   // TODO: this should enforce conformance of the length-header
   object IdentityEncoder extends Http1BodyEncoder {
     override def finish(): ByteBuffer = BufferTools.emptyBuffer

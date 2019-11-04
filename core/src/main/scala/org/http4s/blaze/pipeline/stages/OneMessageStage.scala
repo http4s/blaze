@@ -11,7 +11,6 @@ import scala.concurrent.Future
   *       until the first read has completed.
   */
 class OneMessageStage[T](element: T) extends MidStage[T, T] {
-
   override def name: String = "OneMessageStage"
 
   override def readRequest(size: Int): Future[T] = {

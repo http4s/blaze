@@ -27,7 +27,6 @@ final class ClientChannelFactory(
     channelOptions: ChannelOptions = ChannelOptions.DefaultOptions,
     scheduler: TickWheelExecutor = Execution.scheduler,
     connectTimeout: Duration = Duration.Inf) {
-
   private[this] val logger = getLogger
 
   // for binary compatibility with <=0.14.6

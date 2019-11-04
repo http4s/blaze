@@ -6,7 +6,6 @@ package org.http4s.blaze.http.http2
   * both the individual stream and the session that it belongs to.
   */
 abstract class StreamFlowWindow {
-
   /** The flow control manager of the session this stream belongs to */
   def sessionFlowControl: SessionFlowControl
 

@@ -17,7 +17,6 @@ import scala.concurrent.{Await, Future, Promise}
 import scala.concurrent.duration._
 
 private[endtoend] class Http2ClientScaffold extends ClientScaffold(2, 0) {
-
   private[this] implicit val ec = Execution.trampoline
 
   private val underlying = {

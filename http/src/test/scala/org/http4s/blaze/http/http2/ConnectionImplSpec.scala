@@ -15,7 +15,6 @@ import scala.concurrent.duration.Duration
 import scala.util.{Failure, Success}
 
 class ConnectionImplSpec extends Specification {
-
   private class Ctx {
     lazy val head = new MockByteBufferHeadStage
     lazy val tailStage = new BasicTail[ByteBuffer]("Tail")

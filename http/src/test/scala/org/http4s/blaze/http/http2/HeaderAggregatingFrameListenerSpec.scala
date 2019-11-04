@@ -8,7 +8,6 @@ import org.http4s.blaze.util.BufferTools
 import org.specs2.mutable.Specification
 
 class HeaderAggregatingFrameListenerSpec extends Specification {
-
   import BufferTools._
   import CodecUtils._
 
@@ -151,7 +150,6 @@ class HeaderAggregatingFrameListenerSpec extends Specification {
             promisedId: Int,
             end_headers: Boolean,
             data: ByteBuffer): Result = {
-
           sId must_== streamId
           pId must_== promisedId
           end_h must_== end_headers

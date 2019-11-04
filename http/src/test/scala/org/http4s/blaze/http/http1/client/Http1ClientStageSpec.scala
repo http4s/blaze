@@ -16,7 +16,6 @@ class Http1ClientStageSpec extends Specification {
   case class Write(data: ByteBuffer, p: Promise[Unit])
 
   private class TestHead extends HeadStage[ByteBuffer] {
-
     private val readP = new ReadPool[ByteBuffer]
     private var writes: Option[Write] = None
 

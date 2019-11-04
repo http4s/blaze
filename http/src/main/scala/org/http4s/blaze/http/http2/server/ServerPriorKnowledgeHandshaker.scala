@@ -14,7 +14,6 @@ final class ServerPriorKnowledgeHandshaker(
     flowStrategy: FlowStrategy,
     nodeBuilder: Int => LeafBuilder[StreamFrame])
     extends PriorKnowledgeHandshaker[Unit](localSettings) {
-
   override protected def stageStartup(): Unit = synchronized {
     super.stageStartup()
     handshake().onComplete {

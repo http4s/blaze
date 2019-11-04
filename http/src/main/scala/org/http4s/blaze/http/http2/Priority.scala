@@ -5,7 +5,6 @@ sealed trait Priority {
 }
 
 object Priority {
-
   /** object representing the contents of a PRIORITY frame
     *
     * This is also used for the HEADERS frame which is logically

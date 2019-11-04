@@ -14,7 +14,6 @@ private final class Http1ClientCodec(config: HttpClientConfig)
       1024,
       Int.MaxValue,
       config.lenientParser) {
-
   import Http1ClientCodec._
 
   private[this] val headers = Vector.newBuilder[(String, String)]
@@ -117,7 +116,6 @@ private final class Http1ClientCodec(config: HttpClientConfig)
 }
 
 private object Http1ClientCodec {
-
   case class EncodedPrelude(data: ByteBuffer, encoder: Http1BodyEncoder)
 
   private def appendPath(sb: StringBuilder, uri: java.net.URI): Unit = {
