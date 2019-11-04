@@ -4,7 +4,6 @@ import org.http4s.blaze.pipeline.Command
 import scala.concurrent.{Future, Promise}
 
 class GatheringSeqHead[O](items: Seq[O]) extends SeqHead[O](items) {
-
   private var result: Option[Promise[Seq[O]]] = None
 
   override protected def doClosePipeline(cause: Option[Throwable]): Unit = this.synchronized {
@@ -28,5 +27,4 @@ class GatheringSeqHead[O](items: Seq[O]) extends SeqHead[O](items) {
 
     p.future
   }
-
 }

@@ -37,7 +37,6 @@ final class SelectorLoop(
     * access to the `SelectorLoop`s scratch buffer.
     */
   abstract class LoopRunnable extends Runnable {
-
     /** Execute the task with the borrowed scratch `ByteBuffer`
       *
       * @param scratch a `ByteBuffer` that is owned by the parent

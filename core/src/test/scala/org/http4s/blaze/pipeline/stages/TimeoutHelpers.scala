@@ -11,7 +11,6 @@ import scala.concurrent.{Await, Future}
 import scala.concurrent.duration._
 
 abstract class TimeoutHelpers extends Specification {
-
   def genDelayStage(timeout: Duration): TimeoutStageBase[ByteBuffer]
 
   def newBuff: ByteBuffer = ByteBuffer.wrap("Foo".getBytes(StandardCharsets.UTF_8))

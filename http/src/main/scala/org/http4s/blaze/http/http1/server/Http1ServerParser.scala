@@ -9,7 +9,6 @@ import org.http4s.blaze.util.BufferTools
 import scala.collection.immutable.VectorBuilder
 
 private[blaze] object BlazeServerParser {
-
   final case class RequestPrelude[HeadersT](
       method: String,
       uri: String,
@@ -21,7 +20,6 @@ private[blaze] object BlazeServerParser {
 private[blaze] final class BlazeServerParser[Header](maxNonBody: Int)(
     implicit hl: HeaderLike[Header])
     extends Http1ServerParser(maxNonBody, maxNonBody, 2 * 1024) {
-
   private[this] var uri: String = null
   private[this] var method: String = null
   private[this] var minor: Int = -1

@@ -164,5 +164,4 @@ class ClientStageSpec extends Specification {
       }
     }
   }
-
 }

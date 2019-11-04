@@ -7,7 +7,6 @@ import java.util.Locale
 import org.http4s.blaze.http.HeaderNames
 
 private[blaze] object HeaderTools {
-
   private case class CachedDateHeader(acquired: Long, header: String)
 
   private val dateFormat =

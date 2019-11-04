@@ -9,7 +9,6 @@ import org.http4s.blaze.pipeline.LeafBuilder
 import scala.concurrent.Future
 
 abstract class ServerScaffold {
-
   protected def newLeafBuilder(): LeafBuilder[ByteBuffer]
 
   final def apply[T](f: InetSocketAddress => T): T = {

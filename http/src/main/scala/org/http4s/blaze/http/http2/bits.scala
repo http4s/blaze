@@ -4,7 +4,6 @@ import java.nio.ByteBuffer
 import java.nio.charset.StandardCharsets
 
 private[http2] object bits {
-
   val LengthFieldSize: Int = 3
   val HeaderSize: Int = 9
 

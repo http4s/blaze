@@ -10,12 +10,10 @@ import org.http4s.blaze.http.parser.BaseExceptions.{BadMessage, InvalidState}
 import scala.collection.mutable.ListBuffer
 
 class ServerParserSpec extends Specification {
-
   implicit def strToBuffer(str: String) = ByteBuffer.wrap(str.getBytes(StandardCharsets.ISO_8859_1))
 
   class Parser(maxReq: Int = 1034, maxHeader: Int = 1024)
       extends Http1ServerParser(maxReq, maxHeader, 1) {
-
     val sb = new StringBuilder
 
     val h = new ListBuffer[(String, String)]
@@ -378,7 +376,6 @@ class ServerParserSpec extends Specification {
     }
 
     "throw an error if the request line is too long" in {
-
       val p = new Parser(maxReq = request.length - 1)
       p.parseLine(request) should throwA[BadMessage]
     }

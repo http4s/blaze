@@ -121,5 +121,4 @@ class StreamIdManagerSpec extends Specification {
       }
     }
   }
-
 }

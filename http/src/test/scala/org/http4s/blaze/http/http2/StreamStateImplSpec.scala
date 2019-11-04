@@ -6,7 +6,6 @@ import org.specs2.mutable.Specification
 import scala.util.{Failure, Success}
 
 class StreamStateImplSpec extends Specification {
-
   private class Ctx {
     val streamId = 1
 

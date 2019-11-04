@@ -6,7 +6,6 @@ import scala.concurrent.{Await, Future}
 import scala.concurrent.duration._
 
 class PipelineSpec extends Specification {
-
   private implicit def ec = Execution.trampoline
 
   class IntHead extends HeadStage[Int] {
@@ -55,7 +54,6 @@ class PipelineSpec extends Specification {
       Await.ready(tail.channelWrite("32"), 60.seconds)
 
       head.lastWrittenInt should_== 32
-
     }
 
     "Be able to find and remove stages with identical arguments" in {
@@ -91,5 +89,4 @@ class PipelineSpec extends Specification {
       p.findInboundStage(classOf[Noop[String]]) must_== None
     }
   }
-
 }

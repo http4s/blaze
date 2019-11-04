@@ -10,7 +10,6 @@ trait HeaderLike[T] {
 }
 
 object HeaderLike {
-
   def apply[T](implicit hl: HeaderLike[T]): HeaderLike[T] = hl
 
   implicit val tupleHeaderLike: HeaderLike[(String, String)] =

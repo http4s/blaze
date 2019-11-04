@@ -5,7 +5,6 @@ import java.nio.ByteBuffer
 import org.specs2.mutable.Specification
 
 class ByteBufferInputStreamSpec extends Specification {
-
   private def fromByteBuffer(buffer: ByteBuffer): ByteBufferInputStream =
     new ByteBufferInputStream(buffer)
 

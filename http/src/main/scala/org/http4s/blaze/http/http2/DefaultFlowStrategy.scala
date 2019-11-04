@@ -3,7 +3,6 @@ package org.http4s.blaze.http.http2
 import org.http4s.blaze.http.http2.FlowStrategy.Increment
 
 final class DefaultFlowStrategy(localSettings: Http2Settings) extends FlowStrategy {
-
   override def checkSession(session: SessionFlowControl): Int =
     check(
       localSettings.initialWindowSize,

@@ -4,7 +4,6 @@ import scala.collection.mutable
 import scala.concurrent.ExecutionContext
 
 class DelayedExecutionContext extends ExecutionContext {
-
   private[this] val pending = new mutable.Queue[Runnable]()
 
   def executeOne(): Unit =

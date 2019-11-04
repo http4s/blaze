@@ -12,7 +12,6 @@ import scala.concurrent.Future
 
 /** Facilitates injecting some monitoring tools into the pipeline */
 abstract class ConnectionMonitor {
-
   def wrapBuilder(factory: SocketPipelineBuilder): SocketPipelineBuilder =
     factory(_).map(_.prepend(new ServerStatusStage))(Execution.trampoline)
 

@@ -14,7 +14,6 @@ trait ClientActions { self: HttpClient =>
     */
   def GET[A](url: String, headers: Seq[(String, String)] = Nil)(
       action: ClientResponse => Future[A]): Future[A] = {
-
     val req = HttpRequest("GET", url, 1, 1, headers, BodyReader.EmptyBodyReader)
     apply(req)(action)
   }

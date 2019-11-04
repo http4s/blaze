@@ -9,7 +9,6 @@ private class SessionFlowControlImpl(
     session: SessionCore,
     flowStrategy: FlowStrategy
 ) extends SessionFlowControl {
-
   private[this] val logger = getLogger
 
   private[this] var _sessionInboundWindow: Int =
@@ -153,7 +152,6 @@ private class SessionFlowControlImpl(
   ////////////////////////////////////////////////////////////////////
 
   private[this] final class StreamFlowWindowImpl(val streamId: Int) extends StreamFlowWindow {
-
     private[this] var _streamInboundWindow: Int =
       session.localSettings.initialWindowSize
     private[this] var _streamOutboundWindow: Int =

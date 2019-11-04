@@ -8,7 +8,6 @@ import scala.collection.mutable.ListBuffer
 import org.specs2.mutable._
 
 class Benchmarks extends Specification {
-
   val request = "POST /enlighten/calais.asmx HTTP/1.1\r\n"
 
   val headers = "From: someuser@jmarshall.com  \r\n" +
@@ -30,7 +29,6 @@ class Benchmarks extends Specification {
   }
 
   def run(i: Int)(f: Int => Any): Unit = {
-
     // Do a warmup
     var ii = math.min(i, 1000000)
     while (ii > 0) {
@@ -167,7 +165,6 @@ class Benchmarks extends Specification {
     }
 
     run(iterations)(iteration(_))
-
   }
 
   "Benchmark" should {
@@ -178,5 +175,4 @@ class Benchmarks extends Specification {
       true should_== true
     }
   }
-
 }

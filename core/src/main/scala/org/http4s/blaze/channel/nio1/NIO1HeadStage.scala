@@ -15,7 +15,6 @@ import scala.concurrent.{Future, Promise}
 import scala.util.{Failure, Success, Try}
 
 private[nio1] object NIO1HeadStage {
-
   private val CachedSuccess = Success(())
 
   private sealed trait WriteResult
@@ -280,11 +279,9 @@ private[nio1] final class NIO1HeadStage(
   final override def close(cause: Option[Throwable]): Unit = doClosePipeline(cause)
 
   final override protected def doClosePipeline(cause: Option[Throwable]): Unit = {
-
     // intended to be called from within the SelectorLoop but if
     // it's closed it will be performed in the current thread
     def doClose(t: Throwable): Unit = {
-
       // this is the only place that writes to the variable
       if (closedReason == null) {
         closedReason = t

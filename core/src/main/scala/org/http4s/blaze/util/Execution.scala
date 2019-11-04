@@ -41,7 +41,6 @@ object Execution {
     * a deadlock.
     */
   val trampoline: ExecutionContext = new ExecutionContext {
-
     private val local = new ThreadLocal[ThreadLocalTrampoline]
 
     def execute(runnable: Runnable): Unit = {
@@ -63,7 +62,6 @@ object Execution {
     * encounter a stack overflow. For those situations, use `trampoline`.
     */
   val directec: ExecutionContext = new ExecutionContext {
-
     def execute(runnable: Runnable): Unit = runnable.run()
 
     def reportFailure(t: Throwable): Unit = {

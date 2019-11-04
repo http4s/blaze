@@ -5,7 +5,6 @@ import org.specs2.mutable._
 import org.http4s.blaze.http.parser.BaseExceptions.BadMessage
 
 class HttpTokensSpec extends Specification {
-
   val smalChrs =
     List('0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'a', 'b', 'c', 'd', 'e', 'f')
   val bigChrs = smalChrs.map(_.toTitleCase)
@@ -36,5 +35,4 @@ class HttpTokensSpec extends Specification {
         .reduce(_.and(_))
     }
   }
-
 }

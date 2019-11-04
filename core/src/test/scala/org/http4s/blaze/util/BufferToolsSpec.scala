@@ -4,7 +4,6 @@ import org.specs2.mutable._
 import java.nio.ByteBuffer
 
 class BufferToolsSpec extends Specification {
-
   def b(i: Int = 1) = {
     val b = ByteBuffer.allocate(4)
     b.putInt(i).flip()
@@ -99,7 +98,6 @@ class BufferToolsSpec extends Specification {
   }
 
   "BufferTools.checkEmpty" should {
-
     "check if buffers are empty" in {
       BufferTools.checkEmpty(Array(ByteBuffer.allocate(0), ByteBuffer.allocate(3))) must_== false
       BufferTools.checkEmpty(Seq(ByteBuffer.allocate(0), ByteBuffer.allocate(3))) must_== false
@@ -119,7 +117,6 @@ class BufferToolsSpec extends Specification {
   }
 
   "BufferTools.dropEmpty" should {
-
     val buff0 = ByteBuffer.allocate(0)
     val buff1 = ByteBuffer.allocate(1)
 
@@ -153,7 +150,6 @@ class BufferToolsSpec extends Specification {
   }
 
   "BufferTools.copyBuffers" should {
-
     "copy a single buffer into a larger buffer" in {
       val buffs = getBuffers(1)
       val target = ByteBuffer.allocate(10)

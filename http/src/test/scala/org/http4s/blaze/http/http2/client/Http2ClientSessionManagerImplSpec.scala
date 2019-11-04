@@ -102,5 +102,4 @@ class Http2ClientSessionManagerImplSpec extends Specification {
       }
     }
   }
-
 }

@@ -7,7 +7,6 @@ package org.http4s.blaze.pipeline
   * @tparam I type the pipeline will read and write
   */
 final class LeafBuilder[I] private[pipeline] (leaf: Tail[I]) {
-
   def prepend[N](stage: MidStage[N, I]): LeafBuilder[N] = {
     if (stage._nextStage != null) sys.error(s"Stage $stage must be fresh")
     if (stage.isInstanceOf[HeadStage[_]])
@@ -40,7 +39,6 @@ object LeafBuilder {
 final class TrunkBuilder[I1, O] private[pipeline] (
     protected val head: MidStage[I1, _],
     protected val tail: MidStage[_, O]) {
-
   def append[N](stage: MidStage[O, N]): TrunkBuilder[I1, N] = {
     if (stage._prevStage != null) sys.error(s"Stage $stage must be fresh")
     if (stage.isInstanceOf[HeadStage[_]])

@@ -4,7 +4,6 @@ import org.http4s.blaze.http._
 import org.specs2.mutable.Specification
 
 class RequestParserSpec extends Specification {
-
   "RequestParser" >> {
     "prepares a valid incoming request" >> {
       val hs = Seq(

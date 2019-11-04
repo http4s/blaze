@@ -9,7 +9,6 @@ import scala.concurrent.{Await, Awaitable}
 import scala.concurrent.duration._
 
 private[http2] object CodecUtils {
-
   def await[T](awaitable: Awaitable[T]): T = Await.result(awaitable, 5.seconds)
 
   def byteData: Array[Byte] =

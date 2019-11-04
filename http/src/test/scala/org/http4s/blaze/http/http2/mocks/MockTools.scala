@@ -7,7 +7,6 @@ import scala.concurrent.ExecutionContext
 import scala.concurrent.duration.Duration
 
 private[http2] class MockTools(isClient: Boolean) extends SessionCore {
-
   def flowStrategy: FlowStrategy = new DefaultFlowStrategy(localSettings)
 
   override lazy val localSettings: MutableHttp2Settings = MutableHttp2Settings.default()

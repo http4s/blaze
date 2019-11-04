@@ -20,11 +20,9 @@ object NIO1Connection {
           override def isOpen: Boolean = connection.isOpen
         }
     }
-
 }
 
 private case class NIO1SocketConnection(connection: SocketChannel) extends SocketConnection {
-
   override def remote: SocketAddress = connection.getRemoteAddress
 
   override def local: SocketAddress = connection.getLocalAddress

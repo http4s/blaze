@@ -24,7 +24,6 @@ import org.log4s.getLogger
   * @param tick duration between ticks
   */
 class TickWheelExecutor(wheelSize: Int = DefaultWheelSize, val tick: Duration = 200.milli) {
-
   require(wheelSize > 0, "Need finite size number of ticks")
   require(tick.isFinite && tick.toNanos != 0, "tick duration must be finite")
 
@@ -117,7 +116,6 @@ class TickWheelExecutor(wheelSize: Int = DefaultWheelSize, val tick: Duration = 
 
   // Deals with appending and removing tasks from the buckets
   private def handleTasks(): Unit = {
-
     @tailrec
     def go(task: ScheduleEvent): Unit = task match {
       case Cancel(n, nxt) =>
@@ -138,7 +136,6 @@ class TickWheelExecutor(wheelSize: Int = DefaultWheelSize, val tick: Duration = 
 
   @tailrec
   private def cycle(lastTickTime: Long): Unit = {
-
     handleTasks() // Deal with scheduling and cancellations
 
     val thisTickTime = System.currentTimeMillis()
@@ -218,7 +215,6 @@ class TickWheelExecutor(wheelSize: Int = DefaultWheelSize, val tick: Duration = 
       var next: Node,
       var canceled: Boolean = false
   ) extends Cancelable {
-
     /** Remove this node from its linked list */
     def unlink(): Unit = {
       if (prev != null) { // Every node that is in a bucket should have a `prev`
@@ -264,7 +260,6 @@ class TickWheelExecutor(wheelSize: Int = DefaultWheelSize, val tick: Duration = 
 }
 
 object TickWheelExecutor {
-
   /** Default size of the hash wheel */
   val DefaultWheelSize = 512
 }

@@ -2,7 +2,6 @@ package org.http4s.blaze.http.http2
 
 /** Flow control representation of a Http2 Session */
 abstract class SessionFlowControl {
-
   /** Create a new [[StreamFlowWindow]] for a stream which will update and check the
     * bounds of the session flow control state.
     *

@@ -9,7 +9,6 @@ import org.specs2.mutable.Specification
 import scala.util.{Failure, Success}
 
 class ClientPriorKnowledgeHandshakerSpec extends Specification {
-
   private def makeHandshaker(
       localSettings: ImmutableHttp2Settings): ClientPriorKnowledgeHandshaker = {
     val flowStrategy = new DefaultFlowStrategy(localSettings)

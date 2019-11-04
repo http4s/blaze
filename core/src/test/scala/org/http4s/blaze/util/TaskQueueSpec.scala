@@ -8,7 +8,6 @@ import org.specs2.mutable.Specification
 import scala.util.control.ControlThrowable
 
 class TaskQueueSpec extends Specification {
-
   "TaskQueue" >> {
     "offer a task" >> {
       val q = new TaskQueue
@@ -114,5 +113,4 @@ class TaskQueueSpec extends Specification {
       q.needsExecution must beFalse
     }
   }
-
 }

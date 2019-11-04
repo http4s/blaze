@@ -4,7 +4,6 @@ import org.specs2.mock.Mockito
 import org.specs2.mutable.Specification
 
 class DefaultFlowStrategySpec extends Specification with Mockito {
-
   def newStrategy(): DefaultFlowStrategy = {
     val settings = MutableHttp2Settings.default()
     settings.initialWindowSize = 2

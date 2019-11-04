@@ -10,7 +10,6 @@ import scala.concurrent.{Await, Awaitable, Future}
 import scala.concurrent.duration._
 
 class BodyReaderSpec extends Specification {
-
   def await[T](a: Awaitable[T]): T =
     Await.result(a, 5.seconds)
 
@@ -36,7 +35,6 @@ class BodyReaderSpec extends Specification {
       reader.isExhausted must beTrue
       await(reader()).hasRemaining must beFalse
     }
-
   }
 
   "BodyReader.accumulate(max, bodyReader)" should {

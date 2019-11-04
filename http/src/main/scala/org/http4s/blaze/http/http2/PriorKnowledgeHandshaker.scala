@@ -11,7 +11,6 @@ import scala.concurrent.Future
 /** Base type for performing the HTTP/2 prior knowledge handshake */
 abstract class PriorKnowledgeHandshaker[T](localSettings: ImmutableHttp2Settings)
     extends TailStage[ByteBuffer] {
-
   final protected implicit def ec = Execution.trampoline
 
   override def name: String = s"${getClass.getSimpleName}($localSettings)"

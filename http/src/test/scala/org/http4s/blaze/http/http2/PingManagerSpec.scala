@@ -9,7 +9,6 @@ import org.specs2.mutable.Specification
 import scala.util.{Failure, Success}
 
 class PingManagerSpec extends Specification {
-
   "PingManager" should {
     "write a ping" in {
       val tools = new MockTools(false)

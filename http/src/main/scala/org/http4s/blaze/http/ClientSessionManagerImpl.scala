@@ -17,7 +17,6 @@ import scala.util.control.NonFatal
 import scala.util.{Failure, Success}
 
 private object ClientSessionManagerImpl {
-
   private val LowQualityThreshold = 0.1
 
   case class ConnectionId(scheme: String, authority: String)
@@ -41,7 +40,6 @@ private final class ClientSessionManagerImpl(
     sessionCache: java.util.Map[ConnectionId, java.util.Collection[HttpClientSession]],
     config: HttpClientConfig
 ) extends ClientSessionManager {
-
   private[this] def getId(composition: UrlComposition): ConnectionId =
     ConnectionId(composition.scheme, composition.authority)
 

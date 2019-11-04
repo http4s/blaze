@@ -4,7 +4,6 @@ import org.http4s.blaze.pipeline.Command.EOF
 import scala.concurrent.Future
 
 package object util {
-
   /** Constructs an assertion error with a reference back to our issue tracker. Use only with head hung low. */
   private[blaze] def bug(message: String): AssertionError =
     new AssertionError(

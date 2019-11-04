@@ -8,7 +8,6 @@ import java.nio.ByteBuffer
   * implementation. I would really like to get rid of it.
   */
 private final class ByteBufferInputStream(buffer: ByteBuffer) extends InputStream {
-
   private[this] var markSize = -1
 
   override def read(): Int =

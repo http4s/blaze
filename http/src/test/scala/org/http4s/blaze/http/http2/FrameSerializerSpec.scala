@@ -34,7 +34,6 @@ class FrameSerializerSpec extends Specification with ScalaCheck {
         isLast <- tfGen
         padding <- Gen.choose(0, 256)
         bytes <- Gen.choose(0, 16 * 1024 - padding)
-
       } yield DataFrame(streamId, isLast, mkData(bytes), padding)
     )
 
@@ -164,7 +163,6 @@ class FrameSerializerSpec extends Specification with ScalaCheck {
   }
 
   "PRIORITY frame" should {
-
     case class PriorityFrame(streamId: Int, priority: Priority.Dependent)
 
     def dec(priorityFrame: PriorityFrame) =
@@ -234,7 +232,6 @@ class FrameSerializerSpec extends Specification with ScalaCheck {
   }
 
   "SETTINGS frame" should {
-
     def dec(settingsFrame: SettingsFrame) =
       decoder(new MockFrameListener(false) {
         override def onSettingsFrame(settings: Option[Seq[Setting]]): Result = {

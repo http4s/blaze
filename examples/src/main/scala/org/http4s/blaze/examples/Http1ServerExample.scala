@@ -80,7 +80,6 @@ object SSLHttpServer {
 }
 
 object ClientAuthSSLHttpServer {
-
   def main(args: Array[String]): Unit = {
     val sslContext = ExampleKeystore.clientAuthSslContext()
     val f =

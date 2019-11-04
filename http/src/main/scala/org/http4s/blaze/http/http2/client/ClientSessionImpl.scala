@@ -18,7 +18,6 @@ private final class ClientSessionImpl(
     flowStrategy: FlowStrategy,
     parentExecutor: ExecutionContext)
     extends Http2ClientSession {
-
   private[this] val logger = getLogger
   private[this] val connection: Connection = new ConnectionImpl(
     tailStage = tailStage,

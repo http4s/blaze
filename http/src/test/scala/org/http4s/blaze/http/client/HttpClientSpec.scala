@@ -8,7 +8,6 @@ import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration._
 
 class HttpClientSpec extends Specification {
-
   val client = HttpClient.pooledHttpClient
 
   // TODO: we shouldn't be calling out to external resources for tests

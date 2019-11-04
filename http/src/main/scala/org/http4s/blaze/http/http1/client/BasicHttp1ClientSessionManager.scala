@@ -21,7 +21,6 @@ import scala.util.{Failure, Success}
 
 private[http] final class BasicHttp1ClientSessionManager(config: HttpClientConfig)
     extends ClientSessionManager {
-
   private[this] val logger = getLogger
   private[this] val factory = new ClientChannelFactory(group = config.channelGroup)
 

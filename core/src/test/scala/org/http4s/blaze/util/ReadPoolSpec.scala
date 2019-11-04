@@ -8,7 +8,6 @@ import scala.concurrent.{Await, Awaitable}
 import scala.concurrent.duration._
 
 class ReadPoolSpec extends Specification {
-
   private def await[T](t: Awaitable[T]): T = Await.result(t, 1.second)
 
   private class TrackingReadPool extends ReadPool[Int] {

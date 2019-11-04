@@ -7,7 +7,6 @@ import scala.collection.mutable.ArrayBuffer
 
 /** Tool for turning a HEADERS frame into a request */
 private[server] object RequestParser {
-
   def makeRequest(hs: Headers, body: BodyReader): Either[String, HttpRequest] = {
     val normalHeaders =
       new ArrayBuffer[(String, String)](math.max(0, hs.size - 3))

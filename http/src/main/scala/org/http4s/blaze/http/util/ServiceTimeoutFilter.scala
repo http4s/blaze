@@ -10,7 +10,6 @@ import scala.util.Success
   * Create a new service that will race against a timer to resolve with a default value
   */
 private[blaze] object ServiceTimeoutFilter {
-
   def apply(timeout: Duration, timeoutResult: => RouteAction)(service: HttpService): HttpService =
     if (!timeout.isFinite) service
     else service.andThen(Execution.withTimeout(timeout, Success(timeoutResult)))

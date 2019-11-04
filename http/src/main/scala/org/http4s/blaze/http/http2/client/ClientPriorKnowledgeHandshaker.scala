@@ -29,7 +29,6 @@ private[http] class ClientPriorKnowledgeHandshaker(
     flowStrategy: FlowStrategy,
     executor: ExecutionContext)
     extends PriorKnowledgeHandshaker[Http2ClientSession](localSettings) {
-
   private[this] val session = Promise[Http2ClientSession]
 
   def clientSession: Future[Http2ClientSession] = session.future
@@ -49,7 +48,6 @@ private[http] class ClientPriorKnowledgeHandshaker(
       remoteSettings: MutableHttp2Settings,
       data: ByteBuffer
   ): Future[Http2ClientSession] = {
-
     val tailStage = new BasicTail[ByteBuffer]("http2cClientTail")
     var newTail = LeafBuilder(tailStage)
     if (data.hasRemaining) {
@@ -72,7 +70,6 @@ private[http] class ClientPriorKnowledgeHandshaker(
 }
 
 private[client] object ClientPriorKnowledgeHandshaker {
-
   val DefaultClientSettings: Seq[Setting] = Vector(
     Http2Settings.ENABLE_PUSH(0) /*false*/
   )

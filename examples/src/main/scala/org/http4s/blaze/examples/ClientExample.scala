@@ -7,7 +7,6 @@ import scala.concurrent.duration._
 import scala.concurrent.ExecutionContext.Implicits.global
 
 object ClientExample {
-
   lazy val client = HttpClient.pooledHttpClient
 
   val requests = Seq(
@@ -18,7 +17,6 @@ object ClientExample {
   )
 
   def main(args: Array[String]): Unit = {
-
     val fs = (requests ++ requests).map { url =>
       val r = client.GET(url) { response =>
         println(s"Status: ${response.status}")

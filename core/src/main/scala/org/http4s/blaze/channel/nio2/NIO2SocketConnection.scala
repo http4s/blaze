@@ -6,7 +6,6 @@ import java.net.SocketAddress
 
 private[nio2] final class NIO2SocketConnection(connection: AsynchronousSocketChannel)
     extends SocketConnection {
-
   override def remote: SocketAddress = connection.getRemoteAddress
 
   override def local: SocketAddress = connection.getLocalAddress

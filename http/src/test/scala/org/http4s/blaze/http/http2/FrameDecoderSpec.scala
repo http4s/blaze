@@ -9,7 +9,6 @@ import org.specs2.mutable.Specification
 import scala.language.reflectiveCalls
 
 class FrameDecoderSpec extends Specification {
-
   def buffer(data: Byte*): ByteBuffer =
     ByteBuffer.wrap(data.toArray)
 
@@ -465,7 +464,6 @@ class FrameDecoderSpec extends Specification {
   }
 
   "PRIORITY" >> {
-
     class PriorityListener extends MockFrameListener(false) {
       var streamId: Option[Int] = None
       var priority: Option[Dependent] = None
@@ -574,7 +572,6 @@ class FrameDecoderSpec extends Specification {
   }
 
   "RST_STREAM" >> {
-
     class RstListener extends MockFrameListener(false) {
       var streamId: Option[Int] = None
       var code: Option[Long] = None
@@ -1198,7 +1195,6 @@ class FrameDecoderSpec extends Specification {
   }
 
   "WINDOW_UPDATE" >> {
-
     class WindowListener extends MockFrameListener(false) {
       var streamId: Option[Int] = None
       var sizeIncrement: Option[Int] = None
@@ -1414,7 +1410,6 @@ class FrameDecoderSpec extends Specification {
 
   "unknown frame types" >> {
     "pass the data to the extension frame method" in {
-
       // UNKONWN Frame:
       // Length: 8, Type: 0x16, Flags: 0, R: 0, StreamID: 0
       val testData = buffer(0x00, 0x00, 0x08, // length

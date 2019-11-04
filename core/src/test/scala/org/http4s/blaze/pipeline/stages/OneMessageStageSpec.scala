@@ -10,7 +10,6 @@ import scala.concurrent.duration._
 class OneMessageStageSpec extends Specification with Mockito {
   "OneMessageStage" should {
     "Return its single element and then eject itself" in {
-
       val head = mock[HeadStage[Int]]
       val oneMsg = new OneMessageStage[Int](1)
       val tail = new TailStage[Int] {

@@ -16,7 +16,6 @@ import scala.concurrent.duration._
 import scala.concurrent.{Await, Future}
 
 class Http1ServerStageSpec extends Specification {
-
   private implicit def ec = Execution.trampoline
 
   private def renderRequests(requests: HttpRequest*): Seq[ByteBuffer] = {

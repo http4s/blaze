@@ -6,7 +6,6 @@ import org.specs2.mutable.Specification
 import scala.util.Failure
 
 class StreamManagerImplSpec extends Specification {
-
   private class MockTools(isClient: Boolean) extends mocks.MockTools(isClient) {
     override lazy val streamManager: StreamManager =
       new StreamManagerImpl(this, if (isClient) None else Some(_ => newInboundStream()))

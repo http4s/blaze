@@ -14,7 +14,6 @@ import scala.util.{Failure, Success, Try}
 import scala.util.control.NonFatal
 
 object NIO2SocketServerGroup {
-
   /** Create a new fixed size NIO2 SocketServerGroup
     *
     * @param workerThreads number of worker threads for the new group
@@ -84,7 +83,6 @@ final class NIO2SocketServerGroup private (
       ch: AsynchronousServerSocketChannel,
       service: SocketPipelineBuilder)
       extends ServerChannel {
-
     override protected def closeChannel(): Unit =
       if (ch.isOpen()) {
         logger.info(s"Closing NIO2 channel $socketAddress at ${new Date}")

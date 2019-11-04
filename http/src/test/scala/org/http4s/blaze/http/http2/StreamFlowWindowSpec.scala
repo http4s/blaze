@@ -5,7 +5,6 @@ import org.specs2.mock.Mockito
 import org.specs2.mutable.Specification
 
 class StreamFlowWindowSpec extends Specification with Mockito {
-
   private class Tools extends MockTools(isClient = true) {
     override lazy val sessionFlowControl: SessionFlowControl =
       new ObservingSessionFlowControl(this)
@@ -13,7 +12,6 @@ class StreamFlowWindowSpec extends Specification with Mockito {
 
   "StreamFlowWindow" >> {
     "outboundWindow gives minimum of session and stream outbound windows" >> {
-
       val tools = new Tools
       val initialSessionWindow = tools.sessionFlowControl.sessionOutboundWindow
 
@@ -53,5 +51,4 @@ class StreamFlowWindowSpec extends Specification with Mockito {
       window.outboundWindowAvailable must beFalse // session depleted
     }
   }
-
 }

@@ -10,7 +10,6 @@ private[http2] class MockHeaderAggregatingFrameListener
     extends HeaderAggregatingFrameListener(
       Http2Settings.default,
       new HeaderDecoder(20 * 1024, true, 4096)) {
-
   override def onCompletePushPromiseFrame(
       streamId: Int,
       promisedId: Int,

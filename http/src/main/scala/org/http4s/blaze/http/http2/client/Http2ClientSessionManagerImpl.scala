@@ -35,7 +35,6 @@ private[http] class Http2ClientSessionManagerImpl(
     initialSettings: ImmutableHttp2Settings,
     sessionCache: mutable.Map[String, Future[Http2ClientSession]])
     extends ClientSessionManager {
-
   private[this] val logger = getLogger
   private[this] val factory = new ClientChannelFactory(group = config.channelGroup)
 

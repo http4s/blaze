@@ -27,7 +27,6 @@ private final class ConnectionImpl(
     parentExecutor: ExecutionContext
 ) extends SessionCore
     with Connection {
-
   // Shortcut methods
   private[this] def isClient = inboundStreamBuilder.isEmpty
 

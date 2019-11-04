@@ -19,7 +19,6 @@ object H2ClientTwitterExample extends H2ClientExample(20, 30.seconds)
 object H2ClientGoogleExample extends H2ClientExample(20, 30.seconds)
 
 abstract class H2ClientExample(count: Int, timeout: Duration) {
-
   protected implicit val ec = scala.concurrent.ExecutionContext.global
 
   private[this] def doCall(tag: Int): Future[Int] =

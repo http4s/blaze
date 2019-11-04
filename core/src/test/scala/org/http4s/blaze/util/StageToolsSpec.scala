@@ -10,7 +10,6 @@ import scala.concurrent.{Await, Awaitable, Future}
 import scala.concurrent.duration._
 
 class StageToolsSpec extends Specification with Mockito {
-
   class Boom extends Exception("boom")
 
   def await[T](a: Awaitable[T]): T = Await.result(a, 5.seconds)
