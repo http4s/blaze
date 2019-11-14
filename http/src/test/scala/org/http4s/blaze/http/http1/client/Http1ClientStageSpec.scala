@@ -189,7 +189,7 @@ class Http1ClientStageSpec extends Specification {
       )
 
       tail.status must_== HttpClientSession.Busy
-      head.consumeWrite() must beSome("3\r\nfoo")
+      head.consumeWrite() must beSome("3\r\nfoo\r\n")
       head.consumeWrite() must beSome("0\r\n\r\n")
       tail.status must_== HttpClientSession.Busy // Haven't sent a response
       head.offerInbound(
@@ -211,7 +211,7 @@ class Http1ClientStageSpec extends Specification {
       )
 
       tail.status must_== HttpClientSession.Busy
-      head.consumeWrite() must beSome("3\r\nfoo")
+      head.consumeWrite() must beSome("3\r\nfoo\r\n")
       head.consumeWrite() must beSome("0\r\n\r\n")
       tail.status must_== HttpClientSession.Busy // Haven't sent a response
       head.offerInbound(
