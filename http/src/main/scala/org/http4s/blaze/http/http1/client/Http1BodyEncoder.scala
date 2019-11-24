@@ -28,7 +28,7 @@ private[client] object Http1BodyEncoder {
     override def encode(buffer: ByteBuffer): Seq[ByteBuffer] = {
       val len = buffer.remaining()
       if (len == 0) Nil
-      else ImmutableArray(Array(getLengthBuffer(len), buffer))
+      else ImmutableArray(Array(getLengthBuffer(len), buffer, crlf.duplicate()))
     }
 
     private def getLengthBuffer(length: Int): ByteBuffer = {
@@ -44,6 +44,10 @@ private[client] object Http1BodyEncoder {
       buffer
     }
 
+    private val crlf =
+      ByteBuffer
+        .wrap("\r\n".getBytes(StandardCharsets.UTF_8))
+        .asReadOnlyBuffer()
     private val terminator =
       ByteBuffer
         .wrap("0\r\n\r\n".getBytes(StandardCharsets.UTF_8))
