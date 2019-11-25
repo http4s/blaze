@@ -1,7 +1,7 @@
 package org.http4s.build
 
 import sbt._, Keys._
-import xerial.sbt.Sonatype.autoImport.sonatypeProfileName
+import xerial.sbt.Sonatype.autoImport.{sonatypeProfileName, sonatypePublishToBundle}
 
 object CentralRequirementsPlugin extends AutoPlugin {
 
@@ -36,7 +36,7 @@ object CentralRequirementsPlugin extends AutoPlugin {
       if (isSnapshot.value)
         Some("snapshots" at nexus + "content/repositories/snapshots")
       else
-        Some("releases"  at nexus + "service/local/staging/deploy/maven2")
+        sonatypePublishToBundle.value
     },
   )
 
