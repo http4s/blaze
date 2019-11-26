@@ -204,10 +204,13 @@ final class SSLStage(engine: SSLEngine, maxWrite: Int = 1024 * 1024)
           if (r.bytesProduced < 1 && r.getHandshakeStatus != HandshakeStatus.FINISHED)
             handshakeFailure(new SSLException(s"SSL Handshake WRAP produced 0 bytes: $r"))
 
-          channelWrite(copyBuffer(o)).onComplete {
-            case Success(_) => sslHandshake(data, r.getHandshakeStatus)
-            case Failure(t) => handshakeFailure(t)
-          }(serialExec)
+          // prevents infinite loop, see: https://bugs.openjdk.java.net/browse/JDK-8220703
+          if (r.bytesProduced > 0 || r.getHandshakeStatus != HandshakeStatus.NEED_WRAP) {
+            channelWrite(copyBuffer(o)).onComplete {
+              case Success(_) => sslHandshake(data, r.getHandshakeStatus)
+              case Failure(t) => handshakeFailure(t)
+            }(serialExec)
+          }
 
         // Finished with the handshake: continue what we were doing.
         case HandshakeStatus.FINISHED | HandshakeStatus.NOT_HANDSHAKING =>
