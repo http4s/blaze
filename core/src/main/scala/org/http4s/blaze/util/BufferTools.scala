@@ -7,6 +7,7 @@ import scala.annotation.tailrec
 import scala.concurrent.Future
 
 object BufferTools {
+
   /** Cached empty `ByteBuffer` */
   val emptyBuffer: ByteBuffer = allocate(0)
 

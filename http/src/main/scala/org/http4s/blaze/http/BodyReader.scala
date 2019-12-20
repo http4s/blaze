@@ -15,6 +15,7 @@ import scala.util.{Failure, Success}
   *       numerous times.
   */
 trait BodyReader {
+
   /** Throw away this [[BodyReader]] */
   def discard(): Unit
 
@@ -48,6 +49,7 @@ trait BodyReader {
 }
 
 object BodyReader {
+
   /** Provides a simple way to proxy a `BodyReader` */
   abstract class Proxy(underlying: BodyReader) extends BodyReader {
     override def discard(): Unit = underlying.discard()

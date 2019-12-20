@@ -4,6 +4,7 @@ import java.util.concurrent.ThreadFactory
 import java.util.concurrent.atomic.AtomicInteger
 
 private[blaze] object BasicThreadFactory {
+
   /** Construct a basic `ThreadFactory`
     *
     * Resulting threads are named with their prefix plus '-unique_id'

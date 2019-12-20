@@ -10,6 +10,7 @@ import scala.concurrent.Future
   * operations relevant to the HTTP/2 protocol.
   */
 private trait StreamManager {
+
   /** Number of active streams */
   def size: Int
 

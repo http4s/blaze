@@ -215,6 +215,7 @@ class TickWheelExecutor(wheelSize: Int = DefaultWheelSize, val tick: Duration = 
       var next: Node,
       var canceled: Boolean = false
   ) extends Cancelable {
+
     /** Remove this node from its linked list */
     def unlink(): Unit = {
       if (prev != null) { // Every node that is in a bucket should have a `prev`
@@ -260,6 +261,7 @@ class TickWheelExecutor(wheelSize: Int = DefaultWheelSize, val tick: Duration = 
 }
 
 object TickWheelExecutor {
+
   /** Default size of the hash wheel */
   val DefaultWheelSize = 512
 }

@@ -9,6 +9,7 @@ import org.http4s.blaze.http.http2.bits.{Flags, FrameTypes}
   * @see https://tools.ietf.org/html/rfc7540#section-6.5
   */
 private[blaze] object SettingsDecoder {
+
   /** Representation of a settings frame
     *
     * If the frame was an ack, settings is None, else it contains the settings sent by the peer

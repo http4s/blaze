@@ -311,6 +311,7 @@ sealed trait Head[O] extends Stage {
 trait TailStage[I] extends Tail[I]
 
 trait HeadStage[O] extends Head[O] {
+
   /** Close the channel with an error
     *
     * @note EOF is a valid error to close the channel with and signals normal termination.
@@ -324,6 +325,7 @@ trait HeadStage[O] extends Head[O] {
 }
 
 trait MidStage[I, O] extends Tail[I] with Head[O] {
+
   /** Replace this `MidStage` with the provided `MidStage` of the same type */
   final def replaceInline(stage: MidStage[I, O]): this.type = {
     stageShutdown()
