@@ -10,6 +10,7 @@ import scala.concurrent.Future
 // This would allow us to prioritize messages (like PING responses).
 /** Generic interface used by HTTP2 types to write data */
 private trait WriteController {
+
   /** Register a [[WriteInterest]] with this listener to be invoked later once it is
     * possible to write data to the outbound channel.
     *

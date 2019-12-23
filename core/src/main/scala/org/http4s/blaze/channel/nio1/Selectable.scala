@@ -8,6 +8,7 @@ import java.nio.ByteBuffer
   * when it has events ready.
   */
 private trait Selectable {
+
   /** Called by the `SelectorLoop` when events are ready
     *
     * @param scratch a `ByteBuffer` that can be used for scratch area.

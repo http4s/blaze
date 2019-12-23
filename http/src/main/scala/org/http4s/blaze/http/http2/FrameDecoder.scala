@@ -284,6 +284,7 @@ private class FrameDecoder(localSettings: Http2Settings, listener: FrameListener
 }
 
 private object FrameDecoder {
+
   /** Get the length field of the frame, consuming the bytes from the buffer.
     *
     * @return -1 if the buffer doesn't have 3 bytes for the length field,

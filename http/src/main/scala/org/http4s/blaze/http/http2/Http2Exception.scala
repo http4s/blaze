@@ -52,6 +52,7 @@ final case class Http2SessionException(code: Long, msg: String) extends Http2Exc
 ///////////////////// HTTP/2.0 Errors //////////////////////////////
 object Http2Exception {
   final class ErrorGenerator private[http2] (val code: Long, val name: String) {
+
     /** Create a Http2Exception with stream id 0 */
     def goaway(): Http2Exception = Http2SessionException(code, name)
 

@@ -14,6 +14,7 @@ import scala.util.{Failure, Success, Try}
 import scala.util.control.NonFatal
 
 object NIO2SocketServerGroup {
+
   /** Create a new fixed size NIO2 SocketServerGroup
     *
     * @param workerThreads number of worker threads for the new group

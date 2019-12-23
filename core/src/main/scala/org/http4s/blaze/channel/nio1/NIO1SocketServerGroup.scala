@@ -24,6 +24,7 @@ import scala.util.{Failure, Success, Try}
 import scala.util.control.NonFatal
 
 object NIO1SocketServerGroup {
+
   /** Default size of buffer to use in a [[SelectorLoop]] */
   private[this] val DefaultBufferSize: Int = 64 * 1024
 

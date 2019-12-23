@@ -7,6 +7,7 @@ import org.http4s.blaze.http.http2.FlowStrategy.Increment
   * A `FlowStrategy` will be shared among many sessions.
   */
 trait FlowStrategy {
+
   /** Decide if the session window needs to send a WINDOW_UPDATE frame
     *
     * @note This must not mutate the [[SessionFlowControl]] in any way.

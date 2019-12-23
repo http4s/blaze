@@ -8,6 +8,7 @@ import scala.concurrent.Future
   * This is, more or less, an asynchronous `OutputStream`
   */
 trait BodyWriter {
+
   /** Type of value returned upon closing of the `BodyWriter`
     *
     * This type is used to enforce that the writer is closed when writing a

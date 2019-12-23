@@ -120,36 +120,37 @@ private[http] final class Http1ClientStage(config: HttpClientConfig)
 
   private[this] def receiveResponse(buffer: ByteBuffer, p: Promise[ReleaseableResponse]): Unit = {
     // We juggle the `null` to allow us to satisfy the promise outside of the lock
-    val response: ReleaseableResponse = try stageLock.synchronized {
-      logger.debug {
-        // Only log the buffer contents if we're okay logging sensitive information.
-        val bufferStr =
-          if (logsensitiveinfo()) BufferTools.bufferToString(buffer.duplicate())
-          else "<buffer contents hidden>"
-        s"Receiving response. $buffer, :\n$bufferStr\n"
-      }
-
-      if (!buffer.hasRemaining) {
-        channelReadThenReceive(p)
-        null
-      } else if (!codec.preludeComplete && codec.parsePrelude(buffer)) {
-        val prelude = codec.getResponsePrelude
-        logger.debug(s"Finished getting prelude: $prelude")
-        val body = getBodyReader(buffer)
-        new ReleaseableResponseImpl(prelude.code, prelude.status, prelude.headers, body)
-      } else {
-        logger.debug(
-          s"State: $buffer, ${codec.preludeComplete}, ${codec.responseLineComplete}, ${codec.headersComplete}")
-        channelReadThenReceive(p)
-        null
-      }
-    } catch {
-      case NonFatal(t) =>
-        closeNow().onComplete { _ =>
-          p.tryFailure(t)
+    val response: ReleaseableResponse =
+      try stageLock.synchronized {
+        logger.debug {
+          // Only log the buffer contents if we're okay logging sensitive information.
+          val bufferStr =
+            if (logsensitiveinfo()) BufferTools.bufferToString(buffer.duplicate())
+            else "<buffer contents hidden>"
+          s"Receiving response. $buffer, :\n$bufferStr\n"
         }
-        null
-    }
+
+        if (!buffer.hasRemaining) {
+          channelReadThenReceive(p)
+          null
+        } else if (!codec.preludeComplete && codec.parsePrelude(buffer)) {
+          val prelude = codec.getResponsePrelude
+          logger.debug(s"Finished getting prelude: $prelude")
+          val body = getBodyReader(buffer)
+          new ReleaseableResponseImpl(prelude.code, prelude.status, prelude.headers, body)
+        } else {
+          logger.debug(
+            s"State: $buffer, ${codec.preludeComplete}, ${codec.responseLineComplete}, ${codec.headersComplete}")
+          channelReadThenReceive(p)
+          null
+        }
+      } catch {
+        case NonFatal(t) =>
+          closeNow().onComplete { _ =>
+            p.tryFailure(t)
+          }
+          null
+      }
 
     if (response != null) {
       p.success(response)

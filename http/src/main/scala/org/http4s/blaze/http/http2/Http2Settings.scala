@@ -12,6 +12,7 @@ import scala.collection.mutable
   *      doc strings were obtained.
   */
 sealed abstract class Http2Settings {
+
   /** Allows the sender to inform the remote endpoint of the maximum size
     * of the header compression table used to decode header blocks, in
     * octets.  The encoder can select any size equal to or less than this
@@ -93,6 +94,7 @@ object Http2Settings {
   }
 
   final case class Setting(code: Int, value: SettingValue) {
+
     /** Get the SettingKey associated with this setting */
     def key: SettingKey = settingKey(code)
 

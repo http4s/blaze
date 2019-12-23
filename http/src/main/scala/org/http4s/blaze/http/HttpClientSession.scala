@@ -11,6 +11,7 @@ import scala.concurrent.duration.Duration
   * HTTP/1.x or HTTP/2.
   */
 sealed trait HttpClientSession {
+
   /** Dispatch a [[HttpRequest]]
     *
     * The resultant `ReleaseableResponse` contains a
@@ -43,6 +44,7 @@ sealed trait HttpClientSession {
 trait Http1ClientSession extends HttpClientSession
 
 trait Http2ClientSession extends HttpClientSession {
+
   /** An estimate for the current quality of the session
     *
     * @return a number with domain [0, 1] signifying the health or quality of
@@ -55,8 +57,10 @@ trait Http2ClientSession extends HttpClientSession {
 }
 
 object HttpClientSession {
+
   /** ClientResponse that can be released */
   trait ReleaseableResponse extends ClientResponse {
+
     /** Releases the resources associated with this dispatch
       *
       * This may entail closing the connection or returning it to a connection

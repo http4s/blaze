@@ -7,6 +7,7 @@ import scala.concurrent.Future
 import scala.util.Failure
 
 private[http] class HttpClientImpl(sessionPool: ClientSessionManager) extends HttpClient {
+
   /** Release underlying resources associated with the `HttpClient` */
   override def close(): Future[Unit] = sessionPool.close()
 
