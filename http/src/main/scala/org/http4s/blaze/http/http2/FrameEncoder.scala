@@ -71,7 +71,8 @@ private final class FrameEncoder(remoteSettings: Http2Settings, headerEncoder: H
     val rawHeaders = headerEncoder.encodeHeaders(headers)
 
     val limit = maxFrameSize
-    val headersPrioritySize = if (priority.isDefined) 5 else 0 // priority(4) + weight(1), padding = 0
+    val headersPrioritySize =
+      if (priority.isDefined) 5 else 0 // priority(4) + weight(1), padding = 0
 
     if (rawHeaders.remaining() + headersPrioritySize <= limit) {
       FrameSerializer.mkHeaderFrame(

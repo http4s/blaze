@@ -70,9 +70,7 @@ private final class ConnectionImpl(
   readLoop(BufferTools.emptyBuffer)
 
   // Make sure we disconnect from the reactor once the session is done
-  onClose.onComplete { _ =>
-    tailStage.closePipeline(None)
-  }(parentExecutor)
+  onClose.onComplete(_ => tailStage.closePipeline(None))(parentExecutor)
 
   private[this] def readLoop(remainder: ByteBuffer): Unit =
     // the continuation must be run in the sessionExecutor
@@ -215,12 +213,8 @@ private final class ConnectionImpl(
       // Drain the `StreamManager` and then the `WriteController`, then close up.
       streamManager
         .drain(lastHandledOutboundStream, error)
-        .flatMap { _ =>
-          writeController.close()
-        }(serialExecutor)
-        .onComplete { _ =>
-          invokeShutdownWithError(None, /* unused */ "")
-        }(serialExecutor)
+        .flatMap(_ => writeController.close())(serialExecutor)
+        .onComplete(_ => invokeShutdownWithError(None, /* unused */ ""))(serialExecutor)
     }
 
   private[this] def sendGoAway(ex: Http2Exception): Unit =

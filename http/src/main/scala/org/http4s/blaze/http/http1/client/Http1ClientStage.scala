@@ -33,7 +33,7 @@ private[http] final class Http1ClientStage(config: HttpClientConfig)
   // ---------------------------------------------------------------------------------
 
   override def status: Status = {
-    val s = stageLock.synchronized { state }
+    val s = stageLock.synchronized(state)
     s match {
       case Running(true, true) => HttpClientSession.Ready
       case Running(_, _) | Unconnected => HttpClientSession.Busy
@@ -146,9 +146,7 @@ private[http] final class Http1ClientStage(config: HttpClientConfig)
         }
       } catch {
         case NonFatal(t) =>
-          closeNow().onComplete { _ =>
-            p.tryFailure(t)
-          }
+          closeNow().onComplete(_ => p.tryFailure(t))
           null
       }
 

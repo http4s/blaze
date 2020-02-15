@@ -52,9 +52,7 @@ class SessionFrameListenerSpec extends Specification {
       "initiate a new stream for idle inbound stream (server)" >> {
         val head = new BasicTail[StreamFrame]("")
         val tools = new MockTools(isClient = false) {
-          override lazy val newInboundStream = Some { _: Int =>
-            LeafBuilder(head)
-          }
+          override lazy val newInboundStream = Some(_: Int => LeafBuilder(head))
         }
 
         tools.streamManager.get(1) must beNone

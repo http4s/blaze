@@ -63,9 +63,7 @@ abstract class DelayHead[I](delay: Duration) extends HeadStage[I] {
 
   override protected def stageShutdown(): Unit = {
     awaitingPromises.synchronized {
-      awaitingPromises.foreach { p =>
-        p.tryFailure(Command.EOF)
-      }
+      awaitingPromises.foreach(p => p.tryFailure(Command.EOF))
     }
     super.stageShutdown()
   }

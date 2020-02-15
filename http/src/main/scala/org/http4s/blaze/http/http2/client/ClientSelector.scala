@@ -22,7 +22,8 @@ private[http] class ClientSelector(config: HttpClientConfig) {
 
   private[this] val localSettings: ImmutableHttp2Settings =
     Http2Settings.default.copy(
-      maxHeaderListSize = config.maxResponseLineLength + config.maxHeadersLength // the request line is part of the headers
+      maxHeaderListSize =
+        config.maxResponseLineLength + config.maxHeadersLength // the request line is part of the headers
     )
 
   private[this] def buildPipeline(p: Promise[HttpClientSession])(

@@ -24,9 +24,7 @@ class ServerStageSpec extends Specification {
   )
 
   private class Ctx {
-    lazy val service: HttpService = { _ =>
-      Future.successful(RouteAction.Ok("foo"))
-    }
+    lazy val service: HttpService = { _ => Future.successful(RouteAction.Ok("foo")) }
 
     lazy val config = HttpServerStageConfig()
 
@@ -134,9 +132,7 @@ class ServerStageSpec extends Specification {
     "failing the action disconnects with an error" >> {
       val ex = new Exception("sadface")
       val ctx = new Ctx {
-        override lazy val service: HttpService = { _ =>
-          Future.failed(ex)
-        }
+        override lazy val service: HttpService = { _ => Future.failed(ex) }
       }
       import ctx._
 
