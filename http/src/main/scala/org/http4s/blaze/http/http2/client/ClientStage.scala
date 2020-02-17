@@ -34,9 +34,9 @@ private class ClientStage(request: HttpRequest) extends TailStage[StreamFrame] {
     }
   }
 
-  private[this] def inboundConsumed: Boolean = lock.synchronized { inboundEOF }
+  private[this] def inboundConsumed: Boolean = lock.synchronized(inboundEOF)
 
-  private[this] def observeEOF(): Unit = lock.synchronized { inboundEOF = true }
+  private[this] def observeEOF(): Unit = lock.synchronized(inboundEOF = true)
 
   private class ReleasableResponseImpl(
       code: Int,
@@ -85,9 +85,7 @@ private class ClientStage(request: HttpRequest) extends TailStage[StreamFrame] {
 
     // The body writing computation is orphaned: if it completes that great, if not
     // that's also fine. Errors should be propagated via the response or errors.
-    go().onComplete { _ =>
-      body.discard()
-    }(Execution.directec)
+    go().onComplete(_ => body.discard())(Execution.directec)
   }
 
   private def readResponseHeaders(): Unit =

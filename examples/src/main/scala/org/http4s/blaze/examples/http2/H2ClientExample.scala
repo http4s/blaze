@@ -38,9 +38,7 @@ abstract class H2ClientExample(count: Int, timeout: Duration) {
     Await.result(doCall(0), 5.seconds)
 
     // call the specified number of times
-    def repeatCall(i: Int): Seq[Future[(Int, Int)]] = (0 until i).map { i =>
-      doCall(i).map(i -> _)
-    }
+    def repeatCall(i: Int): Seq[Future[(Int, Int)]] = (0 until i).map(i => doCall(i).map(i -> _))
 
     Await.result(Future.sequence(repeatCall(count / 5)), timeout)
     val start = System.currentTimeMillis

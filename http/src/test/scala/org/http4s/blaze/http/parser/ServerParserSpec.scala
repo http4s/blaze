@@ -83,7 +83,8 @@ class ServerParserSpec extends Specification {
 
   val mockFiniteLength = request + host + lengthh + headers + body
 
-  val mockChunked = request + host + chunked + headers + toChunk(body) + toChunk(body + " again!") + "0 \r\n" + "\r\n"
+  val mockChunked =
+    request + host + chunked + headers + toChunk(body) + toChunk(body + " again!") + "0 \r\n" + "\r\n"
 
   val twoline = request + host
 

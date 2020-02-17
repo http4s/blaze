@@ -42,9 +42,7 @@ trait HttpClient extends ClientActions {
   def apply[T](request: HttpRequest)(f: ClientResponse => Future[T]): Future[T] =
     unsafeDispatch(request).flatMap { resp =>
       val result = f(resp)
-      result.onComplete { _ =>
-        resp.release()
-      }(Execution.directec)
+      result.onComplete(_ => resp.release())(Execution.directec)
       result
     }(Execution.directec)
 }

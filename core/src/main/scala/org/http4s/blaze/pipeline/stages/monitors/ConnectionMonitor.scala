@@ -52,8 +52,6 @@ abstract class ConnectionMonitor {
     }
 
     def readRequest(size: Int): Future[ByteBuffer] =
-      channelRead(size).map { b =>
-        bytesInbound(b.remaining.toLong); b
-      }(directec)
+      channelRead(size).map { b => bytesInbound(b.remaining.toLong); b }(directec)
   }
 }

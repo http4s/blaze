@@ -19,7 +19,8 @@ class Benchmarks extends Specification {
   val body = "hello world"
   val chunked = "Transfer-Encoding: chunked\r\n"
 
-  val mockChunked = request + chunked + headers + toChunk(body) + toChunk(", " + body + " again!") + "0 \r\n" + "\r\n"
+  val mockChunked =
+    request + chunked + headers + toChunk(body) + toChunk(", " + body + " again!") + "0 \r\n" + "\r\n"
 
   def toChunk(str: String): String = {
     val len = Integer.toHexString(str.length) + "\r\n"
