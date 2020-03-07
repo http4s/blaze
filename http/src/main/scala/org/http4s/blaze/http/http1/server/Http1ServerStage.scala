@@ -44,9 +44,7 @@ class Http1ServerStage(service: HttpService, config: HttpServerStageConfig)
     val timeoutService = ServiceTimeoutFilter(config.serviceTimeout)(service)
 
     req: HttpRequest =>
-      timeoutService(req).map { resp =>
-        resp -> requestRequiresClose(req)
-      }(Execution.directec)
+      timeoutService(req).map(resp => resp -> requestRequiresClose(req))(Execution.directec)
   }
 
   private def dispatchLoop(): Unit =

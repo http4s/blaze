@@ -175,7 +175,7 @@ private final class Http1ServerCodec(maxNonBodyBytes: Int, pipeline: TailStage[B
           }
 
         case Failure(e) =>
-          lock.synchronized { shutdown() }
+          lock.synchronized(shutdown())
           p.tryFailure(e)
       }(Execution.trampoline)
 

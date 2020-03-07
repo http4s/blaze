@@ -65,7 +65,8 @@ class ExecutionSpec extends Specification {
       submit {
         for (j <- 0 until 10) {
           submit {
-            if (j % 2 == 0) submit { i += 1 } else submit { sys.error("Boom") }
+            if (j % 2 == 0) submit(i += 1)
+            else submit(sys.error("Boom"))
           }
         }
       }

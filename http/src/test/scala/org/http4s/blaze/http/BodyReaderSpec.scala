@@ -77,13 +77,13 @@ class BodyReaderSpec extends Specification {
     private val buffers = new scala.collection.mutable.Queue[ByteBuffer]
     buffers ++= data
 
-    override def discard(): Unit = synchronized { buffers.clear() }
+    override def discard(): Unit = synchronized(buffers.clear())
 
     override def apply(): Future[ByteBuffer] = synchronized {
       if (!isExhausted) Future.successful(buffers.dequeue())
       else Future.successful(BufferTools.emptyBuffer)
     }
 
-    override def isExhausted: Boolean = synchronized { buffers.isEmpty }
+    override def isExhausted: Boolean = synchronized(buffers.isEmpty)
   }
 }

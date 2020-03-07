@@ -40,9 +40,7 @@ abstract class PriorKnowledgeHandshaker[T](localSettings: ImmutableHttp2Settings
   }
 
   private[this] def handleSettings(bytes: ByteBuffer): Future[(MutableHttp2Settings, ByteBuffer)] =
-    sendSettings().flatMap { _ =>
-      readSettings(bytes)
-    }
+    sendSettings().flatMap(_ => readSettings(bytes))
 
   private[this] def sendSettings(): Future[Unit] = {
     val settingsBuffer = FrameSerializer.mkSettingsFrame(localSettings.toSeq)
@@ -69,9 +67,7 @@ abstract class PriorKnowledgeHandshaker[T](localSettings: ImmutableHttp2Settings
           s"Insufficient data. Current representation: " +
             BufferTools.hexString(acc, 256))
 
-        channelRead().flatMap { buff =>
-          readSettings(BufferTools.concatBuffers(acc, buff))
-        }
+        channelRead().flatMap(buff => readSettings(BufferTools.concatBuffers(acc, buff)))
 
       // We have at least a SETTINGS frame so we can process it
       case Some(size) =>
@@ -84,9 +80,7 @@ abstract class PriorKnowledgeHandshaker[T](localSettings: ImmutableHttp2Settings
                 logger.debug(
                   s"Successfully received settings frame. Current " +
                     s"remote settings: $remoteSettings")
-                sendSettingsAck().map { _ =>
-                  remoteSettings -> acc
-                }
+                sendSettingsAck().map(_ => remoteSettings -> acc)
 
               case Some(ex) =>
                 logger.info(ex)(s"Received SETTINGS frame but failed to update.")

@@ -41,9 +41,7 @@ abstract class BaseChannelSpec extends Specification {
   protected def bind(f: SocketPipelineBuilder): ServerPair
 
   private def bindEcho(): ServerPair =
-    bind { _ =>
-      Future.successful(LeafBuilder(new EchoStage))
-    }
+    bind(_ => Future.successful(LeafBuilder(new EchoStage)))
 
   "Bind the port and then be closed" in {
     val ServerPair(group, channel) = bindEcho()
@@ -124,9 +122,7 @@ abstract class BaseChannelSpec extends Specification {
 
   def writeBuffer(batch: Boolean): Unit = {
     val stage = new ZeroWritingStage(batch)
-    val ServerPair(group, channel) = bind { _ =>
-      Future.successful(LeafBuilder(stage))
-    }
+    val ServerPair(group, channel) = bind(_ => Future.successful(LeafBuilder(stage)))
     val socket = new Socket()
     socket.connect(channel.socketAddress)
 

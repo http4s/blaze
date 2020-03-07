@@ -20,9 +20,7 @@ class MapTail[A](f: A => A) extends TailStage[A] {
 
   private def innerLoop(p: Promise[Unit]): Unit =
     channelRead(-1, 10.seconds)
-      .flatMap { a =>
-        channelWrite(f(a))
-      }
+      .flatMap(a => channelWrite(f(a)))
       .onComplete {
         case Success(_) => innerLoop(p)
         case Failure(EOF) => p.success(())

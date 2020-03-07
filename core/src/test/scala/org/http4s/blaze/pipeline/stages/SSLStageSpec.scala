@@ -97,9 +97,7 @@ class SSLStageSpec extends Specification {
     "Transcode multiple buffers" in {
       val (headEng, stageEng) = mkClientServerEngines
 
-      val strs = (0 until 10).map { i =>
-        "Buffer " + i + ", "
-      }
+      val strs = (0 until 10).map(i => "Buffer " + i + ", ")
       val head = new SSLSeqHead(strs.map(mkBuffer), headEng)
       val tail = new EchoTail[ByteBuffer]
       LeafBuilder(tail)
@@ -117,9 +115,7 @@ class SSLStageSpec extends Specification {
     "Handle empty buffers gracefully" in {
       val (headEng, stageEng) = mkClientServerEngines
 
-      val strs = (0 until 10).map { i =>
-        "Buffer " + i + ", "
-      }
+      val strs = (0 until 10).map(i => "Buffer " + i + ", ")
       val head =
         new SSLSeqHead(strs.flatMap(s => Seq(mkBuffer(s), BufferTools.emptyBuffer)), headEng)
       val tail = new EchoTail[ByteBuffer]
@@ -138,9 +134,7 @@ class SSLStageSpec extends Specification {
     "Survive aggressive handshaking" in {
       val (headEng, stageEng) = mkClientServerEngines
 
-      val strs = (0 until 100).map { i =>
-        "Buffer " + i + ", "
-      }
+      val strs = (0 until 100).map(i => "Buffer " + i + ", ")
       val head = new SSLSeqHead(strs.map(mkBuffer), headEng, 2)
       val tail = new EchoTail[ByteBuffer]
       LeafBuilder(tail)
@@ -176,9 +170,7 @@ class SSLStageSpec extends Specification {
     "Survive aggressive handshaking with empty buffers" in {
       val (headEng, stageEng) = mkClientServerEngines
 
-      val strs = (0 until 10).map { i =>
-        "Buffer " + i + ", "
-      }
+      val strs = (0 until 10).map(i => "Buffer " + i + ", ")
       val head =
         new SSLSeqHead(strs.flatMap(s => Seq(mkBuffer(s), BufferTools.emptyBuffer)), headEng, 2)
       val tail = new EchoTail[ByteBuffer]
@@ -327,9 +319,7 @@ class SSLStageSpec extends Specification {
                   writeBuffer = data
                   super.writeRequest(o)
                 } else
-                  super.writeRequest(o).flatMap { _ =>
-                    writeRequest(data)
-                  }
+                  super.writeRequest(o).flatMap(_ => writeRequest(data))
               } else super.writeRequest(o)
 
             case _ =>

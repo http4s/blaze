@@ -26,9 +26,7 @@ class Http1ServerStageSpec extends Specification {
       case Nil => // break loop
       case h :: t =>
         val s = s"${h.method} ${h.url} HTTP/1.1\r\n"
-        val hs = h.headers.foldLeft(s) { (acc, h) =>
-          acc + s"${h._1}: ${h._2}\r\n"
-        }
+        val hs = h.headers.foldLeft(s)((acc, h) => acc + s"${h._1}: ${h._2}\r\n")
 
         acc += StandardCharsets.UTF_8.encode(
           hs + (if (t.isEmpty) "connection: close\r\n\r\n" else "\r\n"))
