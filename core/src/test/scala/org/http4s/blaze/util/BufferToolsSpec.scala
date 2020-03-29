@@ -175,9 +175,7 @@ class BufferToolsSpec extends Specification {
       BufferTools.copyBuffers(buffs, target) must_== 8
       target.position() must_== 8
 
-      forall(buffs) { buff =>
-        buff.position() must_== 0
-      }
+      forall(buffs)(buff => buff.position() must_== 0)
     }
 
     "copy multiple buffers int a smaller buffer" in {
@@ -189,9 +187,7 @@ class BufferToolsSpec extends Specification {
         BufferTools.copyBuffers(buffs, target) must_== 2
         target.position() must_== 2
 
-        forall(buffs) { buff =>
-          buff.position() must_== 0
-        }
+        forall(buffs)(buff => buff.position() must_== 0)
       }
 
       {
@@ -200,9 +196,7 @@ class BufferToolsSpec extends Specification {
         BufferTools.copyBuffers(buffs, target) must_== 6
         target.position() must_== 6
 
-        forall(buffs) { buff =>
-          buff.position() must_== 0
-        }
+        forall(buffs)(buff => buff.position() must_== 0)
       }
     }
 
@@ -224,9 +218,7 @@ class BufferToolsSpec extends Specification {
       val buffers = getBuffers(4)
 
       BufferTools.fastForwardBuffers(buffers, 4 * 4) must_== true
-      forall(buffers) { buffer =>
-        buffer.remaining must_== 0
-      }
+      forall(buffers)(buffer => buffer.remaining must_== 0)
     }
 
     "fast forward only part of an array" in {
@@ -242,9 +234,7 @@ class BufferToolsSpec extends Specification {
       val buffers = getBuffers(2)
       BufferTools.fastForwardBuffers(buffers, 10) must_== false
 
-      forall(buffers) { buffer =>
-        buffer.remaining must_== 0
-      }
+      forall(buffers)(buffer => buffer.remaining must_== 0)
     }
 
     "fast forward an array with null elements" in {

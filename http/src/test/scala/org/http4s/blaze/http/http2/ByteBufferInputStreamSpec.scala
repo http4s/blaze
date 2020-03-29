@@ -26,9 +26,7 @@ class ByteBufferInputStreamSpec extends Specification {
     "read byte when available" in {
       val range = 0 until 10
       val is = fromBytes(range.map(_.toByte): _*)
-      forall(range) { i =>
-        is.read() must_== i
-      }
+      forall(range)(i => is.read() must_== i)
 
       is.available() must_== 0
       is.read() must_== -1

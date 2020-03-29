@@ -82,9 +82,7 @@ abstract class ServerChannel extends Closeable { self =>
     if (hooks.isEmpty) closeAndNotify()
     else {
       val countdown = new AtomicInteger(hooks.size)
-      hooks.foreach { hook =>
-        hook.ec.execute(new HookRunnable(countdown, hook.task))
-      }
+      hooks.foreach(hook => hook.ec.execute(new HookRunnable(countdown, hook.task)))
     }
 
   // set the terminal state and notify any callers of `join`.

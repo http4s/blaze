@@ -24,9 +24,7 @@ class HeaderDecoderSpec extends Specification {
       dec.finish() must_== testHeaders
 
       // Decode another block to make sure we don't contaminate the first
-      val nextHs = (0 until 10).map { i =>
-        i.toString -> i.toString
-      }
+      val nextHs = (0 until 10).map(i => i.toString -> i.toString)
       val nextEncodedHs =
         HeaderCodecHelpers.encodeHeaders(nextHs, Http2Settings.DefaultSettings.HEADER_TABLE_SIZE)
 

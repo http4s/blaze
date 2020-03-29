@@ -239,9 +239,7 @@ sealed trait Head[O] extends Stage {
     * @return a `Future` that resolves when the data has been handled.
     */
   def writeRequest(data: collection.Seq[O]): Future[Unit] =
-    data.foldLeft[Future[Unit]](FutureUnit) { (f, d) =>
-      f.flatMap(_ => writeRequest(d))(directec)
-    }
+    data.foldLeft[Future[Unit]](FutureUnit)((f, d) => f.flatMap(_ => writeRequest(d))(directec))
 
   /** Replace all remaining inbound `Stage`s of the pipeline, not including this `Stage`. */
   final def replaceNext(stage: LeafBuilder[O], startup: Boolean): Tail[O] =

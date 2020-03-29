@@ -16,9 +16,7 @@ class HttpClientSpec extends Specification {
       val path = "https://github.com/"
       val hs = Seq("host" -> "github.com")
 
-      val f = client.GET(path, hs) { r =>
-        ClientResponse.stringBody(r).map((_, r.code))
-      }
+      val f = client.GET(path, hs)(r => ClientResponse.stringBody(r).map((_, r.code)))
       val (body, code) = Await.result(f, 10.seconds)
       println(s"Body: $body")
       code must_== 200

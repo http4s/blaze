@@ -40,9 +40,7 @@ private[http] class ClientPriorKnowledgeHandshaker(
   }
 
   override protected def handlePreface(): Future[ByteBuffer] =
-    channelWrite(bits.getPrefaceBuffer()).map { _ =>
-      BufferTools.emptyBuffer
-    }
+    channelWrite(bits.getPrefaceBuffer()).map(_ => BufferTools.emptyBuffer)
 
   override protected def handshakeComplete(
       remoteSettings: MutableHttp2Settings,
