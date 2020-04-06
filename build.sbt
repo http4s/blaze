@@ -5,31 +5,16 @@ organization in ThisBuild := "org.http4s"
 
 lazy val commonSettings = Seq(
   description := "NIO Framework for Scala",
-  scalaVersion := "2.12.8",
-  crossScalaVersions := Seq("2.11.12", scalaVersion.value, "2.13.0-M5", "2.13.0"),
+  scalaVersion := "2.12.11",
+  crossScalaVersions := Seq("2.11.12", scalaVersion.value, "2.13.1"),
   scalacOptions := scalacOptionsFor(scalaVersion.value),
-  scalacOptions := {
-    val opts = scalacOptions.value
-    // Flags changed between 2.13.0-M5 and 2.13.  Trust that they're
-    // well covered elsewhere and disable the ones that aren't on the
-    // milestone.
-    scalaVersion.value match {
-      case "2.13.0-M5" =>
-        opts
-          .filterNot(Set("-Xlint:deprecation"))
-          .filterNot(_.startsWith("-W"))
-      case _ =>
-        opts
-    }
-  },
   scalacOptions in Test ~= (_.filterNot(Set("-Ywarn-dead-code", "-Wdead-code"))), // because mockito
   scalacOptions in (Compile, doc) += "-no-link-warnings",
   unmanagedSourceDirectories in Compile ++= {
     (unmanagedSourceDirectories in Compile).value.map { dir =>
       val sv = scalaVersion.value
       CrossVersion.binaryScalaVersion(sv) match {
-        // 2.13.0-M5 doesn't have the JdkConverters introduced by 2.13.0
-        case "2.11" | "2.12" | "2.13.0-M5" => file(dir.getPath ++ "-2.11-2.12")
+        case "2.11" | "2.12" => file(dir.getPath ++ "-2.11-2.12")
         case _ => file(dir.getPath ++ "-2.13")
       }
     }
@@ -51,7 +36,7 @@ lazy val core = Project("blaze-core", file("core"))
   .disablePlugins(TpolecatPlugin)
   .settings(commonSettings)
   .settings(
-    libraryDependencies ++= Seq(log4s(scalaVersion.value)),
+    libraryDependencies ++= Seq(log4s),
     libraryDependencies ++= Seq(
       specs2,
       specs2Mock,
