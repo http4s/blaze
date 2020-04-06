@@ -157,6 +157,8 @@ final class SelectorLoop(
 
   // Main thread method. The loop will break if the Selector loop is closed
   private[this] def runLoop(): Unit = {
+    var cleanShutdown = true
+
     try while (!isClosed) {
       // Block here until some I/O event happens or someone adds
       // a task to run and wakes the loop.
@@ -173,17 +175,19 @@ final class SelectorLoop(
     } catch {
       case e: ClosedSelectorException =>
         logger.error(e)("Selector unexpectedly closed")
+        cleanShutdown = false
         close()
 
       case NonFatal(t) =>
         logger.error(t)("Unhandled exception in selector loop")
+        cleanShutdown = false
         close()
     }
 
     // If we've made it to here, we've exited the run loop and we need to shut down.
     // We first kill the selector and then drain any remaining tasks since closing
     // attached `Selectable`s may have resulted in more tasks.
-    killSelector()
+    killSelector(cleanShutdown)
     taskQueue.close()
   }
 
@@ -217,17 +221,21 @@ final class SelectorLoop(
     }
   }
 
-  private[this] def killSelector(): Unit =
+  private[this] def killSelector(cleanShutdown: Boolean): Unit =
     // We first close all the associated keys and then close
     // the `Selector` which will then be essentially useless.
     try {
       if (!selector.keys.isEmpty) {
-        val ex = new ShutdownChannelGroupException
+        val ex = cleanShutdown match {
+          case true => None
+          case false => Some(new ShutdownChannelGroupException)
+        }
+
         selector.keys.asScala.foreach { k =>
           try {
             val head = getAttachment(k)
             if (head != null) {
-              head.close(Some(ex))
+              head.close(ex)
             }
           } catch { case _: IOException => /* NOOP */ }
         }
