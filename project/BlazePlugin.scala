@@ -67,6 +67,6 @@ object BlazePlugin extends AutoPlugin {
   lazy val alpn_api            = "org.eclipse.jetty.alpn"     % "alpn-api"             % "1.1.3.v20160715"
   // Note that the alpn_boot version is JVM version specific. Check the docs if getting weird errors.
   // Also note that only java8 and above has the require cipher suite for http2.
-  lazy val alpn_boot           = "org.eclipse.jetty"          % "jetty-alpn-openjdk8-client" % "9.4.27.v20200227"
+  lazy val alpn_boot           = "org.eclipse.jetty"          % "jetty-alpn-openjdk8-client" % "9.4.28.v20200408"
 
 }
