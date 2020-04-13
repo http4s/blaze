@@ -60,7 +60,7 @@ object BlazePlugin extends AutoPlugin {
   lazy val asyncHttpClient     = "org.asynchttpclient"        %  "async-http-client"   % "2.12.1"
   lazy val log4s               = "org.log4s"                  %% "log4s"               % "1.8.2"
   lazy val scalacheck          = "org.scalacheck"             %% "scalacheck"          % "1.14.3"
-  lazy val specs2              = "org.specs2"                 %% "specs2-core"         % "4.9.2"
+  lazy val specs2              = "org.specs2"                 %% "specs2-core"         % "4.9.3"
   lazy val specs2Mock          = "org.specs2"                 %% "specs2-mock"         % specs2.revision
   lazy val specs2Scalacheck    = "org.specs2"                 %% "specs2-scalacheck"   % specs2.revision
   // Needed for Http2 support until implemented in the JDK
