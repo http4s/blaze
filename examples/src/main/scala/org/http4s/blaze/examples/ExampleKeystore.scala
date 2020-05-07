@@ -31,7 +31,8 @@ object ExampleKeystore {
       In order to access the server, you need to import the 'client.p12' file into your browsers certificate store.
      */
 
-    val ksStream = getClass.getResourceAsStream("/clientauth/server.jks") //BogusKeystore.asInputStream()
+    val ksStream =
+      getClass.getResourceAsStream("/clientauth/server.jks") //BogusKeystore.asInputStream()
     assert(ksStream != null)
 
     val ks = KeyStore.getInstance("JKS")

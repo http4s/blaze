@@ -268,7 +268,8 @@ class SessionFlowControlSpec extends Specification {
       val session = flowControl()
       val flow = session.newStreamFlowWindow(1)
 
-      flow.outboundRequest(DefaultSettings.INITIAL_WINDOW_SIZE) must_== DefaultSettings.INITIAL_WINDOW_SIZE
+      flow.outboundRequest(
+        DefaultSettings.INITIAL_WINDOW_SIZE) must_== DefaultSettings.INITIAL_WINDOW_SIZE
       flow.streamOutboundWindow must_== 0
       session.sessionOutboundWindow must_== 0
     }
@@ -277,7 +278,8 @@ class SessionFlowControlSpec extends Specification {
       val session = flowControl()
       val flow = session.newStreamFlowWindow(1)
 
-      flow.outboundRequest(DefaultSettings.INITIAL_WINDOW_SIZE + 1) must_== DefaultSettings.INITIAL_WINDOW_SIZE
+      flow.outboundRequest(
+        DefaultSettings.INITIAL_WINDOW_SIZE + 1) must_== DefaultSettings.INITIAL_WINDOW_SIZE
       flow.streamOutboundWindow must_== 0
       session.sessionOutboundWindow must_== 0
     }

@@ -42,9 +42,8 @@ class TickWheelExecutor(wheelSize: Int = DefaultWheelSize, val tick: Duration = 
 
   private val head = new AtomicReference[ScheduleEvent](Tail)
 
-  private val clockFace: Array[Bucket] = {
+  private val clockFace: Array[Bucket] =
     (0 until wheelSize).map(_ => new Bucket()).toArray
-  }
 
   /////////////////////////////////////////////////////
   // new Thread that actually runs the execution.
@@ -89,10 +88,10 @@ class TickWheelExecutor(wheelSize: Int = DefaultWheelSize, val tick: Duration = 
     *         which is a richer interface.
     */
   def schedule(r: Runnable, ec: ExecutionContext, timeout: Duration): Cancelable =
-    if (alive) {
-      if (!timeout.isFinite) { // This will never timeout, so don't schedule it.
+    if (alive)
+      if (!timeout.isFinite) // This will never timeout, so don't schedule it.
         Cancelable.NoopCancel
-      } else {
+      else {
         val millis = timeout.toMillis
         if (millis > 0) {
           val expires = millis + System.currentTimeMillis()
@@ -112,23 +111,24 @@ class TickWheelExecutor(wheelSize: Int = DefaultWheelSize, val tick: Duration = 
           Cancelable.NoopCancel
         }
       }
-    } else sys.error("TickWheelExecutor is shutdown")
+    else sys.error("TickWheelExecutor is shutdown")
 
   // Deals with appending and removing tasks from the buckets
   private def handleTasks(): Unit = {
     @tailrec
-    def go(task: ScheduleEvent): Unit = task match {
-      case Cancel(n, nxt) =>
-        n.canceled = true
-        n.unlink()
-        go(nxt)
+    def go(task: ScheduleEvent): Unit =
+      task match {
+        case Cancel(n, nxt) =>
+          n.canceled = true
+          n.unlink()
+          go(nxt)
 
-      case Register(n, nxt) =>
-        if (!n.canceled) getBucket(n.expiration).add(n)
-        go(nxt)
+        case Register(n, nxt) =>
+          if (!n.canceled) getBucket(n.expiration).add(n)
+          go(nxt)
 
-      case Tail => // NOOP
-    }
+        case Tail => // NOOP
+      }
 
     val tasks = head.getAndSet(Tail)
     go(tasks)
@@ -144,12 +144,13 @@ class TickWheelExecutor(wheelSize: Int = DefaultWheelSize, val tick: Duration = 
     val ticks = math.min(thisTick - lastTick, wheelSize.toLong)
 
     @tailrec
-    def go(i: Long): Unit = if (i < ticks) { // will do at least one tick
-      val ii = ((lastTick + i) % wheelSize).toInt
-      clockFace(ii)
-        .prune(thisTickTime) // Remove canceled and submit expired tasks from the current spoke
-      go(i + 1)
-    }
+    def go(i: Long): Unit =
+      if (i < ticks) { // will do at least one tick
+        val ii = ((lastTick + i) % wheelSize).toInt
+        clockFace(ii)
+          .prune(thisTickTime) // Remove canceled and submit expired tasks from the current spoke
+        go(i + 1)
+      }
     go(0)
 
     if (alive) {
@@ -157,9 +158,8 @@ class TickWheelExecutor(wheelSize: Int = DefaultWheelSize, val tick: Duration = 
       val sleep = nextTickTime - System.currentTimeMillis()
       if (sleep > 0) Thread.sleep(sleep)
       cycle(thisTickTime)
-    } else { // delete all our buckets so we don't hold any references
+    } else // delete all our buckets so we don't hold any references
       for { i <- 0 until wheelSize } clockFace(i) = null
-    }
   }
 
   protected def onNonFatal(t: Throwable): Unit =
@@ -182,7 +182,7 @@ class TickWheelExecutor(wheelSize: Int = DefaultWheelSize, val tick: Duration = 
       @tailrec
       def checkNext(prev: Node): Unit = {
         val next = prev.next
-        if (next ne null) {
+        if (next ne null)
           if (next.canceled) { // remove it
             logger.error("Tickwheel has canceled node in bucket: shouldn't get here.")
             next.unlink()
@@ -191,7 +191,6 @@ class TickWheelExecutor(wheelSize: Int = DefaultWheelSize, val tick: Duration = 
             next.unlink()
             checkNext(prev)
           } else checkNext(next) // still valid
-        }
       }
 
       checkNext(head)
@@ -218,13 +217,11 @@ class TickWheelExecutor(wheelSize: Int = DefaultWheelSize, val tick: Duration = 
 
     /** Remove this node from its linked list */
     def unlink(): Unit = {
-      if (prev != null) { // Every node that is in a bucket should have a `prev`
+      if (prev != null) // Every node that is in a bucket should have a `prev`
         prev.next = next
-      }
 
-      if (next != null) {
+      if (next != null)
         next.prev = prev
-      }
 
       prev = null
       next = null
@@ -235,9 +232,8 @@ class TickWheelExecutor(wheelSize: Int = DefaultWheelSize, val tick: Duration = 
       val n = node.next
       node.next = this
 
-      if (n != null) {
+      if (n != null)
         n.prev = this
-      }
 
       this.prev = node
       this.next = n

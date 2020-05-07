@@ -15,9 +15,8 @@ class StreamManagerImplSpec extends Specification {
     lazy val tail = new TailStage[StreamFrame] {
       override def name: String = "name"
       override def inboundCommand(cmd: Command.InboundCommand): Unit = {
-        if (cmd == Command.Connected) {
+        if (cmd == Command.Connected)
           connects += 1
-        }
         super.inboundCommand(cmd)
       }
     }
@@ -219,7 +218,8 @@ class StreamManagerImplSpec extends Specification {
         val tools = new MockTools(isClient = false)
 
         val Right(s) = tools.streamManager.newInboundStream(1)
-        s.flowWindow.streamOutboundAcked(Int.MaxValue - s.flowWindow.streamOutboundWindow) must beNone
+        s.flowWindow.streamOutboundAcked(
+          Int.MaxValue - s.flowWindow.streamOutboundWindow) must beNone
 
         tools.streamManager.flowWindowUpdate(streamId = 1, sizeIncrement = 1) must beLike {
           case Error(ex: Http2StreamException) => ex.code must_== FLOW_CONTROL_ERROR.code
@@ -266,7 +266,10 @@ class StreamManagerImplSpec extends Specification {
         .newOutboundStream()
         .writeRequest(HeadersFrame(Priority.NoPriority, true, Seq.empty))
 
-      tools.streamManager.handlePushPromise(streamId = 1, promisedId = 2, headers = Seq.empty) must beLike {
+      tools.streamManager.handlePushPromise(
+        streamId = 1,
+        promisedId = 2,
+        headers = Seq.empty) must beLike {
         case Error(ex: Http2StreamException) =>
           ex.code must_== REFUSED_STREAM.code
           ex.stream must_== 2

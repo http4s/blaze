@@ -86,7 +86,10 @@ class SessionFrameListenerSpec extends Specification {
         val os = tools.streamManager.newOutboundStream()
         os.writeRequest(HeadersFrame(Priority.NoPriority, false, Seq.empty)) // initiate stream
 
-        tools.frameListener.onCompletePushPromiseFrame(os.streamId, os.streamId + 1, hs) must beLike {
+        tools.frameListener.onCompletePushPromiseFrame(
+          os.streamId,
+          os.streamId + 1,
+          hs) must beLike {
           case Error(ex: Http2SessionException) => ex.code must_== PROTOCOL_ERROR.code
         }
       }
@@ -264,7 +267,10 @@ class SessionFrameListenerSpec extends Specification {
             observedGoAway = Some(lastHandledOutboundStream -> reason)
         }
 
-        tools.frameListener.onGoAwayFrame(1, NO_ERROR.code, "lol".getBytes(StandardCharsets.UTF_8)) must_== Continue
+        tools.frameListener.onGoAwayFrame(
+          1,
+          NO_ERROR.code,
+          "lol".getBytes(StandardCharsets.UTF_8)) must_== Continue
 
         tools.observedGoAway must beLike {
           case Some((1, Http2SessionException(NO_ERROR.code, "lol"))) => ok

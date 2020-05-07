@@ -116,9 +116,8 @@ final class SSLStage(engine: SSLEngine, maxWrite: Int = 1024 * 1024)
       val b = takeQueuedBytes()
       val r = readLoop(b, out)
 
-      if (b.hasRemaining()) {
+      if (b.hasRemaining())
         readLeftover = b
-      }
 
       r match {
         case SSLSuccess if out.nonEmpty =>
@@ -205,12 +204,11 @@ final class SSLStage(engine: SSLEngine, maxWrite: Int = 1024 * 1024)
             handshakeFailure(new SSLException(s"SSL Handshake WRAP produced 0 bytes: $r"))
 
           // prevents infinite loop, see: https://bugs.openjdk.java.net/browse/JDK-8220703
-          if (r.bytesProduced > 0 || r.getHandshakeStatus != HandshakeStatus.NEED_WRAP) {
+          if (r.bytesProduced > 0 || r.getHandshakeStatus != HandshakeStatus.NEED_WRAP)
             channelWrite(copyBuffer(o)).onComplete {
               case Success(_) => sslHandshake(data, r.getHandshakeStatus)
               case Failure(t) => handshakeFailure(t)
             }(serialExec)
-          }
 
         // Finished with the handshake: continue what we were doing.
         case HandshakeStatus.FINISHED | HandshakeStatus.NOT_HANDSHAKING =>
@@ -311,12 +309,12 @@ final class SSLStage(engine: SSLEngine, maxWrite: Int = 1024 * 1024)
         case SSLNeedHandshake(r) =>
           handshakeQueue += DelayedWrite(data, p)
           val readData = takeQueuedBytes()
-          if (out.nonEmpty) { // need to write
+          if (out.nonEmpty) // need to write
             channelWrite(out.toSeq).onComplete {
               case Success(_) => sslHandshake(readData, r)
               case Failure(t) => p.failure(t)
             }(serialExec)
-          } else sslHandshake(readData, r)
+          else sslHandshake(readData, r)
 
         case SSLFailure(t) => p.failure(t); ()
       }

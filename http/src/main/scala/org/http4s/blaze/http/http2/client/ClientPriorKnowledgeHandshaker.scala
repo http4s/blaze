@@ -48,9 +48,8 @@ private[http] class ClientPriorKnowledgeHandshaker(
   ): Future[Http2ClientSession] = {
     val tailStage = new BasicTail[ByteBuffer]("http2cClientTail")
     var newTail = LeafBuilder(tailStage)
-    if (data.hasRemaining) {
+    if (data.hasRemaining)
       newTail = newTail.prepend(new OneMessageStage[ByteBuffer](data))
-    }
 
     this.replaceTail(newTail, true)
 

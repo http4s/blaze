@@ -36,33 +36,35 @@ private final class Http1ServerCodec(maxNonBodyBytes: Int, pipeline: TailStage[B
 
   private[this] val lock = parser
 
-  def readyForNextRequest(): Boolean = lock.synchronized {
-    parser.isStart()
-  }
+  def readyForNextRequest(): Boolean =
+    lock.synchronized {
+      parser.isStart()
+    }
 
   // TODO: how may of these locks are necessary? The only time things may be happening concurrently
   //       is when users are mishandling the body encoder.
-  def getRequest(): Future[HttpRequest] = lock.synchronized {
-    if (parser.isStart()) {
-      try {
-        val req = maybeGetRequest()
-        if (req != null) Future.successful(req)
-        else {
-          val p = Promise[HttpRequest]
-          readAndGetRequest(p)
-          p.future
+  def getRequest(): Future[HttpRequest] =
+    lock.synchronized {
+      if (parser.isStart())
+        try {
+          val req = maybeGetRequest()
+          if (req != null) Future.successful(req)
+          else {
+            val p = Promise[HttpRequest]
+            readAndGetRequest(p)
+            p.future
+          }
+        } catch {
+          case NonFatal(t) =>
+            shutdown()
+            Future.failed(t)
         }
-      } catch {
-        case NonFatal(t) =>
-          shutdown()
-          Future.failed(t)
+      else {
+        val msg =
+          "Attempted to get next request when protocol was in invalid state"
+        Future.failed(new IllegalStateException(msg))
       }
-    } else {
-      val msg =
-        "Attempted to get next request when protocol was in invalid state"
-      Future.failed(new IllegalStateException(msg))
     }
-  }
 
   def renderResponse(response: RouteAction, forceClose: Boolean): Future[RouteResult] =
     response.handle(getEncoder(forceClose, _))
@@ -85,11 +87,11 @@ private final class Http1ServerCodec(maxNonBodyBytes: Int, pipeline: TailStage[B
       val closing = forceClose || !HeaderTools.isKeepAlive(connection, minorVersion)
 
       if (closing) sb.append("connection: close\r\n")
-      else if (minorVersion == 0 && sh.contentLength.isDefined && Try(sh.contentLength.get.toLong).isSuccess) {
+      else if (minorVersion == 0 && sh.contentLength.isDefined && Try(
+          sh.contentLength.get.toLong).isSuccess)
         // It is up to the user of the codec to ensure that this http/1.0 request has a keep-alive header
         // and should signal that through `forceClose`.
         sb.append("connection: keep-alive\r\n")
-      }
 
       sh match {
         case SpecialHeaders(Some(te), _, _) if te.equalsIgnoreCase("chunked") =>
@@ -119,35 +121,37 @@ private final class Http1ServerCodec(maxNonBodyBytes: Int, pipeline: TailStage[B
         private val thisRequest = requestId
         private var discarded = false
 
-        override def isExhausted: Boolean = lock.synchronized {
-          discarded || thisRequest != requestId || parser.contentComplete()
-        }
+        override def isExhausted: Boolean =
+          lock.synchronized {
+            discarded || thisRequest != requestId || parser.contentComplete()
+          }
 
         /** Throw away this [[BodyReader]] */
-        override def discard(): Unit = lock.synchronized {
-          discarded = false
-        }
+        override def discard(): Unit =
+          lock.synchronized {
+            discarded = false
+          }
 
-        override def apply(): Future[ByteBuffer] = lock.synchronized {
-          if (discarded || parser.contentComplete()) {
-            BufferTools.emptyFutureBuffer
-          } else if (thisRequest != requestId) FutureEOF
-          else {
-            val buf = parser.parseBody(buffered)
-            if (buf.hasRemaining) Future.successful(buf)
-            else if (parser.contentComplete()) BufferTools.emptyFutureBuffer
+        override def apply(): Future[ByteBuffer] =
+          lock.synchronized {
+            if (discarded || parser.contentComplete())
+              BufferTools.emptyFutureBuffer
+            else if (thisRequest != requestId) FutureEOF
             else {
-              // need more data
-              pipeline
-                .channelRead()
-                .flatMap(buffer =>
-                  lock.synchronized {
-                    buffered = BufferTools.concatBuffers(buffered, buffer)
-                    apply()
-                  })(Execution.trampoline)
+              val buf = parser.parseBody(buffered)
+              if (buf.hasRemaining) Future.successful(buf)
+              else if (parser.contentComplete()) BufferTools.emptyFutureBuffer
+              else
+                // need more data
+                pipeline
+                  .channelRead()
+                  .flatMap(buffer =>
+                    lock.synchronized {
+                      buffered = BufferTools.concatBuffers(buffered, buffer)
+                      apply()
+                    })(Execution.trampoline)
             }
           }
-        }
       }
 
   private[this] def readAndGetRequest(p: Promise[HttpRequest]): Unit =
@@ -162,9 +166,9 @@ private final class Http1ServerCodec(maxNonBodyBytes: Int, pipeline: TailStage[B
               maybeGetRequest()
             }
 
-            if (httpRequest == null) {
+            if (httpRequest == null)
               readAndGetRequest(p)
-            } else {
+            else {
               p.success(httpRequest)
               ()
             }
@@ -192,13 +196,13 @@ private final class Http1ServerCodec(maxNonBodyBytes: Int, pipeline: TailStage[B
         prelude.minorVersion,
         prelude.headers.toSeq,
         body)
-    } else {
+    } else
       null
-    }
 
-  def shutdown(): Unit = lock.synchronized {
-    parser.shutdownParser()
-  }
+  def shutdown(): Unit =
+    lock.synchronized {
+      parser.shutdownParser()
+    }
 
   // Body writers ///////////////////
 
@@ -222,27 +226,29 @@ private final class Http1ServerCodec(maxNonBodyBytes: Int, pipeline: TailStage[B
         else doWrite(buffer)
       }
 
-    final override def flush(): Future[Unit] = lock.synchronized {
-      if (closed) InternalWriter.ClosedChannelException
-      else doFlush()
-    }
+    final override def flush(): Future[Unit] =
+      lock.synchronized {
+        if (closed) InternalWriter.ClosedChannelException
+        else doFlush()
+      }
 
-    final override def close(cause: Option[Throwable]): Future[RouteResult] = lock.synchronized {
-      if (closed) InternalWriter.ClosedChannelException
-      else {
-        closed = true
-        cause match {
-          case Some(ex) =>
-            // Since we're aborting, we need to just hang up for HTTP/1.x since
-            // we can't set a RST or signal in any other way that the response
-            // didn't terminate normally.
-            logger.debug(ex)("Closed due to exception")
-            FutureClose
-          case None =>
-            doClose()
+    final override def close(cause: Option[Throwable]): Future[RouteResult] =
+      lock.synchronized {
+        if (closed) InternalWriter.ClosedChannelException
+        else {
+          closed = true
+          cause match {
+            case Some(ex) =>
+              // Since we're aborting, we need to just hang up for HTTP/1.x since
+              // we can't set a RST or signal in any other way that the response
+              // didn't terminate normally.
+              logger.debug(ex)("Closed due to exception")
+              FutureClose
+            case None =>
+              doClose()
+          }
         }
       }
-    }
   }
 
   private final class ClosingWriter(var sb: StringBuilder) extends InternalWriter {
@@ -321,12 +327,11 @@ private final class Http1ServerCodec(maxNonBodyBytes: Int, pipeline: TailStage[B
       logger.debug("closed")
       if (cache.nonEmpty)
         doFlush().map(_ => selectComplete(forceClose))(Execution.directec)
-      else {
+      else
         selectComplete(forceClose) match {
           case Reload => FutureReload
           case Close => FutureClose
         }
-      }
     }
   }
 
@@ -355,9 +360,8 @@ private final class Http1ServerCodec(maxNonBodyBytes: Int, pipeline: TailStage[B
     override def doFlush(): Future[Unit] = flushCache(false)
 
     private def flushCache(last: Boolean): Future[Unit] = {
-      if (last) {
+      if (last)
         cache += ByteBuffer.wrap(terminationBytes)
-      }
 
       var buffers = cache.result()
       cache.clear()
@@ -408,18 +412,17 @@ private final class Http1ServerCodec(maxNonBodyBytes: Int, pipeline: TailStage[B
         cache += buffer
         cacheSize += buffer.remaining()
 
-        if (cacheSize > InternalWriter.BufferLimit) {
+        if (cacheSize > InternalWriter.BufferLimit)
           // Abort caching: too much data. Create a chunked writer.
           startChunked()
-        } else InternalWriter.CachedSuccess
+        else InternalWriter.CachedSuccess
       }
 
     override def doFlush(): Future[Unit] =
       if (underlying != null) underlying.flush()
-      else {
+      else
         // Gotta go with chunked encoding...
         startChunked().flatMap(_ => flush())(Execution.directec)
-      }
 
     override def doClose(): Future[Http1ServerCodec.RouteResult] =
       if (underlying != null) underlying.close(None)
@@ -437,11 +440,10 @@ private final class Http1ServerCodec(maxNonBodyBytes: Int, pipeline: TailStage[B
 
     // start a chunked encoding writer and write the contents of the cache
     private[this] def startChunked(): Future[Unit] = {
-      underlying = {
+      underlying =
         if (minor > 0)
           new ChunkedBodyWriter(false, sb, InternalWriter.BufferLimit)
         else new ClosingWriter(sb)
-      }
 
       val buff = BufferTools.joinBuffers(cache)
       cache.clear()

@@ -217,33 +217,34 @@ class SSLStageSpec extends Specification {
 
     private var count = 0
 
-    private def handShake(): Unit = lock.synchronized {
-      if (debug) println("Handshaking: " + engine.getHandshakeStatus)
+    private def handShake(): Unit =
+      lock.synchronized {
+        if (debug) println("Handshaking: " + engine.getHandshakeStatus)
 
-      engine.getHandshakeStatus match {
-        case NOT_HANDSHAKING | FINISHED => ()
+        engine.getHandshakeStatus match {
+          case NOT_HANDSHAKING | FINISHED => ()
 
-        case NEED_TASK =>
-          var t = engine.getDelegatedTask
-          while (t != null) {
-            t.run()
-            t = engine.getDelegatedTask
-          }
-          handShake()
+          case NEED_TASK =>
+            var t = engine.getDelegatedTask
+            while (t != null) {
+              t.run()
+              t = engine.getDelegatedTask
+            }
+            handShake()
 
-        case NEED_WRAP =>
-          val o = ByteBuffer.allocateDirect(maxNetSize)
-          val r = engine.wrap(BufferTools.emptyBuffer, o)
-          if (debug) println(r)
-          o.flip()
-          // assert(handShakeBuffer == null)
-          handShakeBuffer = o
+          case NEED_WRAP =>
+            val o = ByteBuffer.allocateDirect(maxNetSize)
+            val r = engine.wrap(BufferTools.emptyBuffer, o)
+            if (debug) println(r)
+            o.flip()
+            // assert(handShakeBuffer == null)
+            handShakeBuffer = o
 
-        // wildcard case includes NEED_UNWRAP, but also NEED_UNWRAP_AGAIN which is new in JDK 9.
-        // need wildcard to be source-compatible and exhaustiveness-warning-free on both 8 and 9
-        case _ => ()
+          // wildcard case includes NEED_UNWRAP, but also NEED_UNWRAP_AGAIN which is new in JDK 9.
+          // need wildcard to be source-compatible and exhaustiveness-warning-free on both 8 and 9
+          case _ => ()
+        }
       }
-    }
 
     private def checkHandshaking(): Unit =
       if (handshakeInterval > 0) { // Induce handshaking.
@@ -254,102 +255,101 @@ class SSLStageSpec extends Specification {
         }
       }
 
-    override def readRequest(size: Int): Future[ByteBuffer] = lock.synchronized {
-      if (debug) println("ReadReq: " + engine.getHandshakeStatus)
-      def go(buffer: ByteBuffer): Future[ByteBuffer] =
-        try {
-          val o = ByteBuffer.allocate(maxNetSize)
-          val r = engine.wrap(buffer, o)
-          o.flip()
+    override def readRequest(size: Int): Future[ByteBuffer] =
+      lock.synchronized {
+        if (debug) println("ReadReq: " + engine.getHandshakeStatus)
+        def go(buffer: ByteBuffer): Future[ByteBuffer] =
+          try {
+            val o = ByteBuffer.allocate(maxNetSize)
+            val r = engine.wrap(buffer, o)
+            o.flip()
 
-          // Store any left over buffer
-          if (buffer.hasRemaining) {
-            assert(readBuffer == null)
-            readBuffer = buffer
+            // Store any left over buffer
+            if (buffer.hasRemaining) {
+              assert(readBuffer == null)
+              readBuffer = buffer
+            }
+
+            if (debug) println("Go in readRequest: " + r)
+            r.getHandshakeStatus match {
+              case NOT_HANDSHAKING =>
+                checkHandshaking()
+                Future.successful(o)
+
+              case _ =>
+                if (debug) println("Need to handshake: " + o)
+
+                if (o.hasRemaining) Future.successful(o)
+                else {
+                  handShake()
+                  Future.successful(BufferTools.emptyBuffer)
+                }
+            }
+          } catch {
+            case NonFatal(t) => println(t); Future.failed(t)
           }
 
-          if (debug) println("Go in readRequest: " + r)
-          r.getHandshakeStatus match {
-            case NOT_HANDSHAKING =>
-              checkHandshaking()
-              Future.successful(o)
-
-            case _ =>
-              if (debug) println("Need to handshake: " + o)
-
-              if (o.hasRemaining) Future.successful(o)
-              else {
-                handShake()
-                Future.successful(BufferTools.emptyBuffer)
-              }
-          }
-        } catch {
-          case NonFatal(t) => println(t); Future.failed(t)
-        }
-
-      if (handShakeBuffer != null) {
-        val b = handShakeBuffer
-        handShakeBuffer = null
-        Future.successful(b)
-      } else {
-        if (readBuffer != null) {
+        if (handShakeBuffer != null) {
+          val b = handShakeBuffer
+          handShakeBuffer = null
+          Future.successful(b)
+        } else if (readBuffer != null) {
           val b = readBuffer
           readBuffer = null
           go(b)
         } else super.readRequest(size).flatMap(go)
       }
-    }
 
-    override def writeRequest(data: ByteBuffer): Future[Unit] = lock.synchronized {
-      def go(data: ByteBuffer): Future[Unit] =
-        try {
-          //
-          val o = ByteBuffer.allocate(maxNetSize)
-          val r = engine.unwrap(data, o)
-          if (debug) println("Write Go: " + r)
-          o.flip()
+    override def writeRequest(data: ByteBuffer): Future[Unit] =
+      lock.synchronized {
+        def go(data: ByteBuffer): Future[Unit] =
+          try {
+            //
+            val o = ByteBuffer.allocate(maxNetSize)
+            val r = engine.unwrap(data, o)
+            if (debug) println("Write Go: " + r)
+            o.flip()
 
-          r.getHandshakeStatus match {
-            case SSLEngineResult.HandshakeStatus.NOT_HANDSHAKING =>
-              checkHandshaking()
+            r.getHandshakeStatus match {
+              case SSLEngineResult.HandshakeStatus.NOT_HANDSHAKING =>
+                checkHandshaking()
 
-              if (data.hasRemaining) {
-                if (r.getStatus == SSLEngineResult.Status.BUFFER_UNDERFLOW) {
-                  assert(writeBuffer == null)
-                  writeBuffer = data
-                  super.writeRequest(o)
-                } else
-                  super.writeRequest(o).flatMap(_ => writeRequest(data))
-              } else super.writeRequest(o)
-
-            case _ =>
-              val f = {
-                if (o.hasRemaining) {
-                  super.writeRequest(o).flatMap(_ => writeRequest(data))
-                } else {
-                  if (data.hasRemaining) {
-                    // assert(writeBuffer == null)
+                if (data.hasRemaining)
+                  if (r.getStatus == SSLEngineResult.Status.BUFFER_UNDERFLOW) {
+                    assert(writeBuffer == null)
                     writeBuffer = data
+                    super.writeRequest(o)
+                  } else
+                    super.writeRequest(o).flatMap(_ => writeRequest(data))
+                else super.writeRequest(o)
+
+              case _ =>
+                val f = {
+                  if (o.hasRemaining)
+                    super.writeRequest(o).flatMap(_ => writeRequest(data))
+                  else {
+                    if (data.hasRemaining)
+                      // assert(writeBuffer == null)
+                      writeBuffer = data
+                    FutureUnit
                   }
-                  FutureUnit
                 }
-              }
 
-              f.flatMap { _ =>
-                handShake()
-                if (data.hasRemaining) go(data)
-                else FutureUnit
-              }
-          }
-        } catch { case NonFatal(t) => Future.failed(t) }
+                f.flatMap { _ =>
+                  handShake()
+                  if (data.hasRemaining) go(data)
+                  else FutureUnit
+                }
+            }
+          } catch { case NonFatal(t) => Future.failed(t) }
 
-      val b = {
-        val b = BufferTools.concatBuffers(writeBuffer, data)
-        writeBuffer = null
-        b
+        val b = {
+          val b = BufferTools.concatBuffers(writeBuffer, data)
+          writeBuffer = null
+          b
+        }
+
+        go(b)
       }
-
-      go(b)
-    }
   }
 }

@@ -61,9 +61,8 @@ private[blaze] class ReadPool[T] {
 
   final def closeAndClear(t: Throwable = EOF): Seq[T] = {
     val b = new ListBuffer[T]
-    while (!offerQ.isEmpty) {
+    while (!offerQ.isEmpty)
       b += offerQ.poll()
-    }
     close(t)
     b.result()
   }

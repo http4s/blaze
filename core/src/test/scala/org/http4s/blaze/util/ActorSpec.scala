@@ -15,42 +15,44 @@ class ActorSpec extends Specification {
   case class OptMsg(lst: Option[Int]) extends Msg
   case class Continuation(f: String => Any) extends Msg
 
-  def actor(error: Throwable => Unit, ec: ExecutionContext): Actor[Msg] = new Actor[Msg](ec) {
-    override protected def act(message: Msg): Unit = message match {
-      case OptMsg(Some(-1)) => throw E("Fail.")
-      case OptMsg(Some(_)) => ???
-      case OptMsg(None) => ()
-      case Continuation(f) =>
-        f("Completed")
-        ()
-      case NOOP => // NOOP
-    }
+  def actor(error: Throwable => Unit, ec: ExecutionContext): Actor[Msg] =
+    new Actor[Msg](ec) {
+      override protected def act(message: Msg): Unit =
+        message match {
+          case OptMsg(Some(-1)) => throw E("Fail.")
+          case OptMsg(Some(_)) => ???
+          case OptMsg(None) => ()
+          case Continuation(f) =>
+            f("Completed")
+            ()
+          case NOOP => // NOOP
+        }
 
-    override protected def onError(t: Throwable, msg: Msg): Unit = error(t)
-  }
+      override protected def onError(t: Throwable, msg: Msg): Unit = error(t)
+    }
 
   "Actor under load" should {
     def load(senders: Int, messages: Int): Unit = {
       val flag = new AtomicReference[Throwable]()
       val latch = new CountDownLatch(senders * messages)
 
-      val a = actor(t => {
-        flag.set(t)
-        latch.countDown()
-      }, global)
+      val a = actor(
+        t => {
+          flag.set(t)
+          latch.countDown()
+        },
+        global)
 
-      for (_ <- 0 until senders) {
+      for (_ <- 0 until senders)
         global.execute(new Runnable {
-          override def run(): Unit = for (_ <- 0 until messages) {
-            a ! Continuation(_ => latch.countDown())
-          }
+          override def run(): Unit =
+            for (_ <- 0 until messages)
+              a ! Continuation(_ => latch.countDown())
         })
-      }
 
       latch.await(15, TimeUnit.SECONDS) must beTrue
-      if (flag.get != null) {
+      if (flag.get != null)
         throw flag.get
-      }
     }
 
     "Handle all messages" in {
@@ -73,11 +75,10 @@ class ActorSpec extends Specification {
         // sleep a little to allow things to get out of order they are going to
         Thread.sleep(1)
 
-        if (thisIteration != i - 1) {
+        if (thisIteration != i - 1)
           outOfOrder = true
-        } else {
+        else
           thisIteration += 1
-        }
 
         latch.countDown()
       }

@@ -85,21 +85,24 @@ object BodyReader {
       new BodyReader {
         private[this] var buff = buffer
 
-        override def discard(): Unit = this.synchronized {
-          buff = BufferTools.emptyBuffer
-        }
-
-        override def isExhausted: Boolean = this.synchronized {
-          !buff.hasRemaining
-        }
-
-        override def apply(): Future[ByteBuffer] = this.synchronized {
-          if (buff.hasRemaining) {
-            val b = buff
+        override def discard(): Unit =
+          this.synchronized {
             buff = BufferTools.emptyBuffer
-            Future.successful(b)
-          } else BufferTools.emptyFutureBuffer
-        }
+          }
+
+        override def isExhausted: Boolean =
+          this.synchronized {
+            !buff.hasRemaining
+          }
+
+        override def apply(): Future[ByteBuffer] =
+          this.synchronized {
+            if (buff.hasRemaining) {
+              val b = buff
+              buff = BufferTools.emptyBuffer
+              Future.successful(b)
+            } else BufferTools.emptyFutureBuffer
+          }
       }
 
   /** The remainder of the message body will be accumulated into a single buffer. If no data remains,

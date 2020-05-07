@@ -34,45 +34,48 @@ private final class WriteControllerImpl(
 
   private[this] var state: State = Idle
 
-  def close(): Future[Unit] = state match {
-    case Idle =>
-      state = Closed
-      FutureUnit
+  def close(): Future[Unit] =
+    state match {
+      case Idle =>
+        state = Closed
+        FutureUnit
 
-    case Flushing =>
-      val p = Promise[Unit]
-      state = Closing(p)
-      p.future
+      case Flushing =>
+        val p = Promise[Unit]
+        state = Closing(p)
+        p.future
 
-    case Closing(p) =>
-      p.future
+      case Closing(p) =>
+        p.future
 
-    case Closed =>
-      FutureUnit
-  }
+      case Closed =>
+        FutureUnit
+    }
 
   private[this] def pendingInterests: Boolean =
     !pendingWrites.isEmpty || !interestedStreams.isEmpty
 
-  def write(data: Seq[ByteBuffer]): Boolean = state match {
-    case Idle | Flushing | Closing(_) =>
-      pendingWrites.addLast(data)
-      maybeWrite()
-      true
+  def write(data: Seq[ByteBuffer]): Boolean =
+    state match {
+      case Idle | Flushing | Closing(_) =>
+        pendingWrites.addLast(data)
+        maybeWrite()
+        true
 
-    case Closed =>
-      false
-  }
+      case Closed =>
+        false
+    }
 
   def write(data: ByteBuffer): Boolean = write(data :: Nil)
 
-  def registerWriteInterest(interest: WriteInterest): Boolean = state match {
-    case Closed => false
-    case _ =>
-      interestedStreams.add(interest)
-      maybeWrite()
-      true
-  }
+  def registerWriteInterest(interest: WriteInterest): Boolean =
+    state match {
+      case Closed => false
+      case _ =>
+        interestedStreams.add(interest)
+        maybeWrite()
+        true
+    }
 
   private[this] def maybeWrite(): Unit =
     if (state == Idle) {
@@ -82,9 +85,8 @@ private final class WriteControllerImpl(
 
   private[this] def addDirectWrites(dest: ArrayBuffer[ByteBuffer]): Int = {
     var written = 0
-    while (!pendingWrites.isEmpty) {
+    while (!pendingWrites.isEmpty)
       written += addBuffs(dest, pendingWrites.poll())
-    }
     written
   }
 
@@ -108,7 +110,7 @@ private final class WriteControllerImpl(
     var bytesToWrite = addDirectWrites(toWrite)
 
     // Accumulate bytes until we run out of interests or have exceeded the high-water mark
-    while (!interestedStreams.isEmpty && bytesToWrite < highWaterMark) {
+    while (!interestedStreams.isEmpty && bytesToWrite < highWaterMark)
       try {
         val data = interestedStreams.poll().performStreamWrite()
         bytesToWrite += addBuffs(toWrite, data)
@@ -116,7 +118,6 @@ private final class WriteControllerImpl(
         case NonFatal(t) =>
           logger.error(t)(s"Unhandled exception performing stream write operation")
       }
-    }
 
     logger.debug(s"Flushing $bytesToWrite to the wire")
 

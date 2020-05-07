@@ -70,18 +70,19 @@ private class PingManager(session: SessionCore) {
         logger.debug(s"Ping ACKed in state $other")
     }
 
-  def close(): Unit = state match {
-    case Closed(_) =>
-      () // nop
+  def close(): Unit =
+    state match {
+      case Closed(_) =>
+        () // nop
 
-    case Idle =>
-      state = GracefulClosed
+      case Idle =>
+        state = GracefulClosed
 
-    case Pinging(_, p) =>
-      state = GracefulClosed
-      p.failure(new Exception("PING interrupted"))
-      ()
-  }
+      case Pinging(_, p) =>
+        state = GracefulClosed
+        p.failure(new Exception("PING interrupted"))
+        ()
+    }
 }
 
 private object PingManager {

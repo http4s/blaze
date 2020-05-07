@@ -17,13 +17,14 @@ private[http] class HttpClientImpl(sessionPool: ClientSessionManager) extends Ht
       extends ClientResponse(resp.code, resp.status, resp.headers, resp.body)
       with ReleaseableResponse {
     private[this] var released = false
-    override def release(): Unit = synchronized {
-      if (!released) {
-        released = true
-        resp.release()
-        sessionPool.returnSession(session)
+    override def release(): Unit =
+      synchronized {
+        if (!released) {
+          released = true
+          resp.release()
+          sessionPool.returnSession(session)
+        }
       }
-    }
   }
 
   override def unsafeDispatch(request: HttpRequest): Future[ReleaseableResponse] =

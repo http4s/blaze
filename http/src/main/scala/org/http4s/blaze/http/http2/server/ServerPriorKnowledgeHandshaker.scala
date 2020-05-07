@@ -14,15 +14,16 @@ final class ServerPriorKnowledgeHandshaker(
     flowStrategy: FlowStrategy,
     nodeBuilder: Int => LeafBuilder[StreamFrame])
     extends PriorKnowledgeHandshaker[Unit](localSettings) {
-  override protected def stageStartup(): Unit = synchronized {
-    super.stageStartup()
-    handshake().onComplete {
-      case Failure(ex) =>
-        logger.error(ex)("Failed to received prelude")
-        closePipeline(None)
-      case _ => ()
+  override protected def stageStartup(): Unit =
+    synchronized {
+      super.stageStartup()
+      handshake().onComplete {
+        case Failure(ex) =>
+          logger.error(ex)("Failed to received prelude")
+          closePipeline(None)
+        case _ => ()
+      }
     }
-  }
 
   override protected def handshakeComplete(
       remoteSettings: MutableHttp2Settings,
@@ -51,10 +52,9 @@ final class ServerPriorKnowledgeHandshaker(
     val tail = new BasicTail[ByteBuffer]("http2ServerTail")
 
     var newTail = LeafBuilder(tail)
-    if (remainder.hasRemaining) {
+    if (remainder.hasRemaining)
       // We may have some extra data that we need to inject into the pipeline
       newTail = newTail.prepend(new OneMessageStage[ByteBuffer](remainder))
-    }
 
     this.replaceTail(newTail, true)
 

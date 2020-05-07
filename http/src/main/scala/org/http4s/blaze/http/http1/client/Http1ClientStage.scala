@@ -59,12 +59,13 @@ private[http] final class Http1ClientStage(config: HttpClientConfig)
   }
 
   // Entry method which, on startup, sends the request and attempts to parse the response
-  override protected def stageStartup(): Unit = stageLock.synchronized {
-    if (state == Unconnected) {
-      super.stageStartup()
-      state = Running(true, true)
-    } else illegalState("stageStartup", state)
-  }
+  override protected def stageStartup(): Unit =
+    stageLock.synchronized {
+      if (state == Unconnected) {
+        super.stageStartup()
+        state = Running(true, true)
+      } else illegalState("stageStartup", state)
+    }
 
   override def dispatch(request: HttpRequest): Future[ReleaseableResponse] =
     stageLock.synchronized {
@@ -181,30 +182,31 @@ private[http] final class Http1ClientStage(config: HttpClientConfig)
     // must be called from within the stages `lock`
     private def validDispatch: Boolean = myDispatchId == dispatchId
 
-    override def discard(): Unit = stageLock.synchronized {
-      if (closedException == null) {
-        closedException = EOF
+    override def discard(): Unit =
+      stageLock.synchronized {
+        if (closedException == null) {
+          closedException = EOF
 
-        if (validDispatch) {
-          // We need to try and burn through any remaining buffer
-          // to see if we can put the parser in a sane state to perform
-          // another dispatch, otherwise we need to kill the session.
-          while (buffer.hasRemaining && !codec.contentComplete()) {
-            val _ = codec.parseData(buffer)
-          }
+          if (validDispatch) {
+            // We need to try and burn through any remaining buffer
+            // to see if we can put the parser in a sane state to perform
+            // another dispatch, otherwise we need to kill the session.
+            while (buffer.hasRemaining && !codec.contentComplete())
+              codec.parseData(buffer)
 
-          state match {
-            case r: Running =>
-              r.readChannelClear = codec.contentComplete()
-            case _ => // nop
+            state match {
+              case r: Running =>
+                r.readChannelClear = codec.contentComplete()
+              case _ => // nop
+            }
           }
         }
       }
-    }
 
-    override def isExhausted: Boolean = stageLock.synchronized {
-      closedException != null || !validDispatch
-    }
+    override def isExhausted: Boolean =
+      stageLock.synchronized {
+        closedException != null || !validDispatch
+      }
 
     override def apply(): Future[ByteBuffer] = {
       val p = Promise[ByteBuffer]
@@ -241,11 +243,11 @@ private[http] final class Http1ClientStage(config: HttpClientConfig)
     // Attempts to parse data kept in the `buffer` field into a body chunk
     private[this] def tryParseBuffer(): Try[ByteBuffer] =
       try stageLock.synchronized {
-        if (closedException == EOF) {
+        if (closedException == EOF)
           Success(BufferTools.emptyBuffer)
-        } else if (closedException != null) {
+        else if (closedException != null)
           Failure(closedException)
-        } else {
+        else {
           logger.debug(
             s"ParseBody[$buffer, chunking: ${codec.isChunked}, " +
               s"complete: ${codec.contentComplete()}, buffer: $buffer, state: $state]")
@@ -260,32 +262,33 @@ private[http] final class Http1ClientStage(config: HttpClientConfig)
       }
 
     // must be called while holding the stageLock
-    private[this] def checkStateAndParse(): Try[ByteBuffer] = state match {
-      case Closed(ex) => Failure(ex)
-      case Running(_, false) =>
-        val out = codec.parseData(buffer)
-        // We check if we're done and shut down if appropriate
-        // If we're not done, we need to guard against sending
-        // an empty `ByteBuffer` since that is our 'EOF' signal.
-        if (codec.contentComplete()) {
-          discard() // closes down our parser
-          if (!buffer.hasRemaining) Success(out)
-          else {
-            // We're not in a good state if we have finished parsing the response
-            // but still have some data. That is a sign that our session is probably
-            // corrupt so we should fail the BodyReader even though we technically
-            // have enough data.
-            closeNow()
-            Failure(new IllegalStateException(
-              s"HTTP1 client parser found in corrupt state: still have ${buffer.remaining()} data " +
-                s"after complete dispatch"
-            ))
-          }
-        } else if (out.hasRemaining) Success(out)
-        else null // need more data
+    private[this] def checkStateAndParse(): Try[ByteBuffer] =
+      state match {
+        case Closed(ex) => Failure(ex)
+        case Running(_, false) =>
+          val out = codec.parseData(buffer)
+          // We check if we're done and shut down if appropriate
+          // If we're not done, we need to guard against sending
+          // an empty `ByteBuffer` since that is our 'EOF' signal.
+          if (codec.contentComplete()) {
+            discard() // closes down our parser
+            if (!buffer.hasRemaining) Success(out)
+            else {
+              // We're not in a good state if we have finished parsing the response
+              // but still have some data. That is a sign that our session is probably
+              // corrupt so we should fail the BodyReader even though we technically
+              // have enough data.
+              closeNow()
+              Failure(new IllegalStateException(
+                s"HTTP1 client parser found in corrupt state: still have ${buffer.remaining()} data " +
+                  s"after complete dispatch"
+              ))
+            }
+          } else if (out.hasRemaining) Success(out)
+          else null // need more data
 
-      case state => illegalState("parseBody", state)
-    }
+        case state => illegalState("parseBody", state)
+      }
   }
 
   // BodyReader //////////////////////////////////////////////////////////////////////////
@@ -394,7 +397,8 @@ private object Http1ClientStage {
   private sealed trait State
   private sealed trait ClosedState extends State
 
-  private case object Unconnected extends ClosedState // similar to closed, but can transition to idle
+  private case object Unconnected
+      extends ClosedState // similar to closed, but can transition to idle
   private case class Running(var writeChannelClear: Boolean, var readChannelClear: Boolean)
       extends State
   private case class Closed(reason: Throwable) extends ClosedState

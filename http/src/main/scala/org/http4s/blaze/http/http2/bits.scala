@@ -14,7 +14,7 @@ private[http2] object bits {
 
   object Masks {
     val INT31: Int = 0x7fffffff
-    val INT32: Long = 0XFFFFFFFFL
+    val INT32: Long = 0xffffffffL
     val EXCLUSIVE: Int = ~INT31
     val STREAMID: Int = INT31
     val LENGTH: Int = 0xffffff

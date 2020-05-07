@@ -84,7 +84,8 @@ class ServerParserSpec extends Specification {
   val mockFiniteLength = request + host + lengthh + headers + body
 
   val mockChunked =
-    request + host + chunked + headers + toChunk(body) + toChunk(body + " again!") + "0 \r\n" + "\r\n"
+    request + host + chunked + headers + toChunk(body) + toChunk(
+      body + " again!") + "0 \r\n" + "\r\n"
 
   val twoline = request + host
 
@@ -142,14 +143,16 @@ class ServerParserSpec extends Specification {
       val p = new Parser()
       val line = "GET /enlighten/calais.asmx HTTPS/1.0\r\n"
       p.parseLine(line) must_== true
-      p.parseheaders(buildHeaderString(Seq("content-length" -> "1", "content-length" -> "1"))) must_== true
+      p.parseheaders(
+        buildHeaderString(Seq("content-length" -> "1", "content-length" -> "1"))) must_== true
     }
 
     "Give bad request on multiple different content-length headers" in {
       val p = new Parser()
       val line = "GET /enlighten/calais.asmx HTTPS/1.0\r\n"
       p.parseLine(line) must_== true
-      p.parseheaders(buildHeaderString(Seq("content-length" -> "1", "content-length" -> "2"))) should throwA[
+      p.parseheaders(
+        buildHeaderString(Seq("content-length" -> "1", "content-length" -> "2"))) should throwA[
         BadMessage]
     }
 
@@ -244,17 +247,14 @@ class ServerParserSpec extends Specification {
 
       b.limit(1)
 
-      while (!p.requestLineComplete() && !p.parseLine(b)) {
+      while (!p.requestLineComplete() && !p.parseLine(b))
         b.limit(b.limit() + 1)
-      }
 
-      while (!p.headersComplete() && !p.parseheaders(b)) {
+      while (!p.headersComplete() && !p.parseheaders(b))
         b.limit(b.limit() + 1)
-      }
 
-      while (!p.contentComplete()) {
+      while (!p.contentComplete())
         if (null == p.parsecontent(b)) b.limit(b.limit() + 1)
-      }
 
       p.sb.result() should_== (body)
 
@@ -315,13 +315,11 @@ class ServerParserSpec extends Specification {
       b.position(0)
       p.sb.clear()
 
-      while (!p.requestLineComplete() && !p.parseLine(b)) {
+      while (!p.requestLineComplete() && !p.parseLine(b))
         b.limit(b.limit() + 1)
-      }
 
-      while (!p.headersComplete() && !p.parseheaders(b)) {
+      while (!p.headersComplete() && !p.parseheaders(b))
         b.limit(b.limit() + 1)
-      }
 
       p.contentComplete() should_== (false)
 
@@ -345,13 +343,11 @@ class ServerParserSpec extends Specification {
       b.position(0)
       p.sb.clear()
 
-      while (!p.requestLineComplete() && !p.parseLine(b)) {
+      while (!p.requestLineComplete() && !p.parseLine(b))
         b.limit(b.limit() + 1)
-      }
 
-      while (!p.headersComplete() && !p.parseheaders(b)) {
+      while (!p.headersComplete() && !p.parseheaders(b))
         b.limit(b.limit() + 1)
-      }
 
       p.h.clear
 

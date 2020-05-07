@@ -28,17 +28,18 @@ object BufferTools {
   }
 
   /** Merge the `ByteBuffer`s into a single buffer */
-  def joinBuffers(buffers: collection.Seq[ByteBuffer]): ByteBuffer = buffers match {
-    case Seq() => emptyBuffer
-    case Seq(b) => b
-    case _ =>
-      val sz = buffers.foldLeft(0)((sz, o) => sz + o.remaining())
-      val b = allocate(sz)
-      buffers.foreach(b.put)
+  def joinBuffers(buffers: collection.Seq[ByteBuffer]): ByteBuffer =
+    buffers match {
+      case Seq() => emptyBuffer
+      case Seq(b) => b
+      case _ =>
+        val sz = buffers.foldLeft(0)((sz, o) => sz + o.remaining())
+        val b = allocate(sz)
+        buffers.foreach(b.put)
 
-      b.flip()
-      b
-  }
+        b.flip()
+        b
+    }
 
   /** Get the `String` representation of the `ByteBuffer` */
   def bufferToString(buffer: ByteBuffer, charset: Charset = StandardCharsets.UTF_8): String =
@@ -52,10 +53,10 @@ object BufferTools {
   /** Join the two buffers into a single ByteBuffer. This method is
     * guaranteed to return a ByteBuffer, but it may be empty. */
   def concatBuffers(oldbuff: ByteBuffer, newbuff: ByteBuffer): ByteBuffer =
-    if (oldbuff == null) {
+    if (oldbuff == null)
       if (newbuff == null) emptyBuffer
       else newbuff
-    } else if (newbuff == null)
+    else if (newbuff == null)
       oldbuff // already established that oldbuff is not `null`
     else if (!oldbuff.hasRemaining) newbuff
     else if (!newbuff.hasRemaining) oldbuff
@@ -88,9 +89,8 @@ object BufferTools {
     * @return the resulting view
     */
   def takeSlice(buffer: ByteBuffer, size: Int): ByteBuffer = {
-    if (size < 0 || size > buffer.remaining()) {
+    if (size < 0 || size > buffer.remaining())
       throw new IllegalArgumentException(s"Invalid size: $size. buffer: $buffer")
-    }
 
     val currentLimit = buffer.limit()
     buffer.limit(buffer.position() + size)

@@ -31,9 +31,9 @@ private abstract class OutboundStreamStateImpl(session: SessionCore)
 
   // We need to establish whether the stream has been initialized yet and try to acquire a new ID if not
   final override protected def invokeStreamWrite(msg: StreamFrame, p: Promise[Unit]): Unit =
-    if (initialized) {
+    if (initialized)
       super.invokeStreamWrite(msg, p)
-    } else if (session.state.closing) {
+    else if (session.state.closing) {
       // Before we initialized the stream, we began to drain or were closed.
       val ex = Http2Exception.REFUSED_STREAM
         .rst(0, "Session closed before stream was initialized")

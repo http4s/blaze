@@ -118,11 +118,12 @@ private[http] final class ServerStage(
       closePipeline(Some(Http2Exception.INTERNAL_ERROR.rst(streamId)))
   }
 
-  private def onComplete(result: Try[_]): Unit = result match {
-    case Success(_) => closePipeline(None)
-    case Failure(Cmd.EOF) => stageShutdown()
-    case Failure(t) => closePipeline(Some(t))
-  }
+  private def onComplete(result: Try[_]): Unit =
+    result match {
+      case Success(_) => closePipeline(None)
+      case Failure(Cmd.EOF) => stageShutdown()
+      case Failure(t) => closePipeline(Some(t))
+    }
 
   private class NoopWriter(headers: Headers) extends BodyWriter {
     override type Finished = Unit

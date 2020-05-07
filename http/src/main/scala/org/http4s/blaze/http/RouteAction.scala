@@ -39,8 +39,8 @@ object RouteAction {
     *             before requesting another chunk. Termination is signaled by an __empty__ `ByteBuffer` as
     *             defined by the return value of `ByteBuffer.hasRemaining()`.
     */
-  def Streaming(code: Int, status: String, headers: Headers)(body: => Future[ByteBuffer])(
-      implicit ec: ExecutionContext = Execution.trampoline): RouteAction =
+  def Streaming(code: Int, status: String, headers: Headers)(body: => Future[ByteBuffer])(implicit
+      ec: ExecutionContext = Execution.trampoline): RouteAction =
     new RouteAction {
       override def handle[T <: BodyWriter](
           responder: (HttpResponsePrelude) => T): Future[T#Finished] = {
@@ -55,16 +55,17 @@ object RouteAction {
         val p = Promise[T#Finished]
 
         // Have to do this nonsense because a recursive Future loop isn't safe until scala 2.12+
-        def go(): Unit = body.onComplete {
-          case Failure(t) => p.tryFailure(t)
-          case Success(buff) =>
-            if (!buff.hasRemaining) p.completeWith(writer.close(None))
-            else
-              writer.write(buff).onComplete {
-                case Success(_) => go()
-                case Failure(t) => p.tryFailure(t)
-              }
-        }
+        def go(): Unit =
+          body.onComplete {
+            case Failure(t) => p.tryFailure(t)
+            case Success(buff) =>
+              if (!buff.hasRemaining) p.completeWith(writer.close(None))
+              else
+                writer.write(buff).onComplete {
+                  case Success(_) => go()
+                  case Failure(t) => p.tryFailure(t)
+                }
+          }
 
         // Start our loop in the EC
         ec.execute(new Runnable { def run(): Unit = go() })

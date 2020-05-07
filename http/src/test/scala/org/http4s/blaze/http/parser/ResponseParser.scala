@@ -29,9 +29,8 @@ class ResponseParser extends Http1ClientParser {
     if (!headersComplete()) sys.error("Headers didn't complete!")
 
     val body = new ListBuffer[ByteBuffer]
-    while (!this.contentComplete() && buffer.hasRemaining) {
+    while (!this.contentComplete() && buffer.hasRemaining)
       body += parseContent(buffer)
-    }
 
     val bp = {
       def toArray(buf: ByteBuffer): Array[Byte] = {
@@ -79,10 +78,10 @@ object ResponseParser {
   /** Make a String representation of the ByteBuffer, without modifying the buffer. */
   def bufferToString(in: ByteBuffer): String = {
     val sb = new StringBuilder()
-    val buffer = in.asReadOnlyBuffer() // Don't want to modify the original buffers positions or content
-    while (buffer.hasRemaining) {
+    val buffer =
+      in.asReadOnlyBuffer() // Don't want to modify the original buffers positions or content
+    while (buffer.hasRemaining)
       sb.append(buffer.get().toChar)
-    }
     sb.result()
   }
 }

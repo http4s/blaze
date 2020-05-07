@@ -16,10 +16,11 @@ private[blaze] object UrlTools {
 
     def isTls: Boolean = scheme == "https"
 
-    def path: String = uri.getPath match {
-      case "" | null => "/"
-      case p => p
-    }
+    def path: String =
+      uri.getPath match {
+        case "" | null => "/"
+        case p => p
+      }
 
     def fullPath: String =
       if (uri.getQuery != null) path + "?" + uri.getQuery
@@ -35,11 +36,12 @@ private[blaze] object UrlTools {
   }
 
   object UrlComposition {
-    def apply(url: String): Try[UrlComposition] = Try {
-      val uri = java.net.URI
-        .create(if (isPrefixedWithHTTP(url)) url else "http://" + url)
-      UrlComposition(uri)
-    }
+    def apply(url: String): Try[UrlComposition] =
+      Try {
+        val uri = java.net.URI
+          .create(if (isPrefixedWithHTTP(url)) url else "http://" + url)
+        UrlComposition(uri)
+      }
   }
 
   private[this] def isPrefixedWithHTTP(string: String): Boolean =

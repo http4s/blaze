@@ -18,9 +18,9 @@ class ClientParserSpec extends Specification {
   val l_headersstr = l_headers
     .map {
       case (a, b) =>
-        a + (if (b.length > 0) {
+        a + (if (b.length > 0)
                ": " + b
-             } else "")
+             else "")
     }
     .mkString("\r\n") + "\r\n\r\n"
 
@@ -168,9 +168,7 @@ class ClientParserSpec extends Specification {
       p.headersComplete() should_== (true)
 
       val stripedh = l_headers.map { case (a, b) => (a.trim, b.trim) }
-      p.headers.foldLeft(true) { (a, b) =>
-        a && stripedh.contains(b)
-      } should_== (true)
+      p.headers.foldLeft(true)((a, b) => a && stripedh.contains(b)) should_== (true)
     }
 
     "Parse a body with defined length" in {
