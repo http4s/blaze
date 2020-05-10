@@ -1,8 +1,5 @@
 import BlazePlugin._
 
-/* Global Build Settings */
-organization in ThisBuild := "org.http4s"
-
 lazy val commonSettings = Seq(
   description := "NIO Framework for Scala",
   scalaVersion := "2.12.11",
@@ -23,15 +20,13 @@ lazy val commonSettings = Seq(
 
 /* Projects */
 lazy val blaze = project.in(file("."))
-    .disablePlugins(MimaPlugin)
-    .settings(
-      cancelable in Global := true,
-      skip in publish := true,
-    )
-    .settings(commonSettings)
-    .aggregate(core, http, examples)
+  .enablePlugins(Http4sOrgPlugin)
+  .enablePlugins(PrivateProjectPlugin)
+  .settings(commonSettings)
+  .aggregate(core, http, examples)
 
 lazy val core = Project("blaze-core", file("core"))
+  .enablePlugins(Http4sOrgPlugin)
   .enablePlugins(BuildInfoPlugin)
   .disablePlugins(TpolecatPlugin)
   .settings(commonSettings)
@@ -51,10 +46,10 @@ lazy val core = Project("blaze-core", file("core"))
     buildInfoOptions += BuildInfoOption.BuildTime
   )
 
-
 lazy val http = Project("blaze-http", file("http"))
-  .settings(commonSettings)
+  .enablePlugins(Http4sOrgPlugin)
   .disablePlugins(TpolecatPlugin)
+  .settings(commonSettings)
   .settings(
     // General Dependencies
     libraryDependencies ++= Seq(
@@ -70,26 +65,14 @@ lazy val http = Project("blaze-http", file("http"))
   ).dependsOn(core % "test->test;compile->compile")
 
 lazy val examples = Project("blaze-examples",file("examples"))
-  .disablePlugins(MimaPlugin, TpolecatPlugin)
+  .enablePlugins(AlpnBootPlugin, PrivateProjectPlugin)
+  .disablePlugins(TpolecatPlugin)
   .settings(commonSettings)
   .settings(Revolver.settings)
   .settings(
-    // necessary to add ALPN classes to boot classpath
-    fork := true,
-    // Adds ALPN to the boot classpath for Http2 support
-    libraryDependencies += alpn_boot % Runtime,
-    javaOptions in run ++= addAlpnPath((managedClasspath in Runtime).value),
-    skip in publish := true
+    alpnBootModule := alpn_boot,
   ).dependsOn(http)
 
-
 /* Helper Functions */
-
-def addAlpnPath(attList: Keys.Classpath): Seq[String] = {
-  for {
-    file <- attList.map(_.data)
-    path = file.getAbsolutePath if path.contains("jetty.alpn")
-  } yield { println(s"Alpn path: $path"); "-Xbootclasspath/p:" + path}
-}
 
 addCommandAlias("validate", ";scalafmtCheckAll ;test ;unusedCompileDependenciesTest ;mimaReportBinaryIssues")
