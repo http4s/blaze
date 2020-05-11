@@ -1,3 +1,9 @@
+/*
+ * Copyright 2014-2020 http4s.org
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 package org.http4s.blaze.http.http1.server
 
 import java.nio.ByteBuffer
@@ -22,29 +28,30 @@ class Http1ServerStageSpec extends Specification {
     val acc = new ListBuffer[ByteBuffer]
 
     @tailrec
-    def go(requests: List[HttpRequest]): Unit = requests match {
-      case Nil => // break loop
-      case h :: t =>
-        val s = s"${h.method} ${h.url} HTTP/1.1\r\n"
-        val hs = h.headers.foldLeft(s)((acc, h) => acc + s"${h._1}: ${h._2}\r\n")
+    def go(requests: List[HttpRequest]): Unit =
+      requests match {
+        case Nil => // break loop
+        case h :: t =>
+          val s = s"${h.method} ${h.url} HTTP/1.1\r\n"
+          val hs = h.headers.foldLeft(s)((acc, h) => acc + s"${h._1}: ${h._2}\r\n")
 
-        acc += StandardCharsets.UTF_8.encode(
-          hs + (if (t.isEmpty) "connection: close\r\n\r\n" else "\r\n"))
+          acc += StandardCharsets.UTF_8.encode(
+            hs + (if (t.isEmpty) "connection: close\r\n\r\n" else "\r\n"))
 
-        val body = h.body
+          val body = h.body
 
-        // gather the message body
-        @tailrec
-        def getBuffers(): Unit = {
-          val buff = Await.result(body(), 10.seconds)
-          if (buff.hasRemaining()) {
-            acc += buff
-            getBuffers()
+          // gather the message body
+          @tailrec
+          def getBuffers(): Unit = {
+            val buff = Await.result(body(), 10.seconds)
+            if (buff.hasRemaining()) {
+              acc += buff
+              getBuffers()
+            }
           }
-        }
-        getBuffers()
-        go(t)
-    }
+          getBuffers()
+          go(t)
+      }
 
     go(requests.toList)
     acc.result()

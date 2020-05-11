@@ -1,3 +1,9 @@
+/*
+ * Copyright 2014-2020 http4s.org
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 package org.http4s.blaze.channel.nio2
 
 import org.http4s.blaze.channel.ChannelHead
@@ -24,48 +30,48 @@ private[nio2] final class ByteBufferHead(channel: AsynchronousSocketChannel, buf
   override def writeRequest(data: ByteBuffer): Future[Unit] =
     writeRequest(data :: Nil)
 
-  override def writeRequest(data: collection.Seq[ByteBuffer]): Future[Unit] = closeReason match {
-    case Some(cause) => Future.failed(cause)
-    case None if data.isEmpty => FutureUnit
-    case None =>
-      val p = Promise[Unit]
-      val srcs = data.toArray
+  override def writeRequest(data: collection.Seq[ByteBuffer]): Future[Unit] =
+    closeReason match {
+      case Some(cause) => Future.failed(cause)
+      case None if data.isEmpty => FutureUnit
+      case None =>
+        val p = Promise[Unit]
+        val srcs = data.toArray
 
-      def go(index: Int): Unit =
-        channel.write[Null](
-          srcs,
-          index,
-          srcs.length - index,
-          -1L,
-          TimeUnit.MILLISECONDS,
-          null: Null,
-          new CompletionHandler[JLong, Null] {
-            def failed(exc: Throwable, attachment: Null): Unit = {
-              val e = checkError(exc)
-              p.tryFailure(e)
-              ()
-            }
-
-            def completed(result: JLong, attachment: Null): Unit =
-              if (!BufferTools.checkEmpty(srcs)) go(BufferTools.dropEmpty(srcs))
-              else {
-                p.success(())
+        def go(index: Int): Unit =
+          channel.write[Null](
+            srcs,
+            index,
+            srcs.length - index,
+            -1L,
+            TimeUnit.MILLISECONDS,
+            null: Null,
+            new CompletionHandler[JLong, Null] {
+              def failed(exc: Throwable, attachment: Null): Unit = {
+                val e = checkError(exc)
+                p.tryFailure(e)
                 ()
               }
-          }
-        )
 
-      go(0)
-      p.future
-  }
+              def completed(result: JLong, attachment: Null): Unit =
+                if (!BufferTools.checkEmpty(srcs)) go(BufferTools.dropEmpty(srcs))
+                else {
+                  p.success(())
+                  ()
+                }
+            }
+          )
+
+        go(0)
+        p.future
+    }
 
   def readRequest(size: Int): Future[ByteBuffer] = {
     val p = Promise[ByteBuffer]
     scratchBuffer.clear()
 
-    if (size >= 0 && size < bufferSize) {
+    if (size >= 0 && size < bufferSize)
       scratchBuffer.limit(size)
-    }
 
     channel.read(
       scratchBuffer,
@@ -77,32 +83,34 @@ private[nio2] final class ByteBufferHead(channel: AsynchronousSocketChannel, buf
           ()
         }
 
-        def completed(i: Integer, attachment: Null): Unit = i.intValue match {
-          case 0 =>
-            p.success(BufferTools.emptyBuffer)
-            ()
+        def completed(i: Integer, attachment: Null): Unit =
+          i.intValue match {
+            case 0 =>
+              p.success(BufferTools.emptyBuffer)
+              ()
 
-          case i if i < 0 =>
-            p.failure(EOF)
-            ()
+            case i if i < 0 =>
+              p.failure(EOF)
+              ()
 
-          case _ =>
-            scratchBuffer.flip()
-            p.success(BufferTools.copyBuffer(scratchBuffer))
-            ()
-        }
+            case _ =>
+              scratchBuffer.flip()
+              p.success(BufferTools.copyBuffer(scratchBuffer))
+              ()
+          }
       }
     )
     p.future
   }
 
-  override protected def checkError(e: Throwable): Throwable = e match {
-    case e: ShutdownChannelGroupException =>
-      logger.debug(e)("Channel Group was shutdown")
-      EOF
+  override protected def checkError(e: Throwable): Throwable =
+    e match {
+      case e: ShutdownChannelGroupException =>
+        logger.debug(e)("Channel Group was shutdown")
+        EOF
 
-    case NonFatal(t) => super.checkError(t)
-  }
+      case NonFatal(t) => super.checkError(t)
+    }
 
   override protected def doClosePipeline(cause: Option[Throwable]): Unit = {
     val needsClose = synchronized {
@@ -120,9 +128,8 @@ private[nio2] final class ByteBufferHead(channel: AsynchronousSocketChannel, buf
       case None => logger.debug(s"doClosePipeline(None)")
     }
 
-    if (needsClose) {
+    if (needsClose)
       try channel.close()
       catch { case _: IOException => /* Don't care */ }
-    }
   }
 }

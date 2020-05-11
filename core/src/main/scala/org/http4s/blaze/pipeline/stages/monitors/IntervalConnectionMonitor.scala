@@ -1,3 +1,9 @@
+/*
+ * Copyright 2014-2020 http4s.org
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 package org.http4s.blaze.pipeline.stages.monitors
 
 import scala.concurrent.duration.Duration
@@ -22,14 +28,15 @@ class IntervalConnectionMonitor(val interval: Duration) extends ConnectionMonito
     def getMean(): Double = currentMean * 1e9 // bytes/sec
     def getTotal(): Long = total
 
-    def update(c: Long): Unit = this.synchronized {
-      total += c
-      val currentTime = System.nanoTime()
-      val ticks = currentTime - lastupdate
-      lastupdate = currentTime
-      currentMean = currentMean * math
-        .pow(1.0 - alpha, ticks.toDouble) + c.toDouble * alpha
-    }
+    def update(c: Long): Unit =
+      this.synchronized {
+        total += c
+        val currentTime = System.nanoTime()
+        val ticks = currentTime - lastupdate
+        lastupdate = currentTime
+        currentMean = currentMean * math
+          .pow(1.0 - alpha, ticks.toDouble) + c.toDouble * alpha
+      }
   }
 
   // Also tracks the number of live connections
@@ -38,14 +45,16 @@ class IntervalConnectionMonitor(val interval: Duration) extends ConnectionMonito
 
     def getLive(): Long = currentLive
 
-    override def update(c: Long): Unit = this.synchronized {
-      currentLive += c
-      super.update(c)
-    }
+    override def update(c: Long): Unit =
+      this.synchronized {
+        currentLive += c
+        super.update(c)
+      }
 
-    def closed(): Unit = this.synchronized {
-      currentLive -= 1
-    }
+    def closed(): Unit =
+      this.synchronized {
+        currentLive -= 1
+      }
   }
 
   case class Stats(

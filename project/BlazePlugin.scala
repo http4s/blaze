@@ -1,24 +1,18 @@
-package org.http4s.build
+package org.http4s.sbt
 
 import sbt._
-import Keys._
-
-import com.typesafe.tools.mima.plugin.MimaPlugin, MimaPlugin.autoImport._
+import sbt.Keys._
 
 import sbtrelease._
 import sbtrelease.ReleasePlugin.autoImport._
 
 object BlazePlugin extends AutoPlugin {
 
-  object autoImport {
-    val blazeMimaVersion = settingKey[Option[String]]("Version to target for MiMa compatibility")
-    val jvmTarget = TaskKey[String]("jvm-target-version", "Defines the target JVM version for object files.")
-  }
-  import autoImport._
+  object autoImport
 
   override def trigger = allRequirements
 
-  override def requires = MimaPlugin && ReleasePlugin
+  override def requires = Http4sOrgPlugin && ReleasePlugin
 
   override lazy val projectSettings: Seq[Setting[_]] = Seq(
     // Override rig's default of the Travis build number being the bugfix number
@@ -26,34 +20,9 @@ object BlazePlugin extends AutoPlugin {
       Version(ver).map(_.withoutQualifier.string).getOrElse(versionFormatError(ver))
     },
     scalaVersion := (sys.env.get("TRAVIS_SCALA_VERSION") orElse sys.env.get("SCALA_VERSION") getOrElse "2.12.11"),
-    jvmTarget := {
-      VersionNumber(scalaVersion.value).numbers match {
-        case Seq(2, 10, _*) => "1.7"
-        case _ => "1.8"
-      }
-    },
-    // Setting Key To Show Mima Version Checked
-    blazeMimaVersion := mimaPreviousVersion(version.value, scalaVersion.value),
 
-    javacOptions ++= Seq(
-      "-source", jvmTarget.value,
-      "-target", jvmTarget.value
-    ),
-    fork in run := true,
-    mimaFailOnProblem := blazeMimaVersion.value.isDefined,
-    mimaPreviousArtifacts := mimaPreviousVersion(version.value, scalaVersion.value).map { pv =>
-      organization.value %% moduleName.value % pv
-    }.toSet,
-    mimaBinaryIssueFilters ++= Seq()
+    fork in run := true
   )
-
-
-  def mimaPreviousVersion(currentVersion: String, scalaVersion: String): Option[String] = {
-    val Version = """(\d+)\.(\d+)\.(\d+).*""".r
-    val Version(x, y, z) = currentVersion
-    if (z == "0") None
-    else Some(s"$x.$y.${z.toInt - 1}")
-  }
 
   lazy val logbackClassic      = "ch.qos.logback"             %  "logback-classic"     % "1.2.3"
   lazy val twitterHPACK        = "com.twitter"                %  "hpack"               % "1.0.2"

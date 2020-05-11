@@ -1,3 +1,9 @@
+/*
+ * Copyright 2014-2020 http4s.org
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 package org.http4s.blaze.channel.nio2
 
 import java.net.InetSocketAddress
@@ -65,10 +71,9 @@ final class NIO2SocketServerGroup private (
     if (group != null) {
       logger.info("Closing NIO2 SocketChannelServerGroup")
       group.shutdownNow()
-    } else {
+    } else
       throw new IllegalStateException(
         "Cannot shut down the system default AsynchronousChannelGroup.")
-    }
 
   def bind(address: InetSocketAddress, service: SocketPipelineBuilder): Try[ServerChannel] =
     Try {

@@ -1,3 +1,9 @@
+/*
+ * Copyright 2014-2020 http4s.org
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 package org.http4s.blaze.util
 
 import java.util.concurrent.{CountDownLatch, TimeUnit}
@@ -26,11 +32,13 @@ class TaskQueueSpec extends Specification {
 
       // the closing latch will be await on by the main thread before testing the behavior
       val closingLatch = new CountDownLatch(1)
-      q.enqueueTask(new Runnable { def run(): Unit = closingLatch.countDown() }) must_== TaskQueue.FirstEnqueued
+      q.enqueueTask(
+        new Runnable { def run(): Unit = closingLatch.countDown() }) must_== TaskQueue.FirstEnqueued
 
       // this latch makes the closing thread block *in* the close call, giving us a chance to test
       val blockCloseLatch = new CountDownLatch(1)
-      q.enqueueTask(new Runnable { def run(): Unit = blockCloseLatch.await() }) must_== TaskQueue.Enqueued
+      q.enqueueTask(
+        new Runnable { def run(): Unit = blockCloseLatch.await() }) must_== TaskQueue.Enqueued
 
       // The closing thread will close shop, first ticking the `closingLatch`, then waiting for this thread
       val closingThead = new Thread(new Runnable { def run(): Unit = q.close() })

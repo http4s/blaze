@@ -1,3 +1,9 @@
+/*
+ * Copyright 2014-2020 http4s.org
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 package org.http4s.blaze.http.http2
 
 import java.nio.ByteBuffer
@@ -62,9 +68,9 @@ private[blaze] object SettingsDecoder {
       val msg =
         s"SETTINGS ACK frame with settings payload ($settingsCount settings)"
       Left(FRAME_SIZE_ERROR.goaway(msg))
-    } else if (streamId != 0x0) {
+    } else if (streamId != 0x0)
       Left(PROTOCOL_ERROR.goaway(s"SETTINGS frame with invalid stream id: $streamId"))
-    } else
+    else
       Right {
         // We have a valid frame
         if (isAck) SettingsFrame(None)

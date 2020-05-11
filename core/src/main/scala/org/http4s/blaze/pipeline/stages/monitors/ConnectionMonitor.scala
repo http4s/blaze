@@ -1,3 +1,9 @@
+/*
+ * Copyright 2014-2020 http4s.org
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 package org.http4s.blaze.pipeline.stages.monitors
 
 import java.nio.ByteBuffer
@@ -26,9 +32,9 @@ abstract class ConnectionMonitor {
 
     private val cleaned = new AtomicBoolean(false)
 
-    private def clearCount() = if (!cleaned.getAndSet(true)) {
-      connectionClosed()
-    }
+    private def clearCount() =
+      if (!cleaned.getAndSet(true))
+        connectionClosed()
 
     override def stageStartup(): Unit = {
       connectionAccepted()

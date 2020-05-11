@@ -1,3 +1,9 @@
+/*
+ * Copyright 2014-2020 http4s.org
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 package org.http4s.blaze.http.http2.server
 
 import java.nio.ByteBuffer
@@ -17,10 +23,11 @@ object ServerSelector {
       engine: SSLEngine,
       service: HttpService,
       config: HttpServerStageConfig): ALPNServerSelector = {
-    def builder(s: String): LeafBuilder[ByteBuffer] = s match {
-      case H2 | H2_14 => LeafBuilder(http2Stage(service, config))
-      case _ => LeafBuilder(http1xStage(service, config))
-    }
+    def builder(s: String): LeafBuilder[ByteBuffer] =
+      s match {
+        case H2 | H2_14 => LeafBuilder(http2Stage(service, config))
+        case _ => LeafBuilder(http1xStage(service, config))
+      }
 
     def selector(protocols: Set[String]): String =
       if (protocols(H2)) H2

@@ -1,3 +1,9 @@
+/*
+ * Copyright 2014-2020 http4s.org
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 package org.http4s.blaze.http.http2
 
 import org.http4s.blaze.http.http2.Http2Settings._
@@ -58,14 +64,15 @@ sealed abstract class Http2Settings {
     */
   def maxHeaderListSize: Int
 
-  final def toSeq: Seq[Setting] = Seq(
-    HEADER_TABLE_SIZE(headerTableSize),
-    ENABLE_PUSH(if (pushEnabled) 1 else 0),
-    MAX_CONCURRENT_STREAMS(maxConcurrentStreams),
-    INITIAL_WINDOW_SIZE(initialWindowSize),
-    MAX_FRAME_SIZE(maxFrameSize),
-    MAX_HEADER_LIST_SIZE(maxHeaderListSize)
-  )
+  final def toSeq: Seq[Setting] =
+    Seq(
+      HEADER_TABLE_SIZE(headerTableSize),
+      ENABLE_PUSH(if (pushEnabled) 1 else 0),
+      MAX_CONCURRENT_STREAMS(maxConcurrentStreams),
+      INITIAL_WINDOW_SIZE(initialWindowSize),
+      MAX_FRAME_SIZE(maxFrameSize),
+      MAX_HEADER_LIST_SIZE(maxHeaderListSize)
+    )
 
   override def toString: String = s"Http2Settings($toSeq)"
 }
@@ -131,25 +138,27 @@ object Http2Settings {
     * @see https://tools.ietf.org/html/rfc7540#section-6.5.2
     */
   object InvalidSetting {
-    def unapply(setting: Setting): Option[Http2Exception] = setting match {
-      case ENABLE_PUSH(v) if !isBoolSetting(v) =>
-        Some(Http2Exception.PROTOCOL_ERROR.goaway(s"Invalid ENABLE_PUSH value: $v"))
+    def unapply(setting: Setting): Option[Http2Exception] =
+      setting match {
+        case ENABLE_PUSH(v) if !isBoolSetting(v) =>
+          Some(Http2Exception.PROTOCOL_ERROR.goaway(s"Invalid ENABLE_PUSH value: $v"))
 
-      case MAX_FRAME_SIZE(size) if 16384 > size || size > 16777215 =>
-        Some(Http2Exception.PROTOCOL_ERROR.goaway(s"Invalid MAX_FRAME_SIZE: $size"))
+        case MAX_FRAME_SIZE(size) if 16384 > size || size > 16777215 =>
+          Some(Http2Exception.PROTOCOL_ERROR.goaway(s"Invalid MAX_FRAME_SIZE: $size"))
 
-      case Setting(_, value) if value < 0 =>
-        Some(
-          Http2Exception.PROTOCOL_ERROR.goaway(
-            s"Integer overflow for setting ${setting.name}: ${value}"))
+        case Setting(_, value) if value < 0 =>
+          Some(
+            Http2Exception.PROTOCOL_ERROR.goaway(
+              s"Integer overflow for setting ${setting.name}: ${value}"))
 
-      case _ => None
-    }
+        case _ => None
+      }
 
-    private def isBoolSetting(i: Int): Boolean = i match {
-      case 0 | 1 => true
-      case _ => false
-    }
+    private def isBoolSetting(i: Int): Boolean =
+      i match {
+        case 0 | 1 => true
+        case _ => false
+      }
   }
 
   final case class SettingKey(code: Int, name: String) {

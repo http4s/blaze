@@ -1,3 +1,9 @@
+/*
+ * Copyright 2014-2020 http4s.org
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 package org.http4s.blaze.http.http2.server
 
 import java.nio.ByteBuffer
@@ -118,11 +124,12 @@ private[http] final class ServerStage(
       closePipeline(Some(Http2Exception.INTERNAL_ERROR.rst(streamId)))
   }
 
-  private def onComplete(result: Try[_]): Unit = result match {
-    case Success(_) => closePipeline(None)
-    case Failure(Cmd.EOF) => stageShutdown()
-    case Failure(t) => closePipeline(Some(t))
-  }
+  private def onComplete(result: Try[_]): Unit =
+    result match {
+      case Success(_) => closePipeline(None)
+      case Failure(Cmd.EOF) => stageShutdown()
+      case Failure(t) => closePipeline(Some(t))
+    }
 
   private class NoopWriter(headers: Headers) extends BodyWriter {
     override type Finished = Unit

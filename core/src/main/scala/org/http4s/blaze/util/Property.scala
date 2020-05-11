@@ -1,3 +1,9 @@
+/*
+ * Copyright 2014-2020 http4s.org
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 package org.http4s.blaze.util
 
 /** Helper for defining behavior specific to properties */
@@ -6,16 +12,18 @@ private[blaze] abstract class Property(default: Boolean) {
   final val name = getClass.getName.replace("$", "")
 
   /** Get the value of the property if it is set */
-  final def get: Option[Boolean] = System.getProperty(name) match {
-    case null => None
-    case value => Some(value == "true")
-  }
+  final def get: Option[Boolean] =
+    System.getProperty(name) match {
+      case null => None
+      case value => Some(value == "true")
+    }
 
   /** Get the value of this property, defaulting to `false` if it is not set. */
-  final def apply(): Boolean = System.getProperty(name) match {
-    case null => default
-    case value => value == "true"
-  }
+  final def apply(): Boolean =
+    System.getProperty(name) match {
+      case null => default
+      case value => value == "true"
+    }
 
   /** Set the value of this property */
   final def set(value: Boolean): Unit = {

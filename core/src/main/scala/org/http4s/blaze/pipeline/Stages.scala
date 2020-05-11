@@ -1,3 +1,9 @@
+/*
+ * Copyright 2014-2020 http4s.org
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 package org.http4s.blaze.pipeline
 
 import java.util.concurrent.TimeoutException
@@ -64,11 +70,12 @@ sealed trait Stage {
     *
     * @param cmd a command originating from the channel
     */
-  def inboundCommand(cmd: InboundCommand): Unit = cmd match {
-    case Connected => stageStartup()
-    case Disconnected => stageShutdown()
-    case _ => logger.warn(s"$name received unhandled inbound command: $cmd")
-  }
+  def inboundCommand(cmd: InboundCommand): Unit =
+    cmd match {
+      case Connected => stageStartup()
+      case Disconnected => stageShutdown()
+      case _ => logger.warn(s"$name received unhandled inbound command: $cmd")
+    }
 }
 
 sealed trait Tail[I] extends Stage {
@@ -77,25 +84,23 @@ sealed trait Tail[I] extends Stage {
   final def closePipeline(cause: Option[Throwable]): Unit = {
     stageShutdown()
     val prev = _prevStage
-    if (prev != null) {
+    if (prev != null)
       prev.closePipeline(cause)
-    }
   }
 
   def channelRead(size: Int = -1, timeout: Duration = Duration.Inf): Future[I] =
-    try {
-      if (_prevStage != null) {
-        val f = _prevStage.readRequest(size)
-        checkTimeout(timeout, f)
-      } else _stageDisconnected()
-    } catch { case NonFatal(t) => Future.failed(t) }
+    try if (_prevStage != null) {
+      val f = _prevStage.readRequest(size)
+      checkTimeout(timeout, f)
+    } else _stageDisconnected()
+    catch { case NonFatal(t) => Future.failed(t) }
 
   /** Write a single outbound message to the pipeline */
   def channelWrite(data: I): Future[Unit] =
-    if (_prevStage != null) {
+    if (_prevStage != null)
       try _prevStage.writeRequest(data)
       catch { case NonFatal(t) => Future.failed(t) }
-    } else _stageDisconnected()
+    else _stageDisconnected()
 
   /** Write a single outbound message to the pipeline with a timeout */
   final def channelWrite(data: I, timeout: Duration): Future[Unit] = {
@@ -105,10 +110,10 @@ sealed trait Tail[I] extends Stage {
 
   /** Write a collection of outbound messages to the pipeline */
   def channelWrite(data: collection.Seq[I]): Future[Unit] =
-    if (_prevStage != null) {
+    if (_prevStage != null)
       try _prevStage.writeRequest(data)
       catch { case NonFatal(t) => Future.failed(t) }
-    } else _stageDisconnected()
+    else _stageDisconnected()
 
   /** Write a collection of outbound messages to the pipeline with a timeout */
   final def channelWrite(data: collection.Seq[I], timeout: Duration): Future[Unit] = {
@@ -249,14 +254,14 @@ sealed trait Head[O] extends Stage {
   final def sendInboundCommand(cmd: InboundCommand): Unit = {
     logger.debug(s"Stage ${getClass.getSimpleName} sending inbound command: $cmd")
     val next = _nextStage
-    if (next != null) {
+    if (next != null)
       try next.inboundCommand(cmd)
       catch {
         case NonFatal(t) =>
           logger.error(t)("Exception caught when attempting inbound command")
           closePipeline(Some(t))
       }
-    } else {
+    else {
       val msg = "Cannot send inbound command on disconnected stage"
       val e = new Exception(msg)
       throw e
@@ -350,8 +355,7 @@ trait MidStage[I, O] extends Tail[I] with Head[O] {
 
       _nextStage = null
       _prevStage = null
-    } else {
+    } else
       logger.debug(s"Attempted to remove a disconnected mid-stage: ${name}")
-    }
   }
 }

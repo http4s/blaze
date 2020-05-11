@@ -1,3 +1,9 @@
+/*
+ * Copyright 2014-2020 http4s.org
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 package org.http4s.blaze.channel.nio1
 
 import java.io.IOException
@@ -112,13 +118,12 @@ private final class NIO1SocketServerGroup private (
     private[this] val closed = new AtomicBoolean(false)
 
     override def opsReady(unused: ByteBuffer): Unit =
-      if (key.isAcceptable) {
+      if (key.isAcceptable)
         try acceptNewConnections()
         catch {
           case ex: IOException =>
             close(Some(ex))
         }
-      }
 
     override def close(cause: Option[Throwable]): Unit =
       if (closed.compareAndSet(false, true) && !ch.channelClosed) {
@@ -181,13 +186,13 @@ private final class NIO1SocketServerGroup private (
         }
       }
 
-      try {
-        // We use `enqueueTask` deliberately so as to not jump ahead
-        // of channel initialization.
-        selectorLoop.enqueueTask(new Runnable {
-          override def run(): Unit = doClose()
-        })
-      } catch {
+      try
+      // We use `enqueueTask` deliberately so as to not jump ahead
+      // of channel initialization.
+      selectorLoop.enqueueTask(new Runnable {
+        override def run(): Unit = doClose()
+      })
+      catch {
         case _: RejectedExecutionException =>
           logger.info("Selector loop closed. Closing in local thread.")
           doClose()
@@ -214,30 +219,31 @@ private final class NIO1SocketServerGroup private (
   override def bind(
       address: InetSocketAddress,
       service: SocketPipelineBuilder
-  ): Try[ServerChannel] = Try {
-    val ch = ServerSocketChannel.open().bind(address)
-    ch.configureBlocking(false)
-    val loop = selectorPool.nextLoop()
+  ): Try[ServerChannel] =
+    Try {
+      val ch = ServerSocketChannel.open().bind(address)
+      ch.configureBlocking(false)
+      val loop = selectorPool.nextLoop()
 
-    val serverChannel = new ServerChannelImpl(ch, loop)
-    val closed = listeningSet.synchronized {
-      if (isClosed) true
-      else {
-        listeningSet += serverChannel
-        false
+      val serverChannel = new ServerChannelImpl(ch, loop)
+      val closed = listeningSet.synchronized {
+        if (isClosed) true
+        else {
+          listeningSet += serverChannel
+          false
+        }
       }
-    }
 
-    if (closed) {
-      logger.info("Group closed")
-      serverChannel.close()
-    } else {
-      logger.info("Service bound to address " + serverChannel.socketAddress)
-      loop.initChannel(serverChannel, buildSocketAcceptor(serverChannel, service))
-    }
+      if (closed) {
+        logger.info("Group closed")
+        serverChannel.close()
+      } else {
+        logger.info("Service bound to address " + serverChannel.socketAddress)
+        loop.initChannel(serverChannel, buildSocketAcceptor(serverChannel, service))
+      }
 
-    serverChannel
-  }
+      serverChannel
+    }
 
   // Will be called from within the SelectorLoop
   private[this] def buildSocketAcceptor(

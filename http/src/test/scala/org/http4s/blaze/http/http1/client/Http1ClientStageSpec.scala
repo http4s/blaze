@@ -1,3 +1,9 @@
+/*
+ * Copyright 2014-2020 http4s.org
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 package org.http4s.blaze.http.http1.client
 
 import java.nio.ByteBuffer
@@ -32,11 +38,12 @@ class Http1ClientStageSpec extends Specification {
       close()
     }
 
-    def consumeWrite(): Option[String] = pendingWrite().map {
-      case Write(d, p) =>
-        p.trySuccess(())
-        StandardCharsets.US_ASCII.decode(d).toString
-    }
+    def consumeWrite(): Option[String] =
+      pendingWrite().map {
+        case Write(d, p) =>
+          p.trySuccess(())
+          StandardCharsets.US_ASCII.decode(d).toString
+      }
 
     def offerInbound(b: ByteBuffer): Unit = {
       readP.offer(b)
@@ -99,15 +106,23 @@ class Http1ClientStageSpec extends Specification {
     }
 
     "Send a prelude on a simple request HTTP/1.0 request" in {
-      checkPrelude(HttpRequest("GET", "/home", 1, 0, Seq(), BodyReader.EmptyBodyReader)) must_== "GET /home HTTP/1.0\r\n\r\n"
+      checkPrelude(
+        HttpRequest(
+          "GET",
+          "/home",
+          1,
+          0,
+          Seq(),
+          BodyReader.EmptyBodyReader)) must_== "GET /home HTTP/1.0\r\n\r\n"
 
-      checkPrelude(HttpRequest(
-        "GET",
-        "http://foo.com/home",
-        1,
-        0,
-        Seq(),
-        BodyReader.EmptyBodyReader)) must_== "GET /home HTTP/1.0\r\n\r\n"
+      checkPrelude(
+        HttpRequest(
+          "GET",
+          "http://foo.com/home",
+          1,
+          0,
+          Seq(),
+          BodyReader.EmptyBodyReader)) must_== "GET /home HTTP/1.0\r\n\r\n"
     }
 
     "Send a prelude on a simple HTTP/1.1 request without a host header" in {
@@ -118,7 +133,8 @@ class Http1ClientStageSpec extends Specification {
 
     "Send a prelude on a simple HTTP/1.1 request with a body without content-length" in {
       val request = HttpRequest("POST", "http://foo.com/home", 1, 1, Seq(), toBodyReader("cat"))
-      checkPrelude(request) must_== "POST /home HTTP/1.1\r\nHost:foo.com\r\nTransfer-Encoding:chunked\r\n\r\n"
+      checkPrelude(
+        request) must_== "POST /home HTTP/1.1\r\nHost:foo.com\r\nTransfer-Encoding:chunked\r\n\r\n"
     }
 
     "Send a prelude on a simple HTTP/1.1 request with a body with content-length" in {
@@ -129,7 +145,8 @@ class Http1ClientStageSpec extends Specification {
         1,
         Seq("Content-Length" -> "3"),
         toBodyReader("cat"))
-      checkPrelude(request) must_== "POST /home HTTP/1.1\r\nContent-Length:3\r\nHost:foo.com\r\n\r\n"
+      checkPrelude(
+        request) must_== "POST /home HTTP/1.1\r\nContent-Length:3\r\nHost:foo.com\r\n\r\n"
     }
 
     "Send a prelude on a simple HTTP/1.1 request with a body with Transfer-Encoding" in {
@@ -140,7 +157,8 @@ class Http1ClientStageSpec extends Specification {
         1,
         Seq("Transfer-Encoding" -> "chunked"),
         toBodyReader("cat"))
-      checkPrelude(request) must_== "POST /home HTTP/1.1\r\nTransfer-Encoding:chunked\r\nHost:foo.com\r\n\r\n"
+      checkPrelude(
+        request) must_== "POST /home HTTP/1.1\r\nTransfer-Encoding:chunked\r\nHost:foo.com\r\n\r\n"
     }
   }
 

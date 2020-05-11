@@ -1,3 +1,9 @@
+/*
+ * Copyright 2014-2020 http4s.org
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 package org.http4s.blaze.http.http2
 
 import org.http4s.blaze.http.http2.Http2Settings.DefaultSettings
@@ -268,7 +274,8 @@ class SessionFlowControlSpec extends Specification {
       val session = flowControl()
       val flow = session.newStreamFlowWindow(1)
 
-      flow.outboundRequest(DefaultSettings.INITIAL_WINDOW_SIZE) must_== DefaultSettings.INITIAL_WINDOW_SIZE
+      flow.outboundRequest(
+        DefaultSettings.INITIAL_WINDOW_SIZE) must_== DefaultSettings.INITIAL_WINDOW_SIZE
       flow.streamOutboundWindow must_== 0
       session.sessionOutboundWindow must_== 0
     }
@@ -277,7 +284,8 @@ class SessionFlowControlSpec extends Specification {
       val session = flowControl()
       val flow = session.newStreamFlowWindow(1)
 
-      flow.outboundRequest(DefaultSettings.INITIAL_WINDOW_SIZE + 1) must_== DefaultSettings.INITIAL_WINDOW_SIZE
+      flow.outboundRequest(
+        DefaultSettings.INITIAL_WINDOW_SIZE + 1) must_== DefaultSettings.INITIAL_WINDOW_SIZE
       flow.streamOutboundWindow must_== 0
       session.sessionOutboundWindow must_== 0
     }

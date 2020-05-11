@@ -1,3 +1,9 @@
+/*
+ * Copyright 2014-2020 http4s.org
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 package org.http4s.blaze.http.http2.server
 
 import java.nio.ByteBuffer
@@ -17,15 +23,17 @@ class AbstractBodyWriterSpec extends Specification {
 
   private def dataFrame(eos: Boolean, size: Int): DataFrame = DataFrame(eos, data(size))
 
-  private def checkSuccess(t: Future[Unit]): Boolean = t.value match {
-    case Some(Success(())) => true
-    case other => sys.error(s"Unexpected value: $other")
-  }
+  private def checkSuccess(t: Future[Unit]): Boolean =
+    t.value match {
+      case Some(Success(())) => true
+      case other => sys.error(s"Unexpected value: $other")
+    }
 
-  private def checkIOException(t: Future[Unit]): Boolean = t.value match {
-    case Some(Failure(Command.EOF)) => true // nop
-    case other => sys.error(s"Unexpected value: $other")
-  }
+  private def checkIOException(t: Future[Unit]): Boolean =
+    t.value match {
+      case Some(Failure(Command.EOF)) => true // nop
+      case other => sys.error(s"Unexpected value: $other")
+    }
 
   private class WriterImpl extends AbstractBodyWriter(hs) {
     var flushed: Option[Seq[StreamFrame]] = None

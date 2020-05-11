@@ -1,3 +1,9 @@
+/*
+ * Copyright 2014-2020 http4s.org
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 package org.http4s.blaze.pipeline.stages
 
 import org.http4s.blaze.pipeline.MidStage
@@ -54,7 +60,7 @@ trait ByteToObjectStage[O] extends MidStage[ByteBuffer, O] {
     }
 
   def readRequest(size: Int): Future[O] =
-    if (_decodeBuffer != null && _decodeBuffer.hasRemaining) {
+    if (_decodeBuffer != null && _decodeBuffer.hasRemaining)
       try {
         val slice = _decodeBuffer.slice()
         val result = bufferToMessage(slice)
@@ -65,7 +71,7 @@ trait ByteToObjectStage[O] extends MidStage[ByteBuffer, O] {
           case None => startReadDecode()
         }
       } catch { case NonFatal(t) => Future.failed(t) }
-    } else startReadDecode()
+    else startReadDecode()
 
   private def startReadDecode(): Future[O] = {
     val p = Promise[O]
@@ -100,14 +106,13 @@ trait ByteToObjectStage[O] extends MidStage[ByteBuffer, O] {
 
   /** Maintains the state of the internal _decodeBuffer */
   private def cleanBuffers(slice: ByteBuffer): Unit = {
-    if (slice.position() > 0) {
+    if (slice.position() > 0)
       _decodeBuffer.position(_decodeBuffer.position() + slice.position())
-    }
 
     // Make sure we are not trying to store the previous stages buffer
     // see if we have too large of buffer remaining
-    if (maxBufferSize > 0 && _decodeBuffer.remaining() > maxBufferSize) {
+    if (maxBufferSize > 0 && _decodeBuffer.remaining() > maxBufferSize)
       closePipeline(Some(new BufferOverflowException))
-    } else if (!_decodeBuffer.hasRemaining) _decodeBuffer = null
+    else if (!_decodeBuffer.hasRemaining) _decodeBuffer = null
   }
 }

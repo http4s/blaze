@@ -1,3 +1,9 @@
+/*
+ * Copyright 2014-2020 http4s.org
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 package org.http4s.blaze.http.http2.server
 
 import java.nio.ByteBuffer
@@ -12,17 +18,17 @@ import scala.util.{Failure, Success}
 
 class AbstractBodyReaderSpec extends Specification {
   // We expect all futures to be complete immediately
-  private def now[T](f: Future[T]): T = f.value match {
-    case Some(Success(t)) => t
-    case Some(Failure(t)) => throw t
-    case None => sys.error("Expected the future to be finished")
-  }
+  private def now[T](f: Future[T]): T =
+    f.value match {
+      case Some(Success(t)) => t
+      case Some(Failure(t)) => throw t
+      case None => sys.error("Expected the future to be finished")
+    }
 
   private def bytes(size: Int): ByteBuffer = {
     val b = BufferTools.allocate(size)
-    for (i <- 0 until size) {
+    for (i <- 0 until size)
       b.put(i.toByte)
-    }
     b.flip()
     b
   }

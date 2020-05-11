@@ -1,3 +1,9 @@
+/*
+ * Copyright 2014-2020 http4s.org
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 package org.http4s.blaze.util
 
 private[blaze] final class ImmutableArray[A] private (private[this] val underlying: Array[A])

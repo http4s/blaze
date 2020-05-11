@@ -1,3 +1,9 @@
+/*
+ * Copyright 2014-2020 http4s.org
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 package org.http4s.blaze.http.http1.server
 
 import java.nio.ByteBuffer
@@ -17,8 +23,8 @@ private[blaze] object BlazeServerParser {
       headers: Iterable[HeadersT])
 }
 
-private[blaze] final class BlazeServerParser[Header](maxNonBody: Int)(
-    implicit hl: HeaderLike[Header])
+private[blaze] final class BlazeServerParser[Header](maxNonBody: Int)(implicit
+    hl: HeaderLike[Header])
     extends Http1ServerParser(maxNonBody, maxNonBody, 2 * 1024) {
   private[this] var uri: String = null
   private[this] var method: String = null
@@ -71,10 +77,11 @@ private[blaze] final class BlazeServerParser[Header](maxNonBody: Int)(
     * Parses the body of a message. The result will never be `null`
     * but may be empty.
     */
-  def parseBody(buffer: ByteBuffer): ByteBuffer = parseContent(buffer) match {
-    case null => BufferTools.emptyBuffer
-    case buff => buff
-  }
+  def parseBody(buffer: ByteBuffer): ByteBuffer =
+    parseContent(buffer) match {
+      case null => BufferTools.emptyBuffer
+      case buff => buff
+    }
 
   /**
     * Get the request prelude

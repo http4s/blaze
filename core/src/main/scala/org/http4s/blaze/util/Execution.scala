@@ -1,3 +1,9 @@
+/*
+ * Copyright 2014-2020 http4s.org
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 package org.http4s.blaze.util
 
 import scala.concurrent.{ExecutionContext, Future, Promise}
@@ -23,9 +29,8 @@ object Execution {
       val p = Promise[T]
       val r = new Runnable {
         def run(): Unit =
-          if (p.tryComplete(fallback)) {
+          if (p.tryComplete(fallback))
             logger.debug(s"Future $f timed out after $d, yielding reesult $fallback")
-          }
       }
       // Race the future vs a timeout
       Execution.scheduler.schedule(r, d)

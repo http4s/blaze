@@ -1,3 +1,9 @@
+/*
+ * Copyright 2014-2020 http4s.org
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 package org.http4s.blaze.http.http2.server
 
 import org.http4s.blaze.http.{BodyReader, HttpRequest, _}
@@ -69,9 +75,8 @@ private[server] object RequestParser {
     // a CONNECT request (Section 8.3).  An HTTP request that omits
     // mandatory pseudo-header fields is malformed (Section 8.1.2.6).
     // https://tools.ietf.org/html/rfc7540#section-8.1.2.3
-    if (method == null || scheme == null || path == null) {
+    if (method == null || scheme == null || path == null)
       error += s"Invalid request: missing pseudo headers. Method: $method, Scheme: $scheme, path: $path. "
-    }
 
     if (0 < error.length) Left(error)
     else Right(HttpRequest(method, path, 2, 0, normalHeaders, body))

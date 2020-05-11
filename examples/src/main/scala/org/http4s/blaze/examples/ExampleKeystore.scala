@@ -1,3 +1,9 @@
+/*
+ * Copyright 2014-2020 http4s.org
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 package org.http4s.blaze.examples
 
 import java.security.KeyStore
@@ -31,7 +37,8 @@ object ExampleKeystore {
       In order to access the server, you need to import the 'client.p12' file into your browsers certificate store.
      */
 
-    val ksStream = getClass.getResourceAsStream("/clientauth/server.jks") //BogusKeystore.asInputStream()
+    val ksStream =
+      getClass.getResourceAsStream("/clientauth/server.jks") //BogusKeystore.asInputStream()
     assert(ksStream != null)
 
     val ks = KeyStore.getInstance("JKS")

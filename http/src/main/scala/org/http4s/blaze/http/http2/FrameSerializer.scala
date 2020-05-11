@@ -1,3 +1,9 @@
+/*
+ * Copyright 2014-2020 http4s.org
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 package org.http4s.blaze.http.http2
 
 import java.nio.ByteBuffer
@@ -11,9 +17,8 @@ private[http2] object FrameSerializer {
 
   // Override the scala provided `require(condition, => msg)` to avoid the thunks
   private[this] def require(condition: Boolean, msg: String): Unit =
-    if (!condition) {
+    if (!condition)
       throw new IllegalArgumentException(msg)
-    }
 
   /** Create a DATA frame
     *
@@ -35,22 +40,19 @@ private[http2] object FrameSerializer {
 
     val padded = 0 < padding
     var flags = 0x0
-    if (padded) {
+    if (padded)
       flags |= Flags.PADDED
-    }
 
-    if (endStream) {
+    if (endStream)
       flags |= Flags.END_STREAM
-    }
 
     val headerBuffer = ByteBuffer.allocate(HeaderSize + (if (padded) 1 else 0))
     val payloadSize = data.remaining + padding
     writeFrameHeader(payloadSize, FrameTypes.DATA, flags.toByte, streamId, headerBuffer)
 
-    if (padded) {
+    if (padded)
       // padding of 1 is represented by the padding field and no trailing padding
       headerBuffer.put((padding - 1).toByte)
-    }
 
     headerBuffer.flip()
     headerBuffer :: data :: tailPadding(padding - 1)
@@ -82,13 +84,11 @@ private[http2] object FrameSerializer {
       flags |= Flags.PRIORITY
     }
 
-    if (endHeaders) {
+    if (endHeaders)
       flags |= Flags.END_HEADERS
-    }
 
-    if (endStream) {
+    if (endStream)
       flags |= Flags.END_STREAM
-    }
 
     val header = BufferTools.allocate(HeaderSize + nonDataSize)
     val payloadSize = nonDataSize + headerData.remaining + (if (padded)
@@ -96,10 +96,9 @@ private[http2] object FrameSerializer {
                                                             else 0)
     writeFrameHeader(payloadSize, FrameTypes.HEADERS, flags.toByte, streamId, header)
 
-    if (padded) {
+    if (padded)
       // padding of 1 is represented by the padding field and no trailing padding
       header.put((padding - 1).toByte)
-    }
 
     priority match {
       case p: Priority.Dependent => writePriority(p, header)
@@ -171,13 +170,11 @@ private[http2] object FrameSerializer {
     val padded = 0 < padding
     var flags = 0x0
 
-    if (endHeaders) {
+    if (endHeaders)
       flags |= Flags.END_HEADERS
-    }
 
-    if (padded) {
+    if (padded)
       flags |= Flags.PADDED
-    }
 
     // Need4 for the promised stream id, and maybe 1 for the padding size
     val bufferSize = HeaderSize + 4 + (if (padded) 1 else 0)
@@ -189,10 +186,9 @@ private[http2] object FrameSerializer {
       streamId,
       buffer)
 
-    if (padded) {
+    if (padded)
       // padding of 1 is represented by the padding field and no trailing padding
       buffer.put((padding - 1).toByte)
-    }
 
     buffer
       .putInt(promiseId)
@@ -267,11 +263,10 @@ private[http2] object FrameSerializer {
   //////////////////////////////////////////////////////////////////////////////////////////
 
   private[this] def writePriority(p: Priority.Dependent, buffer: ByteBuffer): Unit = {
-    if (p.exclusive) {
+    if (p.exclusive)
       buffer.putInt(p.dependentStreamId | Masks.EXCLUSIVE)
-    } else {
+    else
       buffer.putInt(p.dependentStreamId)
-    }
 
     buffer.put(((p.priority - 1) & 0xff).toByte)
     ()

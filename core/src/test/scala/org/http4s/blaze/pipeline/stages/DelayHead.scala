@@ -1,3 +1,9 @@
+/*
+ * Copyright 2014-2020 http4s.org
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 package org.http4s.blaze.pipeline.stages
 
 import java.util.concurrent.{ScheduledThreadPoolExecutor, TimeUnit}
@@ -39,23 +45,29 @@ abstract class DelayHead[I](delay: Duration) extends HeadStage[I] {
 
     rememberPromise(p)
 
-    highresTimer.schedule(new Runnable {
-      def run(): Unit = {
-        p.trySuccess(next())
-        unqueue(p)
-      }
-    }, delay.toNanos, TimeUnit.NANOSECONDS)
+    highresTimer.schedule(
+      new Runnable {
+        def run(): Unit = {
+          p.trySuccess(next())
+          unqueue(p)
+        }
+      },
+      delay.toNanos,
+      TimeUnit.NANOSECONDS)
     p.future
   }
 
   override def writeRequest(data: I): Future[Unit] = {
     val p = Promise[Unit]
-    highresTimer.schedule(new Runnable {
-      def run(): Unit = {
-        p.trySuccess(())
-        unqueue(p)
-      }
-    }, delay.toNanos, TimeUnit.NANOSECONDS)
+    highresTimer.schedule(
+      new Runnable {
+        def run(): Unit = {
+          p.trySuccess(())
+          unqueue(p)
+        }
+      },
+      delay.toNanos,
+      TimeUnit.NANOSECONDS)
 
     rememberPromise(p)
     p.future

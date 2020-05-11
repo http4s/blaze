@@ -1,3 +1,9 @@
+/*
+ * Copyright 2014-2020 http4s.org
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 package org.http4s.blaze.channel
 
 import java.net.{InetAddress, InetSocketAddress, SocketAddress}
@@ -16,13 +22,15 @@ trait SocketConnection {
   /** Close this Connection */
   def close(): Unit
 
-  final def remoteInetAddress: Option[InetAddress] = remote match {
-    case addr: InetSocketAddress => Option(addr.getAddress)
-    case _ => None
-  }
+  final def remoteInetAddress: Option[InetAddress] =
+    remote match {
+      case addr: InetSocketAddress => Option(addr.getAddress)
+      case _ => None
+    }
 
-  final def localInetAddress: Option[InetAddress] = local match {
-    case addr: InetSocketAddress => Option(addr.getAddress)
-    case _ => None
-  }
+  final def localInetAddress: Option[InetAddress] =
+    local match {
+      case addr: InetSocketAddress => Option(addr.getAddress)
+      case _ => None
+    }
 }

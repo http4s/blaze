@@ -1,3 +1,9 @@
+/*
+ * Copyright 2014-2020 http4s.org
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 package org.http4s.blaze.http.http2
 
 import org.http4s.blaze.http.http2.Http2Settings.DefaultSettings
@@ -133,13 +139,13 @@ private class SessionFlowControlImpl(
     logger.trace(s"$count outbound session bytes were ACKed. $sessionWindowString")
     // Updates MUST be greater than 0, otherwise its protocol error
     // https://tools.ietf.org/html/rfc7540#section-6.9
-    if (count <= 0) {
+    if (count <= 0)
       Some(PROTOCOL_ERROR.goaway("Invalid session WINDOW_UPDATE: size <= 0."))
-    } else if (Int.MaxValue - sessionOutboundWindow < count) {
+    else if (Int.MaxValue - sessionOutboundWindow < count)
       // A sender MUST NOT allow a flow-control window to exceed 2^31-1 octets.
       // https://tools.ietf.org/html/rfc7540#section-6.9.1
       Some(FLOW_CONTROL_ERROR.goaway("Session flow control exceeded max window."))
-    } else {
+    else {
       _sessionOutboundWindow += count
       None
     }
@@ -169,13 +175,13 @@ private class SessionFlowControlImpl(
       logger.trace(s"Stream($streamId) had $count outbound bytes ACKed. $streamWindowString")
       // Updates MUST be greater than 0, otherwise its protocol error
       // https://tools.ietf.org/html/rfc7540#section-6.9
-      if (count <= 0) {
+      if (count <= 0)
         Some(PROTOCOL_ERROR.goaway(s"Invalid stream ($streamId) WINDOW_UPDATE: size <= 0."))
-      } else if (Int.MaxValue - streamOutboundWindow < count) {
+      else if (Int.MaxValue - streamOutboundWindow < count)
         // A sender MUST NOT allow a flow-control window to exceed 2^31-1 octets.
         // https://tools.ietf.org/html/rfc7540#section-6.9.1
         Some(FLOW_CONTROL_ERROR.rst(streamId, "Stream flow control exceeded max window."))
-      } else {
+      else {
         _streamOutboundWindow += count
         None
       }
@@ -186,9 +192,9 @@ private class SessionFlowControlImpl(
         s"Stream($streamId) outbound window adjusted by $delta bytes. $streamWindowString")
       // A sender MUST NOT allow a flow-control window to exceed 2^31-1 octets.
       // https://tools.ietf.org/html/rfc7540#section-6.9.2
-      if (Int.MaxValue - streamOutboundWindow < delta) {
+      if (Int.MaxValue - streamOutboundWindow < delta)
         Some(FLOW_CONTROL_ERROR.goaway(s"Flow control exceeded max window for stream $streamId."))
-      } else {
+      else {
         _streamOutboundWindow += delta
         None
       }

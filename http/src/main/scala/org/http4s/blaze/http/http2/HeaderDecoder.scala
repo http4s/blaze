@@ -1,3 +1,9 @@
+/*
+ * Copyright 2014-2020 http4s.org
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 package org.http4s.blaze.http.http2
 
 import java.nio.ByteBuffer
@@ -50,10 +56,9 @@ private final class HeaderDecoder(
 
   /** Returns the header collection and clears the builder */
   def finish(): Seq[(String, String)] = {
-    if (!sawEndHeaders) {
+    if (!sawEndHeaders)
       throw new IllegalStateException(
         "Should only be called after decoding the a terminating header fragment")
-    }
 
     leftovers = null
     headerBlockSize = 0
@@ -77,9 +82,8 @@ private final class HeaderDecoder(
       streamId: Int,
       endHeaders: Boolean,
       listener: HeaderListener): MaybeError = {
-    if (sawEndHeaders) {
+    if (sawEndHeaders)
       throw new IllegalStateException("called doDecode() after receiving an endHeaders flag")
-    }
 
     try {
       sawEndHeaders = endHeaders
@@ -95,9 +99,8 @@ private final class HeaderDecoder(
         leftovers = b
       }
 
-      if (endHeaders) {
+      if (endHeaders)
         decoder.endHeaderBlock()
-      }
 
       Continue
     } catch {

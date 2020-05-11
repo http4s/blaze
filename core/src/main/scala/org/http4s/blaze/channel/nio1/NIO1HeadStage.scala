@@ -1,3 +1,9 @@
+/*
+ * Copyright 2014-2020 http4s.org
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 package org.http4s.blaze.channel.nio1
 
 import java.io.IOException
@@ -33,9 +39,8 @@ private[nio1] object NIO1HeadStage {
   private def performRead(ch: SocketChannel, scratch: ByteBuffer, size: Int): Try[Unit] =
     try {
       scratch.clear()
-      if (size >= 0 && size < scratch.remaining) {
+      if (size >= 0 && size < scratch.remaining)
         scratch.limit(size)
-      }
       val bytes = ch.read(scratch)
       if (bytes < 0) Failure(EOF)
       else {
@@ -57,44 +62,40 @@ private[nio1] object NIO1HeadStage {
       ch: SocketChannel,
       scratch: ByteBuffer,
       buffers: Array[ByteBuffer]): WriteResult =
-    try {
-      if (BufferTools.areDirectOrEmpty(buffers)) {
-        ch.write(buffers)
-        if (util.BufferTools.checkEmpty(buffers)) Complete
-        else Incomplete
-      } else {
-        // To sidestep the java NIO "memory leak" (see http://www.evanjones.ca/java-bytebuffer-leak.html)
-        // We copy the data to the scratch buffer (which should be a direct ByteBuffer)
-        // before the write. We then check to see how much data was written and fast-forward
-        // the input buffers accordingly.
-        // This is very similar to the pattern used by the Oracle JDK implementation in its
-        // IOUtil class: if the provided buffers are not direct buffers, they are copied to
-        // temporary direct ByteBuffers and written.
-        @tailrec
-        def writeLoop(): WriteResult = {
-          scratch.clear()
-          BufferTools.copyBuffers(buffers, scratch)
-          scratch.flip()
+    try if (BufferTools.areDirectOrEmpty(buffers)) {
+      ch.write(buffers)
+      if (util.BufferTools.checkEmpty(buffers)) Complete
+      else Incomplete
+    } else {
+      // To sidestep the java NIO "memory leak" (see http://www.evanjones.ca/java-bytebuffer-leak.html)
+      // We copy the data to the scratch buffer (which should be a direct ByteBuffer)
+      // before the write. We then check to see how much data was written and fast-forward
+      // the input buffers accordingly.
+      // This is very similar to the pattern used by the Oracle JDK implementation in its
+      // IOUtil class: if the provided buffers are not direct buffers, they are copied to
+      // temporary direct ByteBuffers and written.
+      @tailrec
+      def writeLoop(): WriteResult = {
+        scratch.clear()
+        BufferTools.copyBuffers(buffers, scratch)
+        scratch.flip()
 
-          val written = ch.write(scratch)
-          if (written > 0) {
-            assert(BufferTools.fastForwardBuffers(buffers, written))
-          }
+        val written = ch.write(scratch)
+        if (written > 0)
+          assert(BufferTools.fastForwardBuffers(buffers, written))
 
-          if (scratch.remaining > 0) {
-            // Couldn't write all the data.
-            Incomplete
-          } else if (util.BufferTools.checkEmpty(buffers)) {
-            // All data was written
-            Complete
-          } else {
-            // May still be able to write more to the socket buffer.
-            writeLoop()
-          }
-        }
-
-        writeLoop()
+        if (scratch.remaining > 0)
+          // Couldn't write all the data.
+          Incomplete
+        else if (util.BufferTools.checkEmpty(buffers))
+          // All data was written
+          Complete
+        else
+          // May still be able to write more to the socket buffer.
+          writeLoop()
       }
+
+      writeLoop()
     } catch {
       case _: ClosedChannelException => WriteError(EOF)
       case e: IOException if ChannelHead.brokePipeMessages.contains(e.getMessage) =>
@@ -134,7 +135,7 @@ private[nio1] final class NIO1HeadStage(
   private[this] def readReady(scratch: ByteBuffer): Unit = {
     unsetOp(SelectionKey.OP_READ)
 
-    if (readPromise != null) {
+    if (readPromise != null)
       // if we successfully read some data, unset the interest and
       // complete the promise, otherwise fail appropriately
       performRead(ch, scratch, readSize) match {
@@ -151,7 +152,6 @@ private[nio1] final class NIO1HeadStage(
           p.failure(checkError(e))
           ()
       }
-    }
   }
 
   private[this] def writeReady(scratch: ByteBuffer): Unit = {
@@ -194,7 +194,7 @@ private[nio1] final class NIO1HeadStage(
         if (closedReason != null) {
           p.failure(closedReason)
           ()
-        } else if (readPromise == null) {
+        } else if (readPromise == null)
           // First we try to just read data, and fall back to NIO notification
           // if we don't get any data back.
           performRead(ch, scratchBuffer, size) match {
@@ -215,7 +215,7 @@ private[nio1] final class NIO1HeadStage(
               p.failure(checkError(e))
               ()
           }
-        } else {
+        else {
           p.failure(new IllegalStateException("Cannot have more than one pending read request"))
           ()
         }
@@ -238,7 +238,7 @@ private[nio1] final class NIO1HeadStage(
           ()
         } else if (writePromise == null) {
           val writes = data.toArray
-          if (!BufferTools.checkEmpty(writes)) {
+          if (!BufferTools.checkEmpty(writes))
             // Non-empty buffers. First we check to see if we can immediately
             // write all the data to save a trip through the NIO event system.
             performWrite(ch, scratch, writes) match {
@@ -259,7 +259,7 @@ private[nio1] final class NIO1HeadStage(
                 p.failure(t)
                 ()
             }
-          } else {
+          else {
             // Empty buffers, just return success.
             p.complete(CachedSuccess)
             ()
@@ -283,11 +283,10 @@ private[nio1] final class NIO1HeadStage(
     // it's closed it will be performed in the current thread
     def doClose(t: Throwable): Unit = {
       // this is the only place that writes to the variable
-      if (closedReason == null) {
+      if (closedReason == null)
         closedReason = t
-      } else if (closedReason != EOF && closedReason != t) {
+      else if (closedReason != EOF && closedReason != t)
         closedReason.addSuppressed(t)
-      }
 
       if (readPromise != null) {
         readPromise.tryFailure(t)

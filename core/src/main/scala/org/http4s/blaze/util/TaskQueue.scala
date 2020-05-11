@@ -1,3 +1,9 @@
+/*
+ * Copyright 2014-2020 http4s.org
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 package org.http4s.blaze.util
 
 import java.util.concurrent.atomic.AtomicReference
@@ -87,17 +93,15 @@ private[blaze] final class TaskQueue {
         val next = node.get
         if (next eq null) {
           // If we are not the last cell, we will spin until the cons resolves and continue
-          if (!queueTail.compareAndSet(node, null)) {
+          if (!queueTail.compareAndSet(node, null))
             go(spin(node))
-          }
           //else () // Finished the last node. All done.
         } else go(next)
       }
 
     val t = queueHead.getAndSet(null)
-    if (t ne null) {
+    if (t ne null)
       go(t)
-    }
   }
 }
 

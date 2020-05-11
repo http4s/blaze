@@ -1,3 +1,9 @@
+/*
+ * Copyright 2014-2020 http4s.org
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 package org.http4s.blaze.http.http2
 
 import java.nio.ByteBuffer
@@ -26,10 +32,11 @@ sealed abstract class Http2Exception(msg: String)
     }
 
   /** Convert this exception to a session exception */
-  final def toSessionException(): Http2SessionException = this match {
-    case Http2StreamException(_, code, msg) => Http2SessionException(code, msg)
-    case ex: Http2SessionException => ex
-  }
+  final def toSessionException(): Http2SessionException =
+    this match {
+      case Http2StreamException(_, code, msg) => Http2SessionException(code, msg)
+      case ex: Http2SessionException => ex
+    }
 
   /** Was the exception due to refusal by the peer.
     *

@@ -1,3 +1,9 @@
+/*
+ * Copyright 2014-2020 http4s.org
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 package org.http4s.blaze.http.parser
 
 import scala.language.reflectiveCalls
@@ -20,7 +26,8 @@ class Benchmarks extends Specification {
   val chunked = "Transfer-Encoding: chunked\r\n"
 
   val mockChunked =
-    request + chunked + headers + toChunk(body) + toChunk(", " + body + " again!") + "0 \r\n" + "\r\n"
+    request + chunked + headers + toChunk(body) + toChunk(
+      ", " + body + " again!") + "0 \r\n" + "\r\n"
 
   def toChunk(str: String): String = {
     val len = Integer.toHexString(str.length) + "\r\n"
@@ -117,23 +124,24 @@ class Benchmarks extends Specification {
     val p = new BenchParser()
     val b = ByteBuffer.wrap(mockChunked.getBytes(StandardCharsets.UTF_8))
 
-    def iteration(remaining: Int): Unit = if (remaining > 0) {
-      b.position(0)
+    def iteration(remaining: Int): Unit =
+      if (remaining > 0) {
+        b.position(0)
 
-      if (remaining % 250000 == 0) println(s"Iteration $remaining")
+        if (remaining % 250000 == 0) println(s"Iteration $remaining")
 
-      assert(p.parseLine(b))
+        assert(p.parseLine(b))
 
-      assert(p.parseheaders(b))
+        assert(p.parseheaders(b))
 
-      assert(p.parsecontent(b) != null)
-      assert(p.parsecontent(b) != null)
-      assert(p.parsecontent(b).remaining() == 0 && p.contentComplete())
+        assert(p.parsecontent(b) != null)
+        assert(p.parsecontent(b) != null)
+        assert(p.parsecontent(b).remaining() == 0 && p.contentComplete())
 
-      p.reset()
+        p.reset()
 
-      assert(!p.requestLineComplete())
-    }
+        assert(!p.requestLineComplete())
+      }
 
     run(iterations)(iteration)
   }
@@ -154,16 +162,17 @@ class Benchmarks extends Specification {
     }
     val b = ByteBuffer.wrap(mockChunked.getBytes(StandardCharsets.UTF_8))
 
-    def iteration(remaining: Int): Unit = if (remaining > 0) {
-      b.position(0)
+    def iteration(remaining: Int): Unit =
+      if (remaining > 0) {
+        b.position(0)
 
-      assert(p.parseLine(b))
-      assert(p.parseheaders(b))
-      p.parsecontent(b)
-      assert(p.headers.length == 5)
-      p.clear()
-      assert(!p.requestLineComplete())
-    }
+        assert(p.parseLine(b))
+        assert(p.parseheaders(b))
+        p.parsecontent(b)
+        assert(p.headers.length == 5)
+        p.clear()
+        assert(!p.requestLineComplete())
+      }
 
     run(iterations)(iteration(_))
   }

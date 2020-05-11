@@ -1,3 +1,9 @@
+/*
+ * Copyright 2014-2020 http4s.org
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 package org.http4s.blaze
 package http
 package http2
@@ -74,7 +80,7 @@ private final class FrameEncoder(remoteSettings: Http2Settings, headerEncoder: H
     val headersPrioritySize =
       if (priority.isDefined) 5 else 0 // priority(4) + weight(1), padding = 0
 
-    if (rawHeaders.remaining() + headersPrioritySize <= limit) {
+    if (rawHeaders.remaining() + headersPrioritySize <= limit)
       FrameSerializer.mkHeaderFrame(
         streamId,
         priority,
@@ -82,7 +88,7 @@ private final class FrameEncoder(remoteSettings: Http2Settings, headerEncoder: H
         endStream,
         padding = 0,
         rawHeaders)
-    } else {
+    else {
       // need to fragment
       val acc = new ArrayBuffer[ByteBuffer]
 

@@ -1,3 +1,9 @@
+/*
+ * Copyright 2014-2020 http4s.org
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 package org.http4s.blaze.http.http2
 
 /** Result type of many of the codec methods */
@@ -12,10 +18,11 @@ private sealed abstract class MaybeError extends Result {
 }
 
 private object MaybeError {
-  def apply(option: Option[Http2Exception]): MaybeError = option match {
-    case None => Continue
-    case Some(ex) => Error(ex)
-  }
+  def apply(option: Option[Http2Exception]): MaybeError =
+    option match {
+      case None => Continue
+      case Some(ex) => Error(ex)
+    }
 }
 
 private case object Continue extends MaybeError

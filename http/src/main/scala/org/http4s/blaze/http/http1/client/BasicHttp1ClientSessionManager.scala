@@ -1,3 +1,9 @@
+/*
+ * Copyright 2014-2020 http4s.org
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 package org.http4s.blaze.http.http1.client
 
 import java.nio.ByteBuffer
@@ -56,9 +62,8 @@ private[http] final class BasicHttp1ClientSessionManager(config: HttpClientConfi
       head: HeadStage[ByteBuffer]): HttpClientSession = {
     val clientStage = new Http1ClientStage(config)
     var builder = LeafBuilder(clientStage)
-    if (url.isTls) {
+    if (url.isTls)
       builder = builder.prepend(new SSLStage(config.getClientSslEngine()))
-    }
     builder.base(head)
     head.sendInboundCommand(Command.Connected)
     clientStage

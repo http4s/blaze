@@ -1,3 +1,9 @@
+/*
+ * Copyright 2014-2020 http4s.org
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 package org.http4s.blaze.http.http2.client
 
 import java.nio.ByteBuffer
@@ -48,9 +54,8 @@ private[http] class ClientPriorKnowledgeHandshaker(
   ): Future[Http2ClientSession] = {
     val tailStage = new BasicTail[ByteBuffer]("http2cClientTail")
     var newTail = LeafBuilder(tailStage)
-    if (data.hasRemaining) {
+    if (data.hasRemaining)
       newTail = newTail.prepend(new OneMessageStage[ByteBuffer](data))
-    }
 
     this.replaceTail(newTail, true)
 

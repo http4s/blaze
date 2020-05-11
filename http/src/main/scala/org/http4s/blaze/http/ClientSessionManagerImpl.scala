@@ -1,3 +1,9 @@
+/*
+ * Copyright 2014-2020 http4s.org
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 package org.http4s.blaze.http
 
 import org.http4s.blaze.channel.nio2.ClientChannelFactory
@@ -85,17 +91,15 @@ private final class ClientSessionManagerImpl(
 
             case h1: Http1ClientSession =>
               it.remove()
-              if (h1.status != Closed) { // Should never be busy
+              if (h1.status != Closed) // Should never be busy
                 session = h1 // found a suitable HTTP/1.x session.
-              } else {
+              else
                 h1.closeNow()
-              }
           }
 
           // if we took the last session, drop the collection
-          if (sessions.isEmpty) {
+          if (sessions.isEmpty)
             sessionCache.remove(id)
-          }
 
           session
       }

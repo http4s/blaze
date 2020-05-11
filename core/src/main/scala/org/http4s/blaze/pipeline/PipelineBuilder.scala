@@ -1,3 +1,9 @@
+/*
+ * Copyright 2014-2020 http4s.org
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 package org.http4s.blaze.pipeline
 
 /** By requiring a LeafBuilder, you are ensuring that the pipeline is capped
@@ -58,9 +64,8 @@ final class TrunkBuilder[I1, O] private[pipeline] (
   }
 
   def cap(stage: TailStage[O]): LeafBuilder[I1] = {
-    if (stage._prevStage != null) {
+    if (stage._prevStage != null)
       sys.error(s"Stage $stage must be fresh")
-    }
 
     tail._nextStage = stage
     stage._prevStage = tail

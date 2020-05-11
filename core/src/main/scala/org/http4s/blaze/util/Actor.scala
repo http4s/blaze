@@ -1,3 +1,9 @@
+/*
+ * Copyright 2014-2020 http4s.org
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 package org.http4s.blaze.util
 
 import java.util.concurrent.atomic.AtomicReference
@@ -59,13 +65,11 @@ private[blaze] abstract class Actor[M](
 
           val maybeNext = next.get
           if (maybeNext != null) go(i + 1, maybeNext)
-          else {
-            // We have reached the end of the list. Check for a race to add a new element.
-            if (!tailNode.compareAndSet(next, null)) {
-              // someone just added a Node, so spin until the link resolves
-              go(i + 1, spin(next))
-            }
-          }
+          else
+          // We have reached the end of the list. Check for a race to add a new element.
+          if (!tailNode.compareAndSet(next, null))
+            // someone just added a Node, so spin until the link resolves
+            go(i + 1, spin(next))
         }
       val next = start
       start = null

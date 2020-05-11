@@ -1,3 +1,9 @@
+/*
+ * Copyright 2014-2020 http4s.org
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 package org.http4s.blaze
 package http
 package http2
@@ -26,13 +32,14 @@ private class ClientStage(request: HttpRequest) extends TailStage[StreamFrame] {
   // there is no handle to detect when the request body has been written, and,
   // in general, we should not expect to receive the full response before the
   // full request has been written.
-  private[this] def release(cause: Option[Throwable]): Unit = lock.synchronized {
-    if (!released) {
-      released = true
-      inboundEOF = true
-      closePipeline(cause)
+  private[this] def release(cause: Option[Throwable]): Unit =
+    lock.synchronized {
+      if (!released) {
+        released = true
+        inboundEOF = true
+        closePipeline(cause)
+      }
     }
-  }
 
   private[this] def inboundConsumed: Boolean = lock.synchronized(inboundEOF)
 
@@ -54,24 +61,24 @@ private class ClientStage(request: HttpRequest) extends TailStage[StreamFrame] {
 
   def result: Future[ReleaseableResponse] = _result.future
 
-  override protected def stageStartup(): Unit = makeHeaders(request) match {
-    case Failure(t) =>
-      shutdownWithError(t, "Failed to construct a valid request")
+  override protected def stageStartup(): Unit =
+    makeHeaders(request) match {
+      case Failure(t) =>
+        shutdownWithError(t, "Failed to construct a valid request")
 
-    case Success(hs) =>
-      val eos = request.body.isExhausted
-      val headerFrame = HeadersFrame(Priority.NoPriority, eos, hs)
+      case Success(hs) =>
+        val eos = request.body.isExhausted
+        val headerFrame = HeadersFrame(Priority.NoPriority, eos, hs)
 
-      channelWrite(headerFrame).onComplete {
-        case Success(_) =>
-          if (!eos) {
-            writeBody(request.body)
-          }
-          readResponseHeaders()
+        channelWrite(headerFrame).onComplete {
+          case Success(_) =>
+            if (!eos)
+              writeBody(request.body)
+            readResponseHeaders()
 
-        case Failure(ex) => shutdownWithError(ex, "writeHeaders")
-      }(Execution.directec)
-  }
+          case Failure(ex) => shutdownWithError(ex, "writeHeaders")
+        }(Execution.directec)
+    }
 
   private def writeBody(body: BodyReader): Unit = {
     def go(): Future[Unit] =
@@ -148,9 +155,9 @@ private class ClientStage(request: HttpRequest) extends TailStage[StreamFrame] {
       if (!k.startsWith(":")) {
         pseudos = false // definitely not in pseudos anymore
         regularHeaders += pair
-      } else if (!pseudos) {
+      } else if (!pseudos)
         return Failure(new Exception("Pseudo headers were not contiguous"))
-      } else
+      else
         k match {
           // Matching on pseudo headers now
           case Status =>
