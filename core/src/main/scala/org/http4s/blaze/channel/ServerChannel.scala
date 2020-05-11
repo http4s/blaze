@@ -51,11 +51,11 @@ abstract class ServerChannel extends Closeable { self =>
   /** Wait for this server channel to close, including execution of all successfully
     * registered shutdown hooks.
     */
-  final def join(): Unit = shutdownHooks.synchronized {
-    while (state != Closed) {
-      shutdownHooks.wait()
+  final def join(): Unit =
+    shutdownHooks.synchronized {
+      while (state != Closed)
+        shutdownHooks.wait()
     }
-  }
 
   /** Add code to be executed when the [[ServerChannel]] is closed
     *
@@ -65,8 +65,8 @@ abstract class ServerChannel extends Closeable { self =>
     * @param f hook to execute on shutdown
     * @return true if the hook was successfully registered, false otherwise.
     */
-  final def addShutdownHook(f: () => Unit)(
-      implicit ec: ExecutionContext = Execution.directec): Boolean =
+  final def addShutdownHook(f: () => Unit)(implicit
+      ec: ExecutionContext = Execution.directec): Boolean =
     shutdownHooks.synchronized {
       if (state != Open) false
       else {
@@ -87,10 +87,11 @@ abstract class ServerChannel extends Closeable { self =>
 
   // set the terminal state and notify any callers of `join`.
   // This method should be idempotent.
-  private[this] def closeAndNotify(): Unit = shutdownHooks.synchronized {
-    state = Closed
-    shutdownHooks.notifyAll()
-  }
+  private[this] def closeAndNotify(): Unit =
+    shutdownHooks.synchronized {
+      state = Closed
+      shutdownHooks.notifyAll()
+    }
 
   private[this] case class Hook(task: () => Unit, ec: ExecutionContext)
 
@@ -101,12 +102,10 @@ abstract class ServerChannel extends Closeable { self =>
       catch {
         case NonFatal(t) =>
           logger.error(t)(s"Exception occurred during Channel shutdown.")
-      } finally {
-        // If we're the last hook to run, we notify any listeners
-        if (countdown.decrementAndGet() == 0) {
-          closeAndNotify()
-        }
-      }
+      } finally
+      // If we're the last hook to run, we notify any listeners
+      if (countdown.decrementAndGet() == 0)
+        closeAndNotify()
   }
 }
 

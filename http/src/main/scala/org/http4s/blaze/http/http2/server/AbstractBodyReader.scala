@@ -29,15 +29,16 @@ private abstract class AbstractBodyReader(streamId: Int, length: Long) extends B
 
   protected def failed(ex: Throwable): Unit
 
-  override def discard(): Unit = this.synchronized {
-    finished = true
-  }
+  override def discard(): Unit =
+    this.synchronized {
+      finished = true
+    }
 
   override def isExhausted: Boolean = this.synchronized(finished)
 
   def apply(): Future[ByteBuffer] =
     if (isExhausted) BufferTools.emptyFutureBuffer
-    else {
+    else
       channelRead().flatMap { frame =>
         // We use `result` to escape the lock before doing arbitrary things
         val result = AbstractBodyReader.this.synchronized {
@@ -45,9 +46,9 @@ private abstract class AbstractBodyReader(streamId: Int, length: Long) extends B
             case DataFrame(endStream, bytes) =>
               finished = endStream
               bytesRead += bytes.remaining()
-              if (length == UnknownLength || bytesRead <= length) {
+              if (length == UnknownLength || bytesRead <= length)
                 Success(bytes)
-              } else {
+              else {
                 // overflow. This is a malformed message.
                 val msg =
                   s"Invalid content-length, expected: $length, received (thus far): $bytesRead"
@@ -79,7 +80,6 @@ private abstract class AbstractBodyReader(streamId: Int, length: Long) extends B
         }
         Future.fromTry(result)
       }(Execution.trampoline)
-    }
 }
 
 private object AbstractBodyReader {

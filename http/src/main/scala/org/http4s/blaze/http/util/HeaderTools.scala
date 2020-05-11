@@ -66,17 +66,16 @@ private[blaze] object HeaderTools {
       val v = hl.getValue(header)
 
       // We are not allowing chunked responses at the moment, strip our Chunked-Encoding headers
-      if (k.equalsIgnoreCase(HeaderNames.TransferEncoding)) {
+      if (k.equalsIgnoreCase(HeaderNames.TransferEncoding))
         transferEncoding = Some(v)
-      } else if (k.equalsIgnoreCase(HeaderNames.ContentLength)) {
+      else if (k.equalsIgnoreCase(HeaderNames.ContentLength))
         contentLength = Some(v)
-      } else if (k.equalsIgnoreCase(HeaderNames.Connection)) {
+      else if (k.equalsIgnoreCase(HeaderNames.Connection))
         connection = Some(v)
-      } else {
+      else {
         // Just want to know if its here, going to add it regardless
-        if (!hasDateheader && k.equalsIgnoreCase(HeaderNames.Date)) {
+        if (!hasDateheader && k.equalsIgnoreCase(HeaderNames.Date))
           hasDateheader = true
-        }
 
         sb.append(k)
         if (v.length > 0) sb.append(": ").append(v)

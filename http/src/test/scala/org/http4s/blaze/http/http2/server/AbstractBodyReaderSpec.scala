@@ -12,17 +12,17 @@ import scala.util.{Failure, Success}
 
 class AbstractBodyReaderSpec extends Specification {
   // We expect all futures to be complete immediately
-  private def now[T](f: Future[T]): T = f.value match {
-    case Some(Success(t)) => t
-    case Some(Failure(t)) => throw t
-    case None => sys.error("Expected the future to be finished")
-  }
+  private def now[T](f: Future[T]): T =
+    f.value match {
+      case Some(Success(t)) => t
+      case Some(Failure(t)) => throw t
+      case None => sys.error("Expected the future to be finished")
+    }
 
   private def bytes(size: Int): ByteBuffer = {
     val b = BufferTools.allocate(size)
-    for (i <- 0 until size) {
+    for (i <- 0 until size)
       b.put(i.toByte)
-    }
     b.flip()
     b
   }

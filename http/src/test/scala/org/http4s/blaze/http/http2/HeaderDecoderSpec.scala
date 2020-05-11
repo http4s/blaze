@@ -77,9 +77,8 @@ class HeaderDecoderSpec extends Specification {
     }
 
     "decompression errors are connection errors" in {
-      val bb = ByteBuffer.wrap(
-        Array[Int](0x00, 0x85, 0xf2, 0xb2, 0x4a, 0x84, 0xff, 0x84, 0x49, 0x50, 0x9f,
-          0xff).map(_.toByte))
+      val bb = ByteBuffer.wrap(Array[Int](0x00, 0x85, 0xf2, 0xb2, 0x4a, 0x84, 0xff, 0x84, 0x49,
+        0x50, 0x9f, 0xff).map(_.toByte))
 
       val dec =
         new HeaderDecoder(Int.MaxValue, true, Http2Settings.DefaultSettings.HEADER_TABLE_SIZE)

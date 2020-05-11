@@ -41,18 +41,18 @@ private class SessionFrameListener(
       streamId: Int,
       promisedId: Int,
       headers: Headers): Result =
-    if (!isClient) {
+    if (!isClient)
       // A client cannot push. Thus, servers MUST treat the receipt of a
       // PUSH_PROMISE frame as a connection error of type PROTOCOL_ERROR.
       // https://tools.ietf.org/html/rfc7540#section-8.2
       Error(PROTOCOL_ERROR.goaway(s"Server received PUSH_PROMISE frame for stream $streamId"))
-    } else if (!session.localSettings.pushEnabled) {
+    else if (!session.localSettings.pushEnabled)
       // PUSH_PROMISE MUST NOT be sent if the SETTINGS_ENABLE_PUSH setting of
       // the peer endpoint is set to 0.  An endpoint that has set this setting
       // and has received acknowledgement MUST treat the receipt of a
       // PUSH_PROMISE frame as a connection error (Section 5.4.1) of type PROTOCOL_ERROR.
       Error(PROTOCOL_ERROR.goaway("Received PUSH_PROMISE frame then they are disallowed"))
-    } else
+    else
       session.streamManager.handlePushPromise(streamId, promisedId, headers)
 
   override def onDataFrame(streamId: Int, isLast: Boolean, data: ByteBuffer, flow: Int): Result =
@@ -66,9 +66,9 @@ private class SessionFrameListener(
           val msg = s"data frame for inactive stream (id $streamId) overflowed " +
             s"session flow window. Size: $flow."
           Error(FLOW_CONTROL_ERROR.goaway(msg))
-        } else if (session.idManager.isIdleId(streamId)) {
+        } else if (session.idManager.isIdleId(streamId))
           Error(PROTOCOL_ERROR.goaway(s"DATA on uninitialized stream ($streamId)"))
-        } else {
+        else
           // There is an intrinsic race here: the server may have closed the stream
           // (and sent a RST) and removed it from the active streams. However, the
           // peer may not be aware of this yet and may still be sending data. That is
@@ -79,7 +79,6 @@ private class SessionFrameListener(
           // want to keep some historical state for streams, we can't tell. So, we just
           // be kind and send a RST frame in both cases.
           Error(STREAM_CLOSED.rst(streamId))
-        }
     }
 
   // TODO: what would priority handling look like?
@@ -116,25 +115,22 @@ private class SessionFrameListener(
         val result = remoteSettings.updateSettings(settings) match {
           case Some(ex) => Error(ex) // problem with settings
           case None =>
-            if (remoteSettings.headerTableSize != initialHeaderTableSize) {
+            if (remoteSettings.headerTableSize != initialHeaderTableSize)
               session.http2Encoder.setMaxTableSize(remoteSettings.headerTableSize)
-            }
 
             val diff = remoteSettings.initialWindowSize - initialInitialWindowSize
             if (diff == 0) Continue
-            else {
+            else
               // https://tools.ietf.org/html/rfc7540#section-6.9.2
               // a receiver MUST adjust the size of all stream flow-control windows that
               // it maintains by the difference between the new value and the old value.
               session.streamManager.initialFlowWindowChange(diff)
-            }
         }
 
-        if (result == Continue) {
+        if (result == Continue)
           // ack the SETTINGS frame on success, otherwise we are tearing
           // down the connection anyway so no need
           session.writeController.write(FrameSerializer.mkSettingsAckFrame())
-        }
 
         result
     }

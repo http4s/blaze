@@ -65,10 +65,9 @@ final class NIO2SocketServerGroup private (
     if (group != null) {
       logger.info("Closing NIO2 SocketChannelServerGroup")
       group.shutdownNow()
-    } else {
+    } else
       throw new IllegalStateException(
         "Cannot shut down the system default AsynchronousChannelGroup.")
-    }
 
   def bind(address: InetSocketAddress, service: SocketPipelineBuilder): Try[ServerChannel] =
     Try {

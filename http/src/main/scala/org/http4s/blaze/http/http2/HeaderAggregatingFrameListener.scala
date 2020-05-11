@@ -76,13 +76,13 @@ private abstract class HeaderAggregatingFrameListener(
       endStream: Boolean,
       buffer: ByteBuffer
   ): Result =
-    if (inHeaderSequence) {
+    if (inHeaderSequence)
       Error(
         PROTOCOL_ERROR.goaway(s"Received HEADERS frame while in in headers sequence. Stream id " +
           FrameDecoder.hexStr(streamId)))
-    } else if (buffer.remaining > localSettings.maxHeaderListSize) {
+    else if (buffer.remaining > localSettings.maxHeaderListSize)
       headerSizeError(buffer.remaining, streamId)
-    } else if (endHeaders) {
+    else if (endHeaders) {
       val r = headerDecoder.decode(buffer, streamId, true)
       if (!r.success) r
       else {
@@ -100,9 +100,9 @@ private abstract class HeaderAggregatingFrameListener(
       endHeaders: Boolean,
       buffer: ByteBuffer
   ): Result =
-    if (localSettings.maxHeaderListSize < buffer.remaining) {
+    if (localSettings.maxHeaderListSize < buffer.remaining)
       headerSizeError(buffer.remaining, streamId)
-    } else if (endHeaders) {
+    else if (endHeaders) {
       val r = headerDecoder.decode(buffer, streamId, true)
       if (!r.success) r
       else {
@@ -125,9 +125,9 @@ private abstract class HeaderAggregatingFrameListener(
       Error(PROTOCOL_ERROR.goaway(msg))
     } else {
       val totalSize = buffer.remaining + hInfo.buffer.remaining
-      if (localSettings.maxHeaderListSize < totalSize) {
+      if (localSettings.maxHeaderListSize < totalSize)
         headerSizeError(totalSize, streamId)
-      } else {
+      else {
         val newBuffer = BufferTools.concatBuffers(hInfo.buffer, buffer)
 
         if (endHeaders) {

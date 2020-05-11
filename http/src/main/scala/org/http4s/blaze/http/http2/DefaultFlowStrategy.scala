@@ -22,11 +22,10 @@ final class DefaultFlowStrategy(localSettings: Http2Settings) extends FlowStrate
   private[this] def check(initialWindow: Int, currentWindow: Int, unConsumed: Int): Int = {
     val unacked = initialWindow - currentWindow
     val unackedConsumed = unacked - unConsumed
-    if (unackedConsumed >= initialWindow / 2) {
+    if (unackedConsumed >= initialWindow / 2)
       // time to ack
       unackedConsumed
-    } else {
+    else
       0
-    }
   }
 }

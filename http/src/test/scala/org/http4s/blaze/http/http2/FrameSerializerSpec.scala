@@ -89,8 +89,9 @@ class FrameSerializerSpec extends Specification with ScalaCheck {
       for {
         streamId <- Gen.posNum[Int]
         hasDep <- tfGen
-        priority <- (if (hasDep) genPriority.filter(_.dependentStreamId != streamId)
-                     else Gen.const(Priority.NoPriority))
+        priority <-
+          (if (hasDep) genPriority.filter(_.dependentStreamId != streamId)
+           else Gen.const(Priority.NoPriority))
         endHeaders <- tfGen
         endStream <- tfGen
         padding <- Gen.choose(0, 256)
@@ -152,13 +153,13 @@ class FrameSerializerSpec extends Specification with ScalaCheck {
     }
 
     "fail on bad stream ID" in {
-      FrameSerializer.mkHeaderFrame(0, Priority.NoPriority, true, true, 0, dat) must throwA[
-        Exception]
+      FrameSerializer
+        .mkHeaderFrame(0, Priority.NoPriority, true, true, 0, dat) must throwA[Exception]
     }
 
     "fail on bad padding" in {
-      FrameSerializer.mkHeaderFrame(1, Priority.NoPriority, true, true, -10, dat) must throwA[
-        Exception]
+      FrameSerializer
+        .mkHeaderFrame(1, Priority.NoPriority, true, true, -10, dat) must throwA[Exception]
     }
   }
 
@@ -284,7 +285,7 @@ class FrameSerializerSpec extends Specification with ScalaCheck {
     implicit lazy val arbGoAway: Arbitrary[GoAwayFrame] = Arbitrary(
       for {
         lastStream <- Gen.choose(0, Int.MaxValue)
-        err <- Gen.choose(0L, 0XFFFFFFFFL)
+        err <- Gen.choose(0L, 0xffffffffL)
         dataSize <- Gen.choose(0, 256)
         bytes <- Gen.listOfN(dataSize, Gen.choose(Byte.MinValue, Byte.MaxValue))
       } yield GoAwayFrame(lastStream, err, bytes.toArray)

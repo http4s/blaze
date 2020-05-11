@@ -82,19 +82,18 @@ private final class StreamManagerImpl(
     if (!session.idManager.observeInboundId(streamId)) {
       // Illegal stream ID. See why below
       val msg =
-        if (session.idManager.isOutboundId(streamId)) {
+        if (session.idManager.isOutboundId(streamId))
           s"Received HEADERS frame for idle outbound stream id $streamId"
-        } else {
+        else
           s"Received HEADERS frame for non-idle inbound stream id $streamId"
-        }
       Left(PROTOCOL_ERROR.goaway(msg))
-    } else if (inboundStreamBuilder.isEmpty) {
+    } else if (inboundStreamBuilder.isEmpty)
       Left(
         PROTOCOL_ERROR.goaway(
           s"Client received request for new inbound stream ($streamId) without push promise"))
-    } else if (drainingP.isDefined) {
+    else if (drainingP.isDefined)
       Left(REFUSED_STREAM.rst(streamId, "Session draining"))
-    } else if (session.localSettings.maxConcurrentStreams <= size) {
+    else if (session.localSettings.maxConcurrentStreams <= size)
       // 5.1.2 Stream Concurrency
       //
       // Endpoints MUST NOT exceed the limit set by their peer.  An endpoint
@@ -104,8 +103,9 @@ private final class StreamManagerImpl(
       // of error code determines whether the endpoint wishes to enable
       // automatic retry (see Section 8.1.4) for details).
       Left(REFUSED_STREAM.rst(streamId))
-    } else {
-      val leafBuilder = inboundStreamBuilder.get.apply(streamId) // we already made sure it wasn't empty
+    else {
+      val leafBuilder =
+        inboundStreamBuilder.get.apply(streamId) // we already made sure it wasn't empty
       val streamFlowWindow =
         session.sessionFlowControl.newStreamFlowWindow(streamId)
       val streamState =
@@ -151,16 +151,16 @@ private final class StreamManagerImpl(
   }
 
   override def handlePushPromise(streamId: Int, promisedId: Int, headers: Headers): Result =
-    if (session.idManager.isIdleOutboundId(streamId)) {
+    if (session.idManager.isIdleOutboundId(streamId))
       Error(
         PROTOCOL_ERROR.goaway(
           s"Received PUSH_PROMISE for associated to an idle stream ($streamId)"))
-    } else if (!session.idManager.isInboundId(promisedId)) {
+    else if (!session.idManager.isInboundId(promisedId))
       Error(
         PROTOCOL_ERROR.goaway(s"Received PUSH_PROMISE frame with illegal stream id: $promisedId"))
-    } else if (!session.idManager.observeInboundId(promisedId)) {
+    else if (!session.idManager.observeInboundId(promisedId))
       Error(PROTOCOL_ERROR.goaway("Received PUSH_PROMISE frame on non-idle stream"))
-    } else {
+    else {
       // TODO: support push promises
       // validating the stream ID's is handled by the `SessionFrameListener`.
       // We can't just mark the promised stream ID as observed since the next
@@ -182,17 +182,16 @@ private final class StreamManagerImpl(
   override def flowWindowUpdate(streamId: Int, sizeIncrement: Int): MaybeError =
     // note: No need to check the size increment since it's been
     // validated by the `Http2FrameDecoder`.
-    if (session.idManager.isIdleId(streamId)) {
+    if (session.idManager.isIdleId(streamId))
       Error(PROTOCOL_ERROR.goaway(s"WINDOW_UPDATE on uninitialized stream ($streamId)"))
-    } else if (streamId == 0) {
+    else if (streamId == 0) {
       val result = MaybeError(session.sessionFlowControl.sessionOutboundAcked(sizeIncrement))
       logger.debug(s"Session flow update: $sizeIncrement. Result: $result")
-      if (result.success) {
+      if (result.success)
         // TODO: do we need to wake all the open streams in every case? Maybe just when we go from 0 to > 0?
         streams.values.foreach(_.outboundFlowWindowChanged())
-      }
       result
-    } else {
+    } else
       streams.get(streamId) match {
         case None =>
           logger.debug(s"Stream WINDOW_UPDATE($sizeIncrement) for closed stream $streamId")
@@ -202,13 +201,11 @@ private final class StreamManagerImpl(
           val result = MaybeError(stream.flowWindow.streamOutboundAcked(sizeIncrement))
           logger.debug(s"Stream(${stream.streamId}) WINDOW_UPDATE($sizeIncrement). Result: $result")
 
-          if (result.success) {
+          if (result.success)
             stream.outboundFlowWindowChanged()
-          }
 
           result
       }
-    }
 
   override def drain(lastHandledOutboundStream: Int, reason: Http2SessionException): Future[Unit] =
     drainingP match {

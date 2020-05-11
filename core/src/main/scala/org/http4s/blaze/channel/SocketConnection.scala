@@ -16,13 +16,15 @@ trait SocketConnection {
   /** Close this Connection */
   def close(): Unit
 
-  final def remoteInetAddress: Option[InetAddress] = remote match {
-    case addr: InetSocketAddress => Option(addr.getAddress)
-    case _ => None
-  }
+  final def remoteInetAddress: Option[InetAddress] =
+    remote match {
+      case addr: InetSocketAddress => Option(addr.getAddress)
+      case _ => None
+    }
 
-  final def localInetAddress: Option[InetAddress] = local match {
-    case addr: InetSocketAddress => Option(addr.getAddress)
-    case _ => None
-  }
+  final def localInetAddress: Option[InetAddress] =
+    local match {
+      case addr: InetSocketAddress => Option(addr.getAddress)
+      case _ => None
+    }
 }

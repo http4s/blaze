@@ -26,9 +26,9 @@ abstract class ConnectionMonitor {
 
     private val cleaned = new AtomicBoolean(false)
 
-    private def clearCount() = if (!cleaned.getAndSet(true)) {
-      connectionClosed()
-    }
+    private def clearCount() =
+      if (!cleaned.getAndSet(true))
+        connectionClosed()
 
     override def stageStartup(): Unit = {
       connectionAccepted()

@@ -17,10 +17,11 @@ object ServerSelector {
       engine: SSLEngine,
       service: HttpService,
       config: HttpServerStageConfig): ALPNServerSelector = {
-    def builder(s: String): LeafBuilder[ByteBuffer] = s match {
-      case H2 | H2_14 => LeafBuilder(http2Stage(service, config))
-      case _ => LeafBuilder(http1xStage(service, config))
-    }
+    def builder(s: String): LeafBuilder[ByteBuffer] =
+      s match {
+        case H2 | H2_14 => LeafBuilder(http2Stage(service, config))
+        case _ => LeafBuilder(http1xStage(service, config))
+      }
 
     def selector(protocols: Set[String]): String =
       if (protocols(H2)) H2

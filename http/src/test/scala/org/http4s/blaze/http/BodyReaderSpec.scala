@@ -79,10 +79,11 @@ class BodyReaderSpec extends Specification {
 
     override def discard(): Unit = synchronized(buffers.clear())
 
-    override def apply(): Future[ByteBuffer] = synchronized {
-      if (!isExhausted) Future.successful(buffers.dequeue())
-      else Future.successful(BufferTools.emptyBuffer)
-    }
+    override def apply(): Future[ByteBuffer] =
+      synchronized {
+        if (!isExhausted) Future.successful(buffers.dequeue())
+        else Future.successful(BufferTools.emptyBuffer)
+      }
 
     override def isExhausted: Boolean = synchronized(buffers.isEmpty)
   }

@@ -144,27 +144,23 @@ private object Http1ClientCodec {
 
     hs.foreach {
       case (k, v) =>
-        if (requireHost && !hasHostHeader && k.equalsIgnoreCase("Host")) {
+        if (requireHost && !hasHostHeader && k.equalsIgnoreCase("Host"))
           hasHostHeader = true
-        }
-        if (hasBody && !hasContentLength && k.equalsIgnoreCase("Content-Length")) {
+        if (hasBody && !hasContentLength && k.equalsIgnoreCase("Content-Length"))
           hasContentLength = true
-        }
         if (hasBody && !hasChunkedEncoding &&
-          k.equalsIgnoreCase("Transfer-Encoding") && v == "chunked") {
+          k.equalsIgnoreCase("Transfer-Encoding") && v == "chunked")
           hasChunkedEncoding = true
-        }
         sb.append(k)
           .append(':')
           .append(v)
           .append("\r\n")
     }
 
-    if (requireHost && !hasHostHeader) {
+    if (requireHost && !hasHostHeader)
       sb.append("Host:")
         .append(uri.getAuthority)
         .append("\r\n")
-    }
 
     if (hasChunkedEncoding) true
     else if (hasContentLength || !hasBody) false
@@ -174,8 +170,9 @@ private object Http1ClientCodec {
     }
   }
 
-  private def valueOrDefault(str: String, default: String): String = str match {
-    case "" | null => default
-    case path => path
-  }
+  private def valueOrDefault(str: String, default: String): String =
+    str match {
+      case "" | null => default
+      case path => path
+    }
 }

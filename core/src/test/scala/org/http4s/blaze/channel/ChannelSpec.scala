@@ -55,9 +55,7 @@ abstract class BaseChannelSpec extends Specification {
   "Execute shutdown hooks" in {
     val i = new AtomicInteger(0)
     val ServerPair(group, channel) = bindEcho()
-    channel.addShutdownHook { () =>
-      i.incrementAndGet(); ()
-    } must_== true
+    channel.addShutdownHook { () => i.incrementAndGet(); () } must_== true
     channel.close()
     group.closeGroup()
     channel.join()
@@ -67,15 +65,9 @@ abstract class BaseChannelSpec extends Specification {
   "Execute shutdown hooks when one throws an exception" in {
     val i = new AtomicInteger(0)
     val ServerPair(group, channel) = bindEcho()
-    channel.addShutdownHook { () =>
-      i.incrementAndGet(); ()
-    } must_== true
-    channel.addShutdownHook { () =>
-      sys.error("Foo")
-    } must_== true
-    channel.addShutdownHook { () =>
-      i.incrementAndGet(); ()
-    } must_== true
+    channel.addShutdownHook { () => i.incrementAndGet(); () } must_== true
+    channel.addShutdownHook(() => sys.error("Foo")) must_== true
+    channel.addShutdownHook { () => i.incrementAndGet(); () } must_== true
     channel.close()
 
     group.closeGroup()
@@ -87,9 +79,7 @@ abstract class BaseChannelSpec extends Specification {
   "Execute shutdown hooks when the ServerChannelGroup is shutdown" in {
     val i = new AtomicInteger(0)
     val ServerPair(group, channel) = bindEcho()
-    channel.addShutdownHook { () =>
-      i.incrementAndGet(); ()
-    } must_== true
+    channel.addShutdownHook { () => i.incrementAndGet(); () } must_== true
     group.closeGroup()
 
     channel.join()
@@ -101,9 +91,7 @@ abstract class BaseChannelSpec extends Specification {
     val ServerPair(group, channel) = bindEcho()
     channel.close()
     group.closeGroup()
-    channel.addShutdownHook { () =>
-      sys.error("Blam!")
-    } must_== false
+    channel.addShutdownHook(() => sys.error("Blam!")) must_== false
   }
 
   class ZeroWritingStage(batch: Boolean) extends TailStage[ByteBuffer] {

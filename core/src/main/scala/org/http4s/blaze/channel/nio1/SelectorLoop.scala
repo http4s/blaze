@@ -90,10 +90,9 @@ final class SelectorLoop(
   @throws[RejectedExecutionException]
   def executeTask(runnable: Runnable): Unit =
     if (Thread.currentThread() != thread) enqueueTask(runnable)
-    else {
+    else
       try runnable.run()
       catch { case NonFatal(t) => reportFailure(t) }
-    }
 
   /** Schedule to provided `Runnable` for execution later
     *
@@ -169,9 +168,8 @@ final class SelectorLoop(
       taskQueue.executeTasks()
 
       // We have some new I/O operations waiting for us. Process them.
-      if (selected > 0) {
+      if (selected > 0)
         processKeys(scratch, selector.selectedKeys)
-      }
     } catch {
       case e: ClosedSelectorException =>
         logger.error(e)("Selector unexpectedly closed")
@@ -198,18 +196,16 @@ final class SelectorLoop(
       it.remove()
 
       val selectable = getAttachment(k)
-      try {
-        if (k.isValid) {
-          if (selectable != null) {
-            selectable.opsReady(scratch)
-          } else {
-            k.cancel()
-            logger.error("Illegal state: selector key had null attachment.")
-          }
-        } else if (selectable != null) {
-          selectable.close(None)
+      try if (k.isValid)
+        if (selectable != null)
+          selectable.opsReady(scratch)
+        else {
+          k.cancel()
+          logger.error("Illegal state: selector key had null attachment.")
         }
-      } catch {
+      else if (selectable != null)
+        selectable.close(None)
+      catch {
         case t @ (NonFatal(_) | _: ControlThrowable) =>
           logger.error(t)("Error performing channel operations. Closing channel.")
           try selectable.close(Some(t))
@@ -234,9 +230,8 @@ final class SelectorLoop(
         selector.keys.asScala.foreach { k =>
           try {
             val head = getAttachment(k)
-            if (head != null) {
+            if (head != null)
               head.close(ex)
-            }
           } catch { case _: IOException => /* NOOP */ }
         }
       }

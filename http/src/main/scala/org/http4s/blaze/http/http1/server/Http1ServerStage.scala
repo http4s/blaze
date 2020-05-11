@@ -61,7 +61,9 @@ class Http1ServerStage(service: HttpService, config: HttpServerStageConfig)
     Execution
       .withTimeout(config.requestPreludeTimeout, TryRequestTimeoutExec)(codec.getRequest())
       .flatMap(checkCloseService)(config.serviceExecutor)
-      .recover { case RequestTimeoutException => newRequestTimeoutResponse() } // handle request timeouts
+      .recover {
+        case RequestTimeoutException => newRequestTimeoutResponse()
+      } // handle request timeouts
       .onComplete {
         case Success((resp, requireClose)) =>
           codec.renderResponse(resp, requireClose).onComplete {
@@ -94,17 +96,16 @@ class Http1ServerStage(service: HttpService, config: HttpServerStageConfig)
     val connHeader = request.headers.find {
       case (k, _) => k.equalsIgnoreCase(HeaderNames.Connection)
     }
-    if (request.minorVersion == 0) {
+    if (request.minorVersion == 0)
       connHeader match {
         case Some((_, v)) => !v.equalsIgnoreCase("keep-alive")
         case None => true
       }
-    } else {
+    else
       connHeader match {
         case Some((_, v)) => v.equalsIgnoreCase("close")
         case None => false
       }
-    }
   }
 
   // TODO: can this be shared with http2?

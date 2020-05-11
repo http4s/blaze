@@ -86,25 +86,26 @@ private final class ConnectionImpl(
 
           logger.debug("Handling inbound data.")
           @tailrec
-          def go(): Unit = frameDecoder.decodeBuffer(data) match {
-            case Continue => go()
-            case BufferUnderflow => readLoop(data)
-            case Error(ex: Http2StreamException) =>
-              // If the stream is still active, it will write the RST.
-              // Otherwise, we need to do it here.
-              streamManager.get(ex.stream) match {
-                case Some(stream) =>
-                  stream.doCloseWithError(Some(ex))
+          def go(): Unit =
+            frameDecoder.decodeBuffer(data) match {
+              case Continue => go()
+              case BufferUnderflow => readLoop(data)
+              case Error(ex: Http2StreamException) =>
+                // If the stream is still active, it will write the RST.
+                // Otherwise, we need to do it here.
+                streamManager.get(ex.stream) match {
+                  case Some(stream) =>
+                    stream.doCloseWithError(Some(ex))
 
-                case None =>
-                  val msg = FrameSerializer.mkRstStreamFrame(ex.stream, ex.code)
-                  writeController.write(msg)
-                  ()
-              }
+                  case None =>
+                    val msg = FrameSerializer.mkRstStreamFrame(ex.stream, ex.code)
+                    writeController.write(msg)
+                    ()
+                }
 
-            case Error(ex) =>
-              invokeShutdownWithError(Some(ex), "readLoop-decode")
-          }
+              case Error(ex) =>
+                invokeShutdownWithError(Some(ex), "readLoop-decode")
+            }
           go()
       }(serialExecutor)
 
@@ -119,13 +120,14 @@ private final class ConnectionImpl(
       else 1.0 - (currentStreams.toDouble / maxConcurrent.toDouble)
     }
 
-  override def status: Status = state match {
-    case Connection.Draining => HttpClientSession.Busy
-    case Connection.Closed => HttpClientSession.Closed
-    case Connection.Running =>
-      if (quality == 0.0) HttpClientSession.Busy
-      else HttpClientSession.Ready
-  }
+  override def status: Status =
+    state match {
+      case Connection.Draining => HttpClientSession.Busy
+      case Connection.Closed => HttpClientSession.Closed
+      case Connection.Running =>
+        if (quality == 0.0) HttpClientSession.Busy
+        else HttpClientSession.Ready
+    }
 
   override def activeStreams: Int = streamManager.size
 

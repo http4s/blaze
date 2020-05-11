@@ -49,11 +49,9 @@ final class ClientChannelFactory(
           val exception = new SocketTimeoutException(
             s"An attempt to establish connection with $remoteAddress timed out after $connectTimeout.")
           val finishedWithTimeout = p.tryFailure(exception)
-          if (finishedWithTimeout) {
-            try {
-              ch.close()
-            } catch { case NonFatal(_) => /* we don't care */ }
-          }
+          if (finishedWithTimeout)
+            try ch.close()
+            catch { case NonFatal(_) => /* we don't care */ }
         }
       }
       val scheduledTimeout = scheduler.schedule(onTimeout, connectTimeout)
@@ -71,13 +69,11 @@ final class ClientChannelFactory(
         }
       }
 
-      try {
-        ch.connect(remoteAddress, null: Null, completionHandler)
-      } catch {
+      try ch.connect(remoteAddress, null: Null, completionHandler)
+      catch {
         case ex: IllegalArgumentException =>
-          try {
-            ch.close()
-          } catch {
+          try ch.close()
+          catch {
             case NonFatal(e) => logger.error(e)("Failure occurred while closing channel.")
           }
           throw ex

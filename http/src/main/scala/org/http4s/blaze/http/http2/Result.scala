@@ -12,10 +12,11 @@ private sealed abstract class MaybeError extends Result {
 }
 
 private object MaybeError {
-  def apply(option: Option[Http2Exception]): MaybeError = option match {
-    case None => Continue
-    case Some(ex) => Error(ex)
-  }
+  def apply(option: Option[Http2Exception]): MaybeError =
+    option match {
+      case None => Continue
+      case Some(ex) => Error(ex)
+    }
 }
 
 private case object Continue extends MaybeError
