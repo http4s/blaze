@@ -40,7 +40,7 @@ public final class HttpTokens
             return ch - A + 10;
         }
         else {
-            throw new BadCharacter("Bad hex char: " + (char)ch);
+            throw new BadCharacter("Bad hex char: " + ch);
         }
     }
 
