@@ -16,6 +16,15 @@ lazy val commonSettings = Seq(
       }
     }
   },
+  // blaze_2.13 debuted in 0.14.5
+  mimaVersionCheckExcludedVersions ++= {
+    CrossVersion.binaryScalaVersion(scalaVersion.value) match {
+      case "2.13" =>
+        (0 until 5).map(patch => s"0.14.${patch}").toSet
+      case _ =>
+        Set.empty[String]
+    }
+  }
 )
 
 /* Projects */
