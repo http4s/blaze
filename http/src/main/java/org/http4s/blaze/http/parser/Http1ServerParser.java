@@ -112,6 +112,7 @@ public abstract class Http1ServerParser extends BodyAndHeaderParser {
     /* ------------------------------------------------------------------ */
 
     /** parses the request line. Returns true if completed successfully, false if needs input */
+    @SuppressWarnings("fallthrough")
     protected final boolean parseRequestLine(ByteBuffer in) throws InvalidState, BadMessage {
         lineLoop: while(true) {
             char ch;
@@ -132,7 +133,7 @@ public abstract class Http1ServerParser extends BodyAndHeaderParser {
 
 
                     if (!HttpTokens.isWhiteSpace(ch)) {
-                        String badmethod = method + (char)ch;
+                        String badmethod = method + ch;
                         shutdownParser();
                         throw new BadMessage("Invalid request method: '" + badmethod + "'");
                     }

@@ -150,6 +150,7 @@ public abstract class BodyAndHeaderParser extends ParserBase {
      * @throws BaseExceptions.BadMessage on invalid input
      * @throws BaseExceptions.InvalidState if called when the parser is not ready to accept headers
      */
+    @SuppressWarnings("fallthrough")
     protected final boolean parseHeaders(ByteBuffer in) throws BaseExceptions.BadMessage, BaseExceptions.InvalidState {
 
         headerLoop: while (true) {
@@ -334,6 +335,7 @@ public abstract class BodyAndHeaderParser extends ParserBase {
         }
     }
 
+    @SuppressWarnings("fallthrough")
     private ByteBuffer chunkedContent(ByteBuffer in) throws BaseExceptions.BadMessage, BaseExceptions.InvalidState {
         while(true) {
             char ch;

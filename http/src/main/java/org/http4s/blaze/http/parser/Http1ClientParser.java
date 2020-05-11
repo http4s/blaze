@@ -95,6 +95,7 @@ public abstract class Http1ClientParser extends BodyAndHeaderParser {
     }
 
     /** parses the request line. Returns true if completed successfully, false if needs input */
+    @SuppressWarnings("fallthrough")
     protected final boolean parseResponseLine(ByteBuffer in) throws BaseExceptions.InvalidState, BaseExceptions.BadMessage {
         try {
             lineLoop: while(true) {
@@ -142,7 +143,7 @@ public abstract class Http1ClientParser extends BodyAndHeaderParser {
 
                         if (!HttpTokens.isDigit(ch)) {
                             shutdownParser();
-                            throw new BadMessage("Received invalid token when needed code: '" + (char)ch + "'");
+                            throw new BadMessage("Received invalid token when needed code: '" + ch + "'");
                         }
                         _statusCode = 10*_statusCode + (ch - HttpTokens.ZERO);
                         _requestLineState = RequestLineState.STATUS_CODE;
@@ -167,7 +168,7 @@ public abstract class Http1ClientParser extends BodyAndHeaderParser {
 
                         if (!HttpTokens.isWhiteSpace(ch)) {
                             shutdownParser();
-                            throw new BadMessage("Invalid request: Expected SPACE but found '" + (char)ch + "'");
+                            throw new BadMessage("Invalid request: Expected SPACE but found '" + ch + "'");
                         }
 
                         _requestLineState = RequestLineState.SPACE2;
