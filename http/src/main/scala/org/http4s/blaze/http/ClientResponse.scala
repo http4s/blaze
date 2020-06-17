@@ -56,9 +56,8 @@ object ClientResponse {
 
   private def getCharset(hs: Headers): String =
     hs.collectFirst {
-        case (k, v) if k.equalsIgnoreCase("content-type") =>
-          charsetRegex.findFirstIn(v)
-      }
-      .flatten
+      case (k, v) if k.equalsIgnoreCase("content-type") =>
+        charsetRegex.findFirstIn(v)
+    }.flatten
       .getOrElse("UTF-8")
 }

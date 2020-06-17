@@ -331,7 +331,7 @@ private[nio1] final class NIO1HeadStage(
 
   /** Unsets a channel interest
     *  only to be called by the SelectorLoop thread
-   **/
+    */
   private[this] def unsetOp(op: Int): Unit =
     // assert(Thread.currentThread() == loop,
     //       s"Expected to be called only by SelectorLoop thread, was called by ${Thread.currentThread.getName}")

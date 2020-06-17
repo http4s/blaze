@@ -72,11 +72,10 @@ class ServerParserSpec extends Specification {
 
   def buildHeaderString(hs: Seq[(String, String)]): String =
     hs.foldLeft(new StringBuilder) { (sb, h) =>
-        sb.append(h._1)
-        if (h._2.length > 0) sb.append(": " + h._2)
-        sb.append("\r\n")
-      }
-      .append("\r\n")
+      sb.append(h._1)
+      if (h._2.length > 0) sb.append(": " + h._2)
+      sb.append("\r\n")
+    }.append("\r\n")
       .result
 
   val headers = buildHeaderString(l_headers)
