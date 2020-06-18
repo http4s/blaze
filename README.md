@@ -1,4 +1,4 @@
-blaze [![Build Status](https://travis-ci.org/http4s/blaze.svg?branch=master)](https://travis-ci.org/http4s/blaze) [![Maven Central](https://maven-badges.herokuapp.com/maven-central/org.http4s/blaze-http_2.12/badge.svg)](https://maven-badges.herokuapp.com/maven-central/org.http4s/blaze-http_2.12)
+blaze [![Build Status](https://travis-ci.org/http4s/blaze.svg?branch=main)](https://travis-ci.org/http4s/blaze) [![Maven Central](https://maven-badges.herokuapp.com/maven-central/org.http4s/blaze-http_2.12/badge.svg)](https://maven-badges.herokuapp.com/maven-central/org.http4s/blaze-http_2.12)
 =====
 
 blaze is a Scala library for building asynchronous pipelines, with a focus on network IO. Its main goal is
@@ -68,5 +68,5 @@ Blaze is licensed under the Apache 2 license. See the [LICENSE][license] file in
 
 [http4s]: https://github.com/http4s/http4s
 [jetty]: http://www.eclipse.org/jetty/
-[license]: https://github.com/http4s/http4s/blob/master/LICENSE
+[license]: https://github.com/http4s/http4s/blob/main/LICENSE
 [netty]: http://netty.io/
