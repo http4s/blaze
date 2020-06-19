@@ -10,7 +10,8 @@ import java.util.concurrent.atomic.{AtomicInteger, AtomicLong}
 
 /** Simple connection information monitor
   * This monitor provides only the most basic connection information:
-  * inbound and outbound bytes and live connections */
+  * inbound and outbound bytes and live connections
+  */
 class BasicConnectionMonitor extends ConnectionMonitor {
   private val inboundBytes = new AtomicLong(0)
   private val outboundBytes = new AtomicLong(0)

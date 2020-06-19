@@ -57,7 +57,8 @@ object BufferTools {
     }
 
   /** Join the two buffers into a single ByteBuffer. This method is
-    * guaranteed to return a ByteBuffer, but it may be empty. */
+    * guaranteed to return a ByteBuffer, but it may be empty.
+    */
   def concatBuffers(oldbuff: ByteBuffer, newbuff: ByteBuffer): ByteBuffer =
     if (oldbuff == null)
       if (newbuff == null) emptyBuffer

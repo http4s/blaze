@@ -269,7 +269,8 @@ sealed trait Head[O] extends Stage {
   }
 
   /** Receives inbound commands
-    * Override to capture commands. */
+    * Override to capture commands.
+    */
   override def inboundCommand(cmd: InboundCommand): Unit = {
     super.inboundCommand(cmd)
     sendInboundCommand(cmd)
