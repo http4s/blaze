@@ -215,7 +215,8 @@ private final class NIO1SocketServerGroup private (
   }
 
   /** Create a [[org.http4s.blaze.channel.ServerChannel]] that will serve the
-    * services on the requisite sockets */
+    * services on the requisite sockets
+    */
   override def bind(
       address: InetSocketAddress,
       service: SocketPipelineBuilder
