@@ -194,9 +194,8 @@ class ConnectionImplSpec extends Specification {
         head.consumeOutboundByteBuf() // need to consume the GOAWAY
 
         val w2 = basicStage.channelRead()
-        w2.value must beLike {
-          case Some(Failure(e: Http2StreamException)) =>
-            e.code must_== Http2Exception.REFUSED_STREAM.code
+        w2.value must beLike { case Some(Failure(e: Http2StreamException)) =>
+          e.code must_== Http2Exception.REFUSED_STREAM.code
         }
       }
 
@@ -231,9 +230,8 @@ class ConnectionImplSpec extends Specification {
         val basicStage = new BasicTail[StreamFrame]("")
         LeafBuilder(basicStage).base(stage)
         val f = basicStage.channelWrite(HeadersFrame(Priority.NoPriority, true, Seq.empty))
-        f.value must beLike {
-          case Some(Failure(t: Http2StreamException)) =>
-            t.code must_== Http2Exception.REFUSED_STREAM.code
+        f.value must beLike { case Some(Failure(t: Http2StreamException)) =>
+          t.code must_== Http2Exception.REFUSED_STREAM.code
         }
       }
     }
@@ -281,9 +279,8 @@ class ConnectionImplSpec extends Specification {
         val basicStage = new BasicTail[StreamFrame]("")
         LeafBuilder(basicStage).base(stage)
         val f = basicStage.channelWrite(HeadersFrame(Priority.NoPriority, true, Seq.empty))
-        f.value must beLike {
-          case Some(Failure(t: Http2StreamException)) =>
-            t.code must_== Http2Exception.REFUSED_STREAM.code
+        f.value must beLike { case Some(Failure(t: Http2StreamException)) =>
+          t.code must_== Http2Exception.REFUSED_STREAM.code
         }
       }
     }

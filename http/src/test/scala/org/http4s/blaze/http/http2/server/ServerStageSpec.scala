@@ -51,8 +51,8 @@ class ServerStageSpec extends Specification {
 
       connect()
       head.reads.dequeue().success(DataFrame(false, BufferTools.emptyBuffer))
-      head.error must beLike {
-        case Some(ex: Http2SessionException) => ex.code must_== Http2Exception.PROTOCOL_ERROR.code
+      head.error must beLike { case Some(ex: Http2SessionException) =>
+        ex.code must_== Http2Exception.PROTOCOL_ERROR.code
       }
     }
 

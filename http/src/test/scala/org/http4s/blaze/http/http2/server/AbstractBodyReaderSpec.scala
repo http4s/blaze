@@ -62,9 +62,8 @@ class AbstractBodyReaderSpec extends Specification {
       val reader = new TestBodyReader(2, Seq(DataFrame(false, bytes(1)), DataFrame(true, bytes(2))))
       now(reader()) must_== bytes(1)
       reader.isExhausted must beFalse
-      reader().value must beLike {
-        case Some(Failure(ex: Http2StreamException)) =>
-          ex.code must_== Http2Exception.PROTOCOL_ERROR.code
+      reader().value must beLike { case Some(Failure(ex: Http2StreamException)) =>
+        ex.code must_== Http2Exception.PROTOCOL_ERROR.code
       }
       reader.isExhausted must beTrue
     }
@@ -82,9 +81,8 @@ class AbstractBodyReaderSpec extends Specification {
     "unexpected header frames result in a protocol error" >> {
       val data = Seq(HeadersFrame(Priority.NoPriority, false, Seq.empty))
       val reader = new TestBodyReader(-1, data)
-      reader().value must beLike {
-        case Some(Failure(ex: Http2StreamException)) =>
-          ex.code must_== Http2Exception.PROTOCOL_ERROR.code
+      reader().value must beLike { case Some(Failure(ex: Http2StreamException)) =>
+        ex.code must_== Http2Exception.PROTOCOL_ERROR.code
       }
       reader.isExhausted must beTrue
     }

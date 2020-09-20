@@ -51,12 +51,12 @@ class StreamManagerImplSpec extends Specification {
 
         // Since the streams are closed stream operations should fail
         val hs = HeadersFrame(Priority.NoPriority, false, Seq.empty)
-        s1.writeRequest(hs).value must beLike {
-          case Some(Failure(`ex`)) => ok
+        s1.writeRequest(hs).value must beLike { case Some(Failure(`ex`)) =>
+          ok
         }
 
-        s3.writeRequest(hs).value must beLike {
-          case Some(Failure(`ex`)) => ok
+        s3.writeRequest(hs).value must beLike { case Some(Failure(`ex`)) =>
+          ok
         }
       }
 
@@ -73,8 +73,8 @@ class StreamManagerImplSpec extends Specification {
         val f = tools.streamManager.drain(2, Http2Exception.NO_ERROR.goaway("bye-bye"))
         f.isCompleted must beFalse
 
-        f4.value must beLike {
-          case Some(Failure(ex: Http2Exception)) => ex.code must_== REFUSED_STREAM.code
+        f4.value must beLike { case Some(Failure(ex: Http2Exception)) =>
+          ex.code must_== REFUSED_STREAM.code
         }
 
         tools.streamManager.streamClosed(os2)
@@ -88,15 +88,15 @@ class StreamManagerImplSpec extends Specification {
         val Right(_) = tools.streamManager.newInboundStream(1)
         tools.streamManager.drain(1, Http2Exception.NO_ERROR.goaway("bye-bye"))
 
-        tools.streamManager.newInboundStream(3) must beLike {
-          case Left(ex: Http2StreamException) => ex.code must_== REFUSED_STREAM.code
+        tools.streamManager.newInboundStream(3) must beLike { case Left(ex: Http2StreamException) =>
+          ex.code must_== REFUSED_STREAM.code
         }
 
         tools.streamManager
           .newOutboundStream()
           .writeRequest(HeadersFrame(Priority.NoPriority, false, Seq.empty))
-          .value must beLike {
-          case Some(Failure(ex: Http2StreamException)) => ex.code must_== REFUSED_STREAM.code
+          .value must beLike { case Some(Failure(ex: Http2StreamException)) =>
+          ex.code must_== REFUSED_STREAM.code
         }
       }
     }
@@ -143,15 +143,15 @@ class StreamManagerImplSpec extends Specification {
         val Right(s) = tools.streamManager.newInboundStream(1) // should work
 
         // Too many streams!
-        tools.streamManager.newInboundStream(3) must beLike {
-          case Left(ex: Http2StreamException) => ex.code must_== REFUSED_STREAM.code
+        tools.streamManager.newInboundStream(3) must beLike { case Left(ex: Http2StreamException) =>
+          ex.code must_== REFUSED_STREAM.code
         }
 
         s.doCloseWithError(None)
 
         // Now we can make a new stream
-        tools.streamManager.newInboundStream(5) must beLike {
-          case Right(_) => ok
+        tools.streamManager.newInboundStream(5) must beLike { case Right(_) =>
+          ok
         }
       }
 
@@ -205,8 +205,8 @@ class StreamManagerImplSpec extends Specification {
 
         "results in GOAWAY(PROTOCOL_ERROR) for update on idle stream" in {
           new MockTools(isClient = true).streamManager
-            .flowWindowUpdate(1, 1) must beLike {
-            case Error(ex: Http2SessionException) => ex.code must_== PROTOCOL_ERROR.code
+            .flowWindowUpdate(1, 1) must beLike { case Error(ex: Http2SessionException) =>
+            ex.code must_== PROTOCOL_ERROR.code
           }
         }
       }
@@ -275,10 +275,9 @@ class StreamManagerImplSpec extends Specification {
       tools.streamManager.handlePushPromise(
         streamId = 1,
         promisedId = 2,
-        headers = Seq.empty) must beLike {
-        case Error(ex: Http2StreamException) =>
-          ex.code must_== REFUSED_STREAM.code
-          ex.stream must_== 2
+        headers = Seq.empty) must beLike { case Error(ex: Http2StreamException) =>
+        ex.code must_== REFUSED_STREAM.code
+        ex.stream must_== 2
       }
     }
 

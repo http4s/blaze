@@ -270,8 +270,8 @@ class StreamStateImplSpec extends Specification {
 
       streamState.invokeInboundHeaders(Priority.NoPriority, false, hs) must_== Continue
 
-      f1.value must beLike {
-        case Some(Success(HeadersFrame(Priority.NoPriority, false, hss))) => hss must_== hs
+      f1.value must beLike { case Some(Success(HeadersFrame(Priority.NoPriority, false, hss))) =>
+        hss must_== hs
       }
     }
 
@@ -284,8 +284,8 @@ class StreamStateImplSpec extends Specification {
 
       streamState.invokeInboundData(false, BufferTools.allocate(1), 1) must_== Continue
 
-      f1.value must beLike {
-        case Some(Success(DataFrame(false, data))) => data.remaining must_== 1
+      f1.value must beLike { case Some(Success(DataFrame(false, data))) =>
+        data.remaining must_== 1
       }
     }
   }

@@ -115,8 +115,8 @@ class SessionFlowControlSpec extends Specification {
     // https://tools.ietf.org/html/rfc7540#section-6.9
     "session outbound deposits of 0 throw Http2Exception with flag FLOW_CONTROL" in {
       val flow = flowControl()
-      (flow.sessionOutboundAcked(0) must be).like {
-        case Some(Http2SessionException(code, _)) => code must_== Http2Exception.PROTOCOL_ERROR.code
+      (flow.sessionOutboundAcked(0) must be).like { case Some(Http2SessionException(code, _)) =>
+        code must_== Http2Exception.PROTOCOL_ERROR.code
       }
     }
 
@@ -244,8 +244,8 @@ class SessionFlowControlSpec extends Specification {
     "outbound deposits of 0 throw Http2Exception with flag FLOW_CONTROL" in {
       val flow = flowControl().newStreamFlowWindow(1)
 
-      (flow.streamOutboundAcked(0) must be).like {
-        case Some(Http2SessionException(code, _)) => code must_== Http2Exception.PROTOCOL_ERROR.code
+      (flow.streamOutboundAcked(0) must be).like { case Some(Http2SessionException(code, _)) =>
+        code must_== Http2Exception.PROTOCOL_ERROR.code
       }
     }
 

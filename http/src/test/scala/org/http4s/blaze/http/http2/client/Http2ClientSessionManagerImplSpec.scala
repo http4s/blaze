@@ -93,8 +93,8 @@ class Http2ClientSessionManagerImplSpec extends Specification {
         }
 
       // if we get the marker it's because we tried to make a new session
-      manager.acquireSession(req).value must beLike {
-        case Some(Failure(ex)) => ex must_== markerEx
+      manager.acquireSession(req).value must beLike { case Some(Failure(ex)) =>
+        ex must_== markerEx
       }
 
       bad.closed must beTrue
@@ -103,8 +103,8 @@ class Http2ClientSessionManagerImplSpec extends Specification {
     "reject http urls" in {
       val manager = managerWithSession(null) // not not important
       val fSession = manager.acquireSession(req.copy(url = "http://www.foo.com/bar"))
-      fSession.value must beLike {
-        case Some(Failure(_: IllegalArgumentException)) => ok
+      fSession.value must beLike { case Some(Failure(_: IllegalArgumentException)) =>
+        ok
       }
     }
   }

@@ -148,8 +148,8 @@ private[http2] object FrameSerializer {
     val flags = if (ack) Flags.ACK.toInt else 0x0
 
     writeFrameHeader(payloadSize, FrameTypes.SETTINGS, flags.toByte, 0, buffer)
-    settings.foreach {
-      case Setting(k, v) => buffer.putShort(k.toShort).putInt(v.toInt)
+    settings.foreach { case Setting(k, v) =>
+      buffer.putShort(k.toShort).putInt(v.toInt)
     }
 
     buffer.flip()

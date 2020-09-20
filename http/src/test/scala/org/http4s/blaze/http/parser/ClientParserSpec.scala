@@ -22,11 +22,10 @@ class ClientParserSpec extends Specification {
     ("Some-Header", "") :: Nil
 
   val l_headersstr = l_headers
-    .map {
-      case (a, b) =>
-        a + (if (b.length > 0)
-               ": " + b
-             else "")
+    .map { case (a, b) =>
+      a + (if (b.length > 0)
+             ": " + b
+           else "")
     }
     .mkString("\r\n") + "\r\n\r\n"
 
@@ -155,7 +154,7 @@ class ClientParserSpec extends Specification {
 
     "throw invalid state if trying to parse the response line more than once" in {
       val p = new TestParser
-      p.parseResponse(wrap(resp.getBytes(ISO_8859_1))) should_== (true)
+      p.parseResponse(wrap(resp.getBytes(ISO_8859_1))) should_== true
 
       p.parseResponse(wrap(resp.getBytes(ISO_8859_1))) should throwA[InvalidState]
     }
@@ -167,14 +166,14 @@ class ClientParserSpec extends Specification {
       //println(msg.replace("\r\n", "\\r\\n\r\n"))
 
       val bts = wrap(msg.getBytes(ISO_8859_1))
-      p.parseResponse(bts) should_== (true)
-      p.responseLineComplete() should_== (true)
+      p.parseResponse(bts) should_== true
+      p.responseLineComplete() should_== true
 
-      p.parseheaders(bts) should_== (true)
-      p.headersComplete() should_== (true)
+      p.parseheaders(bts) should_== true
+      p.headersComplete() should_== true
 
       val stripedh = l_headers.map { case (a, b) => (a.trim, b.trim) }
-      p.headers.foldLeft(true)((a, b) => a && stripedh.contains(b)) should_== (true)
+      p.headers.foldLeft(true)((a, b) => a && stripedh.contains(b)) should_== true
     }
 
     "Parse a body with defined length" in {
@@ -185,15 +184,15 @@ class ClientParserSpec extends Specification {
 
       val bts = wrap(full.getBytes(ISO_8859_1))
 
-      p.parseResponse(bts) should_== (true)
-      p.parseheaders(bts) should_== (true)
+      p.parseResponse(bts) should_== true
+      p.parseheaders(bts) should_== true
 
-      p.contentComplete() should_== (false)
+      p.contentComplete() should_== false
 
       val out = p.parsebody(bts)
       out.remaining() should_== (body.length)
 
-      ISO_8859_1.decode(out).toString should_== (body)
+      ISO_8859_1.decode(out).toString should_== body
     }
 
     "Parse a chunked body" in {
@@ -206,19 +205,19 @@ class ClientParserSpec extends Specification {
 
       val bts = wrap(full.getBytes(ISO_8859_1))
 
-      p.parseResponse(bts) should_== (true)
-      p.parseheaders(bts) should_== (true)
+      p.parseResponse(bts) should_== true
+      p.parseheaders(bts) should_== true
 
-      p.contentComplete() should_== (false)
+      p.contentComplete() should_== false
 
       val out = p.parsebody(bts)
       out.remaining() should_== (body.length)
 
-      p.contentComplete() should_== (false)
-      p.parsebody(bts).remaining() should_== (0)
-      p.contentComplete() should_== (true)
+      p.contentComplete() should_== false
+      p.parsebody(bts).remaining() should_== 0
+      p.contentComplete() should_== true
 
-      ISO_8859_1.decode(out).toString should_== (body)
+      ISO_8859_1.decode(out).toString should_== body
     }
 
     "Parse a body with without Content-Length or Transfer-Encoding" in {
@@ -227,17 +226,17 @@ class ClientParserSpec extends Specification {
 
       val bts = wrap(full.getBytes(ISO_8859_1))
 
-      p.parseResponse(bts) should_== (true)
-      p.parseheaders(bts) should_== (true)
+      p.parseResponse(bts) should_== true
+      p.parseheaders(bts) should_== true
 
-      p.contentComplete() should_== (false)
+      p.contentComplete() should_== false
 
       val out = p.parsebody(bts)
       out.remaining() should_== (body.length)
 
-      p.contentComplete() should_== (false)
+      p.contentComplete() should_== false
 
-      ISO_8859_1.decode(out).toString should_== (body)
+      ISO_8859_1.decode(out).toString should_== body
     }
 
     "Parse a body with a Content-Length and `Transfer-Encoding: identity` header" in {
@@ -245,17 +244,17 @@ class ClientParserSpec extends Specification {
       val full = resp + content_length + "Transfer-Encoding: identity\r\n" + l_headersstr + body
       val bts = wrap(full.getBytes(ISO_8859_1))
 
-      p.parseResponse(bts) should_== (true)
-      p.parseheaders(bts) should_== (true)
+      p.parseResponse(bts) should_== true
+      p.parseheaders(bts) should_== true
 
-      p.contentComplete() should_== (false)
+      p.contentComplete() should_== false
 
       val out = p.parsebody(bts)
       out.remaining() should_== (body.length)
 
-      p.contentComplete() should_== (true)
+      p.contentComplete() should_== true
 
-      ISO_8859_1.decode(out).toString should_== (body)
+      ISO_8859_1.decode(out).toString should_== body
     }
   }
 }

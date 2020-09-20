@@ -51,9 +51,8 @@ abstract class H2ClientExample(count: Int, timeout: Duration) {
     val resps = Await.result(Future.sequence(repeatCall(count)), timeout)
     val duration = System.currentTimeMillis - start
 
-    val length = resps.foldLeft(0) {
-      case (acc, (_, len)) =>
-        acc + len
+    val length = resps.foldLeft(0) { case (acc, (_, len)) =>
+      acc + len
     }
 
     println(s"The total body length of ${resps.length} messages: $length. Took $duration millis")

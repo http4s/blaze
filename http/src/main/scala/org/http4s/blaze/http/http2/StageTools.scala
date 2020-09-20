@@ -20,11 +20,10 @@ private[http2] object StageTools {
     * https://tools.ietf.org/html/rfc7540#section-8.1.2
     */
   def copyHeaders[F](source: Iterable[(String, String)], dest: Builder[(String, String), F]): Unit =
-    source.foreach {
-      case p @ (k, v) =>
-        val lowerKey = k.toLowerCase(Locale.ENGLISH)
-        if (lowerKey eq k) dest += p // don't need to make a new Tuple2
-        else dest += lowerKey -> v
+    source.foreach { case p @ (k, v) =>
+      val lowerKey = k.toLowerCase(Locale.ENGLISH)
+      if (lowerKey eq k) dest += p // don't need to make a new Tuple2
+      else dest += lowerKey -> v
     }
 
   /** Copy HTTP headers from `source` to dest
@@ -33,10 +32,9 @@ private[http2] object StageTools {
     * https://tools.ietf.org/html/rfc7540#section-8.1.2
     */
   def copyHeaders(source: Iterable[(String, String)], dest: ArrayBuffer[(String, String)]): Unit =
-    source.foreach {
-      case p @ (k, v) =>
-        val lowerKey = k.toLowerCase(Locale.ENGLISH)
-        if (lowerKey eq k) dest += p // don't need to make a new Tuple2
-        else dest += lowerKey -> v
+    source.foreach { case p @ (k, v) =>
+      val lowerKey = k.toLowerCase(Locale.ENGLISH)
+      if (lowerKey eq k) dest += p // don't need to make a new Tuple2
+      else dest += lowerKey -> v
     }
 }

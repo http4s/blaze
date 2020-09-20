@@ -31,10 +31,9 @@ private[http2] class MockHeadStage[T] extends HeadStage[T] {
     val writePairs = writes.toList
     writes.clear()
 
-    writePairs.map {
-      case (b, p) =>
-        p.success(())
-        b
+    writePairs.map { case (b, p) =>
+      p.success(())
+      b
     }
   }
 

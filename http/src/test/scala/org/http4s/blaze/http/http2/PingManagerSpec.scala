@@ -27,8 +27,8 @@ class PingManagerSpec extends Specification {
       val ProtocolFrame.Ping(false, pingData1) = ProtocolFrameDecoder.decode(buffer1)
       tools.pingManager.pingAckReceived(pingData1)
 
-      f1.value must beLike {
-        case Some(Success(_)) => ok
+      f1.value must beLike { case Some(Success(_)) =>
+        ok
       }
 
       // Send another one
@@ -38,8 +38,8 @@ class PingManagerSpec extends Specification {
       val ProtocolFrame.Ping(false, pingData2) = ProtocolFrameDecoder.decode(buffer2)
       tools.pingManager.pingAckReceived(pingData2)
 
-      f2.value must beLike {
-        case Some(Success(_)) => ok
+      f2.value must beLike { case Some(Success(_)) =>
+        ok
       }
     }
 
@@ -52,8 +52,8 @@ class PingManagerSpec extends Specification {
       // Send another one that will fail
       val f2 = tools.pingManager.ping()
 
-      f2.value must beLike {
-        case Some(Failure(_)) => ok
+      f2.value must beLike { case Some(Failure(_)) =>
+        ok
       }
 
       // make the first one complete
@@ -63,8 +63,8 @@ class PingManagerSpec extends Specification {
       val ProtocolFrame.Ping(false, pingData) = ProtocolFrameDecoder.decode(buffer1)
       tools.pingManager.pingAckReceived(pingData)
 
-      f1.value must beLike {
-        case Some(Success(_)) => ok
+      f1.value must beLike { case Some(Success(_)) =>
+        ok
       }
     }
 
@@ -76,8 +76,8 @@ class PingManagerSpec extends Specification {
       }
 
       // ping should fail
-      tools.pingManager.ping().value must beLike {
-        case Some(Failure(_)) => ok
+      tools.pingManager.ping().value must beLike { case Some(Failure(_)) =>
+        ok
       }
     }
 
@@ -90,8 +90,8 @@ class PingManagerSpec extends Specification {
       f.isCompleted must beFalse
       tools.pingManager.close()
 
-      tools.pingManager.ping().value must beLike {
-        case Some(Failure(_)) => ok
+      tools.pingManager.ping().value must beLike { case Some(Failure(_)) =>
+        ok
       }
     }
   }
