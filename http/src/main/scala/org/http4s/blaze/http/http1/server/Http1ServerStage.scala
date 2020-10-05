@@ -67,8 +67,8 @@ class Http1ServerStage(service: HttpService, config: HttpServerStageConfig)
     Execution
       .withTimeout(config.requestPreludeTimeout, TryRequestTimeoutExec)(codec.getRequest())
       .flatMap(checkCloseService)(config.serviceExecutor)
-      .recover {
-        case RequestTimeoutException => newRequestTimeoutResponse()
+      .recover { case RequestTimeoutException =>
+        newRequestTimeoutResponse()
       } // handle request timeouts
       .onComplete {
         case Success((resp, requireClose)) =>
@@ -99,8 +99,8 @@ class Http1ServerStage(service: HttpService, config: HttpServerStageConfig)
 
   // Determine if this request requires the connection be closed
   private def requestRequiresClose(request: HttpRequest): Boolean = {
-    val connHeader = request.headers.find {
-      case (k, _) => k.equalsIgnoreCase(HeaderNames.Connection)
+    val connHeader = request.headers.find { case (k, _) =>
+      k.equalsIgnoreCase(HeaderNames.Connection)
     }
     if (request.minorVersion == 0)
       connHeader match {

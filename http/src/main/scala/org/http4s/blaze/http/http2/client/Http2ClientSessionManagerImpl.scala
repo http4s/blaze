@@ -62,10 +62,9 @@ private[http] class Http2ClientSessionManagerImpl(
                   if (s.status == Ready) session
                   else makeAndStoreSession(composition)
                 }(Execution.trampoline)
-                .recoverWith {
-                  case err =>
-                    logger.info(err)(s"Found bad session. Replacing.")
-                    makeAndStoreSession(composition)
+                .recoverWith { case err =>
+                  logger.info(err)(s"Found bad session. Replacing.")
+                  makeAndStoreSession(composition)
                 }(Execution.trampoline)
 
             case None =>

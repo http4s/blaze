@@ -14,9 +14,8 @@ import org.specs2.mutable.Specification
 class HeaderDecoderSpec extends Specification {
   private val testHeaders = Seq("foo" -> "bar")
 
-  private val headersBlockSize = testHeaders.foldLeft(0) {
-    case (acc, (k, v)) =>
-      acc + 32 + k.length + v.length
+  private val headersBlockSize = testHeaders.foldLeft(0) { case (acc, (k, v)) =>
+    acc + 32 + k.length + v.length
   }
 
   "HeaderDecoder" should {

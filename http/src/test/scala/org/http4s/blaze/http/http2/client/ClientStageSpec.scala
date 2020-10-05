@@ -150,8 +150,8 @@ class ClientStageSpec extends Specification {
       writeP.failure(Command.EOF)
 
       head.disconnected must beTrue
-      cs.result.value must beLike {
-        case Some(Failure(Command.EOF)) => ok
+      cs.result.value must beLike { case Some(Failure(Command.EOF)) =>
+        ok
       }
     }
 
@@ -165,8 +165,8 @@ class ClientStageSpec extends Specification {
       head.reads.dequeue().failure(Command.EOF)
 
       head.disconnected must beTrue
-      cs.result.value must beLike {
-        case Some(Failure(Command.EOF)) => ok
+      cs.result.value must beLike { case Some(Failure(Command.EOF)) =>
+        ok
       }
     }
   }

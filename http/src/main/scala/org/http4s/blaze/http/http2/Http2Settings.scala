@@ -198,10 +198,9 @@ private[blaze] final class MutableHttp2Settings private (
   def updateSettings(newSettings: Seq[Setting]): Option[Http2Exception] = {
     import Http2Settings._
 
-    val invalidSettingError = newSettings.collectFirst {
-      case i @ InvalidSetting(ex) =>
-        logger.info(ex)(s"Received invalid setting $i")
-        ex
+    val invalidSettingError = newSettings.collectFirst { case i @ InvalidSetting(ex) =>
+      logger.info(ex)(s"Received invalid setting $i")
+      ex
     }
 
     // If we didn't detect an invalid setting we can update ourselves

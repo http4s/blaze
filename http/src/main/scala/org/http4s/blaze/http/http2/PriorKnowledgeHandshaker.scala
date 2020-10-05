@@ -39,9 +39,8 @@ abstract class PriorKnowledgeHandshaker[T](localSettings: ImmutableHttp2Settings
     logger.debug("Beginning handshake.")
     handlePreface()
       .flatMap(handleSettings)
-      .flatMap {
-        case (settings, acc) =>
-          handshakeComplete(settings, acc)
+      .flatMap { case (settings, acc) =>
+        handshakeComplete(settings, acc)
       }
   }
 

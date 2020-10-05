@@ -39,10 +39,9 @@ class Http1ClientStageSpec extends Specification {
     }
 
     def consumeWrite(): Option[String] =
-      pendingWrite().map {
-        case Write(d, p) =>
-          p.trySuccess(())
-          StandardCharsets.US_ASCII.decode(d).toString
+      pendingWrite().map { case Write(d, p) =>
+        p.trySuccess(())
+        StandardCharsets.US_ASCII.decode(d).toString
       }
 
     def offerInbound(b: ByteBuffer): Unit = {

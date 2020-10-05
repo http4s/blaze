@@ -60,13 +60,12 @@ private[http] final class ServerStage(
     }(Execution.directec)
 
   private[this] def getBodyReader(hs: Headers): Unit = {
-    val length: Option[Try[Long]] = hs.collectFirst {
-      case (HeaderNames.ContentLength, v) =>
-        try Success(java.lang.Long.valueOf(v))
-        catch {
-          case _: NumberFormatException =>
-            Failure(PROTOCOL_ERROR.rst(streamId, s"Invalid content-length: $v."))
-        }
+    val length: Option[Try[Long]] = hs.collectFirst { case (HeaderNames.ContentLength, v) =>
+      try Success(java.lang.Long.valueOf(v))
+      catch {
+        case _: NumberFormatException =>
+          Failure(PROTOCOL_ERROR.rst(streamId, s"Invalid content-length: $v."))
+      }
     }
 
     length match {
