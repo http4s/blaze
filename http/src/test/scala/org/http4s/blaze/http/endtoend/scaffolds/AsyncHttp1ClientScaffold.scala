@@ -43,9 +43,8 @@ private[endtoend] final class AsyncHttp1ClientScaffold(timeout: Duration)
     val requestBuilder = new RequestBuilder()
     requestBuilder.setUrl(request.url)
     requestBuilder.setMethod(request.method)
-    request.headers.foreach {
-      case (k, v) =>
-        requestBuilder.setHeader(k, v)
+    request.headers.foreach { case (k, v) =>
+      requestBuilder.setHeader(k, v)
     }
 
     requestBuilder.setBody(body)

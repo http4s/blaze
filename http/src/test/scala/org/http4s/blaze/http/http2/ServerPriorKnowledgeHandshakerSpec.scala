@@ -46,8 +46,8 @@ class ServerPriorKnowledgeHandshakerSpec extends Specification {
         case ProtocolFrame.Settings(None) => ok // should have sent an ack
       }
 
-      serverSession.value must beLike {
-        case Some(Success(_)) => ok
+      serverSession.value must beLike { case Some(Success(_)) =>
+        ok
       }
     }
 
@@ -93,9 +93,8 @@ class ServerPriorKnowledgeHandshakerSpec extends Specification {
           cause.code must_== Http2Exception.FRAME_SIZE_ERROR.code
       }
 
-      serverSession.value must beLike {
-        case Some(Failure(ex: Http2Exception)) =>
-          ex.code must_== Http2Exception.FRAME_SIZE_ERROR.code
+      serverSession.value must beLike { case Some(Failure(ex: Http2Exception)) =>
+        ex.code must_== Http2Exception.FRAME_SIZE_ERROR.code
       }
 
       head.disconnected must beTrue
@@ -121,8 +120,8 @@ class ServerPriorKnowledgeHandshakerSpec extends Specification {
         case ProtocolFrame.GoAway(0, cause) => cause.code must_== Http2Exception.PROTOCOL_ERROR.code
       }
 
-      serverSession.value must beLike {
-        case Some(Failure(ex: Http2Exception)) => ex.code must_== Http2Exception.PROTOCOL_ERROR.code
+      serverSession.value must beLike { case Some(Failure(ex: Http2Exception)) =>
+        ex.code must_== Http2Exception.PROTOCOL_ERROR.code
       }
 
       head.disconnected must beTrue

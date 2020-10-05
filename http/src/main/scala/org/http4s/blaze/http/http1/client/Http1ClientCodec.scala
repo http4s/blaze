@@ -148,19 +148,18 @@ private object Http1ClientCodec {
     var hasContentLength: Boolean = false
     var hasChunkedEncoding: Boolean = false
 
-    hs.foreach {
-      case (k, v) =>
-        if (requireHost && !hasHostHeader && k.equalsIgnoreCase("Host"))
-          hasHostHeader = true
-        if (hasBody && !hasContentLength && k.equalsIgnoreCase("Content-Length"))
-          hasContentLength = true
-        if (hasBody && !hasChunkedEncoding &&
-          k.equalsIgnoreCase("Transfer-Encoding") && v == "chunked")
-          hasChunkedEncoding = true
-        sb.append(k)
-          .append(':')
-          .append(v)
-          .append("\r\n")
+    hs.foreach { case (k, v) =>
+      if (requireHost && !hasHostHeader && k.equalsIgnoreCase("Host"))
+        hasHostHeader = true
+      if (hasBody && !hasContentLength && k.equalsIgnoreCase("Content-Length"))
+        hasContentLength = true
+      if (hasBody && !hasChunkedEncoding &&
+        k.equalsIgnoreCase("Transfer-Encoding") && v == "chunked")
+        hasChunkedEncoding = true
+      sb.append(k)
+        .append(':')
+        .append(v)
+        .append("\r\n")
     }
 
     if (requireHost && !hasHostHeader)

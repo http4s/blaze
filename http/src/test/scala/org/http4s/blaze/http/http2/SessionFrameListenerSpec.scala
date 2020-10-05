@@ -95,8 +95,8 @@ class SessionFrameListenerSpec extends Specification {
         tools.frameListener.onCompletePushPromiseFrame(
           os.streamId,
           os.streamId + 1,
-          hs) must beLike {
-          case Error(ex: Http2SessionException) => ex.code must_== PROTOCOL_ERROR.code
+          hs) must beLike { case Error(ex: Http2SessionException) =>
+          ex.code must_== PROTOCOL_ERROR.code
         }
       }
 
@@ -135,8 +135,8 @@ class SessionFrameListenerSpec extends Specification {
         val data = BufferTools.allocate(4)
         tools.frameListener.onDataFrame(os.streamId, true, data, 4) must_== Continue
 
-        os.readRequest(1).value must beLike {
-          case Some(Success(DataFrame(true, d))) => d must_== data
+        os.readRequest(1).value must beLike { case Some(Success(DataFrame(true, d))) =>
+          d must_== data
         }
       }
 
@@ -196,10 +196,9 @@ class SessionFrameListenerSpec extends Specification {
         }
 
         tools.frameListener.onRstStreamFrame(1, STREAM_CLOSED.code) must_== Continue
-        tools.observedCause must beLike {
-          case Some(ex) =>
-            ex.stream must_== 1
-            ex.code must_== STREAM_CLOSED.code
+        tools.observedCause must beLike { case Some(ex) =>
+          ex.stream must_== 1
+          ex.code must_== STREAM_CLOSED.code
         }
       }
     }
@@ -217,8 +216,8 @@ class SessionFrameListenerSpec extends Specification {
         }
 
         tools.frameListener.onWindowUpdateFrame(1, 2) must_== Continue
-        tools.observedIncrement must beLike {
-          case Some((1, 2)) => ok
+        tools.observedIncrement must beLike { case Some((1, 2)) =>
+          ok
         }
       }
     }

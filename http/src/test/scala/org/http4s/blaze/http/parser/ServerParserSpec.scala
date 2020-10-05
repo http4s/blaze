@@ -109,21 +109,21 @@ class ServerParserSpec extends Specification {
     }
 
     "Parse the request line for HTTP" in {
-      new Parser().parseLine("POST /enlighten/calais.asmx HTTP/1.1\r\n") should_== (true)
+      new Parser().parseLine("POST /enlighten/calais.asmx HTTP/1.1\r\n") should_== true
 
-      new Parser().parseLine("POST /enlighten/calais.asmx HTTP/1.1\n") should_== (true)
+      new Parser().parseLine("POST /enlighten/calais.asmx HTTP/1.1\n") should_== true
     }
 
     "Parse the request line for HTTP in segments" in {
       val p = new Parser()
-      p.parseLine("POST /enlighten/cala") should_== (false)
-      p.parseLine("is.asmx HTTP/1.1\r\n") should_== (true)
+      p.parseLine("POST /enlighten/cala") should_== false
+      p.parseLine("is.asmx HTTP/1.1\r\n") should_== true
     }
 
     "Parse the request line for HTTPS" in {
       val p = new Parser()
-      p.parseLine("POST /enlighten/calais.asmx HTTPS/1.1\r\n") should_== (true)
-      p.minorv should_== (1)
+      p.parseLine("POST /enlighten/calais.asmx HTTPS/1.1\r\n") should_== true
+      p.minorv should_== 1
     }
 
     "Give bad request on invalid request line" in {
@@ -164,7 +164,7 @@ class ServerParserSpec extends Specification {
     "Match Http1.0 requests" in {
       val p = new Parser()
       p.parseLine("POST /enlighten/calais.asmx HTTPS/1.0\r\n")
-      p.minorv should_== (0)
+      p.minorv should_== 0
     }
 
     "throw an invalid state if the request line is already parsed" in {
@@ -178,7 +178,7 @@ class ServerParserSpec extends Specification {
       val p = new Parser()
       val line = "GET /enlighten/calais.asmx HTTPS/1.0\r\n"
       p.parseLine(line)
-      p.parseheaders(headers) should_== (true)
+      p.parseheaders(headers) should_== true
       p.getContentType should_== (EndOfContent.END)
       p.h.result should_== (l_headers.map { case (a, b) => (a.trim, b.trim) })
     }
@@ -214,15 +214,15 @@ class ServerParserSpec extends Specification {
       val hsStr =
         "If-Modified-Since\r\nIf-Modified-Since:\r\nIf-Modified-Since: \r\nIf-Modified-Since:\t\r\n\r\n"
       val p = new Parser()
-      p.parseheaders(hsStr) should_== (true)
+      p.parseheaders(hsStr) should_== true
       p.getContentType should_== (EndOfContent.END) // since the headers didn't indicate any content
       p.h.result should_== List.fill(4)(("If-Modified-Since", ""))
     }
 
     "need input on partial headers" in {
       val p = new Parser()
-      p.parseHeaders(headers.substring(0, 20)) should_== (false)
-      p.parseheaders(headers.substring(20)) should_== (true)
+      p.parseHeaders(headers.substring(0, 20)) should_== false
+      p.parseheaders(headers.substring(20)) should_== true
       p.h.result should_== (l_headers.map { case (a, b) => (a.trim, b.trim) })
     }
 
@@ -230,18 +230,18 @@ class ServerParserSpec extends Specification {
       val p = new Parser()
       val b = strToBuffer(mockFiniteLength)
 
-      p.parseLine(b) should_== (true)
+      p.parseLine(b) should_== true
 
-      p.parseheaders(b) should_== (true)
+      p.parseheaders(b) should_== true
 
-      p.sb.result() should_== ("")
+      p.sb.result() should_== ""
 
-      p.parsecontent(b) should_!= (null)
-      p.sb.result() should_== (body)
-      p.contentComplete() should_== (true)
+      p.parsecontent(b) should_!= null
+      p.sb.result() should_== body
+      p.contentComplete() should_== true
 
       p.reset()
-      p.requestLineComplete() should_== (false)
+      p.requestLineComplete() should_== false
     }
 
     "Parse a full request in fragments" in {
@@ -261,25 +261,25 @@ class ServerParserSpec extends Specification {
       while (!p.contentComplete())
         if (null == p.parsecontent(b)) b.limit(b.limit() + 1)
 
-      p.sb.result() should_== (body)
+      p.sb.result() should_== body
 
       p.reset()
-      p.requestLineComplete() should_== (false)
+      p.requestLineComplete() should_== false
     }
 
     "Parse a chunked request" in {
       val p = new Parser()
       val b = strToBuffer(mockChunked)
 
-      p.parseLine(b) should_== (true)
+      p.parseLine(b) should_== true
 
-      p.parseheaders(b) should_== (true)
-      p.sb.result() should_== ("")
+      p.parseheaders(b) should_== true
+      p.sb.result() should_== ""
 
-      p.parsecontent(b) should_!= (null)
-      p.parsecontent(b) should_!= (null)
+      p.parsecontent(b) should_!= null
+      p.parsecontent(b) should_!= null
       // two real messages
-      p.parsecontent(b).remaining() should_== (0)
+      p.parsecontent(b).remaining() should_== 0
       p.sb.result() should_== (body + body + " again!")
 
       p.reset()
@@ -293,16 +293,16 @@ class ServerParserSpec extends Specification {
 
       println(mockChunked)
 
-      p.parseLine(b) should_== (true)
+      p.parseLine(b) should_== true
 
-      p.parseheaders(b) should_== (true)
-      p.sb.result() should_== ("")
+      p.parseheaders(b) should_== true
+      p.sb.result() should_== ""
       p.h.clear()
 
-      p.parsecontent(b) should_!= (null)
-      p.parsecontent(b) should_!= (null)
+      p.parsecontent(b) should_!= null
+      p.parsecontent(b) should_!= null
       // two real messages
-      p.parsecontent(b).remaining() should_== (0)
+      p.parsecontent(b).remaining() should_== 0
       p.h.result should_== (("Foo", "") :: Nil)
       p.sb.result() should_== (body + body + " again!")
 
@@ -326,14 +326,14 @@ class ServerParserSpec extends Specification {
       while (!p.headersComplete() && !p.parseheaders(b))
         b.limit(b.limit() + 1)
 
-      p.contentComplete() should_== (false)
+      p.contentComplete() should_== false
 
       while (!p.contentComplete()) {
         p.parsecontent(b)
         if (b.limit() < blim) b.limit(b.limit() + 1)
       }
 
-      p.contentComplete() should_== (true)
+      p.contentComplete() should_== true
       p.sb.result() should_== (body + body + " again!")
     }
 
@@ -356,14 +356,14 @@ class ServerParserSpec extends Specification {
 
       p.h.clear
 
-      p.contentComplete() should_== (false)
+      p.contentComplete() should_== false
 
       while (!p.contentComplete()) {
         p.parsecontent(b)
         if (b.limit() < blim) b.limit(b.limit() + 1)
       }
       p.h.result should_== (("Foo", "") :: Nil)
-      p.contentComplete() should_== (true)
+      p.contentComplete() should_== true
       p.sb.result() should_== (body + body + " again!")
     }
 
