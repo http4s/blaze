@@ -21,8 +21,7 @@ import scala.concurrent.{Future, Promise}
 import scala.util.{Failure, Success, Try}
 import scala.util.control.NonFatal
 
-/**
-  * Parses messages from the pipeline.
+/** Parses messages from the pipeline.
   *
   * This construct does not concern itself with the lifecycle of the
   * provided pipeline: it does not close it or send commands. It will

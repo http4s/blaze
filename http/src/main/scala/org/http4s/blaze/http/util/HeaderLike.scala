@@ -6,8 +6,7 @@
 
 package org.http4s.blaze.http.util
 
-/**
-  * Operations that are useful for packing and unpacking header representations
+/** Operations that are useful for packing and unpacking header representations
   */
 trait HeaderLike[T] {
   def make(key: String, value: String): T

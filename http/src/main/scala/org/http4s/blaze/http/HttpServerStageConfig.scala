@@ -11,8 +11,7 @@ import org.http4s.blaze.util.Execution
 import scala.concurrent.ExecutionContext
 import scala.concurrent.duration.Duration
 
-/**
-  * General configuration options for http servers
+/** General configuration options for http servers
   *
   * TODO: what about things like listening address and port?
   */
