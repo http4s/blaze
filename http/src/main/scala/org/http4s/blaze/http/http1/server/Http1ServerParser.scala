@@ -73,8 +73,7 @@ private[blaze] final class BlazeServerParser[Header](maxNonBody: Int)(implicit
     else if (!headersComplete() && !parseHeaders(buffer)) false
     else true
 
-  /**
-    * Parses the body of a message. The result will never be `null`
+  /** Parses the body of a message. The result will never be `null`
     * but may be empty.
     */
   def parseBody(buffer: ByteBuffer): ByteBuffer =
@@ -83,8 +82,7 @@ private[blaze] final class BlazeServerParser[Header](maxNonBody: Int)(implicit
       case buff => buff
     }
 
-  /**
-    * Get the request prelude
+  /** Get the request prelude
     */
   def getRequestPrelude(): BlazeServerParser.RequestPrelude[Header] = {
     val hs = headers.result()

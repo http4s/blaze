@@ -9,8 +9,7 @@ package org.http4s.blaze.http
 import scala.annotation.tailrec
 import scala.collection.BitSet
 
-/**
-  * Incomplete collection of header names, all lower case for
+/** Incomplete collection of header names, all lower case for
   * easy compatibility with HTTP/2.
   */
 object HeaderNames {
