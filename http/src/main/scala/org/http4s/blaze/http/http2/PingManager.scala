@@ -17,8 +17,6 @@ import scala.concurrent.duration.Duration
 private class PingManager(session: SessionCore) {
   import PingManager._
 
-  private[this] case class PingState(startedSystemTimeMs: Long, continuation: Promise[Duration])
-
   private[this] val logger = getLogger
   private[this] var state: State = Idle
 
