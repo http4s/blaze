@@ -1,3 +1,4 @@
+import com.typesafe.tools.mima.core._
 import BlazePlugin._
 
 lazy val commonSettings = Seq(
@@ -70,7 +71,11 @@ lazy val http = Project("blaze-http", file("http"))
       asyncHttpClient,
       scalacheck,
       specs2Scalacheck
-    ).map(_ % Test)
+    ).map(_ % Test),
+    mimaBinaryIssueFilters ++= Seq(
+      ProblemFilters.exclude[MissingClassProblem]("org.http4s.blaze.http.http2.PingManager$PingState"),
+      ProblemFilters.exclude[MissingClassProblem]("org.http4s.blaze.http.http2.PingManager$PingState$")
+    )
   ).dependsOn(core % "test->test;compile->compile")
 
 lazy val examples = Project("blaze-examples",file("examples"))
