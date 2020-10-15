@@ -79,7 +79,7 @@ class ClientStageSpec extends Specification {
 
       head.sendInboundCommand(Command.Connected)
 
-      val Seq(HeadersFrame(_, false, _)) = head.consumeOutboundData()
+      head.consumeOutboundData().map(_.endStream) must_== (Seq(false))
       val Seq(DataFrame(eos, data)) = head.consumeOutboundData()
       eos must beTrue
       data must_== d // should be referentially equal
@@ -92,7 +92,7 @@ class ClientStageSpec extends Specification {
 
       head.sendInboundCommand(Command.Connected)
 
-      val Seq(HeadersFrame(_, true, _)) = head.consumeOutboundData()
+      head.consumeOutboundData().map(_.endStream) must_== (Seq(true))
       head.reads.dequeue().success(resp)
 
       // available since all these tests execute single threaded
@@ -107,7 +107,7 @@ class ClientStageSpec extends Specification {
 
       head.sendInboundCommand(Command.Connected)
 
-      val Seq(HeadersFrame(_, true, _)) = head.consumeOutboundData()
+      head.consumeOutboundData().map(_.endStream) must_== (Seq(true))
       head.reads.dequeue().success(resp.copy(endStream = false))
 
       // available since all these tests execute single threaded
@@ -131,7 +131,7 @@ class ClientStageSpec extends Specification {
       LeafBuilder(cs).base(head)
 
       head.sendInboundCommand(Command.Connected)
-      val Seq(HeadersFrame(_, true, _)) = head.consumeOutboundData()
+      head.consumeOutboundData().map(_.endStream) must_== (Seq(true))
       head.reads.dequeue().success(resp)
 
       val Some(Success(r)) = cs.result.value
@@ -161,7 +161,7 @@ class ClientStageSpec extends Specification {
       LeafBuilder(cs).base(head)
 
       head.sendInboundCommand(Command.Connected)
-      val Seq(HeadersFrame(_, true, _)) = head.consumeOutboundData()
+      head.consumeOutboundData().map(_.endStream) must_== (Seq(true))
       head.reads.dequeue().failure(Command.EOF)
 
       head.disconnected must beTrue

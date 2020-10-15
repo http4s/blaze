@@ -85,7 +85,7 @@ class StreamManagerImplSpec extends Specification {
         val tools = new MockTools(isClient = false)
 
         // Need a stream so it doesn't all shut down
-        val Right(_) = tools.streamManager.newInboundStream(1)
+        tools.streamManager.newInboundStream(1) must beRight
         tools.streamManager.drain(1, Http2Exception.NO_ERROR.goaway("bye-bye"))
 
         tools.streamManager.newInboundStream(3) must beLike { case Left(ex: Http2StreamException) =>
@@ -128,7 +128,7 @@ class StreamManagerImplSpec extends Specification {
       "reject inbound streams with for non-idle streams" in {
         val tools = new MockTools(isClient = false)
 
-        val Right(_) = tools.streamManager.newInboundStream(1)
+        tools.streamManager.newInboundStream(1) must beRight
 
         // Reject invalid stream ids
         tools.streamManager.newInboundStream(1) must beLike {
