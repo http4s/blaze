@@ -167,9 +167,8 @@ public abstract class ParserBase {
       } else if (b == HttpTokens.TAB || allow8859 && b < 0) {
         return (char) (b & 0xff);
       } else if (b == HttpTokens.LF) {
-        return (char)
-            b; // A backend should accept a bare linefeed.
-               // http://tools.ietf.org/html/rfc2616#section-19.3
+        return (char) b; // A backend should accept a bare linefeed.
+        // http://tools.ietf.org/html/rfc2616#section-19.3
       } else if (isLenient()) {
         return HttpTokens.REPLACEMENT;
       } else {
