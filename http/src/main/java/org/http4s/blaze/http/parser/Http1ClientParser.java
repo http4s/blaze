@@ -68,9 +68,8 @@ public abstract class Http1ClientParser extends BodyAndHeaderParser {
 
   @Override
   public void shutdownParser() {
-    super
-        .shutdownParser(); // To change body of overridden methods use File | Settings | File
-                           // Templates.
+    super.shutdownParser(); // To change body of overridden methods use File | Settings | File
+    // Templates.
     _requestLineState = RequestLineState.END;
   }
 

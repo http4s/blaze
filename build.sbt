@@ -89,4 +89,4 @@ lazy val examples = Project("blaze-examples",file("examples"))
 
 /* Helper Functions */
 
-addCommandAlias("validate", ";scalafmtCheckAll ;test ;unusedCompileDependenciesTest ;mimaReportBinaryIssues")
+addCommandAlias("validate", ";scalafmtCheckAll ;javafmtCheckAll ;test ;unusedCompileDependenciesTest ;mimaReportBinaryIssues")
