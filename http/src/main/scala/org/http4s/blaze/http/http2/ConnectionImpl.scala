@@ -37,7 +37,7 @@ private final class ConnectionImpl(
   private[this] def isClient = inboundStreamBuilder.isEmpty
 
   private[this] val logger = org.log4s.getLogger
-  private[this] val closedPromise = Promise[Unit]
+  private[this] val closedPromise = Promise[Unit]()
   private[this] val frameDecoder = new FrameDecoder(
     localSettings,
     new SessionFrameListener(
@@ -138,7 +138,7 @@ private final class ConnectionImpl(
   override def activeStreams: Int = streamManager.size
 
   override def ping(): Future[Duration] = {
-    val p = Promise[Duration]
+    val p = Promise[Duration]()
     serialExecutor.execute(new Runnable {
       def run(): Unit = {
         p.completeWith(pingManager.ping())

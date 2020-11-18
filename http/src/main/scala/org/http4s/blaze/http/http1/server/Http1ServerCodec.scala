@@ -55,7 +55,7 @@ private final class Http1ServerCodec(maxNonBodyBytes: Int, pipeline: TailStage[B
           val req = maybeGetRequest()
           if (req != null) Future.successful(req)
           else {
-            val p = Promise[HttpRequest]
+            val p = Promise[HttpRequest]()
             readAndGetRequest(p)
             p.future
           }

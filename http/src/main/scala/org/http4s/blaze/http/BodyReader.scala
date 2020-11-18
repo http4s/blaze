@@ -118,7 +118,7 @@ object BodyReader {
     require(max >= 0)
 
     val acc = new ArrayBuffer[ByteBuffer]
-    val p = Promise[ByteBuffer]
+    val p = Promise[ByteBuffer]()
 
     def go(bytes: Long): Unit =
       body().onComplete {

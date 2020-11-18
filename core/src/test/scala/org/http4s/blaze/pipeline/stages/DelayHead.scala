@@ -41,7 +41,7 @@ abstract class DelayHead[I](delay: Duration) extends HeadStage[I] {
   }
 
   override def readRequest(size: Int): Future[I] = {
-    val p = Promise[I]
+    val p = Promise[I]()
 
     rememberPromise(p)
 
@@ -58,7 +58,7 @@ abstract class DelayHead[I](delay: Duration) extends HeadStage[I] {
   }
 
   override def writeRequest(data: I): Future[Unit] = {
-    val p = Promise[Unit]
+    val p = Promise[Unit]()
     highresTimer.schedule(
       new Runnable {
         def run(): Unit = {

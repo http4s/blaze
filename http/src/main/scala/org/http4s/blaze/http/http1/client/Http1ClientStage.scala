@@ -106,7 +106,7 @@ private[http] final class Http1ClientStage(config: HttpClientConfig)
               handleError("initial request write", ex)
           }
 
-          val p = Promise[ReleaseableResponse]
+          val p = Promise[ReleaseableResponse]()
           receiveResponse(BufferTools.emptyBuffer, p)
           p.future
 
@@ -140,14 +140,14 @@ private[http] final class Http1ClientStage(config: HttpClientConfig)
         if (!buffer.hasRemaining) {
           channelReadThenReceive(p)
           null
-        } else if (!codec.preludeComplete && codec.parsePrelude(buffer)) {
+        } else if (!codec.preludeComplete() && codec.parsePrelude(buffer)) {
           val prelude = codec.getResponsePrelude
           logger.debug(s"Finished getting prelude: $prelude")
           val body = getBodyReader(buffer)
           new ReleaseableResponseImpl(prelude.code, prelude.status, prelude.headers, body)
         } else {
           logger.debug(
-            s"State: $buffer, ${codec.preludeComplete}, ${codec.responseLineComplete}, ${codec.headersComplete}")
+            s"State: $buffer, ${codec.preludeComplete()}, ${codec.responseLineComplete}, ${codec.headersComplete}")
           channelReadThenReceive(p)
           null
         }
@@ -215,7 +215,7 @@ private[http] final class Http1ClientStage(config: HttpClientConfig)
       }
 
     override def apply(): Future[ByteBuffer] = {
-      val p = Promise[ByteBuffer]
+      val p = Promise[ByteBuffer]()
       parseBody(p)
       p.future
     }
@@ -324,7 +324,7 @@ private[http] final class Http1ClientStage(config: HttpClientConfig)
       val EncodedPrelude(requestBuffer, encoder) = stageLock.synchronized {
         codec.encodeRequestPrelude(request, hasBody)
       }
-      val p = Promise[Unit]
+      val p = Promise[Unit]()
       channelWrite(requestBuffer).onComplete {
         case Failure(t) =>
           // Need to make sure we discard the body if we fail to write
@@ -347,7 +347,7 @@ private[http] final class Http1ClientStage(config: HttpClientConfig)
       encoder: Http1BodyEncoder): Future[Unit] = {
     // This would be much nicer as a tail recursive loop, but that would
     // cause issues on Scala < 2.12 since it's Future impl isn't tail rec.
-    val p = Promise[Unit]
+    val p = Promise[Unit]()
 
     def writeLoop(): Unit =
       body().onComplete {

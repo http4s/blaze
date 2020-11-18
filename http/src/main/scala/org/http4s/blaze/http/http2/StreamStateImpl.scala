@@ -62,7 +62,7 @@ private abstract class StreamStateImpl(session: SessionCore) extends StreamState
 
   override def readRequest(size: Int): Future[StreamFrame] = {
     val _ = size
-    val p = Promise[StreamFrame]
+    val p = Promise[StreamFrame]()
     // Move the work into the session executor
     session.serialExecutor.execute(new Runnable {
       override def run(): Unit = invokeStreamRead(p)
@@ -99,7 +99,7 @@ private abstract class StreamStateImpl(session: SessionCore) extends StreamState
       }
 
   final override def writeRequest(msg: StreamFrame): Future[Unit] = {
-    val p = Promise[Unit]
+    val p = Promise[Unit]()
     // Move the work into the session executor
     session.serialExecutor.execute(new Runnable {
       override def run(): Unit = invokeStreamWrite(msg, p)

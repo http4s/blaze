@@ -49,7 +49,7 @@ private[http4s] object StageTools {
             case f @ Failure(_) => p.tryComplete(f)
           }(Execution.trampoline)
 
-      val p = Promise[ByteBuffer]
+      val p = Promise[ByteBuffer]()
       accLoop(bytes, new ArrayBuffer[ByteBuffer](8), p)
       p.future
     }
