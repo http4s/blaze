@@ -3,8 +3,8 @@ import BlazePlugin._
 
 lazy val commonSettings = Seq(
   description := "NIO Framework for Scala",
-  scalaVersion := "2.12.11",
-  crossScalaVersions := Seq("2.11.12", scalaVersion.value, "2.13.2"),
+  crossScalaVersions := Seq("2.11.12", "2.12.12", "2.13.3"),
+  scalaVersion := crossScalaVersions.value.last,
   scalacOptions := scalacOptionsFor(scalaVersion.value),
   scalacOptions in Test ~= (_.filterNot(Set("-Ywarn-dead-code", "-Wdead-code"))), // because mockito
   scalacOptions in (Compile, doc) += "-no-link-warnings",
@@ -28,7 +28,13 @@ lazy val commonSettings = Seq(
   }
 )
 
-/* Projects */
+ThisBuild / githubWorkflowPublishTargetBranches := Seq(
+  RefPredicate.Equals(Ref.Branch("main"))
+)
+ThisBuild / githubWorkflowBuild := Seq(
+  WorkflowStep.Sbt(List("validate"))
+)
+
 lazy val blaze = project.in(file("."))
   .enablePlugins(Http4sOrgPlugin)
   .enablePlugins(PrivateProjectPlugin)
