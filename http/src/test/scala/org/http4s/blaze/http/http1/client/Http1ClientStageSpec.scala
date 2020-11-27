@@ -61,7 +61,7 @@ class Http1ClientStageSpec extends Specification {
       writes match {
         case Some(_) => Future.failed(new IllegalStateException())
         case None =>
-          val p = Promise[Unit]
+          val p = Promise[Unit]()
           writes = Some(Write(data, p))
           p.future
       }

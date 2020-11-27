@@ -51,7 +51,7 @@ class StreamStateImplSpec extends Specification {
 
       val f = streamState.writeRequest(DataFrame(true, BufferTools.emptyBuffer))
 
-      tools.writeController.observedInterests.result must_== streamState :: Nil
+      tools.writeController.observedInterests.result() must_== streamState :: Nil
       tools.writeController.observedInterests.clear()
       f.isCompleted must beFalse
     }
@@ -62,7 +62,7 @@ class StreamStateImplSpec extends Specification {
 
       val f = streamState.writeRequest(DataFrame(true, BufferTools.emptyBuffer))
 
-      tools.writeController.observedInterests.result must_== streamState :: Nil
+      tools.writeController.observedInterests.result() must_== streamState :: Nil
       tools.writeController.observedInterests.clear()
       f.isCompleted must beFalse
 
@@ -76,7 +76,7 @@ class StreamStateImplSpec extends Specification {
 
       val f1 = streamState.writeRequest(DataFrame(true, BufferTools.emptyBuffer))
       f1.isCompleted must beFalse
-      tools.writeController.observedInterests.result must_== streamState :: Nil
+      tools.writeController.observedInterests.result() must_== streamState :: Nil
 
       val currentSize = tools.writeController.observedWrites.length
 

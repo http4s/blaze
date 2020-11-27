@@ -48,7 +48,7 @@ class ResponseParser extends Http1ClientParser {
       new String(bytes, StandardCharsets.ISO_8859_1)
     }
 
-    val headers = this.headers.result
+    val headers = this.headers.result()
 
     val status = this.code
 

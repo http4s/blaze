@@ -101,7 +101,7 @@ class IntervalConnectionMonitor(val interval: Duration) extends ConnectionMonito
         outbound.getMean(),
         outbound.getTotal(),
         conns.getMean(),
-        conns.getTotal,
+        conns.getTotal(),
         conns.getLive())
     }))
 

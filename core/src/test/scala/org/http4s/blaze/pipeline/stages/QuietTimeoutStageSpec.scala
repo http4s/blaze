@@ -33,7 +33,7 @@ class QuietTimeoutStageSpec extends TimeoutHelpers {
     "not timeout if the delay stage is removed" in {
       val pipe = makePipeline(2.seconds, 1.second)
       val f = pipe.channelRead()
-      pipe.findOutboundStage(classOf[TimeoutStageBase[ByteBuffer]]).get.removeStage
+      pipe.findOutboundStage(classOf[TimeoutStageBase[ByteBuffer]]).get.removeStage()
       val r = checkFuture(f, 5.second)
       pipe.closePipeline(None)
       r

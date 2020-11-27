@@ -115,7 +115,7 @@ private[http] class Http2ClientSessionManagerImpl(
   }
 
   protected def initialPipeline(head: HeadStage[ByteBuffer]): Future[Http2ClientSession] = {
-    val p = Promise[Http2ClientSession]
+    val p = Promise[Http2ClientSession]()
 
     def buildConnection(s: String): LeafBuilder[ByteBuffer] = {
       if (s != H2 && s != H2_14)

@@ -57,7 +57,7 @@ private class ClientStage(request: HttpRequest) extends TailStage[StreamFrame] {
 
   override def name: String = "Http2ClientTail"
 
-  private[this] val _result = Promise[ReleaseableResponse]
+  private[this] val _result = Promise[ReleaseableResponse]()
 
   def result: Future[ReleaseableResponse] = _result.future
 

@@ -4,7 +4,7 @@ import BlazePlugin._
 lazy val commonSettings = Seq(
   description := "NIO Framework for Scala",
   crossScalaVersions := Seq("2.11.12", "2.12.12", "2.13.3"),
-  scalaVersion := crossScalaVersions.value.last,
+  scalaVersion := crossScalaVersions.value.filter(_.startsWith("2.")).last,
   scalacOptions := scalacOptionsFor(scalaVersion.value),
   scalacOptions in Test ~= (_.filterNot(Set("-Ywarn-dead-code", "-Wdead-code"))), // because mockito
   scalacOptions in (Compile, doc) += "-no-link-warnings",

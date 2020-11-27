@@ -109,7 +109,7 @@ private final class ClientSessionManagerImpl(
       urlComposition: UrlComposition,
       id: ConnectionId): Future[HttpClientSession] = {
     logger.debug(s"Creating new session for id $id")
-    val p = Promise[HttpClientSession]
+    val p = Promise[HttpClientSession]()
 
     socketFactory.connect(urlComposition.getAddress).onComplete {
       case Failure(e) => p.tryFailure(e)

@@ -19,7 +19,7 @@ class MapTail[A](f: A => A) extends TailStage[A] {
   override def name = "MapTail"
 
   def startLoop(): Future[Unit] = {
-    val p = Promise[Unit]
+    val p = Promise[Unit]()
     innerLoop(p)
     p.future
   }

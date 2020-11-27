@@ -82,7 +82,7 @@ private[blaze] object SettingsDecoder {
             settings += Setting(id, value)
           }
 
-          SettingsFrame(Some(settings.result))
+          SettingsFrame(Some(settings.result()))
         }
       }
   }

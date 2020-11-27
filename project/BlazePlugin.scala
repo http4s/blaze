@@ -27,7 +27,7 @@ object BlazePlugin extends AutoPlugin {
   lazy val logbackClassic      = "ch.qos.logback"             %  "logback-classic"     % "1.2.3"
   lazy val twitterHPACK        = "com.twitter"                %  "hpack"               % "1.0.2"
   lazy val asyncHttpClient     = "org.asynchttpclient"        %  "async-http-client"   % "2.12.1"
-  lazy val log4s               = "org.log4s"                  %% "log4s"               % "1.9.0"
+  lazy val log4s               = "org.log4s"                  %% "log4s"               % "1.10.0-M1"
   lazy val scalacheck          = "org.scalacheck"             %% "scalacheck"          % "1.15.1"
   lazy val specs2              = "org.specs2"                 %% "specs2-core"         % "4.10.5"
   lazy val specs2Mock          = "org.specs2"                 %% "specs2-mock"         % specs2.revision
@@ -36,6 +36,6 @@ object BlazePlugin extends AutoPlugin {
   lazy val alpn_api            = "org.eclipse.jetty.alpn"     % "alpn-api"             % "1.1.3.v20160715"
   // Note that the alpn_boot version is JVM version specific. Check the docs if getting weird errors.
   // Also note that only java8 and above has the require cipher suite for http2.
-  lazy val alpn_boot           = "org.eclipse.jetty"          % "jetty-alpn-openjdk8-client" % "9.4.34.v20201102"
+  lazy val alpn_boot           = "org.eclipse.jetty"          % "jetty-alpn-openjdk8-client" % "9.4.35.v20201120"
 
 }

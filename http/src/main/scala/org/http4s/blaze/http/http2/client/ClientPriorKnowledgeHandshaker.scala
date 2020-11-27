@@ -35,7 +35,7 @@ private[http] class ClientPriorKnowledgeHandshaker(
     flowStrategy: FlowStrategy,
     executor: ExecutionContext)
     extends PriorKnowledgeHandshaker[Http2ClientSession](localSettings) {
-  private[this] val session = Promise[Http2ClientSession]
+  private[this] val session = Promise[Http2ClientSession]()
 
   def clientSession: Future[Http2ClientSession] = session.future
 

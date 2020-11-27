@@ -31,7 +31,7 @@ private class PingManager(session: SessionCore) {
         // TODO: we can do a lot of cool things with pings by managing when they are written
         if (session.writeController.write(pingFrame)) {
           logger.debug(s"PING initiated at $time")
-          val p = Promise[Duration]
+          val p = Promise[Duration]()
           state = Pinging(time, p)
           p.future
         } else {

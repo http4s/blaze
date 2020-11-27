@@ -41,7 +41,7 @@ class WriteControllerImplSpec extends Specification {
       channelWrite(data :: Nil)
 
     override def channelWrite(data: collection.Seq[ByteBuffer]): Future[Unit] = {
-      val p = Promise[Unit]
+      val p = Promise[Unit]()
       written += Write(data, p)
       p.future
     }

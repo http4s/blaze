@@ -187,7 +187,7 @@ private[nio1] final class NIO1HeadStage(
 
   final override def readRequest(size: Int): Future[ByteBuffer] = {
     logger.trace(s"NIOHeadStage received a read request of size $size")
-    val p = Promise[ByteBuffer]
+    val p = Promise[ByteBuffer]()
 
     selectorLoop.executeTask(new selectorLoop.LoopRunnable {
       override def run(scratchBuffer: ByteBuffer): Unit =
@@ -230,7 +230,7 @@ private[nio1] final class NIO1HeadStage(
 
   final override def writeRequest(data: collection.Seq[ByteBuffer]): Future[Unit] = {
     logger.trace(s"NIO1HeadStage Write Request: $data")
-    val p = Promise[Unit]
+    val p = Promise[Unit]()
     selectorLoop.executeTask(new selectorLoop.LoopRunnable {
       override def run(scratch: ByteBuffer): Unit =
         if (closedReason != null) {

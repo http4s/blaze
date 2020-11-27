@@ -30,24 +30,24 @@ class StageSpec extends Specification {
   }
 
   "Support reads" in {
-    val leaf = regPipeline
+    val leaf = regPipeline()
     Await.result(leaf.channelRead(), 5.seconds) should_== 1
   }
 
   "Support writes" in {
-    val leaf = regPipeline
+    val leaf = regPipeline()
     Await.result(leaf.channelWrite(12), 5.seconds) should_== (())
   }
 
   "Support read timeouts" in {
-    val leaf = slowPipeline
+    val leaf = slowPipeline()
     Await.result(leaf.channelRead(1, 100.milli), 5000.milli) must throwA[TimeoutException]
 
     Await.result(leaf.channelRead(1, 10.seconds), 10.seconds) should_== 1
   }
 
   "Support write timeouts" in {
-    val leaf = slowPipeline
+    val leaf = slowPipeline()
     Await.result(leaf.channelWrite(1, 100.milli), 5000.milli) must throwA[TimeoutException]
 
     Await.result(leaf.channelWrite(1, 10.seconds), 10.seconds) should_== (())

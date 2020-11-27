@@ -188,7 +188,7 @@ sealed trait Tail[I] extends Stage {
   /** Arranges a timeout for a write request */
   private def checkTimeout[T](timeout: Duration, f: Future[T]): Future[T] =
     if (timeout.isFinite) {
-      val p = Promise[T]
+      val p = Promise[T]()
       scheduleTimeout(p, f, timeout)
       p.future
     } else f

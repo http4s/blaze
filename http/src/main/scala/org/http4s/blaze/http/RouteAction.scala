@@ -58,7 +58,7 @@ object RouteAction {
 //          case _ => writer.close()
 //        }
 
-        val p = Promise[T#Finished]
+        val p = Promise[T#Finished]()
 
         // Have to do this nonsense because a recursive Future loop isn't safe until scala 2.12+
         def go(): Unit =

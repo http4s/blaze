@@ -76,7 +76,7 @@ class ServerParserSpec extends Specification {
       if (h._2.length > 0) sb.append(": " + h._2)
       sb.append("\r\n")
     }.append("\r\n")
-      .result
+      .result()
 
   val headers = buildHeaderString(l_headers)
 
@@ -180,7 +180,7 @@ class ServerParserSpec extends Specification {
       p.parseLine(line)
       p.parseheaders(headers) should_== true
       p.getContentType should_== (EndOfContent.END)
-      p.h.result should_== (l_headers.map { case (a, b) => (a.trim, b.trim) })
+      p.h.result() should_== (l_headers.map { case (a, b) => (a.trim, b.trim) })
     }
 
     "Fail on non-ascii char in header name" in {
@@ -216,14 +216,14 @@ class ServerParserSpec extends Specification {
       val p = new Parser()
       p.parseheaders(hsStr) should_== true
       p.getContentType should_== (EndOfContent.END) // since the headers didn't indicate any content
-      p.h.result should_== List.fill(4)(("If-Modified-Since", ""))
+      p.h.result() should_== List.fill(4)(("If-Modified-Since", ""))
     }
 
     "need input on partial headers" in {
       val p = new Parser()
       p.parseHeaders(headers.substring(0, 20)) should_== false
       p.parseheaders(headers.substring(20)) should_== true
-      p.h.result should_== (l_headers.map { case (a, b) => (a.trim, b.trim) })
+      p.h.result() should_== (l_headers.map { case (a, b) => (a.trim, b.trim) })
     }
 
     "Parse a full request" in {
@@ -303,7 +303,7 @@ class ServerParserSpec extends Specification {
       p.parsecontent(b) should_!= null
       // two real messages
       p.parsecontent(b).remaining() should_== 0
-      p.h.result should_== (("Foo", "") :: Nil)
+      p.h.result() should_== (("Foo", "") :: Nil)
       p.sb.result() should_== (body + body + " again!")
 
       p.reset()
@@ -354,7 +354,7 @@ class ServerParserSpec extends Specification {
       while (!p.headersComplete() && !p.parseheaders(b))
         b.limit(b.limit() + 1)
 
-      p.h.clear
+      p.h.clear()
 
       p.contentComplete() should_== false
 
@@ -362,7 +362,7 @@ class ServerParserSpec extends Specification {
         p.parsecontent(b)
         if (b.limit() < blim) b.limit(b.limit() + 1)
       }
-      p.h.result should_== (("Foo", "") :: Nil)
+      p.h.result() should_== (("Foo", "") :: Nil)
       p.contentComplete() should_== true
       p.sb.result() should_== (body + body + " again!")
     }

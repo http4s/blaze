@@ -74,7 +74,7 @@ trait ByteToObjectStage[O] extends MidStage[ByteBuffer, O] {
     else startReadDecode()
 
   private def startReadDecode(): Future[O] = {
-    val p = Promise[O]
+    val p = Promise[O]()
     readAndDecodeLoop(p)
     p.future
   }
