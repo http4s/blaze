@@ -25,7 +25,7 @@ class GatheringSeqHead[O](items: Seq[O]) extends SeqHead[O](items) {
   def go(): Future[Seq[O]] = {
     val p = this.synchronized {
       assert(result.isEmpty, s"Cannot use ${this.getClass.getSimpleName} more than once")
-      val p = Promise[Seq[O]]
+      val p = Promise[Seq[O]]()
       result = Some(p)
 
       sendInboundCommand(Command.Connected)

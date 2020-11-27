@@ -35,7 +35,7 @@ private[endtoend] class Http2ClientScaffold extends ClientScaffold(2, 0) {
     ) {
       override protected def initialPipeline(
           head: HeadStage[ByteBuffer]): Future[Http2ClientSession] = {
-        val p = Promise[Http2ClientSession]
+        val p = Promise[Http2ClientSession]()
 
         // TODO: we need a better model for these
         val localSettings = h2Settings.copy()

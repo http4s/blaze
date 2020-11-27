@@ -45,7 +45,7 @@ final class ClientChannelFactory(
   def connect(
       remoteAddress: SocketAddress,
       bufferSize: Int = bufferSize): Future[HeadStage[ByteBuffer]] = {
-    val p = Promise[HeadStage[ByteBuffer]]
+    val p = Promise[HeadStage[ByteBuffer]]()
 
     try {
       val ch = AsynchronousSocketChannel.open(group.orNull)

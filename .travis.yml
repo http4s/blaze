@@ -4,13 +4,13 @@ dist: xenial
 matrix:
   include:
   - jdk: openjdk8
-    scala: 2.12.11
+    scala: 2.12.12
   - jdk: openjdk8
     scala: 2.11.12
   - jdk: openjdk8
-    scala: 2.13.2
+    scala: 2.13.3
   - jdk: openjdk11
-    scala: 2.12.11
+    scala: 2.12.12
 env:
   global:
     secure: GFb3iprmlEb7iy5kA2vCdEMgxMOrWrSPnzLMoU9bCase/5UvNXp0quHzwDlLO9oqj2x+VRBRgJNngYyGB5HU0sRjlvgd2FXAwb5xn3LvGHHJB+j0oVxaYO2DuMeRG9MWuds+IN9EPbmbv36lFHc5NzZZG2ZI9v5+wAJjnCy8QOQ=

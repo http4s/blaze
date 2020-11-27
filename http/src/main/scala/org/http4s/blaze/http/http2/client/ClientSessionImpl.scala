@@ -46,7 +46,7 @@ private final class ClientSessionImpl(
 
   override def quality: Double = connection.quality
 
-  override def ping(): Future[Duration] = connection.ping
+  override def ping(): Future[Duration] = connection.ping()
 
   override def status: Status = connection.status
 

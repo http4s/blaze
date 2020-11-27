@@ -20,7 +20,7 @@ private[http2] class MockHeadStage[T] extends HeadStage[T] {
   var error: Option[Throwable] = None
 
   override def readRequest(size: Int): Future[T] = {
-    val p = Promise[T]
+    val p = Promise[T]()
     reads += p
     p.future
   }
@@ -38,7 +38,7 @@ private[http2] class MockHeadStage[T] extends HeadStage[T] {
   }
 
   override def writeRequest(data: T): Future[Unit] = {
-    val p = Promise[Unit]
+    val p = Promise[Unit]()
     writes += data -> p
     p.future
   }

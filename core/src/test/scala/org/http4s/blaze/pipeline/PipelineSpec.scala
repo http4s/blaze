@@ -68,7 +68,7 @@ class PipelineSpec extends Specification {
 
       p.findInboundStage(classOf[Noop[Int]]).get should_== noop
       p.findInboundStage(noop.name).get should_== noop
-      noop.removeStage
+      noop.removeStage()
       p.findInboundStage(classOf[Noop[Int]]) must_== None
     }
 
@@ -79,7 +79,7 @@ class PipelineSpec extends Specification {
 
       p.findInboundStage(classOf[Noop[Int]]).get should_== noop
       p.findInboundStage(noop.name).get should_== noop
-      noop.removeStage
+      noop.removeStage()
       p.findInboundStage(classOf[Noop[Int]]) must_== None
     }
 
@@ -91,7 +91,7 @@ class PipelineSpec extends Specification {
 
       p.findInboundStage(classOf[Noop[String]]).get should_== noop
       p.findInboundStage(noop.name).get should_== noop
-      noop.removeStage
+      noop.removeStage()
       p.findInboundStage(classOf[Noop[String]]) must_== None
     }
   }

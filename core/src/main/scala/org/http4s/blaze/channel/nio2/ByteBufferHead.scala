@@ -34,7 +34,7 @@ private[nio2] final class ByteBufferHead(channel: AsynchronousSocketChannel, buf
       case Some(cause) => Future.failed(cause)
       case None if data.isEmpty => FutureUnit
       case None =>
-        val p = Promise[Unit]
+        val p = Promise[Unit]()
         val srcs = data.toArray
 
         def go(index: Int): Unit =
@@ -66,7 +66,7 @@ private[nio2] final class ByteBufferHead(channel: AsynchronousSocketChannel, buf
     }
 
   def readRequest(size: Int): Future[ByteBuffer] = {
-    val p = Promise[ByteBuffer]
+    val p = Promise[ByteBuffer]()
     scratchBuffer.clear()
 
     if (size >= 0 && size < bufferSize)

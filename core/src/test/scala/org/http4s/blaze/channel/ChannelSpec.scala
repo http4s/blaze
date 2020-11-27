@@ -101,7 +101,7 @@ abstract class BaseChannelSpec extends Specification {
   }
 
   class ZeroWritingStage(batch: Boolean) extends TailStage[ByteBuffer] {
-    private[this] val writeResult = Promise[Unit]
+    private[this] val writeResult = Promise[Unit]()
 
     def name = this.getClass.getSimpleName
 

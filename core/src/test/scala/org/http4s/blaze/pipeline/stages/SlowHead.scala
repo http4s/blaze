@@ -46,7 +46,7 @@ final class SlowHead[O] extends HeadStage[O] {
     synchronized {
       if (pendingRead.isDefined) Future.failed(new IllegalStateException("Read guard breached!"))
       else {
-        val p = Promise[O]
+        val p = Promise[O]()
         pendingRead = Some(p)
         p.future
       }
@@ -56,7 +56,7 @@ final class SlowHead[O] extends HeadStage[O] {
     synchronized {
       if (pendingWrite.isDefined) Future.failed(new IllegalStateException("Write guard breached!"))
       else {
-        val p = Promise[Unit]
+        val p = Promise[Unit]()
         pendingWrite = Some(Write(data, p))
         p.future
       }

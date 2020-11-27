@@ -49,7 +49,7 @@ private[blaze] class ReadPool[T] {
       messageConsumed(m)
       Future.successful(m)
     } else {
-      val p = Promise[T]
+      val p = Promise[T]()
       readInto(p)
       p.future
     }

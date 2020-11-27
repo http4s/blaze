@@ -47,7 +47,7 @@ private final class WriteControllerImpl(
         FutureUnit
 
       case Flushing =>
-        val p = Promise[Unit]
+        val p = Promise[Unit]()
         state = Closing(p)
         p.future
 

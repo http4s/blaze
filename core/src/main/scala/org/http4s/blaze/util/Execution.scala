@@ -26,7 +26,7 @@ object Execution {
     if (!d.isFinite) f
     else if (f.isCompleted) f
     else {
-      val p = Promise[T]
+      val p = Promise[T]()
       val r = new Runnable {
         def run(): Unit =
           if (p.tryComplete(fallback))

@@ -78,7 +78,7 @@ private final class StreamManagerImpl(
         ()
 
       case None =>
-        val p = Promise[Unit]
+        val p = Promise[Unit]()
         p.trySuccess(())
         drainingP = Some(p)
     }
@@ -234,7 +234,7 @@ private final class StreamManagerImpl(
           // Working around change to filterKeys in 2.13
         }
 
-        val p = Promise[Unit]
+        val p = Promise[Unit]()
         drainingP = Some(p)
         p.future
     }

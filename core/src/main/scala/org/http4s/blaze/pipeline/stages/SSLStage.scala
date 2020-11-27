@@ -89,7 +89,7 @@ final class SSLStage(engine: SSLEngine, maxWrite: Int = 1024 * 1024)
     writeArray(Array(data))
 
   override def readRequest(size: Int): Future[ByteBuffer] = {
-    val p = Promise[ByteBuffer]
+    val p = Promise[ByteBuffer]()
     serialExec.execute(new Runnable { def run() = doRead(size, p) })
     p.future
   }
@@ -97,7 +97,7 @@ final class SSLStage(engine: SSLEngine, maxWrite: Int = 1024 * 1024)
   /////////////////////////////////////////////////////////////////////
 
   private[this] def writeArray(data: Array[ByteBuffer]): Future[Unit] = {
-    val p = Promise[Unit]
+    val p = Promise[Unit]()
     serialExec.execute(new Runnable { def run(): Unit = doWrite(data, p) })
     p.future
   }
