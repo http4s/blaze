@@ -28,7 +28,13 @@ lazy val commonSettings = Seq(
   }
 )
 
-/* Projects */
+ThisBuild / githubWorkflowPublishTargetBranches := Seq(
+  RefPredicate.Equals(Ref.Branch("main"))
+)
+ThisBuild / githubWorkflowBuild := Seq(
+  WorkflowStep.Sbt(List("validate"))
+)
+
 lazy val blaze = project.in(file("."))
   .enablePlugins(Http4sOrgPlugin)
   .enablePlugins(PrivateProjectPlugin)
