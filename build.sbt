@@ -1,11 +1,15 @@
 import com.typesafe.tools.mima.core._
 import BlazePlugin._
 
+// Global settings
+ThisBuild / crossScalaVersions := Seq("2.11.12", "2.12.12", "2.13.3")
+ThisBuild / scalaVersion := (ThisBuild / crossScalaVersions).value.filter(_.startsWith("2.")).last
+ThisBuild / baseVersion := "0.14"
+ThisBuild / publishGithubUser := "rossabaker"
+ThisBuild / publishFullName   := "Ross A. Baker"
+
 lazy val commonSettings = Seq(
   description := "NIO Framework for Scala",
-  crossScalaVersions := Seq("2.11.12", "2.12.12", "2.13.3"),
-  scalaVersion := crossScalaVersions.value.filter(_.startsWith("2.")).last,
-  scalacOptions := scalacOptionsFor(scalaVersion.value),
   scalacOptions in Test ~= (_.filterNot(Set("-Ywarn-dead-code", "-Wdead-code"))), // because mockito
   scalacOptions in (Compile, doc) += "-no-link-warnings",
   unmanagedSourceDirectories in Compile ++= {
@@ -18,14 +22,7 @@ lazy val commonSettings = Seq(
     }
   },
   // blaze_2.13 debuted in 0.14.5
-  mimaVersionCheckExcludedVersions ++= {
-    CrossVersion.binaryScalaVersion(scalaVersion.value) match {
-      case "2.13" =>
-        (0 until 5).map(patch => s"0.14.${patch}").toSet
-      case _ =>
-        Set.empty[String]
-    }
-  }
+  versionIntroduced := Map("2.13" -> "0.14.5")
 )
 
 ThisBuild / githubWorkflowPublishTargetBranches := Seq(
@@ -37,14 +34,13 @@ ThisBuild / githubWorkflowBuild := Seq(
 
 lazy val blaze = project.in(file("."))
   .enablePlugins(Http4sOrgPlugin)
-  .enablePlugins(PrivateProjectPlugin)
+  .enablePlugins(NoPublishPlugin)
   .settings(commonSettings)
   .aggregate(core, http, examples)
 
 lazy val core = Project("blaze-core", file("core"))
   .enablePlugins(Http4sOrgPlugin)
   .enablePlugins(BuildInfoPlugin)
-  .disablePlugins(TpolecatPlugin)
   .settings(commonSettings)
   .settings(
     libraryDependencies ++= Seq(log4s),
@@ -64,7 +60,6 @@ lazy val core = Project("blaze-core", file("core"))
 
 lazy val http = Project("blaze-http", file("http"))
   .enablePlugins(Http4sOrgPlugin)
-  .disablePlugins(TpolecatPlugin)
   .settings(commonSettings)
   .settings(
     // General Dependencies
@@ -85,8 +80,7 @@ lazy val http = Project("blaze-http", file("http"))
   ).dependsOn(core % "test->test;compile->compile")
 
 lazy val examples = Project("blaze-examples",file("examples"))
-  .enablePlugins(AlpnBootPlugin, PrivateProjectPlugin)
-  .disablePlugins(TpolecatPlugin)
+  .enablePlugins(AlpnBootPlugin, NoPublishPlugin)
   .settings(commonSettings)
   .settings(Revolver.settings)
   .settings(

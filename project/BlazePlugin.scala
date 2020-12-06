@@ -3,24 +3,15 @@ package org.http4s.sbt
 import sbt._
 import sbt.Keys._
 
-import sbtrelease._
-import sbtrelease.ReleasePlugin.autoImport._
-
 object BlazePlugin extends AutoPlugin {
 
   object autoImport
 
   override def trigger = allRequirements
 
-  override def requires = Http4sOrgPlugin && ReleasePlugin
+  override def requires = Http4sOrgPlugin
 
   override lazy val projectSettings: Seq[Setting[_]] = Seq(
-    // Override rig's default of the Travis build number being the bugfix number
-    releaseVersion := { ver =>
-      Version(ver).map(_.withoutQualifier.string).getOrElse(versionFormatError(ver))
-    },
-    scalaVersion := (sys.env.get("TRAVIS_SCALA_VERSION") orElse sys.env.get("SCALA_VERSION") getOrElse "2.12.11"),
-
     fork in run := true
   )
 
