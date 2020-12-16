@@ -52,7 +52,7 @@ private[blaze] object HeaderTools {
       case None => minorVersion != 0
     }
 
-  /** Reader the headers to the `StringBuilder` with the exception of Transfer-Encoding and
+  /** Render the headers to the `StringBuilder` with the exception of Transfer-Encoding and
     * Content-Length headers, which are returned.
     */
   def renderHeaders[H: HeaderLike](sb: StringBuilder, headers: Iterable[H]): SpecialHeaders = {
