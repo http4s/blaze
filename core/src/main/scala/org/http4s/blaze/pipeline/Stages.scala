@@ -254,17 +254,13 @@ sealed trait Head[O] extends Stage {
   final def sendInboundCommand(cmd: InboundCommand): Unit = {
     logger.debug(s"Stage ${getClass.getSimpleName} sending inbound command: $cmd")
     val next = _nextStage
-    if (next != null)
+    if (next != null) {
       try next.inboundCommand(cmd)
       catch {
         case NonFatal(t) =>
           logger.error(t)("Exception caught when attempting inbound command")
           closePipeline(Some(t))
       }
-    else {
-      val msg = "Cannot send inbound command on disconnected stage"
-      val e = new Exception(msg)
-      throw e
     }
   }
 
