@@ -47,10 +47,11 @@ object NIO1SocketServerGroup {
     *       shutdown when the group is shutdown.
     */
   def apply(
+      acceptorPool: SelectorLoopPool,
       workerPool: SelectorLoopPool,
       channelOptions: ChannelOptions = ChannelOptions.DefaultOptions
   ): ServerChannelGroup =
-    new NIO1SocketServerGroup(workerPool, channelOptions)
+    new NIO1SocketServerGroup(acceptorPool, workerPool, channelOptions)
 
   /** Create a new [[NIO1SocketServerGroup]] with a fresh [[FixedSelectorPool]]
     *
@@ -61,10 +62,12 @@ object NIO1SocketServerGroup {
       workerThreads: Int = DefaultPoolSize,
       bufferSize: Int = DefaultBufferSize,
       channelOptions: ChannelOptions = ChannelOptions.DefaultOptions,
-      selectorThreadFactory: ThreadFactory = defaultAcceptThreadFactory
+      selectorThreadFactory: ThreadFactory = defaultAcceptThreadFactory, // TODO: different names for acceptor and worker?
+      acceptorThreads: Int = 1,
   ): ServerChannelGroup = {
-    val pool = new FixedSelectorPool(workerThreads, bufferSize, selectorThreadFactory)
-    val underlying = apply(pool, channelOptions)
+    val acceptorPool = new FixedSelectorPool(acceptorThreads, 0, selectorThreadFactory)
+    val workerPool = new FixedSelectorPool(workerThreads, bufferSize, selectorThreadFactory)
+    val underlying = apply(acceptorPool, workerPool, channelOptions)
 
     // Proxy to the underlying group. `close` calls also close
     // the worker pools since we were the ones that created it.
@@ -76,7 +79,8 @@ object NIO1SocketServerGroup {
         // shutdown since they cleanup pending tasks before dying
         // themselves.
         underlying.closeGroup()
-        pool.close()
+        workerPool.close()
+        acceptorPool.close()
       }
 
       override def bind(
@@ -90,12 +94,13 @@ object NIO1SocketServerGroup {
 
 /** A thread resource group for NIO1 network operations
   *
-  * @param selectorPool [[SelectorLoopPool]] that will belong to this group. The group
+  * @param workerPool [[SelectorLoopPool]] that will belong to this group. The group
   *                    assumes responsibility for shutting it down. Shutting down the
   *                    pool after giving it to this group will result in undefined behavior.
   */
 private final class NIO1SocketServerGroup private (
-    selectorPool: SelectorLoopPool,
+    acceptorPool: SelectorLoopPool,
+    workerPool: SelectorLoopPool,
     channelOptions: ChannelOptions)
     extends ServerChannelGroup {
   private[this] val logger = getLogger
@@ -118,12 +123,13 @@ private final class NIO1SocketServerGroup private (
     private[this] val closed = new AtomicBoolean(false)
 
     override def opsReady(unused: ByteBuffer): Unit =
-      if (key.isAcceptable)
+      if (key.isAcceptable) {
         try acceptNewConnections()
         catch {
           case ex: IOException =>
             close(Some(ex))
         }
+      }
 
     override def close(cause: Option[Throwable]): Unit =
       if (closed.compareAndSet(false, true) && !ch.channelClosed) {
@@ -143,6 +149,8 @@ private final class NIO1SocketServerGroup private (
 
     @tailrec
     private[this] def acceptNewConnections(): Unit = {
+      // TODO: when connection limiting is enabled, we should block the accept
+
       // We go in a loop just in case we have more than one.
       // Once we're out, the `.accept()` method will return `null`.
       val child = ch.selectableChannel.accept()
@@ -189,9 +197,7 @@ private final class NIO1SocketServerGroup private (
       try
       // We use `enqueueTask` deliberately so as to not jump ahead
       // of channel initialization.
-      selectorLoop.enqueueTask(new Runnable {
-        override def run(): Unit = doClose()
-      })
+      selectorLoop.enqueueTask(() => doClose())
       catch {
         case _: RejectedExecutionException =>
           logger.info("Selector loop closed. Closing in local thread.")
@@ -224,12 +230,13 @@ private final class NIO1SocketServerGroup private (
     Try {
       val ch = ServerSocketChannel.open().bind(address)
       ch.configureBlocking(false)
-      val loop = selectorPool.nextLoop()
+      val loop = acceptorPool.nextLoop()
 
       val serverChannel = new ServerChannelImpl(ch, loop)
       val closed = listeningSet.synchronized {
-        if (isClosed) true
-        else {
+        if (isClosed) {
+          true
+        } else {
           listeningSet += serverChannel
           false
         }
@@ -268,7 +275,7 @@ private final class NIO1SocketServerGroup private (
       channelOptions.applyToChannel(clientChannel)
 
       val address = clientChannel.getRemoteAddress
-      val loop = selectorPool.nextLoop()
+      val loop = workerPool.nextLoop()
       val conn = NIO1Connection(clientChannel)
 
       // From within the selector loop, constructs a pipeline or

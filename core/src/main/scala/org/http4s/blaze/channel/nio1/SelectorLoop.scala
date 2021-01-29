@@ -39,31 +39,6 @@ final class SelectorLoop(
     with ExecutionContext {
   require(bufferSize > 0, s"Invalid buffer size: $bufferSize")
 
-  /** A Runnable that will only execute in this selector loop and provides
-    * access to the `SelectorLoop`s scratch buffer.
-    */
-  abstract class LoopRunnable extends Runnable {
-
-    /** Execute the task with the borrowed scratch `ByteBuffer`
-      *
-      * @param scratch a `ByteBuffer` that is owned by the parent
-      *                `SelectorLoop`, and as such, the executing task
-      *                _must not_ retain a refer to it.
-      */
-    def run(scratch: ByteBuffer): Unit
-
-    final override def run(): Unit = {
-      val currentThread = Thread.currentThread
-      if (currentThread == thread) run(scratch)
-      else {
-        val msg = "Task rejected: executed RunWithScratch in incorrect " +
-          s"thread: $currentThread. Expected thread: $thread."
-        val ex = new IllegalStateException(msg)
-        logger.error(ex)(msg)
-      }
-    }
-  }
-
   @volatile
   private[this] var isClosed = false
   private[this] val scratch = ByteBuffer.allocateDirect(bufferSize)
@@ -127,7 +102,7 @@ final class SelectorLoop(
   override def execute(runnable: Runnable): Unit = enqueueTask(runnable)
 
   override def reportFailure(cause: Throwable): Unit =
-    logger.info(cause)(s"Exception executing task in selector loop $threadName")
+    logger.error(cause)(s"Exception executing task in selector loop $threadName")
 
   /** Initialize a new `Selectable` channel
     *
@@ -141,23 +116,24 @@ final class SelectorLoop(
       ch: NIO1Channel,
       mkStage: SelectionKey => Selectable
   ): Unit =
-    enqueueTask(new Runnable {
-      def run(): Unit =
-        if (!selector.isOpen) ch.close()
-        else
-          try {
-            // We place all this noise in the `try` since pretty
-            // much every method on the `SelectableChannel` can throw.
-            require(!ch.selectableChannel.isBlocking, s"Can only register non-blocking channels")
-            val key = ch.selectableChannel.register(selector, 0)
-            val head = mkStage(key)
-            key.attach(head)
-            logger.debug("Channel initialized.")
-          } catch {
-            case t @ (NonFatal(_) | _: ControlThrowable) =>
-              logger.error(t)("Caught error during channel init.")
-              ch.close()
-          }
+    enqueueTask(() => {
+      if (!selector.isOpen) {
+        ch.close()
+      } else {
+        try {
+          // We place all this noise in the `try` since pretty
+          // much every method on the `SelectableChannel` can throw.
+          require(!ch.selectableChannel.isBlocking, s"Can only register non-blocking channels")
+          val key = ch.selectableChannel.register(selector, 0)
+          val head = mkStage(key)
+          key.attach(head)
+          logger.debug("Channel initialized.")
+        } catch {
+          case t@(NonFatal(_) | _: ControlThrowable) =>
+            logger.error(t)("Caught error during channel init.")
+            ch.close()
+        }
+      }
     })
 
   // Main thread method. The loop will break if the Selector loop is closed
@@ -174,8 +150,9 @@ final class SelectorLoop(
       taskQueue.executeTasks()
 
       // We have some new I/O operations waiting for us. Process them.
-      if (selected > 0)
+      if (selected > 0) {
         processKeys(scratch, selector.selectedKeys)
+      }
     } catch {
       case e: ClosedSelectorException =>
         logger.error(e)("Selector unexpectedly closed")
@@ -202,15 +179,18 @@ final class SelectorLoop(
       it.remove()
 
       val selectable = getAttachment(k)
-      try if (k.isValid)
-        if (selectable != null)
-          selectable.opsReady(scratch)
-        else {
-          k.cancel()
-          logger.error("Illegal state: selector key had null attachment.")
+      try {
+        if (k.isValid) {
+          if (selectable != null) {
+            selectable.opsReady(scratch)
+          } else {
+            k.cancel()
+            logger.error("Illegal state: selector key had null attachment.")
+          }
+        } else if (selectable != null) {
+          selectable.close(None)
         }
-      else if (selectable != null)
-        selectable.close(None)
+      }
       catch {
         case t @ (NonFatal(_) | _: ControlThrowable) =>
           logger.error(t)("Error performing channel operations. Closing channel.")
@@ -256,4 +236,29 @@ final class SelectorLoop(
         logger.error(ex)(ex.getMessage)
         throw ex
     }
+
+  /** A Runnable that will only execute in this selector loop and provides
+    * access to the `SelectorLoop`s scratch buffer.
+    */
+  abstract class LoopRunnable extends Runnable {
+
+    /** Execute the task with the borrowed scratch `ByteBuffer`
+      *
+      * @param scratch a `ByteBuffer` that is owned by the parent
+      *                `SelectorLoop`, and as such, the executing task
+      *                _must not_ retain a refer to it.
+      */
+    def run(scratch: ByteBuffer): Unit
+
+    final override def run(): Unit = {
+      val currentThread = Thread.currentThread
+      if (currentThread == thread) run(scratch)
+      else {
+        val msg = "Task rejected: executed RunWithScratch in incorrect " +
+          s"thread: $currentThread. Expected thread: $thread."
+        val ex = new IllegalStateException(msg)
+        logger.error(ex)(msg)
+      }
+    }
+  }
 }
