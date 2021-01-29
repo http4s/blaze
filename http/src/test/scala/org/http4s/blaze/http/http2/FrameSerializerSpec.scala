@@ -70,7 +70,7 @@ class FrameSerializerSpec extends Specification with ScalaCheck {
         }
       })
 
-    "roundtrip" >> prop { dataFrame: DataFrame =>
+    "roundtrip" >> prop { (dataFrame: DataFrame) =>
       val frame = joinBuffers(
         FrameSerializer.mkDataFrame(
           dataFrame.streamId,
@@ -81,7 +81,7 @@ class FrameSerializerSpec extends Specification with ScalaCheck {
     }
 
     "Decode padded buffers" in {
-      forall(0 to 256) { i: Int =>
+      forall(0 to 256) { (i: Int) =>
         def dat = mkData(20)
         val frame = joinBuffers(FrameSerializer.mkDataFrame(3, false, i, dat))
         dec(DataFrame(3, false, dat, i)).decodeBuffer(frame) must_== Continue
@@ -134,7 +134,7 @@ class FrameSerializerSpec extends Specification with ScalaCheck {
         }
       })
 
-    "roundtrip" >> prop { headerFrame: HeadersFrame =>
+    "roundtrip" >> prop { (headerFrame: HeadersFrame) =>
       val buff1 = joinBuffers(
         FrameSerializer.mkHeaderFrame(
           headerFrame.streamId,
@@ -191,14 +191,14 @@ class FrameSerializerSpec extends Specification with ScalaCheck {
         }
       })
 
-    implicit lazy val arbPriority = Arbitrary(
+    implicit lazy val arbPriority: Arbitrary[PriorityFrame] = Arbitrary(
       for {
         streamId <- Gen.posNum[Int]
         p <- genPriority.filter(_.dependentStreamId != streamId)
       } yield PriorityFrame(streamId, p)
     )
 
-    "roundtrip" >> prop { p: PriorityFrame =>
+    "roundtrip" >> prop { (p: PriorityFrame) =>
       val buff1 = FrameSerializer.mkPriorityFrame(p.streamId, p.priority)
       dec(p).decodeBuffer(buff1) must_== Continue
       buff1.remaining() must_== 0
@@ -237,7 +237,7 @@ class FrameSerializerSpec extends Specification with ScalaCheck {
         }
       })
 
-    "roundtrip" >> prop { rst: RstFrame =>
+    "roundtrip" >> prop { (rst: RstFrame) =>
       val buff1 = FrameSerializer.mkRstStreamFrame(rst.streamId, rst.code)
       dec(rst).decodeBuffer(buff1) must_== Continue
       buff1.remaining() must_== 0
@@ -257,7 +257,7 @@ class FrameSerializerSpec extends Specification with ScalaCheck {
         }
       })
 
-    "roundtrip" >> prop { ack: Boolean =>
+    "roundtrip" >> prop { (ack: Boolean) =>
       val settings = if (ack) None else Some((0 until 100).map(i => Setting(i, i + 3)))
 
       val buff1 = settings match {
@@ -289,7 +289,7 @@ class FrameSerializerSpec extends Specification with ScalaCheck {
         }
       })
 
-    "make a simple round trip" >> prop { pingFrame: PingFrame =>
+    "make a simple round trip" >> prop { (pingFrame: PingFrame) =>
       val pingBuffer = FrameSerializer.mkPingFrame(pingFrame.ack, pingFrame.data)
       dec(pingFrame).decodeBuffer(pingBuffer) must_== Continue
     }
@@ -320,7 +320,7 @@ class FrameSerializerSpec extends Specification with ScalaCheck {
         }
       })
 
-    "roundtrip" >> prop { goAway: GoAwayFrame =>
+    "roundtrip" >> prop { (goAway: GoAwayFrame) =>
       val encodedGoAway = FrameSerializer.mkGoAwayFrame(goAway.lastStream, goAway.err, goAway.data)
       dec(goAway).decodeBuffer(encodedGoAway) must_== Continue
     }
@@ -345,7 +345,7 @@ class FrameSerializerSpec extends Specification with ScalaCheck {
         }
       })
 
-    "roundtrip" >> prop { updateFrame: WindowUpdateFrame =>
+    "roundtrip" >> prop { (updateFrame: WindowUpdateFrame) =>
       val updateBuffer =
         FrameSerializer.mkWindowUpdateFrame(updateFrame.streamId, updateFrame.increment)
       dec(updateFrame).decodeBuffer(updateBuffer) must_== Continue

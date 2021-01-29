@@ -19,7 +19,7 @@ package org.http4s.blaze.http
 import org.http4s.blaze.http.HttpClientSession.ReleaseableResponse
 import org.http4s.blaze.util.Execution
 
-import scala.concurrent.Future
+import scala.concurrent.{ExecutionContext, Future}
 import scala.util.Failure
 
 private[http] class HttpClientImpl(sessionPool: ClientSessionManager) extends HttpClient {
@@ -27,7 +27,7 @@ private[http] class HttpClientImpl(sessionPool: ClientSessionManager) extends Ht
   /** Release underlying resources associated with the `HttpClient` */
   override def close(): Future[Unit] = sessionPool.close()
 
-  private implicit def ec = Execution.directec
+  private implicit def ec: ExecutionContext = Execution.directec
 
   private class ReleaseableResponseProxy(session: HttpClientSession, resp: ReleaseableResponse)
       extends ClientResponse(resp.code, resp.status, resp.headers, resp.body)

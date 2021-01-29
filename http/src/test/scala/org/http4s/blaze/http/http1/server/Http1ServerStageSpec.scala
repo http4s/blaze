@@ -29,10 +29,10 @@ import org.specs2.mutable.Specification
 import scala.annotation.tailrec
 import scala.collection.mutable.ListBuffer
 import scala.concurrent.duration._
-import scala.concurrent.{Await, Future}
+import scala.concurrent.{Await, ExecutionContext, Future}
 
 class Http1ServerStageSpec extends Specification {
-  private implicit def ec = Execution.trampoline
+  private implicit def ec: ExecutionContext = Execution.trampoline
 
   private def renderRequests(requests: HttpRequest*): Seq[ByteBuffer] = {
     val acc = new ListBuffer[ByteBuffer]

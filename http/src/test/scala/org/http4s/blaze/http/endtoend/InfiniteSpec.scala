@@ -28,7 +28,7 @@ import scala.concurrent._
 import scala.util._
 
 class InfiniteSpec extends Specification {
-  implicit def ec = ExecutionContext.global
+  implicit def ec: ExecutionContext = ExecutionContext.global
 
   "An infinite server response" should {
     "be properly cleaned on client close" in {
@@ -48,7 +48,7 @@ class InfiniteSpec extends Specification {
               new RouteAction {
                 override def handle[T <: BodyWriter](responder: (HttpResponsePrelude) => T) = {
                   val writer = responder(HttpResponsePrelude(200, "OK", Nil))
-                  val p = Promise[T#Finished]()
+                  val p = Promise[writer.Finished]()
                   def go(): Unit =
                     writer
                       .write(

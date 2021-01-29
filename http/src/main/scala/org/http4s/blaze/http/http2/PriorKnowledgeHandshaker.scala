@@ -21,13 +21,12 @@ import java.nio.ByteBuffer
 import org.http4s.blaze.http.http2.SettingsDecoder.SettingsFrame
 import org.http4s.blaze.pipeline.TailStage
 import org.http4s.blaze.util.{BufferTools, Execution}
-
-import scala.concurrent.Future
+import scala.concurrent.{ExecutionContext, Future}
 
 /** Base type for performing the HTTP/2 prior knowledge handshake */
 abstract class PriorKnowledgeHandshaker[T](localSettings: ImmutableHttp2Settings)
     extends TailStage[ByteBuffer] {
-  final protected implicit def ec = Execution.trampoline
+  final protected implicit def ec: ExecutionContext = Execution.trampoline
 
   override def name: String = s"${getClass.getSimpleName}($localSettings)"
 
@@ -112,6 +111,9 @@ abstract class PriorKnowledgeHandshaker[T](localSettings: ImmutableHttp2Settings
 
           case Left(http2Exception) => sendGoAway(http2Exception)
         }
+
+      case None =>
+        sendGoAway(Http2Exception.INTERNAL_ERROR.goaway("Could not read frame size"))
     }
   }
 

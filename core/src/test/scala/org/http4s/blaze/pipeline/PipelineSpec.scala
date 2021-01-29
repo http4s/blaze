@@ -20,9 +20,10 @@ import org.http4s.blaze.util.{Execution, FutureUnit}
 import org.specs2.mutable._
 import scala.concurrent.{Await, Future}
 import scala.concurrent.duration._
+import scala.concurrent.ExecutionContext
 
 class PipelineSpec extends Specification {
-  private implicit def ec = Execution.trampoline
+  private implicit def ec: ExecutionContext = Execution.trampoline
 
   class IntHead extends HeadStage[Int] {
     def name = "IntHead"

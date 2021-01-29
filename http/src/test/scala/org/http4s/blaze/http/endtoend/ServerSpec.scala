@@ -41,7 +41,7 @@ class Http2ServerSpec extends BaseServerSpec(isSecure = true) {
 }
 
 abstract class BaseServerSpec(isSecure: Boolean) extends Specification {
-  implicit def ec = ExecutionContext.global
+  implicit def ec: ExecutionContext = ExecutionContext.global
 
   def newServer(service: HttpService): ServerScaffold
 

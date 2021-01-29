@@ -29,11 +29,11 @@ import org.http4s.blaze.pipeline.{Command, HeadStage, LeafBuilder}
 import org.http4s.blaze.util.Execution
 
 import scala.collection.mutable
-import scala.concurrent.{Await, Future, Promise}
+import scala.concurrent.{Await, ExecutionContext, Future, Promise}
 import scala.concurrent.duration._
 
 private[endtoend] class Http2ClientScaffold extends ClientScaffold(2, 0) {
-  private[this] implicit val ec = Execution.trampoline
+  private[this] implicit val ec: ExecutionContext = Execution.trampoline
 
   private val underlying = {
     val h2Settings = Http2Settings.default.copy(initialWindowSize = 256 * 1024)

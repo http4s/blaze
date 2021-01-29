@@ -23,6 +23,7 @@ import org.http4s.blaze.http.{HttpRequest, HttpServerStageConfig, RouteAction, _
 import org.http4s.blaze.pipeline.Command.EOF
 import org.http4s.blaze.pipeline.TailStage
 import org.http4s.blaze.util.Execution
+import scala.concurrent.ExecutionContext
 import scala.util.control.NoStackTrace
 import scala.util.{Failure, Success}
 
@@ -40,7 +41,7 @@ class Http1ServerStage(service: HttpService, config: HttpServerStageConfig)
     extends TailStage[ByteBuffer] {
   import Http1ServerStage._
 
-  private implicit def implicitEC = Execution.trampoline
+  private implicit def implicitEC: ExecutionContext = Execution.trampoline
   val name = "HTTP/1.1_Stage"
 
   // The codec is responsible for reading data from `this` TailStage.
@@ -59,7 +60,7 @@ class Http1ServerStage(service: HttpService, config: HttpServerStageConfig)
     // Apply any service level timeout
     val timeoutService = ServiceTimeoutFilter(config.serviceTimeout)(service)
 
-    req: HttpRequest =>
+    (req: HttpRequest) =>
       timeoutService(req).map(resp => resp -> requestRequiresClose(req))(Execution.directec)
   }
 

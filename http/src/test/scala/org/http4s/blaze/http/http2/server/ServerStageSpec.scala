@@ -27,10 +27,10 @@ import org.http4s.blaze.util.{BufferTools, Execution}
 import org.specs2.mutable.Specification
 
 import scala.collection.mutable
-import scala.concurrent.Future
+import scala.concurrent.{ExecutionContext, Future}
 
 class ServerStageSpec extends Specification {
-  private implicit def ex = Execution.trampoline
+  private implicit def ex: ExecutionContext = Execution.trampoline
 
   private val goodHeaders = Seq(
     ":method" -> "GET",
@@ -67,8 +67,8 @@ class ServerStageSpec extends Specification {
     }
 
     "generates an empty body if the first frame has EOS" >> {
+      var hadBody: Option[Boolean] = None
       val ctx = new Ctx {
-        var hadBody: Option[Boolean] = None
         override lazy val service: HttpService = { req =>
           hadBody = Some(!req.body.isExhausted)
           Future.successful(RouteAction.Ok("cool"))
@@ -82,8 +82,8 @@ class ServerStageSpec extends Specification {
     }
 
     "generates a body" >> {
+      val serviceReads = new mutable.Queue[ByteBuffer]
       val ctx = new Ctx {
-        val serviceReads = new mutable.Queue[ByteBuffer]
         override lazy val service: HttpService = { req =>
           for {
             b1 <- req.body()

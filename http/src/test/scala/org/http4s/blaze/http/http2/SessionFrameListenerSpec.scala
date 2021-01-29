@@ -67,7 +67,7 @@ class SessionFrameListenerSpec extends Specification {
       "initiate a new stream for idle inbound stream (server)" >> {
         val head = new BasicTail[StreamFrame]("")
         val tools = new MockTools(isClient = false) {
-          override lazy val newInboundStream = Some { _: Int => LeafBuilder(head) }
+          override lazy val newInboundStream = Some((_: Int) => LeafBuilder(head))
         }
 
         tools.streamManager.get(1) must beNone
@@ -110,9 +110,9 @@ class SessionFrameListenerSpec extends Specification {
       }
 
       "delegates to StreamManager" >> {
+        var sId, pId = -1
+        var hss: Headers = Nil
         val tools = new MockTools(isClient = true) {
-          var sId, pId = -1
-          var hss: Headers = Nil
           override lazy val streamManager = new MockStreamManager() {
             override def handlePushPromise(
                 streamId: Int,
@@ -128,9 +128,9 @@ class SessionFrameListenerSpec extends Specification {
         }
 
         tools.frameListener.onCompletePushPromiseFrame(1, 2, hs) must_== Continue
-        tools.sId must_== 1
-        tools.pId must_== 2
-        tools.hss must_== hs
+        sId must_== 1
+        pId must_== 2
+        hss must_== hs
       }
     }
 
@@ -194,8 +194,8 @@ class SessionFrameListenerSpec extends Specification {
 
     "on RST_STREAM" >> {
       "delegates to the StreamManager" >> {
+        var observedCause: Option[Http2StreamException] = None
         val tools = new MockTools(true) {
-          var observedCause: Option[Http2StreamException] = None
           override lazy val streamManager = new MockStreamManager() {
             override def rstStream(cause: Http2StreamException) = {
               observedCause = Some(cause)
@@ -205,7 +205,7 @@ class SessionFrameListenerSpec extends Specification {
         }
 
         tools.frameListener.onRstStreamFrame(1, STREAM_CLOSED.code) must_== Continue
-        tools.observedCause must beLike { case Some(ex) =>
+        observedCause must beLike { case Some(ex) =>
           ex.stream must_== 1
           ex.code must_== STREAM_CLOSED.code
         }
@@ -214,8 +214,8 @@ class SessionFrameListenerSpec extends Specification {
 
     "on WINDOW_UPDATE" >> {
       "delegates to the StreamManager" >> {
+        var observedIncrement: Option[(Int, Int)] = None
         val tools = new MockTools(true) {
-          var observedIncrement: Option[(Int, Int)] = None
           override lazy val streamManager = new MockStreamManager() {
             override def flowWindowUpdate(streamId: Int, sizeIncrement: Int) = {
               observedIncrement = Some(streamId -> sizeIncrement)
@@ -225,7 +225,7 @@ class SessionFrameListenerSpec extends Specification {
         }
 
         tools.frameListener.onWindowUpdateFrame(1, 2) must_== Continue
-        tools.observedIncrement must beLike { case Some((1, 2)) =>
+        observedIncrement must beLike { case Some((1, 2)) =>
           ok
         }
       }
@@ -242,8 +242,8 @@ class SessionFrameListenerSpec extends Specification {
       }
 
       "pass ping ACK's to the PingManager" >> {
+        var observedAck: Option[Array[Byte]] = None
         val tools = new MockTools(true) {
-          var observedAck: Option[Array[Byte]] = None
           override lazy val pingManager = new PingManager(this) {
             override def pingAckReceived(data: Array[Byte]): Unit =
               observedAck = Some(data)
@@ -251,7 +251,7 @@ class SessionFrameListenerSpec extends Specification {
         }
         val data = (0 until 8).map(_.toByte).toArray
         tools.frameListener.onPingFrame(true, data) must_== Continue
-        tools.observedAck must_== Some(data)
+        observedAck must_== Some(data)
       }
     }
 
@@ -272,8 +272,8 @@ class SessionFrameListenerSpec extends Specification {
 
     "on GOAWAY frame" >> {
       "delegates to the sessions goAway logic" >> {
+        var observedGoAway: Option[(Int, Http2SessionException)] = None
         val tools = new MockTools(true) {
-          var observedGoAway: Option[(Int, Http2SessionException)] = None
           override def invokeGoAway(
               lastHandledOutboundStream: Int,
               reason: Http2SessionException
@@ -286,8 +286,8 @@ class SessionFrameListenerSpec extends Specification {
           NO_ERROR.code,
           "lol".getBytes(StandardCharsets.UTF_8)) must_== Continue
 
-        tools.observedGoAway must beLike {
-          case Some((1, Http2SessionException(NO_ERROR.code, "lol"))) => ok
+        observedGoAway must beLike { case Some((1, Http2SessionException(NO_ERROR.code, "lol"))) =>
+          ok
         }
       }
     }

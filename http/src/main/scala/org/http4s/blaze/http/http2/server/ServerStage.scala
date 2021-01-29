@@ -24,7 +24,7 @@ import org.http4s.blaze.http.util.ServiceTimeoutFilter
 import org.http4s.blaze.pipeline.{TailStage, Command => Cmd}
 import org.http4s.blaze.util.{BufferTools, Execution}
 import scala.collection.mutable.ArrayBuffer
-import scala.concurrent.Future
+import scala.concurrent.{ExecutionContext, Future}
 import scala.util.{Failure, Success, Try}
 
 /** Basic implementation of a http2 stream [[TailStage]] */
@@ -33,7 +33,7 @@ private[http] final class ServerStage(
     service: HttpService,
     config: HttpServerStageConfig
 ) extends TailStage[StreamFrame] {
-  private implicit def _ec =
+  private implicit def _ec: ExecutionContext =
     Execution.trampoline // for all the onComplete calls
 
   private val timeoutService =

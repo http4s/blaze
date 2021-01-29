@@ -236,9 +236,6 @@ final class SSLStage(engine: SSLEngine, maxWrite: Int = 1024 * 1024)
             case DelayedRead(sz, p) => doRead(sz, p)
             case DelayedWrite(d, p) => doWrite(d, p)
           }
-
-        case status =>
-          handshakeFailure(util.bug(s"Unexpected status: ${status}"))
       }
 
     val start = System.nanoTime

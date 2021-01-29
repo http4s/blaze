@@ -24,7 +24,7 @@ import org.http4s.blaze.pipeline.Command.EOF
 import org.http4s.blaze.pipeline.TailStage
 import org.http4s.blaze.util.{BufferTools, Execution}
 import scala.concurrent.duration.Duration
-import scala.concurrent.{Future, Promise}
+import scala.concurrent.{ExecutionContext, Future, Promise}
 import scala.util.control.NonFatal
 import scala.util.{Failure, Success, Try}
 
@@ -37,7 +37,7 @@ private[http] final class Http1ClientStage(config: HttpClientConfig)
 
   @volatile private var state: State = Unconnected
 
-  private[this] implicit def ec = Execution.trampoline
+  private[this] implicit def ec: ExecutionContext = Execution.trampoline
   private[this] val codec = new Http1ClientCodec(config)
   private[this] val stageLock: Object = codec // No need for another object to lock on...
 

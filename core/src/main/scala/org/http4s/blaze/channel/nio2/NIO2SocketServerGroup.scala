@@ -69,7 +69,7 @@ final class NIO2SocketServerGroup private (
     bufferSize: Int,
     group: AsynchronousChannelGroup,
     channelOptions: ChannelOptions)
-    extends ServerChannelGroup {
+    extends ServerChannelGroup { self =>
   private[this] val logger = getLogger
 
   /** Closes the group along with all current connections.
@@ -98,18 +98,18 @@ final class NIO2SocketServerGroup private (
       val socketAddress: InetSocketAddress,
       ch: AsynchronousServerSocketChannel,
       service: SocketPipelineBuilder)
-      extends ServerChannel {
+      extends ServerChannel { self =>
     override protected def closeChannel(): Unit =
       if (ch.isOpen()) {
-        logger.info(s"Closing NIO2 channel $socketAddress at ${new Date}")
+        this.logger.info(s"Closing NIO2 channel $socketAddress at ${new Date}")
         try ch.close()
         catch {
-          case NonFatal(t) => logger.debug(t)("Failure during channel close")
+          case NonFatal(t) => this.logger.debug(t)("Failure during channel close")
         }
       }
 
     def errorClose(e: Throwable): Unit = {
-      logger.error(e)("Server socket channel closed with error.")
+      this.logger.error(e)("Server socket channel closed with error.")
       normalClose()
     }
 
@@ -117,7 +117,7 @@ final class NIO2SocketServerGroup private (
       try close()
       catch {
         case NonFatal(e) =>
-          logger.error(e)("Error on NIO2ServerChannel shutdown invoked by listen loop.")
+          this.logger.error(e)("Error on NIO2ServerChannel shutdown invoked by listen loop.")
       }
 
     def listen(): Unit = {
@@ -135,7 +135,7 @@ final class NIO2SocketServerGroup private (
             case Failure(ex) =>
               val address = ch.getRemoteAddress
               ch.close()
-              logger.info(ex)(s"Rejected connection from $address")
+              self.logger.info(ex)(s"Rejected connection from $address")
           }(Execution.trampoline)
 
           listen() // Continue the circle of life
@@ -147,7 +147,7 @@ final class NIO2SocketServerGroup private (
             case _: ClosedChannelException => normalClose()
             case _: ShutdownChannelGroupException => normalClose()
             case _ =>
-              logger.error(exc)(s"Error accepting connection on address $socketAddress")
+              self.logger.error(exc)(s"Error accepting connection on address $socketAddress")
               // If the server channel cannot go on, disconnect it.
               if (!ch.isOpen()) errorClose(exc)
           }

@@ -1434,12 +1434,11 @@ class FrameDecoderSpec extends Specification {
         0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00)
 
       val listener = new MockFrameListener(false)
+      var data: ByteBuffer = null
+      var code: Option[Byte] = None
+      var flags: Option[Byte] = None
+      var streamId: Option[Int] = None
       val dec = new FrameDecoder(Http2Settings.default, listener) {
-        var data: ByteBuffer = null
-        var code: Option[Byte] = None
-        var flags: Option[Byte] = None
-        var streamId: Option[Int] = None
-
         override def onExtensionFrame(
             _code: Byte,
             _streamId: Int,
@@ -1454,10 +1453,10 @@ class FrameDecoderSpec extends Specification {
       }
 
       dec.decodeBuffer(testData) must_== Continue
-      dec.data must_== ByteBuffer.wrap(new Array[Byte](8))
-      dec.code must_== Some(0x16)
-      dec.flags must_== Some(0x00)
-      dec.streamId must_== Some(0)
+      data must_== ByteBuffer.wrap(new Array[Byte](8))
+      code must_== Some(0x16)
+      flags must_== Some(0x00)
+      streamId must_== Some(0)
     }
   }
 }

@@ -28,7 +28,7 @@ import org.http4s.blaze.util.{Execution, FutureUnit}
 import org.log4s.getLogger
 
 import scala.concurrent.duration.Duration
-import scala.concurrent.{Future, Promise}
+import scala.concurrent.{ExecutionContext, Future, Promise}
 import scala.util.control.NonFatal
 import scala.util.{Failure, Success}
 
@@ -59,7 +59,7 @@ private final class ClientSessionManagerImpl(
   private[this] def getId(composition: UrlComposition): ConnectionId =
     ConnectionId(composition.scheme, composition.authority)
 
-  private[this] implicit def ec = Execution.trampoline
+  private[this] implicit def ec: ExecutionContext = Execution.trampoline
 
   private[this] val logger = getLogger
   private[this] val socketFactory = new ClientChannelFactory(group = config.channelGroup)

@@ -25,10 +25,10 @@ import org.http4s.blaze.http._
 import org.http4s.blaze.pipeline.stages.monitors.IntervalConnectionMonitor
 import org.http4s.blaze.util.{BufferTools, Execution}
 
-import scala.concurrent.Future
+import scala.concurrent.{ExecutionContext, Future}
 
 object ExampleService {
-  private implicit val ec = Execution.trampoline
+  private implicit val ec: ExecutionContext = Execution.trampoline
 
   def service(
       status: Option[IntervalConnectionMonitor],

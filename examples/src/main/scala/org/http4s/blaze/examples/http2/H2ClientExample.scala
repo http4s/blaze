@@ -20,7 +20,7 @@ import java.nio.charset.StandardCharsets
 
 import org.http4s.blaze.http.http2.client.Http2Client
 
-import scala.concurrent.{Await, Future}
+import scala.concurrent.{Await, ExecutionContext, Future}
 import scala.concurrent.duration._
 
 /** Examples which calls the Twitter or Google home pages using HTTP/2
@@ -35,7 +35,7 @@ object H2ClientTwitterExample extends H2ClientExample(20, 30.seconds)
 object H2ClientGoogleExample extends H2ClientExample(20, 30.seconds)
 
 abstract class H2ClientExample(count: Int, timeout: Duration) {
-  protected implicit val ec = scala.concurrent.ExecutionContext.global
+  protected implicit val ec: ExecutionContext = scala.concurrent.ExecutionContext.global
 
   private[this] def doCall(tag: Int): Future[Int] =
     doCallString(tag).map(_.length)
