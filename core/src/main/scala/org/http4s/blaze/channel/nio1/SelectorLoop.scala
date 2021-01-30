@@ -116,22 +116,24 @@ final class SelectorLoop(
       ch: NIO1Channel,
       mkStage: SelectionKey => Selectable
   ): Unit =
-    enqueueTask(() => {
-      if (!selector.isOpen) {
-        ch.close()
-      } else {
-        try {
-          // We place all this noise in the `try` since pretty
-          // much every method on the `SelectableChannel` can throw.
-          require(!ch.selectableChannel.isBlocking, s"Can only register non-blocking channels")
-          val key = ch.selectableChannel.register(selector, 0)
-          val head = mkStage(key)
-          key.attach(head)
-          logger.debug("Channel initialized.")
-        } catch {
-          case t@(NonFatal(_) | _: ControlThrowable) =>
-            logger.error(t)("Caught error during channel init.")
-            ch.close()
+    enqueueTask(new Runnable {
+      override def run(): Unit = {
+        if (!selector.isOpen) {
+          ch.close()
+        } else {
+          try {
+            // We place all this noise in the `try` since pretty
+            // much every method on the `SelectableChannel` can throw.
+            require(!ch.selectableChannel.isBlocking, s"Can only register non-blocking channels")
+            val key = ch.selectableChannel.register(selector, 0)
+            val head = mkStage(key)
+            key.attach(head)
+            logger.debug("Channel initialized.")
+          } catch {
+            case t@(NonFatal(_) | _: ControlThrowable) =>
+              logger.error(t)("Caught error during channel init.")
+              ch.close()
+          }
         }
       }
     })

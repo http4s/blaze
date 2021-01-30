@@ -12,16 +12,9 @@ import java.net.InetSocketAddress
 import java.nio.ByteBuffer
 import java.util.concurrent.{RejectedExecutionException, ThreadFactory}
 import java.util.concurrent.atomic.{AtomicBoolean, AtomicInteger}
-
-import org.http4s.blaze.channel.{
-  ChannelOptions,
-  DefaultPoolSize,
-  ServerChannel,
-  ServerChannelGroup,
-  SocketPipelineBuilder
-}
+import org.http4s.blaze.channel.{ChannelOptions, DefaultMaxConnections, DefaultPoolSize, ServerChannel, ServerChannelGroup, SocketPipelineBuilder}
 import org.http4s.blaze.pipeline.Command
-import org.http4s.blaze.util.BasicThreadFactory
+import org.http4s.blaze.util.{BasicThreadFactory, Connections}
 import org.log4s._
 
 import scala.annotation.tailrec
@@ -34,11 +27,17 @@ object NIO1SocketServerGroup {
   /** Default size of buffer to use in a [[SelectorLoop]] */
   private[this] val DefaultBufferSize: Int = 64 * 1024
 
-  private[this] val factoryNumber = new AtomicInteger(0)
-  // Default `ThreadFactory` implementation for selector threads
-  private[this] def defaultAcceptThreadFactory: ThreadFactory = {
-    val id = factoryNumber.getAndIncrement()
-    BasicThreadFactory(prefix = s"blaze-selector-$id", daemonThreads = false)
+  private[this] val acceptorNumber = new AtomicInteger(0)
+  private[this] val workerNumber = new AtomicInteger(0)
+
+  private[this] def defaultAcceptorThreadFactory: ThreadFactory = {
+    val id = acceptorNumber.getAndIncrement()
+    BasicThreadFactory(prefix = s"blaze-acceptor-$id", daemonThreads = false)
+  }
+
+  private[this] def defaultWorkerThreadFactory: ThreadFactory = {
+    val id = workerNumber.getAndIncrement()
+    BasicThreadFactory(prefix = s"blaze-worker-$id", daemonThreads = false)
   }
 
   /** Create a new [[NIO1SocketServerGroup]] from the [[SelectorLoopPool]].
@@ -49,9 +48,10 @@ object NIO1SocketServerGroup {
   def apply(
       acceptorPool: SelectorLoopPool,
       workerPool: SelectorLoopPool,
-      channelOptions: ChannelOptions = ChannelOptions.DefaultOptions
+      channelOptions: ChannelOptions = ChannelOptions.DefaultOptions,
+      maxConnections: Int = DefaultMaxConnections
   ): ServerChannelGroup =
-    new NIO1SocketServerGroup(acceptorPool, workerPool, channelOptions)
+    new NIO1SocketServerGroup(acceptorPool, workerPool, channelOptions, maxConnections)
 
   /** Create a new [[NIO1SocketServerGroup]] with a fresh [[FixedSelectorPool]]
     *
@@ -62,12 +62,14 @@ object NIO1SocketServerGroup {
       workerThreads: Int = DefaultPoolSize,
       bufferSize: Int = DefaultBufferSize,
       channelOptions: ChannelOptions = ChannelOptions.DefaultOptions,
-      selectorThreadFactory: ThreadFactory = defaultAcceptThreadFactory, // TODO: different names for acceptor and worker?
+      selectorThreadFactory: ThreadFactory = defaultWorkerThreadFactory,
       acceptorThreads: Int = 1,
+      acceptorThreadFactory: ThreadFactory = defaultAcceptorThreadFactory,
+      maxConnections: Int = DefaultMaxConnections
   ): ServerChannelGroup = {
-    val acceptorPool = new FixedSelectorPool(acceptorThreads, 0, selectorThreadFactory)
+    val acceptorPool = new FixedSelectorPool(acceptorThreads, 0, acceptorThreadFactory)
     val workerPool = new FixedSelectorPool(workerThreads, bufferSize, selectorThreadFactory)
-    val underlying = apply(acceptorPool, workerPool, channelOptions)
+    val underlying = apply(acceptorPool, workerPool, channelOptions, maxConnections)
 
     // Proxy to the underlying group. `close` calls also close
     // the worker pools since we were the ones that created it.
@@ -101,13 +103,16 @@ object NIO1SocketServerGroup {
 private final class NIO1SocketServerGroup private (
     acceptorPool: SelectorLoopPool,
     workerPool: SelectorLoopPool,
-    channelOptions: ChannelOptions)
+    channelOptions: ChannelOptions,
+    maxConnections: Int)
     extends ServerChannelGroup {
   private[this] val logger = getLogger
   // Also acts as our intrinsic lock.
   private[this] val listeningSet = new mutable.HashSet[ServerChannelImpl]()
   // protected by synchronization on the intrinsic lock.
   private[this] var isClosed = false
+
+  private[this] val connections: Connections = Connections(maxConnections)
 
   // Closing delegates to the `ServerChannelImpl` which
   // ensures only-once behavior and attempts to close the
@@ -149,10 +154,9 @@ private final class NIO1SocketServerGroup private (
 
     @tailrec
     private[this] def acceptNewConnections(): Unit = {
-      // TODO: when connection limiting is enabled, we should block the accept
-
       // We go in a loop just in case we have more than one.
       // Once we're out, the `.accept()` method will return `null`.
+      connections.acquire()
       val child = ch.selectableChannel.accept()
       if (child != null) {
         handleClientChannel(child, service)
@@ -188,17 +192,21 @@ private final class NIO1SocketServerGroup private (
         listeningSet.synchronized {
           listeningSet.remove(this)
         }
-        try selectableChannel.close()
-        catch {
+        try {
+          selectableChannel.close()
+          connections.close() // allow the acceptor thread through
+        } catch {
           case NonFatal(t) => logger.warn(t)("Failure during channel close.")
         }
       }
 
-      try
-      // We use `enqueueTask` deliberately so as to not jump ahead
-      // of channel initialization.
-      selectorLoop.enqueueTask(() => doClose())
-      catch {
+      try {
+        // We use `enqueueTask` deliberately so as to not jump ahead
+        // of channel initialization.
+        selectorLoop.enqueueTask(new Runnable {
+          override def run(): Unit = doClose()
+        })
+      } catch {
         case _: RejectedExecutionException =>
           logger.info("Selector loop closed. Closing in local thread.")
           doClose()
@@ -281,7 +289,7 @@ private final class NIO1SocketServerGroup private (
       // From within the selector loop, constructs a pipeline or
       // just closes the socket if the pipeline builder rejects it.
       def fromKey(key: SelectionKey): Selectable = {
-        val head = new NIO1HeadStage(clientChannel, loop, key)
+        val head = new NIO1HeadStage(clientChannel, loop, key, connections)
         service(conn).onComplete {
           case Success(tail) =>
             tail.base(head)

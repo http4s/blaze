@@ -10,11 +10,10 @@ import java.io.IOException
 import java.nio.ByteBuffer
 import java.nio.channels._
 import java.util.concurrent.RejectedExecutionException
-
 import org.http4s.blaze.channel.ChannelHead
 import org.http4s.blaze.pipeline.Command.{Disconnected, EOF}
 import org.http4s.blaze.util
-import org.http4s.blaze.util.BufferTools
+import org.http4s.blaze.util.{BufferTools, Connections}
 
 import scala.annotation.tailrec
 import scala.concurrent.{Future, Promise}
@@ -108,7 +107,8 @@ private[nio1] object NIO1HeadStage {
 private[nio1] final class NIO1HeadStage(
     ch: SocketChannel,
     selectorLoop: SelectorLoop,
-    key: SelectionKey
+    key: SelectionKey,
+    connections: Connections
 ) extends ChannelHead
     with Selectable {
   import NIO1HeadStage._
@@ -299,8 +299,10 @@ private[nio1] final class NIO1HeadStage(
       }
 
       writeData = null
-      try ch.close()
-      catch {
+      try {
+        ch.close()
+        connections.release()
+      } catch {
         case ex: IOException =>
           logger.warn(ex)("Unexpected IOException during channel close")
       }
