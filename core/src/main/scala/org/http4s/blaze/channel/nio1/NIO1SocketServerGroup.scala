@@ -161,6 +161,8 @@ private final class NIO1SocketServerGroup private (
       if (child != null) {
         handleClientChannel(child, service)
         acceptNewConnections()
+      } else {
+        connections.release()
       }
     }
   }
