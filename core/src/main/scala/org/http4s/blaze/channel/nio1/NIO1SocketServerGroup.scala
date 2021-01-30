@@ -201,9 +201,10 @@ private final class NIO1SocketServerGroup private (
         }
         try {
           selectableChannel.close()
-          connections.close() // allow the acceptor thread through
         } catch {
           case NonFatal(t) => logger.warn(t)("Failure during channel close.")
+        } finally {
+          connections.close() // allow the acceptor thread through
         }
       }
 
@@ -313,7 +314,7 @@ private final class NIO1SocketServerGroup private (
         head
       }
 
-      loop.initChannel(NIO1Channel(clientChannel), fromKey)
+      loop.initChannel(NIO1Channel(clientChannel), fromKey, onClose)
     } catch {
       case NonFatal(t) =>
         logger.error(t)("Error handling client channel. Closing.")
