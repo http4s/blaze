@@ -19,11 +19,16 @@ private[blaze] final class NIO1ClientChannel(private[this] val underlying: Socke
 
   override val selectableChannel: SelectableChannel = underlying
 
-  def configureBlocking(block: Boolean): Unit =
+  def configureBlocking(block: Boolean): Unit = {
     underlying.configureBlocking(block)
+    ()
+  }
 
   def getRemoteAddress: SocketAddress =
     underlying.getRemoteAddress
+
+  def getLocalAddress: SocketAddress =
+    underlying.getLocalAddress
 
   def configureOptions(options: ChannelOptions): Unit =
     options.options.foreach { case OptionValue(k, v) =>
@@ -33,10 +38,16 @@ private[blaze] final class NIO1ClientChannel(private[this] val underlying: Socke
   def read(dst: ByteBuffer): Int =
     underlying.read(dst)
 
+  def write(src: ByteBuffer): Int =
+    underlying.write(src)
+
   def write(srcs: Array[ByteBuffer]): Long =
     underlying.write(srcs)
 
-  def close(): Unit =
+  def isOpen: Boolean =
+    underlying.isOpen
+
+  override def close(): Unit =
     try {
       underlying.close()
     } finally {
