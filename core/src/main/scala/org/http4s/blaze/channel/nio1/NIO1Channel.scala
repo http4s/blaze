@@ -22,12 +22,10 @@ trait NIO1Channel {
 }
 
 object NIO1Channel {
-  // Simple proxy implementation
-  private[this] final class Impl(val selectableChannel: SelectableChannel) extends NIO1Channel {
-    override def close(): Unit = selectableChannel.close()
-  }
-
   /** Construct a basic `NIO1Channel` from any `SelectableChannel` */
   def apply(selectableChannel: SelectableChannel): NIO1Channel =
-    new Impl(selectableChannel)
+    new NIO1Channel {
+      override val selectableChannel: SelectableChannel = selectableChannel
+      override def close(): Unit = selectableChannel.close()
+    }
 }

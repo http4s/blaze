@@ -159,12 +159,8 @@ private final class NIO1SocketServerGroup private (
       connections.acquire()
       val child = ch.selectableChannel.accept()
       if (child != null) {
-        val closed = new AtomicBoolean(false)
-        handleClientChannel(child, service, () => {
-          if (closed.compareAndSet(false, true)) {
-            connections.release()
-          }
-        })
+        val channel = new NIO1ClientChannel(child, () => connections.release())
+        handleClientChannel(channel, service)
         acceptNewConnections()
       } else {
         connections.release()
@@ -283,13 +279,12 @@ private final class NIO1SocketServerGroup private (
   }
 
   private[this] def handleClientChannel(
-      clientChannel: SocketChannel,
-      service: SocketPipelineBuilder,
-      onClose: () => Unit
+      clientChannel: NIO1ClientChannel,
+      service: SocketPipelineBuilder
   ): Unit =
     try {
       clientChannel.configureBlocking(false)
-      channelOptions.applyToChannel(clientChannel)
+      clientChannel.configureOptions(channelOptions)
 
       val address = clientChannel.getRemoteAddress
       val loop = workerPool.nextLoop()
@@ -298,7 +293,7 @@ private final class NIO1SocketServerGroup private (
       // From within the selector loop, constructs a pipeline or
       // just closes the socket if the pipeline builder rejects it.
       def fromKey(key: SelectionKey): Selectable = {
-        val head = new NIO1HeadStage(clientChannel, loop, key, onClose)
+        val head = new NIO1HeadStage(clientChannel, loop, key)
         service(conn).onComplete {
           case Success(tail) =>
             tail.base(head)
@@ -314,7 +309,7 @@ private final class NIO1SocketServerGroup private (
         head
       }
 
-      loop.initChannel(NIO1Channel(clientChannel), fromKey, onClose)
+      loop.initChannel(clientChannel, fromKey)
     } catch {
       case NonFatal(t) =>
         logger.error(t)("Error handling client channel. Closing.")
@@ -323,8 +318,6 @@ private final class NIO1SocketServerGroup private (
         } catch {
           case NonFatal(t2) =>
             logger.error(t2)("Error closing client channel after error")
-        } finally {
-          onClose()
         }
     }
 }

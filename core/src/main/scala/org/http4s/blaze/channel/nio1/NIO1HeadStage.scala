@@ -35,7 +35,7 @@ private[nio1] object NIO1HeadStage {
     * @return a `Try` representing successfully loading data into `scratch`, or
     *         the failure cause.
     */
-  private def performRead(ch: SocketChannel, scratch: ByteBuffer, size: Int): Try[Unit] =
+  private def performRead(ch: NIO1ClientChannel, scratch: ByteBuffer, size: Int): Try[Unit] =
     try {
       scratch.clear()
       if (size >= 0 && size < scratch.remaining)
@@ -58,7 +58,7 @@ private[nio1] object NIO1HeadStage {
     * @return a WriteResult that is one of Complete, Incomplete or WriteError(e: Exception)
     */
   private def performWrite(
-      ch: SocketChannel,
+      ch: NIO1ClientChannel,
       scratch: ByteBuffer,
       buffers: Array[ByteBuffer]): WriteResult =
     try if (BufferTools.areDirectOrEmpty(buffers)) {
@@ -105,10 +105,9 @@ private[nio1] object NIO1HeadStage {
 }
 
 private[nio1] final class NIO1HeadStage(
-    ch: SocketChannel,
+    ch: NIO1ClientChannel,
     selectorLoop: SelectorLoop,
-    key: SelectionKey,
-    onClose: () => Unit
+    key: SelectionKey
 ) extends ChannelHead
     with Selectable {
   import NIO1HeadStage._
@@ -304,8 +303,6 @@ private[nio1] final class NIO1HeadStage(
       } catch {
         case ex: IOException =>
           logger.warn(ex)("Unexpected IOException during channel close")
-      } finally {
-        onClose()
       }
       sendInboundCommand(Disconnected)
     }
