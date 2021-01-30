@@ -1,3 +1,9 @@
+/*
+ * Copyright 2014-2021 http4s.org
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 package org.http4s.blaze.util
 
 import java.util.concurrent.Semaphore

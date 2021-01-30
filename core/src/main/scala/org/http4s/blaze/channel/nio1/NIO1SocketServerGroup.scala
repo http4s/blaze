@@ -67,7 +67,7 @@ object NIO1SocketServerGroup {
       acceptorThreadFactory: ThreadFactory = defaultAcceptorThreadFactory,
       maxConnections: Int = DefaultMaxConnections
   ): ServerChannelGroup = {
-    val acceptorPool = new FixedSelectorPool(acceptorThreads, 0, acceptorThreadFactory)
+    val acceptorPool = new FixedSelectorPool(acceptorThreads, 1, acceptorThreadFactory)
     val workerPool = new FixedSelectorPool(workerThreads, bufferSize, selectorThreadFactory)
     val underlying = apply(acceptorPool, workerPool, channelOptions, maxConnections)
 
