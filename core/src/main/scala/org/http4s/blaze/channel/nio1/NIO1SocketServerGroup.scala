@@ -158,8 +158,8 @@ private final class NIO1SocketServerGroup private (
       // Once we're out, the `.accept()` method will return `null`.
       connections.acquire()
       val child = ch.selectableChannel.accept()
-      val closed = new AtomicBoolean(false)
       if (child != null) {
+        val closed = new AtomicBoolean(false)
         handleClientChannel(child, service, () => {
           if (closed.compareAndSet(false, true)) {
             connections.release()
