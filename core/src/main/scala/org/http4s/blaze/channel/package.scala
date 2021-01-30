@@ -24,5 +24,5 @@ package object channel {
   /** Default max number of connections that can be active at any time.
     * A negative number means that there is no max.
     */
-  val DefaultMaxConnections: Int = -1
+  val DefaultMaxConnections: Int = 512
 }
