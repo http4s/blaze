@@ -108,7 +108,7 @@ private[nio1] final class NIO1HeadStage(
     ch: SocketChannel,
     selectorLoop: SelectorLoop,
     key: SelectionKey,
-    connections: Connections
+    onClose: () => Unit
 ) extends ChannelHead
     with Selectable {
   import NIO1HeadStage._
@@ -301,10 +301,11 @@ private[nio1] final class NIO1HeadStage(
       writeData = null
       try {
         ch.close()
-        connections.release()
       } catch {
         case ex: IOException =>
           logger.warn(ex)("Unexpected IOException during channel close")
+      } finally {
+        onClose()
       }
       sendInboundCommand(Disconnected)
     }

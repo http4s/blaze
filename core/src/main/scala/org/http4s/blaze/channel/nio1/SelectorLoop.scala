@@ -114,12 +114,17 @@ final class SelectorLoop(
     */
   def initChannel(
       ch: NIO1Channel,
-      mkStage: SelectionKey => Selectable
+      mkStage: SelectionKey => Selectable,
+      onClose: () => Unit = NoopOnClose
   ): Unit =
     enqueueTask(new Runnable {
       override def run(): Unit = {
         if (!selector.isOpen) {
-          ch.close()
+          try {
+            ch.close()
+          } finally {
+            onClose()
+          }
         } else {
           try {
             // We place all this noise in the `try` since pretty
@@ -132,7 +137,11 @@ final class SelectorLoop(
           } catch {
             case t@(NonFatal(_) | _: ControlThrowable) =>
               logger.error(t)("Caught error during channel init.")
-              ch.close()
+              try {
+                ch.close()
+              } finally {
+                onClose()
+              }
           }
         }
       }
@@ -263,4 +272,6 @@ final class SelectorLoop(
       }
     }
   }
+
+  private[this] val NoopOnClose: () => Unit = () => ()
 }

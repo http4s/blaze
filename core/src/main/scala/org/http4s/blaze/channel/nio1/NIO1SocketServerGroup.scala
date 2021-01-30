@@ -158,8 +158,13 @@ private final class NIO1SocketServerGroup private (
       // Once we're out, the `.accept()` method will return `null`.
       connections.acquire()
       val child = ch.selectableChannel.accept()
+      val closed = new AtomicBoolean(false)
       if (child != null) {
-        handleClientChannel(child, service)
+        handleClientChannel(child, service, () => {
+          if (closed.compareAndSet(false, true)) {
+            connections.release()
+          }
+        })
         acceptNewConnections()
       } else {
         connections.release()
@@ -278,7 +283,8 @@ private final class NIO1SocketServerGroup private (
 
   private[this] def handleClientChannel(
       clientChannel: SocketChannel,
-      service: SocketPipelineBuilder
+      service: SocketPipelineBuilder,
+      onClose: () => Unit
   ): Unit =
     try {
       clientChannel.configureBlocking(false)
@@ -291,7 +297,7 @@ private final class NIO1SocketServerGroup private (
       // From within the selector loop, constructs a pipeline or
       // just closes the socket if the pipeline builder rejects it.
       def fromKey(key: SelectionKey): Selectable = {
-        val head = new NIO1HeadStage(clientChannel, loop, key, connections)
+        val head = new NIO1HeadStage(clientChannel, loop, key, onClose)
         service(conn).onComplete {
           case Success(tail) =>
             tail.base(head)
@@ -311,10 +317,13 @@ private final class NIO1SocketServerGroup private (
     } catch {
       case NonFatal(t) =>
         logger.error(t)("Error handling client channel. Closing.")
-        try clientChannel.close()
-        catch {
+        try {
+          clientChannel.close()
+        } catch {
           case NonFatal(t2) =>
             logger.error(t2)("Error closing client channel after error")
+        } finally {
+          onClose()
         }
     }
 }
