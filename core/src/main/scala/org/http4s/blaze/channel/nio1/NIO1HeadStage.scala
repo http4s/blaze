@@ -13,7 +13,7 @@ import java.util.concurrent.RejectedExecutionException
 import org.http4s.blaze.channel.ChannelHead
 import org.http4s.blaze.pipeline.Command.{Disconnected, EOF}
 import org.http4s.blaze.util
-import org.http4s.blaze.util.{BufferTools, Connections}
+import org.http4s.blaze.util.BufferTools
 
 import scala.annotation.tailrec
 import scala.concurrent.{Future, Promise}
