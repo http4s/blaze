@@ -263,6 +263,4 @@ final class SelectorLoop(
       }
     }
   }
-
-  private[this] val NoopOnClose: () => Unit = () => ()
 }

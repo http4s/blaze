@@ -26,9 +26,6 @@ object NIO1Connection {
           override def isOpen: Boolean = connection.isOpen
         }
     }
-
-  private[blaze] def apply(channel: NIO1ClientChannel): SocketConnection =
-    apply(channel.underlying)
 }
 
 private case class NIO1SocketConnection(connection: SocketChannel) extends SocketConnection {

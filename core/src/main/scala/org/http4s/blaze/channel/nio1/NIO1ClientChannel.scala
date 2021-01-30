@@ -1,3 +1,9 @@
+/*
+ * Copyright 2014-2020 http4s.org
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 package org.http4s.blaze.channel.nio1
 
 import org.http4s.blaze.channel.{ChannelOptions, OptionValue}
@@ -27,8 +33,8 @@ private[blaze] final class NIO1ClientChannel(private[this] val underlying: Socke
   def read(dst: ByteBuffer): Int =
     underlying.read(dst)
 
-  def write(src: ByteBuffer): Int =
-    underlying.write(src)
+  def write(srcs: Array[ByteBuffer]): Long =
+    underlying.write(srcs)
 
   def close(): Unit =
     try {
