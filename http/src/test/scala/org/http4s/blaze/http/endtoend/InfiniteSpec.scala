@@ -46,7 +46,8 @@ class InfiniteSpec extends Specification {
           case "/infinite" =>
             Future.successful {
               new RouteAction {
-                override def handle[A, T <: BodyWriter[A]](responder: (HttpResponsePrelude) => T) = {
+                override def handle[A, T <: BodyWriter[A]](
+                    responder: (HttpResponsePrelude) => T) = {
                   val writer = responder(HttpResponsePrelude(200, "OK", Nil))
                   val p = Promise[A]()
                   def go(): Unit =
