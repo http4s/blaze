@@ -11,10 +11,11 @@ ThisBuild / versionIntroduced := Map(
   "3.0.0-M3" -> "0.14.15"
 )
 
+ThisBuild / crossScalaVersions := Seq("2.11.12", "2.12.12", "2.13.3", "3.0.0-M2", "3.0.0-M3")
+ThisBuild / scalaVersion := crossScalaVersions.value.filter(_.startsWith("2.")).last
+
 lazy val commonSettings = Seq(
   description := "NIO Framework for Scala",
-  crossScalaVersions := Seq("2.11.12", "2.12.12", "2.13.3", "3.0.0-M2", "3.0.0-M3"),
-  scalaVersion := crossScalaVersions.value.filter(_.startsWith("2.")).last,
   scalacOptions in Test ~= (_.filterNot(Set("-Ywarn-dead-code", "-Wdead-code"))), // because mockito
   unmanagedSourceDirectories in Compile ++= {
     (unmanagedSourceDirectories in Compile).value.map { dir =>
