@@ -27,6 +27,7 @@ object NIO2SocketServerGroup {
     * @param bufferSize buffer size use for IO operations
     * @param channelOptions options to apply to the client connections
     */
+  @deprecated("Prefer NIO1 over NIO2", "0.14.15")
   def fixedGroup(
       workerThreads: Int = DefaultPoolSize,
       bufferSize: Int = DefaultBufferSize,
@@ -47,6 +48,7 @@ object NIO2SocketServerGroup {
     * @param group optional `AsynchronousChannelGroup`, uses the system default if `None`
     * @param channelOptions options to apply to the client connections
     */
+  @deprecated("Prefer NIO1 over NIO2", "0.14.15")
   def apply(
       bufferSize: Int = 8 * 1024,
       group: Option[AsynchronousChannelGroup] = None,
