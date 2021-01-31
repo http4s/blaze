@@ -44,7 +44,7 @@ trait RouteAction {
     * @return an asynchronous `BodyWriter#Finished` object. This type enforces that the [[BodyWriter]]
     *         has been successfully closed.
     */
-  def handle[Writer <: BodyWriter](commit: (HttpResponsePrelude => Writer)): Future[Writer#Finished]
+  def handle[A, Writer <: BodyWriter[A]](commit: (HttpResponsePrelude => Writer)): Future[A]
 }
 
 object RouteAction {
@@ -58,8 +58,8 @@ object RouteAction {
   def Streaming(code: Int, status: String, headers: Headers)(body: => Future[ByteBuffer])(implicit
       ec: ExecutionContext = Execution.trampoline): RouteAction =
     new RouteAction {
-      override def handle[T <: BodyWriter](
-          responder: (HttpResponsePrelude) => T): Future[T#Finished] = {
+      override def handle[A, T <: BodyWriter[A]](
+          responder: (HttpResponsePrelude) => T): Future[A] = {
         val writer = responder(HttpResponsePrelude(code, status, headers))
 
 //        // Not safe to do in scala 2.11 or lower :(
@@ -68,7 +68,7 @@ object RouteAction {
 //          case _ => writer.close()
 //        }
 
-        val p = Promise[writer.Finished]()
+        val p = Promise[A]()
 
         // Have to do this nonsense because a recursive Future loop isn't safe until scala 2.12+
         def go(): Unit =
@@ -100,8 +100,8 @@ object RouteAction {
     */
   def Buffer(code: Int, status: String, body: ByteBuffer, headers: Headers): RouteAction =
     new RouteAction {
-      override def handle[T <: BodyWriter](
-          responder: (HttpResponsePrelude) => T): Future[T#Finished] = {
+      override def handle[A, T <: BodyWriter[A]](
+          responder: (HttpResponsePrelude) => T): Future[A] = {
         val finalHeaders = (HeaderNames.ContentLength, body.remaining().toString) +: headers
         val prelude = HttpResponsePrelude(code, status, finalHeaders)
         val writer = responder(prelude)

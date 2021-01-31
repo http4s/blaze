@@ -22,9 +22,7 @@ import org.http4s.blaze.http.{BodyWriter, Headers, InternalWriter}
 import org.http4s.blaze.util.BufferTools
 import scala.concurrent.Future
 
-private abstract class AbstractBodyWriter(private var hs: Headers) extends BodyWriter {
-  final override type Finished = Unit
-
+private abstract class AbstractBodyWriter(private var hs: Headers) extends BodyWriter[Unit] {
   // must be protected by synchronized on `this`
   private[this] var closed = false
 
@@ -84,7 +82,7 @@ private abstract class AbstractBodyWriter(private var hs: Headers) extends BodyW
     }
   }
 
-  final override def close(cause: Option[Throwable]): Future[Finished] = {
+  final override def close(cause: Option[Throwable]): Future[Unit] = {
     var hsToFlush: Headers = null
     val wasClosed = this.synchronized {
       if (closed) true

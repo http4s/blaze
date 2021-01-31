@@ -105,7 +105,7 @@ private[http] final class ServerStage(
       case Failure(t) => closePipeline(Some(t))
     }
 
-  private[this] def getWriter(method: String, prelude: HttpResponsePrelude): BodyWriter = {
+  private[this] def getWriter(method: String, prelude: HttpResponsePrelude): BodyWriter[Any] = {
     val sizeHint = prelude.headers match {
       case b: IndexedSeq[_] => b.size + 1; case _ => 16
     }
@@ -140,9 +140,7 @@ private[http] final class ServerStage(
       case Failure(t) => closePipeline(Some(t))
     }
 
-  private class NoopWriter(headers: Headers) extends BodyWriter {
-    override type Finished = Unit
-
+  private class NoopWriter(headers: Headers) extends BodyWriter[Unit] {
     private val underlying = new StandardWriter(headers)
 
     override def write(buffer: ByteBuffer): Future[Unit] =

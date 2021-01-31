@@ -22,15 +22,10 @@ import scala.concurrent.Future
 /** Output pipe for writing http responses
   *
   * This is, more or less, an asynchronous `OutputStream`
+  *
+  * @tparam A Type of value returned upon closing of the `BodyWriter`
   */
-trait BodyWriter {
-
-  /** Type of value returned upon closing of the `BodyWriter`
-    *
-    * This type is used to enforce that the writer is closed when writing a
-    * HTTP response using the server.
-    */
-  type Finished
+trait BodyWriter[+A] {
 
   /** Write a message to the pipeline
     *
@@ -58,5 +53,5 @@ trait BodyWriter {
     *
     * @return a `Future[Finished]` which will resolve once the close process has completed.
     */
-  def close(reason: Option[Throwable]): Future[Finished]
+  def close(reason: Option[Throwable]): Future[A]
 }

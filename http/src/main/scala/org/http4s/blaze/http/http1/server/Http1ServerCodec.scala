@@ -221,9 +221,7 @@ private final class Http1ServerCodec(maxNonBodyBytes: Int, pipeline: TailStage[B
 
   // Body writers ///////////////////
 
-  private abstract class InternalWriter extends BodyWriter {
-    final override type Finished = RouteResult
-
+  private abstract class InternalWriter extends BodyWriter[RouteResult] {
     private[this] var closed = false
 
     final protected def lock: Object = this
