@@ -23,7 +23,7 @@ object Http1Server {
   case class GroupAndChannel(group: ServerChannelGroup, channel: ServerChannel)
 
   /** Create a new Http1Server */
-  @deprecated("Prefer NIO1 over NIO2. Use alternate apply method without useNio2 option.", "0.14.15")
+  @deprecated("Prefer NIO1 over NIO2. Use nio1 constructor method.", "0.14.15")
   def apply(
       service: SocketConnection => Future[HttpService],
       address: InetSocketAddress,
@@ -44,7 +44,7 @@ object Http1Server {
     channel.map(GroupAndChannel(group, _))
   }
 
-  def apply(
+  def nio1(
       service: SocketConnection => Future[HttpService],
       address: InetSocketAddress,
       config: HttpServerStageConfig,
