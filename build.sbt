@@ -3,7 +3,7 @@ import Dependencies._
 
 ThisBuild / publishGithubUser := "rossabaker"
 ThisBuild / publishFullName := "Ross A. Baker"
-ThisBuild / baseVersion := "0.14"
+ThisBuild / baseVersion := "0.15"
 
 ThisBuild / versionIntroduced := Map(
   "2.13" -> "0.14.5",
