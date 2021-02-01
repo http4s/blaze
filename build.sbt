@@ -1,13 +1,21 @@
 import com.typesafe.tools.mima.core._
-import BlazePlugin._
+import Dependencies._
+
+ThisBuild / publishGithubUser := "rossabaker"
+ThisBuild / publishFullName := "Ross A. Baker"
+ThisBuild / baseVersion := "0.14"
+
+ThisBuild / versionIntroduced := Map(
+  "2.13" -> "0.14.5",
+  "3.0.0-M2" -> "0.14.15",
+  "3.0.0-M3" -> "0.14.15"
+)
 
 lazy val commonSettings = Seq(
   description := "NIO Framework for Scala",
   crossScalaVersions := Seq("2.11.12", "2.12.12", "2.13.3"),
   scalaVersion := crossScalaVersions.value.filter(_.startsWith("2.")).last,
-  scalacOptions := scalacOptionsFor(scalaVersion.value),
   scalacOptions in Test ~= (_.filterNot(Set("-Ywarn-dead-code", "-Wdead-code", "-Xfatal-warnings"))), // because mockito
-  scalacOptions in (Compile, doc) += "-no-link-warnings",
   unmanagedSourceDirectories in Compile ++= {
     (unmanagedSourceDirectories in Compile).value.map { dir =>
       val sv = scalaVersion.value
@@ -17,15 +25,25 @@ lazy val commonSettings = Seq(
       }
     }
   },
-  // blaze_2.13 debuted in 0.14.5
-  mimaVersionCheckExcludedVersions ++= {
-    CrossVersion.binaryScalaVersion(scalaVersion.value) match {
-      case "2.13" =>
-        (0 until 5).map(patch => s"0.14.${patch}").toSet
-      case _ =>
-        Set.empty[String]
-    }
-  }
+  fork in run := true,
+  developers ++= List(
+    Developer("bryce-anderson"       , "Bryce L. Anderson"     , "bryce.anderson22@gamil.com"       , url("https://github.com/bryce-anderson")),
+    Developer("rossabaker"           , "Ross A. Baker"         , "ross@rossabaker.com"              , url("https://github.com/rossabaker")),
+    Developer("ChristopherDavenport" , "Christopher Davenport" , "chris@christopherdavenport.tech"  , url("https://github.com/ChristopherDavenport"))
+  ),
+
+  licenses := Seq("Apache-2.0" -> url("https://www.apache.org/licenses/LICENSE-2.0.html")),
+
+  homepage := Some(url("https://github.com/http4s/blaze")),
+
+  scmInfo := Some(
+    ScmInfo(
+      url("https://github.com/http4s/blaze"),
+      "scm:git:https://github.com/http4s/blaze.git",
+      Some("scm:git:git@github.com:http4s/blaze.git")
+    )
+  ),
+  startYear := Some(2014),
 )
 
 ThisBuild / githubWorkflowPublishTargetBranches := Seq(
@@ -37,14 +55,13 @@ ThisBuild / githubWorkflowBuild := Seq(
 
 lazy val blaze = project.in(file("."))
   .enablePlugins(Http4sOrgPlugin)
-  .enablePlugins(PrivateProjectPlugin)
+  .enablePlugins(NoPublishPlugin)
   .settings(commonSettings)
   .aggregate(core, http, examples)
 
 lazy val core = Project("blaze-core", file("core"))
   .enablePlugins(Http4sOrgPlugin)
   .enablePlugins(BuildInfoPlugin)
-  .disablePlugins(TpolecatPlugin)
   .settings(commonSettings)
   .settings(
     libraryDependencies ++= Seq(log4s),
@@ -64,7 +81,6 @@ lazy val core = Project("blaze-core", file("core"))
 
 lazy val http = Project("blaze-http", file("http"))
   .enablePlugins(Http4sOrgPlugin)
-  .disablePlugins(TpolecatPlugin)
   .settings(commonSettings)
   .settings(
     // General Dependencies
@@ -85,8 +101,8 @@ lazy val http = Project("blaze-http", file("http"))
   ).dependsOn(core % "test->test;compile->compile")
 
 lazy val examples = Project("blaze-examples",file("examples"))
-  .enablePlugins(AlpnBootPlugin, PrivateProjectPlugin)
-  .disablePlugins(TpolecatPlugin)
+  .enablePlugins(AlpnBootPlugin)
+  .enablePlugins(NoPublishPlugin)
   .settings(commonSettings)
   .settings(Revolver.settings)
   .settings(
