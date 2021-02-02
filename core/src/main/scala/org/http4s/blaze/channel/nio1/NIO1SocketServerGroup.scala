@@ -22,7 +22,14 @@ import java.net.InetSocketAddress
 import java.nio.ByteBuffer
 import java.util.concurrent.{RejectedExecutionException, ThreadFactory}
 import java.util.concurrent.atomic.{AtomicBoolean, AtomicInteger}
-import org.http4s.blaze.channel.{ChannelOptions, DefaultMaxConnections, DefaultPoolSize, ServerChannel, ServerChannelGroup, SocketPipelineBuilder}
+import org.http4s.blaze.channel.{
+  ChannelOptions,
+  DefaultMaxConnections,
+  DefaultPoolSize,
+  ServerChannel,
+  ServerChannelGroup,
+  SocketPipelineBuilder
+}
 import org.http4s.blaze.pipeline.Command
 import org.http4s.blaze.util.{BasicThreadFactory, Connections}
 import org.log4s._
@@ -63,15 +70,17 @@ object NIO1SocketServerGroup {
   ): ServerChannelGroup =
     new NIO1SocketServerGroup(acceptorPool, workerPool, channelOptions, maxConnections)
 
-  @deprecated("Use `create` instead. This uses the same pool for both worker and acceptor", "0.14.15")
+  @deprecated(
+    "Use `create` instead. This uses the same pool for both worker and acceptor",
+    "0.14.15")
   def apply(
-    workerPool: SelectorLoopPool,
-    channelOptions: ChannelOptions = ChannelOptions.DefaultOptions
+      workerPool: SelectorLoopPool,
+      channelOptions: ChannelOptions = ChannelOptions.DefaultOptions
   ): ServerChannelGroup =
     create(workerPool, workerPool, channelOptions, DefaultMaxConnections)
 
   /** Create a new [[NIO1SocketServerGroup]] with a fresh [[FixedSelectorPool]
-]
+    * ]
     *
     * The resulting [[ServerChannelGroup]] takes ownership of the created pool,
     * shutting it down when the group is shutdown.
@@ -116,9 +125,16 @@ object NIO1SocketServerGroup {
       workerThreads: Int = DefaultPoolSize,
       bufferSize: Int = DefaultBufferSize,
       channelOptions: ChannelOptions = ChannelOptions.DefaultOptions,
-      selectorThreadFactory: ThreadFactory = defaultWorkerThreadFactory,
+      selectorThreadFactory: ThreadFactory = defaultWorkerThreadFactory
   ): ServerChannelGroup =
-    fixed(workerThreads, bufferSize, channelOptions, selectorThreadFactory, 1, defaultAcceptorThreadFactory, DefaultMaxConnections)
+    fixed(
+      workerThreads,
+      bufferSize,
+      channelOptions,
+      selectorThreadFactory,
+      1,
+      defaultAcceptorThreadFactory,
+      DefaultMaxConnections)
 }
 
 /** A thread resource group for NIO1 network operations
@@ -222,22 +238,19 @@ private final class NIO1SocketServerGroup private (
         listeningSet.synchronized {
           listeningSet.remove(this)
         }
-        try {
-          selectableChannel.close()
-        } catch {
+        try selectableChannel.close()
+        catch {
           case NonFatal(t) => logger.warn(t)("Failure during channel close.")
-        } finally {
-          connections.close() // allow the acceptor thread through
-        }
+        } finally connections.close() // allow the acceptor thread through
       }
 
-      try {
-        // We use `enqueueTask` deliberately so as to not jump ahead
-        // of channel initialization.
-        selectorLoop.enqueueTask(new Runnable {
-          override def run(): Unit = doClose()
-        })
-      } catch {
+      try
+      // We use `enqueueTask` deliberately so as to not jump ahead
+      // of channel initialization.
+      selectorLoop.enqueueTask(new Runnable {
+        override def run(): Unit = doClose()
+      })
+      catch {
         case _: RejectedExecutionException =>
           logger.info("Selector loop closed. Closing in local thread.")
           doClose()
@@ -340,9 +353,8 @@ private final class NIO1SocketServerGroup private (
     } catch {
       case NonFatal(t) =>
         logger.error(t)("Error handling client channel. Closing.")
-        try {
-          clientChannel.close()
-        } catch {
+        try clientChannel.close()
+        catch {
           case NonFatal(t2) =>
             logger.error(t2)("Error closing client channel after error")
         }

@@ -23,7 +23,10 @@ import java.nio.ByteBuffer
 import java.nio.channels.{SelectableChannel, SocketChannel}
 import java.util.concurrent.atomic.AtomicBoolean
 
-private[blaze] final class NIO1ClientChannel(private[this] val underlying: SocketChannel, private[this] val onClose: () => Unit) extends NIO1Channel {
+private[blaze] final class NIO1ClientChannel(
+    private[this] val underlying: SocketChannel,
+    private[this] val onClose: () => Unit)
+    extends NIO1Channel {
 
   private[this] val closed = new AtomicBoolean(false)
 
@@ -58,12 +61,9 @@ private[blaze] final class NIO1ClientChannel(private[this] val underlying: Socke
     underlying.isOpen
 
   override def close(): Unit =
-    try {
-      underlying.close()
-    } finally {
-      if (closed.compareAndSet(false, true)) {
-        onClose()
-      }
+    try underlying.close()
+    finally if (closed.compareAndSet(false, true)) {
+      onClose()
     }
 
 }

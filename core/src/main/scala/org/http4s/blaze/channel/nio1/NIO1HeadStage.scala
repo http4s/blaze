@@ -122,13 +122,15 @@ private[nio1] final class NIO1HeadStage(
     with Selectable {
   import NIO1HeadStage._
 
-  @deprecated("Binary compatibility shim. This one can leak connection acceptance permits.", "0.14.15")
+  @deprecated(
+    "Binary compatibility shim. This one can leak connection acceptance permits.",
+    "0.14.15")
   private[NIO1HeadStage] def this(
-    ch: SocketChannel,
-    selectorLoop: SelectorLoop,
-    key: SelectionKey
+      ch: SocketChannel,
+      selectorLoop: SelectorLoop,
+      key: SelectionKey
   ) = this(
-    new NIO1ClientChannel(ch, { () => () }),
+    new NIO1ClientChannel(ch, () => ()),
     selectorLoop: SelectorLoop,
     key
   )
@@ -319,9 +321,8 @@ private[nio1] final class NIO1HeadStage(
       }
 
       writeData = null
-      try {
-        ch.close()
-      } catch {
+      try ch.close()
+      catch {
         case ex: IOException =>
           logger.warn(ex)("Unexpected IOException during channel close")
       }

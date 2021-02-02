@@ -127,7 +127,7 @@ final class SelectorLoop(
       mkStage: SelectionKey => Selectable
   ): Unit =
     enqueueTask(new Runnable {
-      override def run(): Unit = {
+      override def run(): Unit =
         if (!selector.isOpen) {
           ch.close()
         } else {
@@ -140,12 +140,11 @@ final class SelectorLoop(
             key.attach(head)
             logger.debug("Channel initialized.")
           } catch {
-            case t@(NonFatal(_) | _: ControlThrowable) =>
+            case t @ (NonFatal(_) | _: ControlThrowable) =>
               logger.error(t)("Caught error during channel init.")
               ch.close()
           }
         }
-      }
     })
 
   // Main thread method. The loop will break if the Selector loop is closed
@@ -191,19 +190,16 @@ final class SelectorLoop(
       it.remove()
 
       val selectable = getAttachment(k)
-      try {
-        if (k.isValid) {
-          if (selectable != null) {
-            selectable.opsReady(scratch)
-          } else {
-            k.cancel()
-            logger.error("Illegal state: selector key had null attachment.")
-          }
-        } else if (selectable != null) {
-          selectable.close(None)
+      try if (k.isValid) {
+        if (selectable != null) {
+          selectable.opsReady(scratch)
+        } else {
+          k.cancel()
+          logger.error("Illegal state: selector key had null attachment.")
         }
-      }
-      catch {
+      } else if (selectable != null) {
+        selectable.close(None)
+      } catch {
         case t @ (NonFatal(_) | _: ControlThrowable) =>
           logger.error(t)("Error performing channel operations. Closing channel.")
           try selectable.close(Some(t))
