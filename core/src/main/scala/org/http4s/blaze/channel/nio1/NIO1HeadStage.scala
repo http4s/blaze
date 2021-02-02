@@ -122,6 +122,17 @@ private[nio1] final class NIO1HeadStage(
     with Selectable {
   import NIO1HeadStage._
 
+  @deprecated("Binary compatibility shim. This one can leak connection acceptance permits.", "0.14.15")
+  private[NIO1HeadStage] def this(
+    ch: SocketChannel,
+    selectorLoop: SelectorLoop,
+    key: SelectionKey
+  ) = this(
+    new NIO1ClientChannel(ch, { () => () }),
+    selectorLoop: SelectorLoop,
+    key
+  )
+
   override def name: String = "NIO1 ByteBuffer Head Stage"
 
   // State of the HeadStage. These should only be accessed from the SelectorLoop thread

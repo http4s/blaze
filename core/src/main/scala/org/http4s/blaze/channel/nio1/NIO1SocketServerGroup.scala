@@ -55,7 +55,7 @@ object NIO1SocketServerGroup {
     * @note The worker pool is not owned by the group and therefore not
     *       shutdown when the group is shutdown.
     */
-  def apply(
+  def create(
       acceptorPool: SelectorLoopPool,
       workerPool: SelectorLoopPool,
       channelOptions: ChannelOptions = ChannelOptions.DefaultOptions,
@@ -63,12 +63,20 @@ object NIO1SocketServerGroup {
   ): ServerChannelGroup =
     new NIO1SocketServerGroup(acceptorPool, workerPool, channelOptions, maxConnections)
 
-  /** Create a new [[NIO1SocketServerGroup]] with a fresh [[FixedSelectorPool]]
+  @deprecated("Use `create` instead. This uses the same pool for both worker and acceptor", "0.14.15")
+  def apply(
+    workerPool: SelectorLoopPool,
+    channelOptions: ChannelOptions = ChannelOptions.DefaultOptions
+  ): ServerChannelGroup =
+    create(workerPool, workerPool, channelOptions, DefaultMaxConnections)
+
+  /** Create a new [[NIO1SocketServerGroup]] with a fresh [[FixedSelectorPool]
+]
     *
     * The resulting [[ServerChannelGroup]] takes ownership of the created pool,
     * shutting it down when the group is shutdown.
     */
-  def fixedGroup(
+  def fixed(
       workerThreads: Int = DefaultPoolSize,
       bufferSize: Int = DefaultBufferSize,
       channelOptions: ChannelOptions = ChannelOptions.DefaultOptions,
@@ -79,7 +87,7 @@ object NIO1SocketServerGroup {
   ): ServerChannelGroup = {
     val acceptorPool = new FixedSelectorPool(acceptorThreads, 1, acceptorThreadFactory)
     val workerPool = new FixedSelectorPool(workerThreads, bufferSize, selectorThreadFactory)
-    val underlying = apply(acceptorPool, workerPool, channelOptions, maxConnections)
+    val underlying = create(acceptorPool, workerPool, channelOptions, maxConnections)
 
     // Proxy to the underlying group. `close` calls also close
     // the worker pools since we were the ones that created it.
@@ -102,6 +110,15 @@ object NIO1SocketServerGroup {
         underlying.bind(address, service)
     }
   }
+
+  @deprecated("Use `fixed` instead", "0.14.15")
+  def fixedGroup(
+      workerThreads: Int = DefaultPoolSize,
+      bufferSize: Int = DefaultBufferSize,
+      channelOptions: ChannelOptions = ChannelOptions.DefaultOptions,
+      selectorThreadFactory: ThreadFactory = defaultWorkerThreadFactory,
+  ): ServerChannelGroup =
+    fixed(workerThreads, bufferSize, channelOptions, selectorThreadFactory, 1, defaultAcceptorThreadFactory, DefaultMaxConnections)
 }
 
 /** A thread resource group for NIO1 network operations

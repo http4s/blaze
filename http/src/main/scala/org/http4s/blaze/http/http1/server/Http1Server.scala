@@ -59,7 +59,7 @@ object Http1Server {
       address: InetSocketAddress,
       config: HttpServerStageConfig,
       workerThreads: Int = channel.DefaultPoolSize): Try[GroupAndChannel] = {
-    val group: ServerChannelGroup = NIO1SocketServerGroup.fixedGroup(workerThreads = workerThreads)
+    val group: ServerChannelGroup = NIO1SocketServerGroup.fixed(workerThreads = workerThreads)
 
     val builder = service(_: SocketConnection).map { service =>
       LeafBuilder(new Http1ServerStage(service, config))

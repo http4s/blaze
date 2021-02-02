@@ -79,7 +79,11 @@ lazy val core = Project("blaze-core", file("core"))
       scalaVersion,
       git.gitHeadCommit
     ),
-    buildInfoOptions += BuildInfoOption.BuildTime
+    buildInfoOptions += BuildInfoOption.BuildTime,
+    mimaBinaryIssueFilters ++= Seq(
+      // private constructor for which there are no sensible defaults
+      ProblemFilters.exclude[DirectMissingMethodProblem]("org.http4s.blaze.channel.nio1.NIO1SocketServerGroup.this")
+    )
   )
 
 lazy val http = Project("blaze-http", file("http"))

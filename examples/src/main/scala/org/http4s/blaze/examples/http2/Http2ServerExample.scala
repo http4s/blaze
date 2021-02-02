@@ -51,7 +51,7 @@ class Http2ServerExample(port: Int) {
   }
 
   private val factory =
-    NIO1SocketServerGroup.fixedGroup(workerThreads = channel.DefaultPoolSize)
+    NIO1SocketServerGroup.fixed(workerThreads = channel.DefaultPoolSize)
 
   def run(): ServerChannel =
     factory
