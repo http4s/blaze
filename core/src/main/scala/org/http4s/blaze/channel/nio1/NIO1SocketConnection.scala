@@ -36,6 +36,14 @@ object NIO1Connection {
           override def isOpen: Boolean = connection.isOpen
         }
     }
+
+  private[blaze] def apply(channel: NIO1ClientChannel): SocketConnection =
+    new SocketConnection {
+      override def remote: SocketAddress = channel.getRemoteAddress
+      override def local: SocketAddress = channel.getLocalAddress
+      override def isOpen: Boolean = channel.isOpen
+      override def close(): Unit = channel.close()
+    }
 }
 
 private case class NIO1SocketConnection(connection: SocketChannel) extends SocketConnection {

@@ -33,6 +33,7 @@ object Http1Server {
   case class GroupAndChannel(group: ServerChannelGroup, channel: ServerChannel)
 
   /** Create a new Http1Server */
+  @deprecated("Prefer NIO1 over NIO2. Use nio1 constructor method.", "0.14.15")
   def apply(
       service: SocketConnection => Future[HttpService],
       address: InetSocketAddress,
@@ -43,6 +44,22 @@ object Http1Server {
       if (useNio2)
         NIO2SocketServerGroup.fixedGroup(workerThreads = workerThreads)
       else NIO1SocketServerGroup.fixedGroup(workerThreads = workerThreads)
+
+    val builder = service(_: SocketConnection).map { service =>
+      LeafBuilder(new Http1ServerStage(service, config))
+    }(Execution.directec)
+
+    val channel = group.bind(address, builder)
+    if (channel.isFailure) group.closeGroup()
+    channel.map(GroupAndChannel(group, _))
+  }
+
+  def nio1(
+      service: SocketConnection => Future[HttpService],
+      address: InetSocketAddress,
+      config: HttpServerStageConfig,
+      workerThreads: Int = channel.DefaultPoolSize): Try[GroupAndChannel] = {
+    val group: ServerChannelGroup = NIO1SocketServerGroup.fixed(workerThreads = workerThreads)
 
     val builder = service(_: SocketConnection).map { service =>
       LeafBuilder(new Http1ServerStage(service, config))
