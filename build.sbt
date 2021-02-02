@@ -16,6 +16,7 @@ lazy val commonSettings = Seq(
   crossScalaVersions := Seq("2.11.12", "2.12.12", "2.13.3"),
   scalaVersion := crossScalaVersions.value.filter(_.startsWith("2.")).last,
   scalacOptions in Test ~= (_.filterNot(Set("-Ywarn-dead-code", "-Wdead-code", "-Xfatal-warnings"))), // because mockito
+  scalacOptions in (Compile, doc) += "-no-link-warnings",
   unmanagedSourceDirectories in Compile ++= {
     (unmanagedSourceDirectories in Compile).value.map { dir =>
       val sv = scalaVersion.value
@@ -45,6 +46,8 @@ lazy val commonSettings = Seq(
   ),
   startYear := Some(2014),
 )
+
+ThisBuild / githubWorkflowJavaVersions := Seq("adopt@1.8")
 
 ThisBuild / githubWorkflowPublishTargetBranches := Seq(
   RefPredicate.Equals(Ref.Branch("main"))
