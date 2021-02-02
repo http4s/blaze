@@ -47,6 +47,8 @@ lazy val commonSettings = Seq(
   startYear := Some(2014),
 )
 
+ThisBuild / githubWorkflowJavaVersions := Seq("adopt@1.8")
+
 ThisBuild / githubWorkflowPublishTargetBranches := Seq(
   RefPredicate.Equals(Ref.Branch("main"))
 )
