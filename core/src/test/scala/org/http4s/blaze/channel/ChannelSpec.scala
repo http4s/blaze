@@ -20,7 +20,6 @@ import java.net.{InetSocketAddress, Socket}
 import java.nio.ByteBuffer
 import java.util.concurrent.atomic.AtomicInteger
 import org.http4s.blaze.channel.nio1.NIO1SocketServerGroup
-import org.http4s.blaze.channel.nio2.NIO2SocketServerGroup
 import org.http4s.blaze.pipeline.{LeafBuilder, TailStage}
 import org.http4s.blaze.util.Execution
 import org.specs2.mutable.Specification
@@ -33,21 +32,6 @@ class NIO1ChannelSpec extends BaseChannelSpec {
 
     val channel = factory.bind(new InetSocketAddress(0), f).get // will throw if failed to bind
     ServerPair(factory, channel)
-  }
-}
-
-class NIO2ChannelSpec extends BaseChannelSpec {
-  override protected def bind(f: SocketPipelineBuilder): ServerPair = {
-    val factory = NIO2SocketServerGroup.fixedGroup(workerThreads = 2)
-
-    val channel = factory.bind(new InetSocketAddress(0), f).get // will throw if failed to bind
-    ServerPair(factory, channel)
-  }
-
-  "NIO2 Channel" should {
-    "throw an exception when trying to shutdown the system default group" in {
-      NIO2SocketServerGroup().closeGroup() must throwA[IllegalStateException]
-    }
   }
 }
 

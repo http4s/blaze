@@ -70,15 +70,6 @@ object NIO1SocketServerGroup {
   ): ServerChannelGroup =
     new NIO1SocketServerGroup(acceptorPool, workerPool, channelOptions, maxConnections)
 
-  @deprecated(
-    "Use `create` instead. This uses the same pool for both worker and acceptor",
-    "0.14.15")
-  def apply(
-      workerPool: SelectorLoopPool,
-      channelOptions: ChannelOptions = ChannelOptions.DefaultOptions
-  ): ServerChannelGroup =
-    create(workerPool, workerPool, channelOptions, DefaultMaxConnections)
-
   /** Create a new [[NIO1SocketServerGroup]] with a fresh [[FixedSelectorPool]
     * ]
     *
@@ -119,22 +110,6 @@ object NIO1SocketServerGroup {
         underlying.bind(address, service)
     }
   }
-
-  @deprecated("Use `fixed` instead", "0.14.15")
-  def fixedGroup(
-      workerThreads: Int = DefaultPoolSize,
-      bufferSize: Int = DefaultBufferSize,
-      channelOptions: ChannelOptions = ChannelOptions.DefaultOptions,
-      selectorThreadFactory: ThreadFactory = defaultWorkerThreadFactory
-  ): ServerChannelGroup =
-    fixed(
-      workerThreads,
-      bufferSize,
-      channelOptions,
-      selectorThreadFactory,
-      1,
-      defaultAcceptorThreadFactory,
-      DefaultMaxConnections)
 }
 
 /** A thread resource group for NIO1 network operations
