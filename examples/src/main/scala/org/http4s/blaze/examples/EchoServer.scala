@@ -29,7 +29,7 @@ import java.util.Date
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import org.http4s.blaze.pipeline.Command.EOF
-import org.http4s.blaze.channel.nio2.NIO2SocketServerGroup
+import org.http4s.blaze.channel.nio1.NIO1SocketServerGroup
 import org.log4s.getLogger
 
 import scala.concurrent.Future
@@ -40,7 +40,8 @@ class EchoServer {
   def prepare(address: InetSocketAddress): ServerChannel = {
     val f: SocketPipelineBuilder = _ => Future.successful(LeafBuilder(new EchoStage))
 
-    NIO2SocketServerGroup()
+    NIO1SocketServerGroup
+      .fixed()
       .bind(address, f)
       .getOrElse(sys.error("Failed to start server."))
   }
