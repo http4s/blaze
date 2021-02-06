@@ -41,11 +41,11 @@ class HeaderNamesSpec extends Specification {
     }
 
     "Accept a header with numbers" in {
-      HeaderNames.validH2HeaderKey('0' to '9' mkString) must_== true
+      HeaderNames.validH2HeaderKey(('0' to '9').mkString) must_== true
     }
 
     "Accept a header with lower case letters" in {
-      HeaderNames.validH2HeaderKey('a' to 'z' mkString) must_== true
+      HeaderNames.validH2HeaderKey(('a' to 'z').mkString) must_== true
     }
 
     "Accept a header with non-delimiters" in {

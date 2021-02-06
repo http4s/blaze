@@ -208,14 +208,14 @@ private final class NIO1SocketServerGroup private (
       // in case we were closed because the event loop was closed,
       // we need to be ready to handle a `RejectedExecutionException`.
       def doClose(): Unit = {
-        logger.info(s"Closing NIO1 channel $socketAddress")
+        this.logger.info(s"Closing NIO1 channel $socketAddress")
         closed = true
         listeningSet.synchronized {
           listeningSet.remove(this)
         }
         try selectableChannel.close()
         catch {
-          case NonFatal(t) => logger.warn(t)("Failure during channel close.")
+          case NonFatal(t) => this.logger.warn(t)("Failure during channel close.")
         } finally connections.close() // allow the acceptor thread through
       }
 
@@ -227,7 +227,7 @@ private final class NIO1SocketServerGroup private (
       })
       catch {
         case _: RejectedExecutionException =>
-          logger.info("Selector loop closed. Closing in local thread.")
+          this.logger.info("Selector loop closed. Closing in local thread.")
           doClose()
       }
     }

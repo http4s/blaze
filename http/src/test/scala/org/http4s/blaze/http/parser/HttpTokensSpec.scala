@@ -27,9 +27,9 @@ class HttpTokensSpec extends Specification {
 
   "HttpTokens" should {
     "parse hex chars to ints" in {
-      smalChrs.map(c => HttpTokens.hexCharToInt(c)) should_== (0 until 16 toList)
+      smalChrs.map(c => HttpTokens.hexCharToInt(c)) should_== ((0 until 16).toList)
 
-      bigChrs.map(c => HttpTokens.hexCharToInt(c)) should_== (0 until 16 toList)
+      bigChrs.map(c => HttpTokens.hexCharToInt(c)) should_== ((0 until 16).toList)
 
       HttpTokens.hexCharToInt('x') should throwA[BadMessage]
     }

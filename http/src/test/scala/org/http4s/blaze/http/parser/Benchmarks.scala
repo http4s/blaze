@@ -67,8 +67,8 @@ class Benchmarks extends Specification {
   }
 
   def checkingBenchmark(iterations: Int): Unit = {
+    val sb = new StringBuilder
     val p = new BenchParser() {
-      val sb = new StringBuilder
 
       override def parsecontent(s: ByteBuffer): ByteBuffer = {
         val b = super.parsecontent(s)
@@ -118,9 +118,9 @@ class Benchmarks extends Specification {
       p.parsecontent(b)
       assert(p.contentComplete())
       //      println(p.sb.result())
-      assert(p.sb.result() == reconstructed)
+      assert(sb.result() == reconstructed)
 
-      p.sb.clear()
+      sb.clear()
       p.reset()
 
       assert(!p.requestLineComplete())
@@ -156,19 +156,18 @@ class Benchmarks extends Specification {
   }
 
   def headerCounterBenchmark(iterations: Int): Unit = {
+    val headers = new ListBuffer[(String, String)]
     val p = new BenchParser() {
-      val headers = new ListBuffer[(String, String)]
-
       override def headerComplete(name: String, value: String): Boolean = {
         headers += ((name, value))
         false
       }
-
-      def clear(): Unit = {
-        headers.clear()
-        super.reset()
-      }
     }
+    def clear(): Unit = {
+      headers.clear()
+      p.reset()
+    }
+
     val b = ByteBuffer.wrap(mockChunked.getBytes(StandardCharsets.UTF_8))
 
     def iteration(remaining: Int): Unit =
@@ -178,8 +177,8 @@ class Benchmarks extends Specification {
         assert(p.parseLine(b))
         assert(p.parseheaders(b))
         p.parsecontent(b)
-        assert(p.headers.length == 5)
-        p.clear()
+        assert(headers.length == 5)
+        clear()
         assert(!p.requestLineComplete())
       }
 

@@ -11,11 +11,12 @@ ThisBuild / versionIntroduced := Map(
   "3.0.0-M3" -> "0.15.0"
 )
 
+ThisBuild / crossScalaVersions := Seq("2.12.12", "2.13.3", "3.0.0-M2", "3.0.0-M3")
+ThisBuild / scalaVersion := crossScalaVersions.value.filter(_.startsWith("2.")).last
+
 lazy val commonSettings = Seq(
   description := "NIO Framework for Scala",
-  crossScalaVersions := Seq("2.11.12", "2.12.12", "2.13.3"),
-  scalaVersion := crossScalaVersions.value.filter(_.startsWith("2.")).last,
-  scalacOptions in Test ~= (_.filterNot(Set("-Ywarn-dead-code", "-Wdead-code", "-Xfatal-warnings"))), // because mockito
+  scalacOptions in Test ~= (_.filterNot(Set("-Ywarn-dead-code", "-Wdead-code"))), // because mockito
   scalacOptions in (Compile, doc) += "-no-link-warnings",
   unmanagedSourceDirectories in Compile ++= {
     (unmanagedSourceDirectories in Compile).value.map { dir =>
@@ -69,8 +70,8 @@ lazy val core = Project("blaze-core", file("core"))
   .settings(
     libraryDependencies ++= Seq(log4s),
     libraryDependencies ++= Seq(
-      specs2,
-      specs2Mock,
+      specs2.withDottyCompat(scalaVersion.value),
+      specs2Mock.withDottyCompat(scalaVersion.value),
       logbackClassic
     ).map(_ % Test),
     buildInfoPackage := "org.http4s.blaze",
@@ -98,8 +99,8 @@ lazy val http = Project("blaze-http", file("http"))
     // Test Dependencies
     libraryDependencies ++= Seq(
       asyncHttpClient,
-      scalacheck,
-      specs2Scalacheck
+      scalacheck.withDottyCompat(scalaVersion.value),
+      specs2Scalacheck.withDottyCompat(scalaVersion.value)
     ).map(_ % Test),
     mimaBinaryIssueFilters ++= Seq(
       ProblemFilters.exclude[MissingClassProblem]("org.http4s.blaze.http.http2.PingManager$PingState"),

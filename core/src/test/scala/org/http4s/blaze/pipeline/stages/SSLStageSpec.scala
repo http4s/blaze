@@ -31,7 +31,7 @@ import scala.concurrent._
 import scala.util.control.NonFatal
 
 class SSLStageSpec extends Specification {
-  implicit def ec = Execution.trampoline
+  implicit def ec: ExecutionContext = Execution.trampoline
 
   def debug = false
 

@@ -19,7 +19,7 @@ package channel
 
 import org.http4s.blaze.pipeline.TailStage
 import java.nio.ByteBuffer
-
+import scala.concurrent.ExecutionContext
 import scala.util.{Failure, Success}
 import org.http4s.blaze.pipeline.Command.EOF
 
@@ -28,7 +28,7 @@ class EchoStage extends TailStage[ByteBuffer] {
 
   val msg = "echo: ".getBytes
 
-  private implicit def ec = util.Execution.trampoline
+  private implicit def ec: ExecutionContext = util.Execution.trampoline
 
   final override def stageStartup(): Unit =
     channelRead().onComplete {
