@@ -30,4 +30,9 @@ package object channel {
     */
   val DefaultPoolSize: Int =
     math.max(4, Runtime.getRuntime.availableProcessors() + 1)
+
+  /** Default max number of connections that can be active at any time.
+    * A negative number means that there is no max.
+    */
+  val DefaultMaxConnections: Int = 512
 }

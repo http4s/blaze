@@ -29,7 +29,7 @@ import scala.concurrent.duration._
 
 class NIO1ChannelSpec extends BaseChannelSpec {
   override protected def bind(f: SocketPipelineBuilder): ServerPair = {
-    val factory = NIO1SocketServerGroup.fixedGroup(workerThreads = 2)
+    val factory = NIO1SocketServerGroup.fixed(workerThreads = 2)
 
     val channel = factory.bind(new InetSocketAddress(0), f).get // will throw if failed to bind
     ServerPair(factory, channel)
