@@ -20,7 +20,6 @@ import java.io.IOException
 import java.nio.ByteBuffer
 import java.nio.channels._
 import java.util.concurrent.RejectedExecutionException
-
 import org.http4s.blaze.channel.ChannelHead
 import org.http4s.blaze.pipeline.Command.{Disconnected, EOF}
 import org.http4s.blaze.util
@@ -46,7 +45,7 @@ private[nio1] object NIO1HeadStage {
     * @return a `Try` representing successfully loading data into `scratch`, or
     *         the failure cause.
     */
-  private def performRead(ch: SocketChannel, scratch: ByteBuffer, size: Int): Try[Unit] =
+  private def performRead(ch: NIO1ClientChannel, scratch: ByteBuffer, size: Int): Try[Unit] =
     try {
       scratch.clear()
       if (size >= 0 && size < scratch.remaining)
@@ -69,7 +68,7 @@ private[nio1] object NIO1HeadStage {
     * @return a WriteResult that is one of Complete, Incomplete or WriteError(e: Exception)
     */
   private def performWrite(
-      ch: SocketChannel,
+      ch: NIO1ClientChannel,
       scratch: ByteBuffer,
       buffers: Array[ByteBuffer]): WriteResult =
     try if (BufferTools.areDirectOrEmpty(buffers)) {
@@ -116,12 +115,25 @@ private[nio1] object NIO1HeadStage {
 }
 
 private[nio1] final class NIO1HeadStage(
-    ch: SocketChannel,
+    ch: NIO1ClientChannel,
     selectorLoop: SelectorLoop,
     key: SelectionKey
 ) extends ChannelHead
     with Selectable {
   import NIO1HeadStage._
+
+  @deprecated(
+    "Binary compatibility shim. This one can leak connection acceptance permits.",
+    "0.14.15")
+  private[NIO1HeadStage] def this(
+      ch: SocketChannel,
+      selectorLoop: SelectorLoop,
+      key: SelectionKey
+  ) = this(
+    new NIO1ClientChannel(ch, () => ()),
+    selectorLoop: SelectorLoop,
+    key
+  )
 
   override def name: String = "NIO1 ByteBuffer Head Stage"
 

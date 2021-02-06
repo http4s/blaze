@@ -29,6 +29,7 @@ import org.log4s.getLogger
 import scala.util.{Failure, Success, Try}
 import scala.util.control.NonFatal
 
+@deprecated("Prefer NIO1 over NIO2", "0.14.15")
 object NIO2SocketServerGroup {
 
   /** Create a new fixed size NIO2 SocketServerGroup
