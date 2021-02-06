@@ -7,8 +7,8 @@ ThisBuild / baseVersion := "0.15"
 
 ThisBuild / versionIntroduced := Map(
   "2.13" -> "0.14.5",
-  "3.0.0-M2" -> "0.14.15",
-  "3.0.0-M3" -> "0.14.15"
+  "3.0.0-M2" -> "0.15.0",
+  "3.0.0-M3" -> "0.15.0"
 )
 
 lazy val commonSettings = Seq(
