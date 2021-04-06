@@ -12,7 +12,7 @@ ThisBuild / versionIntroduced := Map(
   "3.0.0-RC2" -> "0.15.0",
 )
 
-ThisBuild / crossScalaVersions := Seq("2.12.12", "2.13.5", "3.0.0-RC1", "3.0.0-RC2")
+ThisBuild / crossScalaVersions := Seq("2.12.13", "2.13.5", "3.0.0-RC1", "3.0.0-RC2")
 ThisBuild / scalaVersion := crossScalaVersions.value.filter(_.startsWith("2.")).last
 
 lazy val commonSettings = Seq(
