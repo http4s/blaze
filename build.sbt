@@ -109,13 +109,10 @@ lazy val http = Project("blaze-http", file("http"))
   ).dependsOn(core % "test->test;compile->compile")
 
 lazy val examples = Project("blaze-examples",file("examples"))
-  .enablePlugins(AlpnBootPlugin)
   .enablePlugins(NoPublishPlugin)
   .settings(commonSettings)
   .settings(Revolver.settings)
-  .settings(
-    alpnBootModule := alpn_boot,
-  ).dependsOn(http)
+  .dependsOn(http)
 
 /* Helper Functions */
 
