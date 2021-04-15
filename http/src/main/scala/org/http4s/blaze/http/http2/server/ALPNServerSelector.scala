@@ -27,17 +27,44 @@ import scala.util.control.NonFatal
 /** Dynamically inject an appropriate pipeline using ALPN
   *
   * @param engine the `SSLEngine` in use for the connection
-  * @param selector selects the preferred protocol from the seq of supported
-  *                 clients. May get an empty sequence.
+  * @param available a sequence of protocols supported by the server
+  * @param default a fallback protocol in case a protocol cannot be negotiated
+  *                using ALPN
   * @param builder builds the appropriate pipeline based on the
   */
 final class ALPNServerSelector(
     engine: SSLEngine,
-    selector: Set[String] => String,
+    available: Seq[String],
+    default: String,
     builder: String => LeafBuilder[ByteBuffer]
 ) extends TailStage[ByteBuffer] {
+
+  /** Dynamically inject an appropriate pipeline using ALPN
+    *
+    * @param engine the `SSLEngine` in use for the connection
+    * @param selector unused
+    * @param builder builds the appropriate pipeline based on the negotiated
+    *                protocol
+    */
+  @deprecated(
+    """Due to moving towards using JDK platform APIs for ALPN negotiation, this constructor is no longer accurate.
+      |Please use
+      |ALPNServerSelector(SSLEngine, Seq[String], String, String => LeafBuilder[ByteBuffer])
+      |instead.""".stripMargin.replaceAll("\n", " "),
+    "0.14.16")
+  def this(
+      engine: SSLEngine,
+      selector: Set[String] => String,
+      builder: String => LeafBuilder[ByteBuffer]
+  ) = this(
+    engine,
+    Seq(ALPNTokens.H2, ALPNTokens.H2_14, ALPNTokens.HTTP_1_1),
+    ALPNTokens.HTTP_1_1,
+    builder)
+
+  require(available.nonEmpty)
   val params = engine.getSSLParameters()
-  params.setApplicationProtocols(Array(ALPNTokens.H2_14, ALPNTokens.H2, ALPNTokens.HTTP_1_1))
+  params.setApplicationProtocols(available.toArray)
   engine.setSSLParameters(params)
 
   override def name: String = "PipelineSelector"
@@ -54,7 +81,7 @@ final class ALPNServerSelector(
 
   private def selectPipeline(): Unit =
     try {
-      val protocol = engine.getApplicationProtocol()
+      val protocol = Option(engine.getApplicationProtocol()).getOrElse(default)
       val b = builder(protocol)
       this.replaceTail(b, true)
       ()

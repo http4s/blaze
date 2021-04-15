@@ -39,12 +39,7 @@ object ServerSelector {
         case _ => LeafBuilder(http1xStage(service, config))
       }
 
-    def selector(protocols: Set[String]): String =
-      if (protocols(H2)) H2
-      else if (protocols(H2_14)) H2_14
-      else HTTP_1_1
-
-    new ALPNServerSelector(engine, selector, builder)
+    new ALPNServerSelector(engine, List(H2, H2_14, HTTP_1_1), HTTP_1_1, builder)
   }
 
   private def http1xStage(
