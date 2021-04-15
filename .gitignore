@@ -2,6 +2,7 @@ target/
 /.lib/
 
 *~
+/.bsp/
 /.ensime
 /.idea/
 /.idea_modules/
