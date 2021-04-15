@@ -92,10 +92,7 @@ lazy val http = Project("blaze-http", file("http"))
   .settings(commonSettings)
   .settings(
     // General Dependencies
-    libraryDependencies ++= Seq(
-      twitterHPACK,
-      alpn_api
-    ),
+    libraryDependencies += twitterHPACK,
     // Test Dependencies
     libraryDependencies ++= Seq(
       asyncHttpClient,
