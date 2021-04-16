@@ -19,6 +19,7 @@ package http2.server
 
 import java.nio.ByteBuffer
 import javax.net.ssl.SSLEngine
+import java.util
 import org.http4s.blaze.internal.compat.CollectionConverters._
 import org.http4s.blaze.pipeline.{LeafBuilder, TailStage, Command => Cmd}
 import org.http4s.blaze.util.Execution.trampoline
@@ -39,12 +40,14 @@ final class ALPNServerSelector(
     builder: String => LeafBuilder[ByteBuffer]
 ) extends TailStage[ByteBuffer] {
 
-  engine.setHandshakeApplicationProtocolSelector { (_, protocols) =>
-    val available = protocols.asScala.toList
-    logger.debug("Available protocols: " + available)
-    val s = selector(available.toSet)
-    s
-  }
+  engine.setHandshakeApplicationProtocolSelector(
+    new util.function.BiFunction[SSLEngine, util.List[String], String] {
+      def apply(engine: SSLEngine, protocols: util.List[String]): String = {
+        val available = protocols.asScala.toList
+        logger.debug("Available protocols: " + available)
+        selector(available.toSet)
+      }
+    })
 
   override def name: String = "PipelineSelector"
 
