@@ -43,12 +43,8 @@ final class ALPNServerSelector(
     val available = protocols.asScala.toList
     logger.debug("Available protocols: " + available)
     val s = selector(available.toSet)
-    selected = Some(s)
     s
   }
-
-  @volatile
-  private var selected: Option[String] = None
 
   override def name: String = "PipelineSelector"
 
@@ -64,7 +60,7 @@ final class ALPNServerSelector(
 
   private def selectPipeline(): Unit =
     try {
-      val protocol = selected.getOrElse(selector(Set.empty))
+      val protocol = Option(engine.getApplicationProtocol()).getOrElse(selector(Set.empty))
       val b = builder(protocol)
       this.replaceTail(b, true)
       ()
