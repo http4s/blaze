@@ -19,53 +19,36 @@ package http2.server
 
 import java.nio.ByteBuffer
 import javax.net.ssl.SSLEngine
+import org.http4s.blaze.internal.compat.CollectionConverters._
 import org.http4s.blaze.pipeline.{LeafBuilder, TailStage, Command => Cmd}
 import org.http4s.blaze.util.Execution.trampoline
 import scala.util.{Failure, Success}
 import scala.util.control.NonFatal
 
-/** Dynamically inject an appropriate pipeline using ALPN
+/** Dynamically inject an appropriate pipeline using ALPN negotiation.
   *
   * @param engine the `SSLEngine` in use for the connection
-  * @param available a sequence of protocols supported by the server
-  * @param default a fallback protocol in case a protocol cannot be negotiated
-  *                using ALPN
-  * @param builder builds the appropriate pipeline based on the
+  * @param selector selects the preferred protocol from the sequence of
+  *                 supported clients. May receive an empty sequence.
+  * @param builder builds the appropriate pipeline based on the negotiated
+  *                protocol
   */
 final class ALPNServerSelector(
     engine: SSLEngine,
-    available: Seq[String],
-    default: String,
+    selector: Set[String] => String,
     builder: String => LeafBuilder[ByteBuffer]
 ) extends TailStage[ByteBuffer] {
 
-  /** Dynamically inject an appropriate pipeline using ALPN
-    *
-    * @param engine the `SSLEngine` in use for the connection
-    * @param selector unused
-    * @param builder builds the appropriate pipeline based on the negotiated
-    *                protocol
-    */
-  @deprecated(
-    """Due to moving towards using JDK platform APIs for ALPN negotiation, this constructor is no longer accurate.
-      |Please use
-      |ALPNServerSelector(SSLEngine, Seq[String], String, String => LeafBuilder[ByteBuffer])
-      |instead.""".stripMargin.replaceAll("\n", " "),
-    "0.14.16")
-  def this(
-      engine: SSLEngine,
-      selector: Set[String] => String,
-      builder: String => LeafBuilder[ByteBuffer]
-  ) = this(
-    engine,
-    Seq(ALPNTokens.H2, ALPNTokens.H2_14, ALPNTokens.HTTP_1_1),
-    ALPNTokens.HTTP_1_1,
-    builder)
+  engine.setHandshakeApplicationProtocolSelector { (_, protocols) =>
+    val available = protocols.asScala.toList
+    logger.debug("Available protocols: " + available)
+    val s = selector(available.toSet)
+    selected = Some(s)
+    s
+  }
 
-  require(available.nonEmpty)
-  val params = engine.getSSLParameters()
-  params.setApplicationProtocols(available.toArray)
-  engine.setSSLParameters(params)
+  @volatile
+  private var selected: Option[String] = None
 
   override def name: String = "PipelineSelector"
 
@@ -81,7 +64,7 @@ final class ALPNServerSelector(
 
   private def selectPipeline(): Unit =
     try {
-      val protocol = Option(engine.getApplicationProtocol()).getOrElse(default)
+      val protocol = selected.getOrElse(selector(Set.empty))
       val b = builder(protocol)
       this.replaceTail(b, true)
       ()
