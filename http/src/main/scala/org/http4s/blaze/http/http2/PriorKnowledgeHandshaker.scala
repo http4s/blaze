@@ -119,9 +119,6 @@ abstract class PriorKnowledgeHandshaker[T](localSettings: ImmutableHttp2Settings
 
           case Left(http2Exception) => sendGoAway(http2Exception)
         }
-
-      case None =>
-        sendGoAway(Http2Exception.INTERNAL_ERROR.goaway("Could not read frame size"))
     }
   }
 
