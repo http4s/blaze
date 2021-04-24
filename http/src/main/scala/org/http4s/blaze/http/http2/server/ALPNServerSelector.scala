@@ -14,34 +14,40 @@
  * limitations under the License.
  */
 
-package org.http4s.blaze.http.http2.server
+package org.http4s.blaze.http
+package http2.server
 
 import java.nio.ByteBuffer
-import java.util
 import javax.net.ssl.SSLEngine
-import org.eclipse.jetty.alpn.ALPN
+import java.util
 import org.http4s.blaze.internal.compat.CollectionConverters._
 import org.http4s.blaze.pipeline.{LeafBuilder, TailStage, Command => Cmd}
 import org.http4s.blaze.util.Execution.trampoline
 import scala.util.{Failure, Success}
 import scala.util.control.NonFatal
 
-/** Dynamically inject an appropriate pipeline using ALPN
+/** Dynamically inject an appropriate pipeline using ALPN negotiation.
   *
   * @param engine the `SSLEngine` in use for the connection
-  * @param selector selects the preferred protocol from the seq of supported
-  *                 clients. May get an empty sequence.
-  * @param builder builds the appropriate pipeline based on the
+  * @param selector selects the preferred protocol from the sequence of
+  *                 supported clients. May receive an empty sequence.
+  * @param builder builds the appropriate pipeline based on the negotiated
+  *                protocol
   */
 final class ALPNServerSelector(
     engine: SSLEngine,
     selector: Set[String] => String,
     builder: String => LeafBuilder[ByteBuffer]
 ) extends TailStage[ByteBuffer] {
-  ALPN.put(engine, new ServerProvider)
 
-  @volatile
-  private var selected: Option[String] = None
+  engine.setHandshakeApplicationProtocolSelector(
+    new util.function.BiFunction[SSLEngine, util.List[String], String] {
+      def apply(engine: SSLEngine, protocols: util.List[String]): String = {
+        val available = protocols.asScala.toList
+        logger.debug("Available protocols: " + available)
+        selector(available.toSet)
+      }
+    })
 
   override def name: String = "PipelineSelector"
 
@@ -57,7 +63,7 @@ final class ALPNServerSelector(
 
   private def selectPipeline(): Unit =
     try {
-      val protocol = selected.getOrElse(selector(Set.empty))
+      val protocol = Option(engine.getApplicationProtocol()).getOrElse(selector(Set.empty))
       val b = builder(protocol)
       this.replaceTail(b, true)
       ()
@@ -66,16 +72,4 @@ final class ALPNServerSelector(
         logger.error(t)("Failure building pipeline")
         closePipeline(Some(t))
     }
-
-  private class ServerProvider extends ALPN.ServerProvider {
-    override def select(protocols: util.List[String]): String = {
-      logger.debug("Available protocols: " + protocols)
-      val s = selector(protocols.asScala.toSet)
-      selected = Some(s)
-      s
-    }
-
-    override def unsupported(): Unit =
-      logger.debug(s"Unsupported protocols, defaulting to $selected")
-  }
 }

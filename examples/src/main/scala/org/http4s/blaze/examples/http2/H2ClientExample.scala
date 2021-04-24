@@ -24,11 +24,6 @@ import scala.concurrent.{Await, Future}
 import scala.concurrent.duration._
 
 /** Examples which calls the Twitter or Google home pages using HTTP/2
-  *
-  * @note the Jetty ALPN boot library must have been loaded in order for
-  *       ALPN negotiation to happen. See the Jetty docs at
-  *       https://www.eclipse.org/jetty/documentation/9.3.x/alpn-chapter.html
-  *       for more information.
   */
 object H2ClientTwitterExample extends H2ClientExample(20, 30.seconds)
 

@@ -92,10 +92,7 @@ lazy val http = Project("blaze-http", file("http"))
   .settings(commonSettings)
   .settings(
     // General Dependencies
-    libraryDependencies ++= Seq(
-      twitterHPACK,
-      alpn_api
-    ),
+    libraryDependencies += twitterHPACK,
     // Test Dependencies
     libraryDependencies ++= Seq(
       asyncHttpClient,
@@ -104,18 +101,17 @@ lazy val http = Project("blaze-http", file("http"))
     ).map(_ % Test),
     mimaBinaryIssueFilters ++= Seq(
       ProblemFilters.exclude[MissingClassProblem]("org.http4s.blaze.http.http2.PingManager$PingState"),
-      ProblemFilters.exclude[MissingClassProblem]("org.http4s.blaze.http.http2.PingManager$PingState$")
+      ProblemFilters.exclude[MissingClassProblem]("org.http4s.blaze.http.http2.PingManager$PingState$"),
+      ProblemFilters.exclude[MissingClassProblem]("org.http4s.blaze.http.http2.client.ALPNClientSelector$ClientProvider"),
+      ProblemFilters.exclude[MissingClassProblem]("org.http4s.blaze.http.http2.server.ALPNServerSelector$ServerProvider")
     )
   ).dependsOn(core % "test->test;compile->compile")
 
 lazy val examples = Project("blaze-examples",file("examples"))
-  .enablePlugins(AlpnBootPlugin)
   .enablePlugins(NoPublishPlugin)
   .settings(commonSettings)
   .settings(Revolver.settings)
-  .settings(
-    alpnBootModule := alpn_boot,
-  ).dependsOn(http)
+  .dependsOn(http)
 
 /* Helper Functions */
 

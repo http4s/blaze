@@ -17,10 +17,7 @@
 package org.http4s.blaze.http.http2.client
 
 import java.nio.ByteBuffer
-import java.util
 import javax.net.ssl.SSLEngine
-import org.eclipse.jetty.alpn.ALPN
-import org.http4s.blaze.internal.compat.CollectionConverters._
 import org.http4s.blaze.pipeline.{Command => Cmd, LeafBuilder, TailStage}
 import org.http4s.blaze.util.Execution._
 import scala.util.{Failure, Success}
@@ -34,10 +31,9 @@ class ALPNClientSelector(
     extends TailStage[ByteBuffer] {
   require(available.nonEmpty)
 
-  ALPN.put(engine, new ClientProvider)
-
-  @volatile
-  private var selected: Option[String] = None
+  val params = engine.getSSLParameters()
+  params.setApplicationProtocols(available.toArray)
+  engine.setSSLParameters(params)
 
   override def name: String = "Http2ClientALPNSelector"
 
@@ -53,8 +49,9 @@ class ALPNClientSelector(
 
   private def selectPipeline(): Unit =
     try {
+      val selected = Option(engine.getApplicationProtocol()).getOrElse(default)
       logger.debug(s"Client ALPN selected: $selected")
-      val tail = builder(selected.getOrElse(default))
+      val tail = builder(selected)
       this.replaceTail(tail, true)
       ()
     } catch {
@@ -62,18 +59,4 @@ class ALPNClientSelector(
         logger.error(t)("Failure building pipeline")
         closePipeline(Some(t))
     }
-
-  private class ClientProvider extends ALPN.ClientProvider {
-    override val protocols: util.List[String] = available.asJava
-
-    override def unsupported(): Unit = {
-      ALPN.remove(engine)
-      logger.info("ALPN client negotiation failed. Defaulting to head of seq")
-    }
-
-    override def selected(protocol: String): Unit = {
-      ALPN.remove(engine)
-      ALPNClientSelector.this.selected = Some(protocol)
-    }
-  }
 }
