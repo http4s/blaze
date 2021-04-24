@@ -64,6 +64,14 @@ abstract class PriorKnowledgeHandshaker[T](localSettings: ImmutableHttp2Settings
   // Attempt to read a SETTINGS frame and return it and any leftover data
   private[this] def readSettings(acc: ByteBuffer): Future[(MutableHttp2Settings, ByteBuffer)] = {
     logger.debug(s"receiving settings. Available data: $acc")
+
+    def insufficientData = {
+      logger.debug(
+        s"Insufficient data. Current representation: " +
+          BufferTools.hexString(acc, 256))
+      channelRead().flatMap(buff => readSettings(BufferTools.concatBuffers(acc, buff)))
+    }
+
     getFrameSize(acc) match {
       // received a (maybe partial) frame that exceeded the max allowed frame length
       // which is 9 bytes for the header and the length of the frame payload.
@@ -75,13 +83,13 @@ abstract class PriorKnowledgeHandshaker[T](localSettings: ImmutableHttp2Settings
         logger.info(ex)(s"Received SETTINGS frame that was to large")
         sendGoAway(ex)
 
-      // still need more data
-      case frameSize if needsMoreData(acc.remaining, frameSize) =>
-        logger.debug(
-          s"Insufficient data. Current representation: " +
-            BufferTools.hexString(acc, 256))
+      case Some(frameSize) if acc.remaining < frameSize =>
+        // Have the header but not a complete frame
+        insufficientData
 
-        channelRead().flatMap(buff => readSettings(BufferTools.concatBuffers(acc, buff)))
+      case None =>
+        // didn't have enough data for even the header
+        insufficientData
 
       // We have at least a SETTINGS frame so we can process it
       case Some(size) =>
@@ -116,12 +124,6 @@ abstract class PriorKnowledgeHandshaker[T](localSettings: ImmutableHttp2Settings
         sendGoAway(Http2Exception.INTERNAL_ERROR.goaway("Could not read frame size"))
     }
   }
-
-  private[this] def needsMoreData(have: Int, size: Option[Int]): Boolean =
-    size match {
-      case None => true // didn't have enough data for even the header
-      case Some(size) => have < size // Have the header byt not a complete frame
-    }
 
   private[this] def sendGoAway(http2Exception: Http2Exception): Future[Nothing] = {
     val reply = FrameSerializer.mkGoAwayFrame(0, http2Exception)

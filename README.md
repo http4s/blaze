@@ -32,7 +32,11 @@ in a unified way. blaze offers TCP socket server support for both NIO1 and NIO2,
 NIO1 tends to be the better performing technology for raw sockets.
 
 ## Getting started
-For a quick start, look in the examples project for some simple examples of HTTP, WebSocket, and a simple EchoServer. 
+For a quick start, look in the examples project for some simple examples of HTTP, WebSocket, and a simple EchoServer.
+
+### Requirements
+Blaze requires a modern, supported version of the JVM to build and run, as it relies on server APIs unavailable before
+[JDK8u252](https://webtide.com/jetty-alpn-java-8u252/). Any JDK newer than JDK8u252, including 9+ is supported.
 
 #### Important blaze behaviors
 * By default, read and write requests should be serialized either manually, or with a `SerializerStage`.
