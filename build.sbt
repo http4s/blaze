@@ -52,6 +52,12 @@ lazy val commonSettings = Seq(
 
 ThisBuild / githubWorkflowJavaVersions := Seq("adopt@1.8")
 
+ThisBuild / githubWorkflowTargetTags ++= Seq("v*")
+
+// currently only publishing tags
+ThisBuild / githubWorkflowPublishTargetBranches :=
+  Seq(RefPredicate.StartsWith(Ref.Tag("v")))
+
 ThisBuild / githubWorkflowPublishTargetBranches := Seq(
   RefPredicate.Equals(Ref.Branch("main"))
 )
