@@ -13,15 +13,15 @@ ThisBuild / versionIntroduced := Map(
   "3.0.0-RC3" -> "0.15.0"
 )
 
-ThisBuild / crossScalaVersions := Seq("2.12.13", "2.13.6", "3.0.0-RC2", "3.0.0-RC3")
+ThisBuild / crossScalaVersions := Seq("2.12.13", "2.13.5", "3.0.0")
 ThisBuild / scalaVersion := crossScalaVersions.value.filter(_.startsWith("2.")).last
 
 lazy val commonSettings = Seq(
   description := "NIO Framework for Scala",
-  scalacOptions in Test ~= (_.filterNot(Set("-Ywarn-dead-code", "-Wdead-code"))), // because mockito
-  scalacOptions in (Compile, doc) += "-no-link-warnings",
-  unmanagedSourceDirectories in Compile ++= {
-    (unmanagedSourceDirectories in Compile).value.map { dir =>
+  Test / scalacOptions ~= (_.filterNot(Set("-Ywarn-dead-code", "-Wdead-code"))), // because mockito
+  Compile / doc / scalacOptions += "-no-link-warnings",
+  Compile / unmanagedSourceDirectories ++= {
+    (Compile / unmanagedSourceDirectories).value.map { dir =>
       val sv = scalaVersion.value
       CrossVersion.binaryScalaVersion(sv) match {
         case "2.11" | "2.12" => file(dir.getPath ++ "-2.11-2.12")
@@ -29,7 +29,7 @@ lazy val commonSettings = Seq(
       }
     }
   },
-  fork in run := true,
+  run / fork := true,
   developers ++= List(
     Developer("bryce-anderson"       , "Bryce L. Anderson"     , "bryce.anderson22@gamil.com"       , url("https://github.com/bryce-anderson")),
     Developer("rossabaker"           , "Ross A. Baker"         , "ross@rossabaker.com"              , url("https://github.com/rossabaker")),
@@ -72,8 +72,8 @@ lazy val core = Project("blaze-core", file("core"))
   .settings(
     libraryDependencies ++= Seq(log4s),
     libraryDependencies ++= Seq(
-      specs2.withDottyCompat(scalaVersion.value),
-      specs2Mock.withDottyCompat(scalaVersion.value),
+      specs2.cross(CrossVersion.for3Use2_13),
+      specs2Mock.cross(CrossVersion.for3Use2_13),
       logbackClassic
     ).map(_ % Test),
     buildInfoPackage := "org.http4s.blaze",
@@ -98,8 +98,8 @@ lazy val http = Project("blaze-http", file("http"))
     // Test Dependencies
     libraryDependencies ++= Seq(
       asyncHttpClient,
-      scalacheck.withDottyCompat(scalaVersion.value),
-      specs2Scalacheck.withDottyCompat(scalaVersion.value)
+      scalacheck.cross(CrossVersion.for3Use2_13),
+      specs2Scalacheck.cross(CrossVersion.for3Use2_13)
     ).map(_ % Test),
     mimaBinaryIssueFilters ++= Seq(
       ProblemFilters.exclude[MissingClassProblem]("org.http4s.blaze.http.http2.PingManager$PingState"),
