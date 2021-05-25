@@ -18,7 +18,7 @@ package org.http4s.blaze.util
 
 import java.util.concurrent.atomic.AtomicReference
 import scala.annotation.tailrec
-import scala.util.control.{NoStackTrace, NonFatal}
+import scala.util.control.NonFatal
 import scala.concurrent.ExecutionContext
 import scala.concurrent.duration._
 import org.http4s.blaze.util.TickWheelExecutor.DefaultWheelSize
@@ -274,9 +274,7 @@ class TickWheelExecutor(wheelSize: Int = DefaultWheelSize, val tick: Duration = 
 }
 
 object TickWheelExecutor {
-  object AlreadyShutdownException
-      extends RuntimeException("TickWheelExecutor is shutdown")
-      with NoStackTrace
+  object AlreadyShutdownException extends RuntimeException("TickWheelExecutor is shutdown")
 
   /** Default size of the hash wheel */
   val DefaultWheelSize = 512
