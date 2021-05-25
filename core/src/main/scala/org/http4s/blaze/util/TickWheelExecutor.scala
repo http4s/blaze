@@ -17,7 +17,6 @@
 package org.http4s.blaze.util
 
 import java.util.concurrent.atomic.AtomicReference
-
 import scala.annotation.tailrec
 import scala.util.control.NonFatal
 import scala.concurrent.ExecutionContext
@@ -77,6 +76,8 @@ class TickWheelExecutor(wheelSize: Int = DefaultWheelSize, val tick: Duration = 
   def shutdown(): Unit =
     alive = false
 
+  private[http4s] def isAlive = alive
+
   /** Schedule the `Runnable` on the [[TickWheelExecutor]]
     *
     * Execution is performed on the [[TickWheelExecutor]]s thread, so only extremely small
@@ -127,7 +128,7 @@ class TickWheelExecutor(wheelSize: Int = DefaultWheelSize, val tick: Duration = 
           Cancelable.NoopCancel
         }
       }
-    else sys.error("TickWheelExecutor is shutdown")
+    else throw TickWheelExecutor.AlreadyShutdownException
 
   // Deals with appending and removing tasks from the buckets
   private def handleTasks(): Unit = {
@@ -273,6 +274,7 @@ class TickWheelExecutor(wheelSize: Int = DefaultWheelSize, val tick: Duration = 
 }
 
 object TickWheelExecutor {
+  object AlreadyShutdownException extends RuntimeException("TickWheelExecutor is shutdown")
 
   /** Default size of the hash wheel */
   val DefaultWheelSize = 512
