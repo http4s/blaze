@@ -60,8 +60,9 @@ class ActorSuite extends FunSuite {
       global)
 
     for (_ <- 0 until senders)
-      global.execute(() => for (_ <- 0 until messages)
-        a ! Continuation(_ => latch.countDown()))
+      global.execute(() =>
+        for (_ <- 0 until messages)
+          a ! Continuation(_ => latch.countDown()))
 
     assert(latch.await(15, TimeUnit.SECONDS))
 
@@ -100,8 +101,8 @@ class ActorSuite extends FunSuite {
     assertEquals(outOfOrder, false)
   }
 
-
-  test("An actor under load shouldn't have a stack overflow dueling actors with a trampolining ec") {
+  test(
+    "An actor under load shouldn't have a stack overflow dueling actors with a trampolining ec") {
     val latch = new CountDownLatch(1)
     implicit val ec = Execution.trampoline
 
@@ -120,7 +121,6 @@ class ActorSuite extends FunSuite {
     a1 ! 100000 // start
     assert(latch.await(15, TimeUnit.SECONDS))
   }
-
 
   test("Actor tell (`!`) pattern shouldn't give exceptions in normal behavior") {
     val latch = new CountDownLatch(1)
