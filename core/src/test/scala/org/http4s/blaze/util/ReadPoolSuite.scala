@@ -16,8 +16,8 @@
 
 package org.http4s.blaze.util
 
-import org.http4s.blaze.pipeline.Command
 import munit.FunSuite
+import org.http4s.blaze.pipeline.Command
 
 import scala.collection.mutable.ListBuffer
 import scala.concurrent.{Await, Awaitable}
