@@ -80,7 +80,9 @@ lazy val core = Project("blaze-core", file("core"))
     libraryDependencies ++= Seq(
       specs2.cross(CrossVersion.for3Use2_13),
       specs2Mock.cross(CrossVersion.for3Use2_13),
-      logbackClassic
+      logbackClassic,
+      munit,
+      munitCatsEffect
     ).map(_ % Test),
     buildInfoPackage := "org.http4s.blaze",
     buildInfoKeys := Seq[BuildInfoKey](
@@ -105,7 +107,9 @@ lazy val http = Project("blaze-http", file("http"))
     libraryDependencies ++= Seq(
       asyncHttpClient,
       scalacheck.cross(CrossVersion.for3Use2_13),
-      specs2Scalacheck.cross(CrossVersion.for3Use2_13)
+      specs2Scalacheck.cross(CrossVersion.for3Use2_13),
+      munit,
+      munitCatsEffect
     ).map(_ % Test),
     mimaBinaryIssueFilters ++= Seq(
       ProblemFilters.exclude[MissingClassProblem]("org.http4s.blaze.http.http2.PingManager$PingState"),
