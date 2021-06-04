@@ -31,7 +31,7 @@ import scala.concurrent._
 import scala.util.control.NonFatal
 
 class SSLStageSuite extends FunSuite {
-  private implicit val ec: ExecutionContext = Execution.trampoline
+  private implicit def ec: ExecutionContext = Execution.trampoline
 
   private def debug = false
 
