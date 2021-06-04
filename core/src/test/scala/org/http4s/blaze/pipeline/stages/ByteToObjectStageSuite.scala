@@ -18,14 +18,14 @@ package org.http4s.blaze.pipeline.stages
 
 import java.nio.ByteBuffer
 
-import munit.FunSuite
+import cats.effect.IO
+import munit.CatsEffectSuite
 import org.http4s.blaze.pipeline.LeafBuilder
 import org.http4s.blaze.util.ImmutableArray
 
-import scala.concurrent.Await
 import scala.concurrent.duration._
 
-class ByteToObjectStageSuite extends FunSuite {
+class ByteToObjectStageSuite extends CatsEffectSuite {
   private sealed trait Msg { def tag: Byte }
   private case class One(byte: Byte) extends Msg { def tag = 0 }
   private case class Two(short: Short) extends Msg { def tag = 1 }
@@ -120,8 +120,14 @@ class ByteToObjectStageSuite extends FunSuite {
 
   test("A ByteToObjectStage should decode a series of buffers") {
     val c = buildPipeline(oneBuffer :: twoBuffer :: Nil)
-    assertEquals(Await.result(c.readRequest(-1), 2.seconds), One(1))
-    assertEquals(Await.result(c.readRequest(-1), 2.seconds), Two(2))
+
+    val result =
+      for {
+        r1 <- IO.fromFuture(IO(c.readRequest(-1)).timeout(2.seconds))
+        r2 <- IO.fromFuture(IO(c.readRequest(-1)).timeout(2.seconds))
+      } yield r1 -> r2
+
+    assertIO(result, One(1) -> Two(2))
   }
 
   test("A ByteToObjectStage should decode one large buffer") {
@@ -130,8 +136,14 @@ class ByteToObjectStageSuite extends FunSuite {
     b.flip()
 
     val c = buildPipeline(b :: Nil)
-    assertEquals(Await.result(c.readRequest(-1), 2.seconds), One(1))
-    assertEquals(Await.result(c.readRequest(-1), 2.seconds), Two(2))
+
+    val result =
+      for {
+        r1 <- IO.fromFuture(IO(c.readRequest(-1)).timeout(2.seconds))
+        r2 <- IO.fromFuture(IO(c.readRequest(-1)).timeout(2.seconds))
+      } yield r1 -> r2
+
+    assertIO(result, One(1) -> Two(2))
   }
 
   test("A ByteToObjectStage should decode a series of one byte buffers") {
@@ -145,7 +157,13 @@ class ByteToObjectStageSuite extends FunSuite {
     }
 
     val c = buildPipeline(ImmutableArray(buffs))
-    assertEquals(Await.result(c.readRequest(-1), 2.seconds), One(1))
-    assertEquals(Await.result(c.readRequest(-1), 2.seconds), Two(2))
+
+    val result =
+      for {
+        r1 <- IO.fromFuture(IO(c.readRequest(-1)).timeout(2.seconds))
+        r2 <- IO.fromFuture(IO(c.readRequest(-1)).timeout(2.seconds))
+      } yield r1 -> r2
+
+    assertIO(result, One(1) -> Two(2))
   }
 }

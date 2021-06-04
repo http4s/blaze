@@ -16,13 +16,14 @@
 
 package org.http4s.blaze.pipeline.stages
 
-import munit.FunSuite
+import cats.effect.IO
+import munit.CatsEffectSuite
 import org.http4s.blaze.pipeline.{HeadStage, LeafBuilder, TailStage}
 
-import scala.concurrent.{Await, Future}
+import scala.concurrent.Future
 import scala.concurrent.duration._
 
-class OneMessageStageSuite extends FunSuite {
+class OneMessageStageSuite extends CatsEffectSuite {
   test("A OneMessageStage should return its single element and then eject itself") {
     val head = new HeadStage[Int] {
       protected def doClosePipeline(cause: Option[Throwable]): Unit = ()
@@ -40,8 +41,7 @@ class OneMessageStageSuite extends FunSuite {
 
     assertEquals(tail.findOutboundStage(classOf[OneMessageStage[Int]]), Some(oneMsg))
 
-    assertEquals(Await.result(tail.channelRead(), 2.seconds), 1)
-
-    assert(tail.findOutboundStage(classOf[OneMessageStage[Int]]).isEmpty)
+    assertIO(IO.fromFuture(IO(tail.channelRead()).timeout(2.seconds)), 1) *>
+      assertIO(IO(tail.findOutboundStage(classOf[OneMessageStage[Int]])), None)
   }
 }

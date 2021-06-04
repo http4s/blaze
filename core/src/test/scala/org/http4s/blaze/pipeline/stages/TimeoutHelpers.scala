@@ -19,24 +19,23 @@ package org.http4s.blaze.pipeline.stages
 import java.nio.ByteBuffer
 import java.nio.charset.StandardCharsets
 
-import munit.FunSuite
+import cats.effect.IO
+import munit.CatsEffectSuite
 import org.http4s.blaze.pipeline.{Command, LeafBuilder}
 
-import scala.concurrent.{Await, Future}
+import scala.concurrent.Future
 import scala.concurrent.duration._
 
-abstract class TimeoutHelpers extends FunSuite {
+abstract class TimeoutHelpers extends CatsEffectSuite {
   def genDelayStage(timeout: Duration): TimeoutStageBase[ByteBuffer]
 
   def newBuff: ByteBuffer = ByteBuffer.wrap("Foo".getBytes(StandardCharsets.UTF_8))
 
-  def checkBuff(buff: ByteBuffer): Unit =
-    assertEquals(StandardCharsets.UTF_8.decode(buff).toString, "Foo")
+  def checkBuff(buff: ByteBuffer): IO[Unit] =
+    assertIO(IO(StandardCharsets.UTF_8.decode(buff).toString), "Foo")
 
-  def checkFuture(f: Future[ByteBuffer], timeout: Duration = 2.seconds): Unit = {
-    val r = Await.result(f, timeout)
-    checkBuff(r)
-  }
+  def checkFuture(f: => Future[ByteBuffer], timeout: FiniteDuration = 2.seconds): IO[Unit] =
+    IO.fromFuture(IO(f).timeout(timeout)).flatMap(checkBuff)
 
   def slow(duration: Duration): DelayHead[ByteBuffer] =
     new DelayHead[ByteBuffer](duration) { def next() = newBuff }

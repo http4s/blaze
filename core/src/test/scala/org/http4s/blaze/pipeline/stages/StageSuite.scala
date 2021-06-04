@@ -18,14 +18,13 @@ package org.http4s.blaze.pipeline.stages
 
 import java.util.concurrent.TimeoutException
 
-import munit.FunSuite
+import cats.effect.IO
+import munit.CatsEffectSuite
 import org.http4s.blaze.pipeline.{LeafBuilder, TailStage}
 
-import scala.concurrent.Await
 import scala.concurrent.duration._
-import scala.util.Try
 
-class StageSuite extends FunSuite {
+class StageSuite extends CatsEffectSuite {
   private def intTail = new TailStage[Int] { def name = "Int Tail" }
   private def slow(duration: Duration) = new DelayHead[Int](duration) { def next() = 1 }
 
@@ -44,44 +43,48 @@ class StageSuite extends FunSuite {
   test("Support reads") {
     val leaf = regPipeline()
 
-    assertEquals(Await.result(leaf.channelRead(), 5.seconds), 1)
+    assertIO(IO.fromFuture(IO(leaf.channelRead()).timeout(5.seconds)), 1)
   }
 
   test("Support writes") {
     val leaf = regPipeline()
 
-    assertEquals(Await.result(leaf.channelWrite(12), 5.seconds), ())
+    assertIO(IO.fromFuture(IO(leaf.channelWrite(12)).timeout(5.seconds)), ())
   }
 
   test("Support read timeouts") {
     val leaf = slowPipeline()
 
-    val result1 = Try(Await.result(leaf.channelRead(1, 100.milli), 5000.milli))
+    val result1 =
+      IO.fromFuture(IO(leaf.channelRead(1, 100.milli)).timeout(5000.millis)).attempt.map {
+        case Left(err) =>
+          err match {
+            case _: TimeoutException => true
+            case _ => false
+          }
 
-    result1.fold(
-      {
-        case _: TimeoutException => ()
-        case ex => fail(s"Unexpected exception found $ex")
-      },
-      _ => fail("Support read timeouts")
-    )
+        case Right(_) => false
+      }
 
-    assertEquals(Await.result(leaf.channelRead(1, 10.seconds), 10.seconds), 1)
+    assertIOBoolean(result1) *>
+      assertIO(IO.fromFuture(IO(leaf.channelRead(1, 10.seconds)).timeout(10.seconds)), 1)
   }
 
   test("Support write timeouts") {
     val leaf = slowPipeline()
 
-    val result1 = Try(Await.result(leaf.channelWrite(1, 100.milli), 5000.milli))
+    val result1 =
+      IO.fromFuture(IO(leaf.channelWrite(1, 100.milli)).timeout(5000.millis)).attempt.map {
+        case Left(err) =>
+          err match {
+            case _: TimeoutException => true
+            case _ => false
+          }
 
-    result1.fold(
-      {
-        case _: TimeoutException => ()
-        case ex => fail(s"Unexpected exception found $ex")
-      },
-      _ => fail("Support write timeouts")
-    )
+        case Right(_) => false
+      }
 
-    assertEquals(Await.result(leaf.channelWrite(1, 10.seconds), 10.seconds), ())
+    assertIOBoolean(result1) *>
+      assertIO(IO.fromFuture(IO(leaf.channelWrite(1, 10.seconds)).timeout(10.seconds)), ())
   }
 }

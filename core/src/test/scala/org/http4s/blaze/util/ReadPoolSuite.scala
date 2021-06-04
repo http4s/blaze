@@ -16,16 +16,17 @@
 
 package org.http4s.blaze.util
 
-import munit.FunSuite
+import cats.effect.IO
+import munit.CatsEffectSuite
 import org.http4s.blaze.pipeline.Command
 
 import scala.collection.mutable.ListBuffer
-import scala.concurrent.{Await, Awaitable}
+import scala.concurrent.Future
 import scala.concurrent.duration._
-import scala.util.Try
 
-class ReadPoolSuite extends FunSuite {
-  private def await[T](t: Awaitable[T]): T = Await.result(t, 1.second)
+class ReadPoolSuite extends CatsEffectSuite {
+  private def toIO[A](computation: => Future[A]) =
+    IO.fromFuture(IO(computation).timeout(1.second))
 
   private class TrackingReadPool extends ReadPool[Int] {
     private[this] val obs = new ListBuffer[Int]
@@ -43,8 +44,8 @@ class ReadPoolSuite extends FunSuite {
     assert(p.offer(1))
     assertEquals(p.observed.length, 0)
 
-    assertEquals(await(p.read()), 1)
-    assertEquals(p.observed, List(1))
+    assertIO(toIO(p.read()), 1) *>
+      assertIO(IO(p.observed), List(1))
   }
 
   test("A ReadPool should enqueue multiple messages") {
@@ -55,8 +56,8 @@ class ReadPoolSuite extends FunSuite {
     }
 
     (0 until 10).foreach { i =>
-      assertEquals(await(p.read()), i)
-      assertEquals(p.observed, (0 to i).toList)
+      assertIO(toIO(p.read()), i) *>
+        assertIO(IO(p.observed), (0 to i).toList)
     }
   }
 
@@ -66,22 +67,24 @@ class ReadPoolSuite extends FunSuite {
 
     assert(f.value.isEmpty)
     assert(p.offer(1))
-    assertEquals(await(f), 1)
+    assertIO(toIO(f), 1)
   }
 
   test("A ReadPool should fail to enqueue two reads") {
     val p = new TrackingReadPool
     p.read()
 
-    val result = Try(await(p.read()))
+    val result = toIO(p.read()).attempt.map {
+      case Left(err) =>
+        err match {
+          case _: IllegalStateException => true
+          case _ => false
+        }
 
-    result.fold(
-      {
-        case _: IllegalStateException => ()
-        case ex => fail(s"Unexpected exception found $ex")
-      },
-      _ => fail("A ReadPool should fail to enqueue two reads")
-    )
+      case Right(_) => false
+    }
+
+    assertIOBoolean(result)
   }
 
   test("A ReadPool should close fails pending reads") {
@@ -90,26 +93,21 @@ class ReadPoolSuite extends FunSuite {
 
     p.close()
 
-    Try(await(f)).fold(
-      {
-        case _: Command.EOF.type => ()
-        case ex => fail(s"Unexpected exception found $ex")
-      },
-      _ => fail("A ReadPool should close fails pending reads")
-    )
+    val result1 =
+      toIO(f).attempt.map {
+        case Left(Command.EOF) => true
+        case _ => false
+      }
 
-    val subsequentF = Try(await(p.read()))
+    // subsequent reads should fail too
+    val subsequentF =
+      toIO(p.read()).attempt.map {
+        case Left(Command.EOF) => true
+        case _ => false
+      }
 
-    // subsequent reads fail too
-    subsequentF.fold(
-      {
-        case _: Command.EOF.type => ()
-        case ex => fail(s"Unexpected exception found ${ex.getMessage}")
-      },
-      _ => fail("A ReadPool should close fails pending reads")
-    )
-
-    // Offers must return false after closed
-    assertEquals(p.offer(1), false)
+    assertIOBoolean(result1) *>
+      assertIOBoolean(subsequentF) *>
+      assertIO(IO(p.offer(1)), false)
   }
 }

@@ -18,27 +18,26 @@ package org.http4s.blaze.util
 
 import java.nio.ByteBuffer
 
-import munit.FunSuite
+import cats.effect.IO
+import munit.CatsEffectSuite
 import org.http4s.blaze.pipeline.TailStage
 
-import scala.concurrent.{Await, Awaitable, Future}
+import scala.concurrent.Future
 import scala.concurrent.duration._
 import scala.concurrent.ExecutionContext.Implicits.global
-import scala.util.Try
 
-class StageToolsSuite extends FunSuite {
+class StageToolsSuite extends CatsEffectSuite {
   class Boom extends Exception("boom")
 
-  def await[T](a: Awaitable[T]): T = Await.result(a, 5.seconds)
+  private def toIO[A](computation: => Future[A]) =
+    IO.fromFuture(IO(computation).timeout(5.seconds))
 
   test("StageTools.accumulateAtLeast should return the empty buffer for 0 byte accumulated") {
     val stage = new TailStage[ByteBuffer] {
       def name: String = "TestTailStage"
     }
 
-    val buf = await(StageTools.accumulateAtLeast(0, stage))
-
-    assertEquals(buf.remaining(), 0)
+    assertIO(toIO(StageTools.accumulateAtLeast(0, stage)).map(_.remaining()), 0)
   }
 
   test(
@@ -51,8 +50,7 @@ class StageToolsSuite extends FunSuite {
         Future.successful(buff.duplicate())
     }
 
-    val result = await(StageTools.accumulateAtLeast(3, stage))
-    assertEquals(result, buff)
+    assertIO(toIO(StageTools.accumulateAtLeast(3, stage)), buff)
   }
 
   test("StageTools.accumulateAtLeast should accumulate two buffers") {
@@ -64,8 +62,8 @@ class StageToolsSuite extends FunSuite {
         Future(buff.duplicate()).flatMap(_ => Future(buff.duplicate()))
     }
 
-    val result = await(StageTools.accumulateAtLeast(6, stage))
-    assertEquals(result, ByteBuffer.wrap(Array[Byte](1, 2, 3, 1, 2, 3)))
+    val expectedBuff = ByteBuffer.wrap(Array[Byte](1, 2, 3, 1, 2, 3))
+    assertIO(toIO(StageTools.accumulateAtLeast(6, stage)), expectedBuff)
   }
 
   test("StageTools.accumulateAtLeast should handle errors in the first read") {
@@ -76,15 +74,12 @@ class StageToolsSuite extends FunSuite {
         Future.failed(new Boom)
     }
 
-    val result = Try(await(StageTools.accumulateAtLeast(6, stage)))
+    val result = toIO(StageTools.accumulateAtLeast(6, stage)).attempt.map {
+      case Left(_: Boom) => true
+      case _ => false
+    }
 
-    result.fold(
-      {
-        case _: Boom => ()
-        case ex => fail(s"Unexpected exception found $ex")
-      },
-      _ => fail("StageTools.accumulateAtLeast should handle errors in the first read")
-    )
+    assertIOBoolean(result)
   }
 
   test("StageTools.accumulateAtLeast should handle errors in the second read") {
@@ -96,14 +91,11 @@ class StageToolsSuite extends FunSuite {
         Future(buff.duplicate()).flatMap(_ => Future.failed(new Boom))
     }
 
-    val result = Try(await(StageTools.accumulateAtLeast(6, stage)))
+    val result = toIO(StageTools.accumulateAtLeast(6, stage)).attempt.map {
+      case Left(_: Boom) => true
+      case _ => false
+    }
 
-    result.fold(
-      {
-        case _: Boom => ()
-        case ex => fail(s"Unexpected exception found $ex")
-      },
-      _ => fail("StageTools.accumulateAtLeast should handle errors in the second read")
-    )
+    assertIOBoolean(result)
   }
 }

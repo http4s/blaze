@@ -18,10 +18,10 @@ package org.http4s.blaze.pipeline.stages
 
 import java.nio.ByteBuffer
 
+import cats.effect.IO
 import org.http4s.blaze.pipeline.Command
 
 import scala.concurrent.duration._
-import scala.util.Try
 
 class QuietTimeoutStageSuite extends TimeoutHelpers {
   override def genDelayStage(timeout: Duration): TimeoutStageBase[ByteBuffer] =
@@ -37,24 +37,26 @@ class QuietTimeoutStageSuite extends TimeoutHelpers {
 
   test("A QuietTimeoutStage should timeout properly") {
     val pipe = makePipeline(delay = 10.seconds, timeout = 100.milliseconds)
-    val result = Try(checkFuture(pipe.channelRead(), 5.second))
+    val result = checkFuture(pipe.channelRead(), 5.second).attempt.map {
+      case Left(err) =>
+        err match {
+          case _: Command.EOF.type => true
+          case _ => false
+        }
 
-    result.fold(
-      {
-        case _: Command.EOF.type => ()
-        case ex => fail(s"Unexpected exception found $ex")
-      },
-      _ => fail("A QuietTimeoutStage should timeout properly")
-    )
+      case Right(_) => false
+    }
+
+    assertIOBoolean(result)
   }
 
   test("A QuietTimeoutStage should not timeout if the delay stage is removed") {
     val pipe = makePipeline(2.seconds, 1.second)
     val f = pipe.channelRead()
     pipe.findOutboundStage(classOf[TimeoutStageBase[ByteBuffer]]).get.removeStage()
-    val r = checkFuture(f, 5.second)
-    pipe.closePipeline(None)
-    r
+
+    checkFuture(f, 5.second) *>
+      IO(pipe.closePipeline(None))
   }
 
   test("A QuietTimeoutStage should not schedule timeouts after the pipeline has been shut down") {
@@ -62,14 +64,16 @@ class QuietTimeoutStageSuite extends TimeoutHelpers {
     val f = pipe.channelRead()
     pipe.closePipeline(None)
 
-    val result = Try(checkFuture(f, 5.second))
+    val result = checkFuture(f, 5.second).attempt.map {
+      case Left(err) =>
+        err match {
+          case _: Command.EOF.type => true
+          case _ => false
+        }
 
-    result.fold(
-      {
-        case _: Command.EOF.type => ()
-        case ex => fail(s"Unexpected exception found $ex")
-      },
-      _ => fail("A QuietTimeoutStage should timeout properly")
-    )
+      case Right(_) => false
+    }
+
+    assertIOBoolean(result)
   }
 }

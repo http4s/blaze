@@ -106,8 +106,7 @@ lazy val http = Project("blaze-http", file("http"))
       asyncHttpClient,
       scalacheck.cross(CrossVersion.for3Use2_13),
       specs2Scalacheck.cross(CrossVersion.for3Use2_13),
-      munit,
-      munitCatsEffect
+      specs2Mock.cross(CrossVersion.for3Use2_13)
     ).map(_ % Test),
     mimaBinaryIssueFilters ++= Seq(
       ProblemFilters.exclude[MissingClassProblem]("org.http4s.blaze.http.http2.PingManager$PingState"),

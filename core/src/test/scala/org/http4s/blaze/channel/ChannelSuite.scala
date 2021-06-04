@@ -20,12 +20,14 @@ import java.net.{InetSocketAddress, Socket}
 import java.nio.ByteBuffer
 import java.util.concurrent.atomic.AtomicInteger
 
-import munit.FunSuite
+import cats.effect.kernel.Resource
+import cats.effect.{IO, SyncIO}
+import munit.{CatsEffectSuite, TestOptions}
 import org.http4s.blaze.channel.nio1.NIO1SocketServerGroup
 import org.http4s.blaze.pipeline.{LeafBuilder, TailStage}
 import org.http4s.blaze.util.Execution
 
-import scala.concurrent.{Await, Future, Promise}
+import scala.concurrent.{Future, Promise}
 import scala.concurrent.duration._
 
 class NIO1ChannelSuite extends BaseChannelSuite {
@@ -38,7 +40,7 @@ class NIO1ChannelSuite extends BaseChannelSuite {
   }
 }
 
-abstract class BaseChannelSuite extends FunSuite {
+abstract class BaseChannelSuite extends CatsEffectSuite {
   protected case class ServerPair(group: ServerChannelGroup, channel: ServerChannel)
 
   protected def bind(f: SocketPipelineBuilder): ServerPair
@@ -46,12 +48,25 @@ abstract class BaseChannelSuite extends FunSuite {
   private def bindEcho(): ServerPair =
     bind(_ => Future.successful(LeafBuilder(new EchoStage)))
 
+  private def liftToResource[A](
+      computation: IO[A],
+      tearDown: A => IO[Unit]): SyncIO[FunFixture[A]] =
+    ResourceFixture(Resource.eval(computation), (_: TestOptions, _: A) => IO.unit, tearDown)
+
   test("Bind the port and then be closed") {
     val ServerPair(group, channel) = bindEcho()
-    Thread.sleep(1000L)
-    channel.close()
-    group.closeGroup()
-    channel.join()
+
+    val computation =
+      for {
+        _ <- IO.sleep(100.millis)
+        _ <- IO {
+          channel.close()
+          group.closeGroup()
+          channel.join()
+        }
+      } yield ()
+
+    assertIO(computation, ())
   }
 
   test("Execute shutdown hooks") {
@@ -112,23 +127,24 @@ abstract class BaseChannelSuite extends FunSuite {
     }
   }
 
-  def writeBuffer(batch: Boolean): Unit = {
+  private def writeBufferTest(testName: String, batch: Boolean): Unit = {
     val stage = new ZeroWritingStage(batch)
     val ServerPair(group, channel) = bind(_ => Future.successful(LeafBuilder(stage)))
     val socket = new Socket()
     socket.connect(channel.socketAddress)
 
-    Await.result(stage.completeF, 2.seconds)
-    socket.close()
-    channel.close()
-    group.closeGroup()
+    liftToResource[Unit](
+      computation = IO.fromFuture(IO(stage.completeF).timeout(2.seconds)),
+      tearDown = _ =>
+        IO {
+          socket.close()
+          channel.close()
+          group.closeGroup()
+        }
+    ).test(testName)(identity)
   }
 
-  test("Write an empty buffer") {
-    writeBuffer(false)
-  }
+  writeBufferTest("Write an empty buffer", batch = false)
 
-  test("Write an empty collection of buffers") {
-    writeBuffer(true)
-  }
+  writeBufferTest("Write an empty collection of buffers", batch = true)
 }
