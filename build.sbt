@@ -78,8 +78,6 @@ lazy val core = Project("blaze-core", file("core"))
   .settings(
     libraryDependencies ++= Seq(log4s),
     libraryDependencies ++= Seq(
-      specs2.cross(CrossVersion.for3Use2_13),
-      specs2Mock.cross(CrossVersion.for3Use2_13),
       logbackClassic,
       munit,
       munitCatsEffect
