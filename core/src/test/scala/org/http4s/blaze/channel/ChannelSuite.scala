@@ -19,14 +19,16 @@ package org.http4s.blaze.channel
 import java.net.{InetSocketAddress, Socket}
 import java.nio.ByteBuffer
 import java.util.concurrent.atomic.AtomicInteger
+
+import munit.FunSuite
 import org.http4s.blaze.channel.nio1.NIO1SocketServerGroup
 import org.http4s.blaze.pipeline.{LeafBuilder, TailStage}
 import org.http4s.blaze.util.Execution
-import org.specs2.mutable.Specification
+
 import scala.concurrent.{Await, Future, Promise}
 import scala.concurrent.duration._
 
-class NIO1ChannelSpec extends BaseChannelSpec {
+class NIO1ChannelSuite extends BaseChannelSuite {
   override protected def bind(f: SocketPipelineBuilder): ServerPair = {
     val factory = NIO1SocketServerGroup.fixed(workerThreads = 2)
 
@@ -36,7 +38,7 @@ class NIO1ChannelSpec extends BaseChannelSpec {
   }
 }
 
-abstract class BaseChannelSpec extends Specification {
+abstract class BaseChannelSuite extends FunSuite {
   protected case class ServerPair(group: ServerChannelGroup, channel: ServerChannel)
 
   protected def bind(f: SocketPipelineBuilder): ServerPair
@@ -44,55 +46,56 @@ abstract class BaseChannelSpec extends Specification {
   private def bindEcho(): ServerPair =
     bind(_ => Future.successful(LeafBuilder(new EchoStage)))
 
-  "Bind the port and then be closed" in {
+  test("Bind the port and then be closed") {
     val ServerPair(group, channel) = bindEcho()
     Thread.sleep(1000L)
     channel.close()
     group.closeGroup()
     channel.join()
-    ok
   }
 
-  "Execute shutdown hooks" in {
+  test("Execute shutdown hooks") {
     val i = new AtomicInteger(0)
     val ServerPair(group, channel) = bindEcho()
-    channel.addShutdownHook { () => i.incrementAndGet(); () } must_== true
+    assert(channel.addShutdownHook { () => i.incrementAndGet(); () })
     channel.close()
     group.closeGroup()
     channel.join()
-    i.get should_== 1
+
+    assertEquals(i.get, 1)
   }
 
-  "Execute shutdown hooks when one throws an exception" in {
+  test("Execute shutdown hooks when one throws an exception") {
     val i = new AtomicInteger(0)
     val ServerPair(group, channel) = bindEcho()
-    channel.addShutdownHook { () => i.incrementAndGet(); () } must_== true
-    channel.addShutdownHook(() => sys.error("Foo")) must_== true
-    channel.addShutdownHook { () => i.incrementAndGet(); () } must_== true
+    assert(channel.addShutdownHook { () => i.incrementAndGet(); () })
+    assert(channel.addShutdownHook(() => sys.error("Foo")))
+    assert(channel.addShutdownHook { () => i.incrementAndGet(); () })
     channel.close()
 
     group.closeGroup()
     channel.join()
 
-    i.get should_== 2
+    assertEquals(i.get, 2)
   }
 
-  "Execute shutdown hooks when the ServerChannelGroup is shutdown" in {
+  test("Execute shutdown hooks when the ServerChannelGroup is shutdown") {
     val i = new AtomicInteger(0)
     val ServerPair(group, channel) = bindEcho()
-    channel.addShutdownHook { () => i.incrementAndGet(); () } must_== true
+    assert(channel.addShutdownHook { () => i.incrementAndGet(); () })
     group.closeGroup()
 
     channel.join()
 
-    i.get should_== 1
+    assertEquals(i.get, 1)
   }
 
-  "Not register a hook on a shutdown ServerChannel" in {
+  test("Not register a hook on a shutdown ServerChannel") {
     val ServerPair(group, channel) = bindEcho()
     channel.close()
     group.closeGroup()
-    channel.addShutdownHook(() => sys.error("Blam!")) must_== false
+
+    assertEquals(channel.addShutdownHook(() => sys.error("Blam!")), false)
   }
 
   class ZeroWritingStage(batch: Boolean) extends TailStage[ByteBuffer] {
@@ -121,13 +124,11 @@ abstract class BaseChannelSpec extends Specification {
     group.closeGroup()
   }
 
-  "Write an empty buffer" in {
+  test("Write an empty buffer") {
     writeBuffer(false)
-    ok // if we made it this far, it worked.
   }
 
-  "Write an empty collection of buffers" in {
+  test("Write an empty collection of buffers") {
     writeBuffer(true)
-    ok // if we made it this far, it worked.
   }
 }
