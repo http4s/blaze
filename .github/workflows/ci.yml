@@ -56,7 +56,7 @@ jobs:
       - name: Check that workflows are up to date
         run: sbt --client '++${{ matrix.scala }}; githubWorkflowCheck'
 
-      - run: sbt --client '++${{ matrix.scala }}; validate'
+      - run: sbt --client '++${{ matrix.scala }}; validate-ci'
 
   publish:
     name: Publish Artifacts
