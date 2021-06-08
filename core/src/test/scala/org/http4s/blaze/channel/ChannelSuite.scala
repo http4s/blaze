@@ -64,45 +64,60 @@ abstract class BaseChannelSuite extends BlazeTestSuite {
   test("Execute shutdown hooks") {
     val i = new AtomicInteger(0)
     val ServerPair(group, channel) = bindEcho()
-    assert(channel.addShutdownHook { () => i.incrementAndGet(); () })
-    channel.close()
-    group.closeGroup()
-    channel.join()
 
-    assertEquals(i.get, 1)
+    for {
+      _ <- assertFutureBoolean(Future(channel.addShutdownHook { () => i.incrementAndGet(); () }))
+      _ <- Future {
+        channel.close()
+        group.closeGroup()
+        channel.join()
+      }
+      _ <- assertFuture(Future(i.get), 1)
+    } yield ()
   }
 
   test("Execute shutdown hooks when one throws an exception") {
     val i = new AtomicInteger(0)
     val ServerPair(group, channel) = bindEcho()
-    assert(channel.addShutdownHook { () => i.incrementAndGet(); () })
-    assert(channel.addShutdownHook(() => sys.error("Foo")))
-    assert(channel.addShutdownHook { () => i.incrementAndGet(); () })
-    channel.close()
 
-    group.closeGroup()
-    channel.join()
+    for {
+      _ <- assertFutureBoolean(Future(channel.addShutdownHook { () => i.incrementAndGet(); () }))
+      _ <- assertFutureBoolean(Future(channel.addShutdownHook(() => sys.error("Foo"))))
+      _ <- assertFutureBoolean(Future(channel.addShutdownHook { () => i.incrementAndGet(); () }))
 
-    assertEquals(i.get, 2)
+      _ <- Future {
+        channel.close()
+        group.closeGroup()
+        channel.join()
+      }
+      _ <- assertFuture(Future(i.get), 2)
+    } yield ()
   }
 
   test("Execute shutdown hooks when the ServerChannelGroup is shutdown") {
     val i = new AtomicInteger(0)
     val ServerPair(group, channel) = bindEcho()
-    assert(channel.addShutdownHook { () => i.incrementAndGet(); () })
-    group.closeGroup()
 
-    channel.join()
-
-    assertEquals(i.get, 1)
+    for {
+      _ <- assertFutureBoolean(Future(channel.addShutdownHook { () => i.incrementAndGet(); () }))
+      _ <- Future {
+        group.closeGroup()
+        channel.join()
+      }
+      _ <- assertFuture(Future(i.get), 1)
+    } yield ()
   }
 
   test("Not register a hook on a shutdown ServerChannel") {
     val ServerPair(group, channel) = bindEcho()
-    channel.close()
-    group.closeGroup()
 
-    assertEquals(channel.addShutdownHook(() => sys.error("Blam!")), false)
+    for {
+      _ <- Future {
+        channel.close()
+        group.closeGroup()
+      }
+      _ <- assertFuture(Future(channel.addShutdownHook(() => sys.error("Blam!"))), false)
+    } yield ()
   }
 
   class ZeroWritingStage(batch: Boolean) extends TailStage[ByteBuffer] {
@@ -123,10 +138,10 @@ abstract class BaseChannelSuite extends BlazeTestSuite {
     val stage = new ZeroWritingStage(batch)
     val ServerPair(group, channel) = bind(_ => Future.successful(LeafBuilder(stage)))
     val socket = new Socket()
-    socket.connect(channel.socketAddress)
 
     test(testName) {
       for {
+        _ <- Future(socket.connect(channel.socketAddress))
         _ <- assertFuture_(stage.completeF)
         _ <- Future {
           socket.close()
