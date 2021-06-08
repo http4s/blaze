@@ -18,26 +18,21 @@ package org.http4s.blaze.util
 
 import java.nio.ByteBuffer
 
-import cats.effect.IO
-import munit.CatsEffectSuite
+import org.http4s.blaze.BlazeTestSuite
 import org.http4s.blaze.pipeline.TailStage
 
 import scala.concurrent.Future
 import scala.concurrent.duration._
-import scala.concurrent.ExecutionContext.Implicits.global
 
-class StageToolsSuite extends CatsEffectSuite {
+class StageToolsSuite extends BlazeTestSuite {
   class Boom extends Exception("boom")
-
-  private def toIO[A](computation: => Future[A]) =
-    IO.fromFuture(IO(computation).timeout(5.seconds))
 
   test("StageTools.accumulateAtLeast should return the empty buffer for 0 byte accumulated") {
     val stage = new TailStage[ByteBuffer] {
       def name: String = "TestTailStage"
     }
 
-    assertIO(toIO(StageTools.accumulateAtLeast(0, stage)).map(_.remaining()), 0)
+    assertFuture(StageTools.accumulateAtLeast(0, stage).map(_.remaining()), 0)
   }
 
   test(
@@ -50,7 +45,7 @@ class StageToolsSuite extends CatsEffectSuite {
         Future.successful(buff.duplicate())
     }
 
-    assertIO(toIO(StageTools.accumulateAtLeast(3, stage)), buff)
+    assertFuture(StageTools.accumulateAtLeast(3, stage), buff)
   }
 
   test("StageTools.accumulateAtLeast should accumulate two buffers") {
@@ -63,7 +58,7 @@ class StageToolsSuite extends CatsEffectSuite {
     }
 
     val expectedBuff = ByteBuffer.wrap(Array[Byte](1, 2, 3, 1, 2, 3))
-    assertIO(toIO(StageTools.accumulateAtLeast(6, stage)), expectedBuff)
+    assertFuture(StageTools.accumulateAtLeast(6, stage), expectedBuff)
   }
 
   test("StageTools.accumulateAtLeast should handle errors in the first read") {
@@ -74,12 +69,12 @@ class StageToolsSuite extends CatsEffectSuite {
         Future.failed(new Boom)
     }
 
-    val result = toIO(StageTools.accumulateAtLeast(6, stage)).attempt.map {
-      case Left(_: Boom) => true
+    val result = StageTools.accumulateAtLeast(6, stage).failed.map {
+      case _: Boom => true
       case _ => false
     }
 
-    assertIOBoolean(result)
+    assertFutureBoolean(result)
   }
 
   test("StageTools.accumulateAtLeast should handle errors in the second read") {
@@ -91,11 +86,11 @@ class StageToolsSuite extends CatsEffectSuite {
         Future(buff.duplicate()).flatMap(_ => Future.failed(new Boom))
     }
 
-    val result = toIO(StageTools.accumulateAtLeast(6, stage)).attempt.map {
-      case Left(_: Boom) => true
+    val result = StageTools.accumulateAtLeast(6, stage).failed.map {
+      case _: Boom => true
       case _ => false
     }
 
-    assertIOBoolean(result)
+    assertFutureBoolean(result)
   }
 }

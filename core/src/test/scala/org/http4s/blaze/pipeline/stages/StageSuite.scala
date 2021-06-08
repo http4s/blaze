@@ -18,13 +18,12 @@ package org.http4s.blaze.pipeline.stages
 
 import java.util.concurrent.TimeoutException
 
-import cats.effect.IO
-import munit.CatsEffectSuite
+import org.http4s.blaze.BlazeTestSuite
 import org.http4s.blaze.pipeline.{LeafBuilder, TailStage}
 
 import scala.concurrent.duration._
 
-class StageSuite extends CatsEffectSuite {
+class StageSuite extends BlazeTestSuite {
   private def intTail = new TailStage[Int] { def name = "Int Tail" }
   private def slow(duration: Duration) = new DelayHead[Int](duration) { def next() = 1 }
 
@@ -43,48 +42,42 @@ class StageSuite extends CatsEffectSuite {
   test("Support reads") {
     val leaf = regPipeline()
 
-    assertIO(IO.fromFuture(IO(leaf.channelRead()).timeout(5.seconds)), 1)
+    assertFuture(leaf.channelRead(), 1)
   }
 
   test("Support writes") {
     val leaf = regPipeline()
 
-    assertIO(IO.fromFuture(IO(leaf.channelWrite(12)).timeout(5.seconds)), ())
+    assertFuture_(leaf.channelWrite(12))
   }
 
   test("Support read timeouts") {
     val leaf = slowPipeline()
 
     val result1 =
-      IO.fromFuture(IO(leaf.channelRead(1, 100.milli)).timeout(5000.millis)).attempt.map {
-        case Left(err) =>
-          err match {
-            case _: TimeoutException => true
-            case _ => false
-          }
-
-        case Right(_) => false
+      leaf.channelRead(1, 100.milli).failed.map {
+        case _: TimeoutException => true
+        case _ => false
       }
 
-    assertIOBoolean(result1) *>
-      assertIO(IO.fromFuture(IO(leaf.channelRead(1, 10.seconds)).timeout(10.seconds)), 1)
+    for {
+      _ <- assertFutureBoolean(result1)
+      _ <- assertFuture(leaf.channelRead(1, 10.seconds), 1)
+    } yield ()
   }
 
   test("Support write timeouts") {
     val leaf = slowPipeline()
 
     val result1 =
-      IO.fromFuture(IO(leaf.channelWrite(1, 100.milli)).timeout(5000.millis)).attempt.map {
-        case Left(err) =>
-          err match {
-            case _: TimeoutException => true
-            case _ => false
-          }
-
-        case Right(_) => false
+      leaf.channelWrite(1, 100.milli).failed.map {
+        case _: TimeoutException => true
+        case _ => false
       }
 
-    assertIOBoolean(result1) *>
-      assertIO(IO.fromFuture(IO(leaf.channelWrite(1, 10.seconds)).timeout(10.seconds)), ())
+    for {
+      _ <- assertFutureBoolean(result1)
+      _ <- assertFuture_(leaf.channelWrite(1, 10.seconds))
+    } yield ()
   }
 }

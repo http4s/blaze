@@ -18,9 +18,9 @@ package org.http4s.blaze.pipeline.stages
 
 import java.nio.ByteBuffer
 
-import cats.effect.IO
 import org.http4s.blaze.pipeline.Command
 
+import scala.concurrent.Future
 import scala.concurrent.duration._
 
 class QuietTimeoutStageSuite extends TimeoutHelpers {
@@ -30,24 +30,20 @@ class QuietTimeoutStageSuite extends TimeoutHelpers {
   test("A QuietTimeoutStage should not timeout with proper intervals") {
     val pipe = makePipeline(Duration.Zero, 10.seconds)
 
-    val r = checkFuture(pipe.channelRead())
-    pipe.closePipeline(None)
-    r
+    for {
+      _ <- checkFuture(pipe.channelRead())
+      _ = pipe.closePipeline(None)
+    } yield ()
   }
 
   test("A QuietTimeoutStage should timeout properly") {
     val pipe = makePipeline(delay = 10.seconds, timeout = 100.milliseconds)
-    val result = checkFuture(pipe.channelRead(), 5.second).attempt.map {
-      case Left(err) =>
-        err match {
-          case _: Command.EOF.type => true
-          case _ => false
-        }
-
-      case Right(_) => false
+    val result = checkFuture(pipe.channelRead()).failed.map {
+      case Command.EOF => true
+      case _ => false
     }
 
-    assertIOBoolean(result)
+    assertFutureBoolean(result)
   }
 
   test("A QuietTimeoutStage should not timeout if the delay stage is removed") {
@@ -55,8 +51,10 @@ class QuietTimeoutStageSuite extends TimeoutHelpers {
     val f = pipe.channelRead()
     pipe.findOutboundStage(classOf[TimeoutStageBase[ByteBuffer]]).get.removeStage()
 
-    checkFuture(f, 5.second) *>
-      IO(pipe.closePipeline(None))
+    for {
+      _ <- checkFuture(f)
+      _ <- Future(pipe.closePipeline(None))
+    } yield ()
   }
 
   test("A QuietTimeoutStage should not schedule timeouts after the pipeline has been shut down") {
@@ -64,16 +62,11 @@ class QuietTimeoutStageSuite extends TimeoutHelpers {
     val f = pipe.channelRead()
     pipe.closePipeline(None)
 
-    val result = checkFuture(f, 5.second).attempt.map {
-      case Left(err) =>
-        err match {
-          case _: Command.EOF.type => true
-          case _ => false
-        }
-
-      case Right(_) => false
+    val result = checkFuture(f).failed.map {
+      case Command.EOF => true
+      case _ => false
     }
 
-    assertIOBoolean(result)
+    assertFutureBoolean(result)
   }
 }

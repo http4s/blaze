@@ -22,17 +22,15 @@ import javax.net.ssl.{SSLEngine, SSLEngineResult}
 import SSLEngineResult.HandshakeStatus._
 import java.nio.charset.StandardCharsets
 
-import cats.effect.IO
-import munit.CatsEffectSuite
+import org.http4s.blaze.BlazeTestSuite
 import org.http4s.blaze.pipeline.Command.Connected
 import org.http4s.blaze.pipeline.LeafBuilder
 import org.http4s.blaze.util.{BufferTools, Execution, FutureUnit, GenericSSLContext}
 
 import scala.concurrent.{ExecutionContext, Future}
-import scala.concurrent.duration._
 import scala.util.control.NonFatal
 
-class SSLStageSuite extends CatsEffectSuite {
+class SSLStageSuite extends BlazeTestSuite {
   private implicit def ec: ExecutionContext = Execution.trampoline
 
   private def debug = false
@@ -55,9 +53,11 @@ class SSLStageSuite extends CatsEffectSuite {
 
       head.sendInboundCommand(Connected)
 
-      assertIO(IO.fromFuture(IO(tail.startLoop()).timeout(10.seconds)), ()) *>
-        assertIOBoolean(IO(head.results.nonEmpty)) *>
-        assertIO(IO(BufferTools.mkString(head.results)), "Foo")
+      for {
+        _ <- assertFuture_(tail.startLoop())
+        _ <- assertFutureBoolean(Future(head.results.nonEmpty))
+        _ <- assertFuture(Future(BufferTools.mkString(head.results)), "Foo")
+      } yield ()
     }
 
     test(testSuitePrefix + " should split large buffers") {
@@ -86,13 +86,13 @@ class SSLStageSuite extends CatsEffectSuite {
 
       head.sendInboundCommand(Connected)
 
-      assertIO(IO.fromFuture(IO(tail.startLoop()).timeout(10.seconds)), ()) *>
-        assertIO(
+      assertFuture_(tail.startLoop()).flatMap(_ =>
+        assertFuture(
           for {
-            r <- IO(BufferTools.mkString(head.results))
-            h <- IO(head.multipleWrite)
+            r <- Future(BufferTools.mkString(head.results))
+            h <- Future(head.multipleWrite)
           } yield r -> h,
-          s + s -> false)
+          s + s -> false))
     }
 
     test(testSuitePrefix + " should transcode multiple single byte buffers") {
@@ -107,9 +107,11 @@ class SSLStageSuite extends CatsEffectSuite {
 
       head.sendInboundCommand(Connected)
 
-      assertIO(IO.fromFuture(IO(tail.startLoop()).timeout(10.seconds)), ()) *>
-        IO.whenA(debug)(IO(println(head.results))) *>
-        assertIO(IO(BufferTools.mkString(head.results)), strs.mkString(""))
+      for {
+        _ <- assertFuture_(tail.startLoop())
+        _ = if (debug) println(head.results)
+        _ <- assertFuture(Future(BufferTools.mkString(head.results)), strs.mkString(""))
+      } yield ()
     }
 
     test(testSuitePrefix + " should transcode multiple buffers") {
@@ -124,9 +126,11 @@ class SSLStageSuite extends CatsEffectSuite {
 
       head.sendInboundCommand(Connected)
 
-      assertIO(IO.fromFuture(IO(tail.startLoop()).timeout(10.seconds)), ()) *>
-        IO.whenA(debug)(IO(println(head.results))) *>
-        assertIO(IO(BufferTools.mkString(head.results)), strs.mkString(""))
+      for {
+        _ <- assertFuture_(tail.startLoop())
+        _ = if (debug) println(head.results)
+        _ <- assertFuture(Future(BufferTools.mkString(head.results)), strs.mkString(""))
+      } yield ()
     }
 
     test(testSuitePrefix + " should handle empty buffers gracefully") {
@@ -142,9 +146,11 @@ class SSLStageSuite extends CatsEffectSuite {
 
       head.sendInboundCommand(Connected)
 
-      assertIO(IO.fromFuture(IO(tail.startLoop()).timeout(10.seconds)), ()) *>
-        IO.whenA(debug)(IO(println(head.results))) *>
-        assertIO(IO(BufferTools.mkString(head.results)), strs.mkString(""))
+      for {
+        _ <- assertFuture_(tail.startLoop())
+        _ = if (debug) println(head.results)
+        _ <- assertFuture(Future(BufferTools.mkString(head.results)), strs.mkString(""))
+      } yield ()
     }
 
     test(testSuitePrefix + " should survive aggressive handshaking") {
@@ -159,9 +165,11 @@ class SSLStageSuite extends CatsEffectSuite {
 
       head.sendInboundCommand(Connected)
 
-      assertIO(IO.fromFuture(IO(tail.startLoop()).timeout(10.seconds)), ()) *>
-        IO.whenA(debug)(IO(println(head.results))) *>
-        assertIO(IO(BufferTools.mkString(head.results)), strs.mkString(""))
+      for {
+        _ <- assertFuture_(tail.startLoop())
+        _ = if (debug) println(head.results)
+        _ <- assertFuture(Future(BufferTools.mkString(head.results)), strs.mkString(""))
+      } yield ()
     }
 
     test(testSuitePrefix + " should survive aggressive handshaking with single byte buffers") {
@@ -176,9 +184,11 @@ class SSLStageSuite extends CatsEffectSuite {
 
       head.sendInboundCommand(Connected)
 
-      assertIO(IO.fromFuture(IO(tail.startLoop()).timeout(10.seconds)), ()) *>
-        IO.whenA(debug)(IO(println(head.results))) *>
-        assertIO(IO(BufferTools.mkString(head.results)), strs.mkString(""))
+      for {
+        _ <- assertFuture_(tail.startLoop())
+        _ = if (debug) println(head.results)
+        _ <- assertFuture(Future(BufferTools.mkString(head.results)), strs.mkString(""))
+      } yield ()
     }
 
     test(testSuitePrefix + " should survive aggressive handshaking with empty buffers") {
@@ -194,9 +204,11 @@ class SSLStageSuite extends CatsEffectSuite {
 
       head.sendInboundCommand(Connected)
 
-      assertIO(IO.fromFuture(IO(tail.startLoop()).timeout(10.seconds)), ()) *>
-        IO.whenA(debug)(IO(println(head.results))) *>
-        assertIO(IO(BufferTools.mkString(head.results)), strs.mkString(""))
+      for {
+        _ <- assertFuture_(tail.startLoop())
+        _ = if (debug) println(head.results)
+        _ <- assertFuture(Future(BufferTools.mkString(head.results)), strs.mkString(""))
+      } yield ()
     }
   }
 

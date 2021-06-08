@@ -18,14 +18,11 @@ package org.http4s.blaze.pipeline.stages
 
 import java.nio.ByteBuffer
 
-import cats.effect.IO
-import munit.CatsEffectSuite
+import org.http4s.blaze.BlazeTestSuite
 import org.http4s.blaze.pipeline.LeafBuilder
 import org.http4s.blaze.util.ImmutableArray
 
-import scala.concurrent.duration._
-
-class ByteToObjectStageSuite extends CatsEffectSuite {
+class ByteToObjectStageSuite extends BlazeTestSuite {
   private sealed trait Msg { def tag: Byte }
   private case class One(byte: Byte) extends Msg { def tag = 0 }
   private case class Two(short: Short) extends Msg { def tag = 1 }
@@ -123,11 +120,11 @@ class ByteToObjectStageSuite extends CatsEffectSuite {
 
     val result =
       for {
-        r1 <- IO.fromFuture(IO(c.readRequest(-1)).timeout(2.seconds))
-        r2 <- IO.fromFuture(IO(c.readRequest(-1)).timeout(2.seconds))
+        r1 <- c.readRequest(-1)
+        r2 <- c.readRequest(-1)
       } yield r1 -> r2
 
-    assertIO(result, One(1) -> Two(2))
+    assertFuture(result, One(1) -> Two(2))
   }
 
   test("A ByteToObjectStage should decode one large buffer") {
@@ -139,11 +136,11 @@ class ByteToObjectStageSuite extends CatsEffectSuite {
 
     val result =
       for {
-        r1 <- IO.fromFuture(IO(c.readRequest(-1)).timeout(2.seconds))
-        r2 <- IO.fromFuture(IO(c.readRequest(-1)).timeout(2.seconds))
+        r1 <- c.readRequest(-1)
+        r2 <- c.readRequest(-1)
       } yield r1 -> r2
 
-    assertIO(result, One(1) -> Two(2))
+    assertFuture(result, One(1) -> Two(2))
   }
 
   test("A ByteToObjectStage should decode a series of one byte buffers") {
@@ -160,10 +157,10 @@ class ByteToObjectStageSuite extends CatsEffectSuite {
 
     val result =
       for {
-        r1 <- IO.fromFuture(IO(c.readRequest(-1)).timeout(2.seconds))
-        r2 <- IO.fromFuture(IO(c.readRequest(-1)).timeout(2.seconds))
+        r1 <- c.readRequest(-1)
+        r2 <- c.readRequest(-1)
       } yield r1 -> r2
 
-    assertIO(result, One(1) -> Two(2))
+    assertFuture(result, One(1) -> Two(2))
   }
 }

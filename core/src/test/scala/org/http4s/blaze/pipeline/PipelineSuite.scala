@@ -16,16 +16,13 @@
 
 package org.http4s.blaze.pipeline
 
-import cats.effect.IO
-import cats.effect.kernel.Resource
-import munit.CatsEffectSuite
+import org.http4s.blaze.BlazeTestSuite
 import org.http4s.blaze.util.{Execution, FutureUnit}
 
 import scala.concurrent.Future
-import scala.concurrent.duration._
 import scala.concurrent.ExecutionContext
 
-class PipelineSuite extends CatsEffectSuite {
+class PipelineSuite extends BlazeTestSuite {
   private implicit def ec: ExecutionContext = Execution.trampoline
 
   class IntHead extends HeadStage[Int] {
@@ -62,27 +59,20 @@ class PipelineSuite extends CatsEffectSuite {
     var lastString = ""
   }
 
-  private val basicPipelineTestCase = {
+  test("A Pipeline should make a basic org.http4s.blaze.pipeline") {
     val head = new IntHead
     val tail = new StringEnd
 
     TrunkBuilder(new IntToString).cap(tail).base(head)
 
-    val channelRead = Resource.eval(IO.fromFuture(IO(tail.channelRead()).timeout(60.seconds)))
+    val channelReadResult = tail.channelRead()
 
-    val channelWrite =
-      Resource.eval(IO.fromFuture(IO(tail.channelWrite("32")).timeout(60.seconds)).as(head))
+    tail.channelWrite("32").map(_ => head)
 
     for {
-      r1 <- ResourceFixture(channelRead)
-      r2 <- ResourceFixture(channelWrite)
-    } yield FunFixture.map2(r1, r2)
-  }
-
-  basicPipelineTestCase.test("A Pipeline should make a basic org.http4s.blaze.pipeline") {
-    case (readResult, head) =>
-      assertEquals(readResult, "54")
-      assertEquals(head.lastWrittenInt, 32)
+      _ <- assertFuture(channelReadResult, "54")
+      _ <- assertFuture(Future(head.lastWrittenInt), 32)
+    } yield ()
   }
 
   test("A Pipeline should be able to find and remove stages with identical arguments") {

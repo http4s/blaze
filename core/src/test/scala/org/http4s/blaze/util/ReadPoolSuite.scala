@@ -16,18 +16,13 @@
 
 package org.http4s.blaze.util
 
-import cats.effect.IO
-import munit.CatsEffectSuite
+import org.http4s.blaze.BlazeTestSuite
 import org.http4s.blaze.pipeline.Command
 
 import scala.collection.mutable.ListBuffer
 import scala.concurrent.Future
-import scala.concurrent.duration._
 
-class ReadPoolSuite extends CatsEffectSuite {
-  private def toIO[A](computation: => Future[A]) =
-    IO.fromFuture(IO(computation).timeout(1.second))
-
+class ReadPoolSuite extends BlazeTestSuite {
   private class TrackingReadPool extends ReadPool[Int] {
     private[this] val obs = new ListBuffer[Int]
 
@@ -44,8 +39,10 @@ class ReadPoolSuite extends CatsEffectSuite {
     assert(p.offer(1))
     assertEquals(p.observed.length, 0)
 
-    assertIO(toIO(p.read()), 1) *>
-      assertIO(IO(p.observed), List(1))
+    for {
+      _ <- assertFuture(p.read(), 1)
+      _ <- assertFuture(Future.successful(p.observed), List(1))
+    } yield ()
   }
 
   test("A ReadPool should enqueue multiple messages") {
@@ -56,8 +53,10 @@ class ReadPoolSuite extends CatsEffectSuite {
     }
 
     (0 until 10).foreach { i =>
-      assertIO(toIO(p.read()), i) *>
-        assertIO(IO(p.observed), (0 to i).toList)
+      for {
+        _ <- assertFuture(p.read(), 1)
+        _ <- assertFuture(Future.successful(p.observed), (0 to i).toList)
+      } yield ()
     }
   }
 
@@ -67,24 +66,19 @@ class ReadPoolSuite extends CatsEffectSuite {
 
     assert(f.value.isEmpty)
     assert(p.offer(1))
-    assertIO(toIO(f), 1)
+    assertFuture(f, 1)
   }
 
   test("A ReadPool should fail to enqueue two reads") {
     val p = new TrackingReadPool
     p.read()
 
-    val result = toIO(p.read()).attempt.map {
-      case Left(err) =>
-        err match {
-          case _: IllegalStateException => true
-          case _ => false
-        }
-
-      case Right(_) => false
+    val result = p.read().failed.map {
+      case _: IllegalStateException => true
+      case _ => false
     }
 
-    assertIOBoolean(result)
+    assertFutureBoolean(result)
   }
 
   test("A ReadPool should close fails pending reads") {
@@ -93,21 +87,23 @@ class ReadPoolSuite extends CatsEffectSuite {
 
     p.close()
 
-    val result1 =
-      toIO(f).attempt.map {
-        case Left(Command.EOF) => true
+    def result1 =
+      f.failed.map {
+        case Command.EOF => true
         case _ => false
       }
 
     // subsequent reads should fail too
-    val subsequentF =
-      toIO(p.read()).attempt.map {
-        case Left(Command.EOF) => true
+    def subsequentF =
+      p.read().failed.map {
+        case Command.EOF => true
         case _ => false
       }
 
-    assertIOBoolean(result1) *>
-      assertIOBoolean(subsequentF) *>
-      assertIO(IO(p.offer(1)), false)
+    for {
+      _ <- assertFutureBoolean(result1)
+      _ <- assertFutureBoolean(subsequentF)
+      _ <- assertFuture(Future(p.offer(1)), false)
+    } yield ()
   }
 }

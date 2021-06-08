@@ -79,8 +79,7 @@ lazy val core = Project("blaze-core", file("core"))
     libraryDependencies ++= Seq(log4s),
     libraryDependencies ++= Seq(
       logbackClassic,
-      munit,
-      munitCatsEffect
+      munit
     ).map(_ % Test),
     buildInfoPackage := "org.http4s.blaze",
     buildInfoKeys := Seq[BuildInfoKey](

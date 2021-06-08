@@ -20,15 +20,12 @@ import java.net.{InetSocketAddress, Socket}
 import java.nio.ByteBuffer
 import java.util.concurrent.atomic.AtomicInteger
 
-import cats.effect.kernel.Resource
-import cats.effect.{IO, SyncIO}
-import munit.{CatsEffectSuite, TestOptions}
+import org.http4s.blaze.BlazeTestSuite
 import org.http4s.blaze.channel.nio1.NIO1SocketServerGroup
 import org.http4s.blaze.pipeline.{LeafBuilder, TailStage}
 import org.http4s.blaze.util.Execution
 
 import scala.concurrent.{Future, Promise}
-import scala.concurrent.duration._
 
 class NIO1ChannelSuite extends BaseChannelSuite {
   override protected def bind(f: SocketPipelineBuilder): ServerPair = {
@@ -40,7 +37,7 @@ class NIO1ChannelSuite extends BaseChannelSuite {
   }
 }
 
-abstract class BaseChannelSuite extends CatsEffectSuite {
+abstract class BaseChannelSuite extends BlazeTestSuite {
   protected case class ServerPair(group: ServerChannelGroup, channel: ServerChannel)
 
   protected def bind(f: SocketPipelineBuilder): ServerPair
@@ -48,25 +45,20 @@ abstract class BaseChannelSuite extends CatsEffectSuite {
   private def bindEcho(): ServerPair =
     bind(_ => Future.successful(LeafBuilder(new EchoStage)))
 
-  private def liftToResource[A](
-      computation: IO[A],
-      tearDown: A => IO[Unit]): SyncIO[FunFixture[A]] =
-    ResourceFixture(Resource.eval(computation), (_: TestOptions, _: A) => IO.unit, tearDown)
-
   test("Bind the port and then be closed") {
     val ServerPair(group, channel) = bindEcho()
 
     val computation =
       for {
-        _ <- IO.sleep(100.millis)
-        _ <- IO {
+        _ <- Future(Thread.sleep(100))
+        _ <- Future {
           channel.close()
           group.closeGroup()
           channel.join()
         }
       } yield ()
 
-    assertIO(computation, ())
+    assertFuture_(computation)
   }
 
   test("Execute shutdown hooks") {
@@ -133,15 +125,16 @@ abstract class BaseChannelSuite extends CatsEffectSuite {
     val socket = new Socket()
     socket.connect(channel.socketAddress)
 
-    liftToResource[Unit](
-      computation = IO.fromFuture(IO(stage.completeF).timeout(2.seconds)),
-      tearDown = _ =>
-        IO {
+    test(testName) {
+      for {
+        _ <- assertFuture_(stage.completeF)
+        _ <- Future {
           socket.close()
           channel.close()
           group.closeGroup()
         }
-    ).test(testName)(identity)
+      } yield ()
+    }
   }
 
   writeBufferTest("Write an empty buffer", batch = false)
