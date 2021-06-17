@@ -14,18 +14,32 @@
  * limitations under the License.
  */
 
-package org.http4s.blaze.test
+package org.http4s.blaze.channel.nio2
+
+import java.net.{InetSocketAddress, SocketTimeoutException}
+
+import org.http4s.blaze.BlazeTestSuite
 import org.http4s.blaze.util.TickWheelExecutor
-import org.specs2.mutable.After
 
-import scala.concurrent.duration.DurationLong
+import scala.concurrent.Future
+import scala.concurrent.duration.DurationDouble
 
-trait FastTickWheelExecutor extends After {
+class ClientChannelFactorySuite extends BlazeTestSuite {
   // The default TickWheelExecutor has 200ms ticks. It should be acceptable for most real world use cases.
   // If one needs very short timeouts (like we do in tests), providing a custom TickWheelExecutor is a solution.
-  val scheduler: TickWheelExecutor = new TickWheelExecutor(tick = 10.millis)
-  def after: Unit = {
-    scheduler.shutdown()
-    ()
+  private val scheduler: TickWheelExecutor = new TickWheelExecutor(tick = 10.millis)
+
+  private val factory =
+    new ClientChannelFactory(connectTimeout = 1.millisecond, scheduler = scheduler)
+  private val address = new InetSocketAddress("192.0.2.0", 1) // rfc5737 TEST-NET-1
+
+  test("A ClientChannelFactory should time out") {
+    for {
+      _ <- factory.connect(address).failed.map {
+        case _: SocketTimeoutException => ()
+        case ex => fail(s"Unexpected exception found $ex")
+      }
+      _ <- Future(scheduler.shutdown())
+    } yield ()
   }
 }

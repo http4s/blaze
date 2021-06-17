@@ -17,35 +17,33 @@
 package org.http4s.blaze.pipeline.stages
 
 import java.nio.ByteBuffer
+
 import javax.net.ssl.{SSLEngine, SSLEngineResult}
 import SSLEngineResult.HandshakeStatus._
 import java.nio.charset.StandardCharsets
 
+import org.http4s.blaze.BlazeTestSuite
 import org.http4s.blaze.pipeline.Command.Connected
 import org.http4s.blaze.pipeline.LeafBuilder
 import org.http4s.blaze.util.{BufferTools, Execution, FutureUnit, GenericSSLContext}
-import org.specs2.mutable.Specification
 
-import scala.concurrent.duration._
-import scala.concurrent._
+import scala.concurrent.{ExecutionContext, Future}
 import scala.util.control.NonFatal
 
-class SSLStageSpec extends Specification {
-  implicit def ec: ExecutionContext = Execution.trampoline
+class SSLStageSuite extends BlazeTestSuite {
+  private implicit def ec: ExecutionContext = Execution.trampoline
 
-  def debug = false
+  private def debug = false
 
-  "SSLStage in server mode" should {
-    testBattery(mkClientServerEngines())
-  }
+  testBattery("A SSLStage in server mode", mkClientServerEngines())
 
-  "SSLStage in client mode" should {
-    testBattery(mkClientServerEngines().swap)
-  }
+  testBattery("A SSLStage in client mode", mkClientServerEngines().swap)
 
-  /////////////// The battery of tests for both client and server ////////////////////
-  def testBattery(mkClientServerEngines: => (SSLEngine, SSLEngine)) = {
-    "Transcode a single buffer" in {
+  // The battery of tests for both client and server
+  private def testBattery(
+      testSuitePrefix: String,
+      mkClientServerEngines: => (SSLEngine, SSLEngine)) = {
+    test(testSuitePrefix + " should transcode a single buffer") {
       val (headEng, stageEng) = mkClientServerEngines
       val head = new SSLSeqHead(Seq(mkBuffer("Foo")), headEng)
       val tail = new EchoTail[ByteBuffer]
@@ -54,13 +52,15 @@ class SSLStageSpec extends Specification {
         .base(head)
 
       head.sendInboundCommand(Connected)
-      Await.ready(tail.startLoop(), 10.seconds)
 
-      head.results.length must beGreaterThan(0)
-      BufferTools.mkString(head.results) must_== "Foo"
+      for {
+        _ <- assertFuture_(tail.startLoop())
+        _ <- assertFutureBoolean(Future(head.results.nonEmpty))
+        _ <- assertFuture(Future(BufferTools.mkString(head.results)), "Foo")
+      } yield ()
     }
 
-    "Split large buffers" in {
+    test(testSuitePrefix + " should split large buffers") {
       val (headEng, stageEng) = mkClientServerEngines
       val s = "Fo" * (stageEng.getSession.getPacketBufferSize * 0.75).toInt
 
@@ -85,14 +85,17 @@ class SSLStageSpec extends Specification {
         .base(head)
 
       head.sendInboundCommand(Connected)
-      Await.ready(tail.startLoop(), 20.seconds)
 
-      val r = BufferTools.mkString(head.results)
-      head.multipleWrite must_== false
-      r must_== s + s
+      assertFuture_(tail.startLoop()).flatMap(_ =>
+        assertFuture(
+          for {
+            r <- Future(BufferTools.mkString(head.results))
+            h <- Future(head.multipleWrite)
+          } yield r -> h,
+          s + s -> false))
     }
 
-    "Transcode multiple single byte buffers" in {
+    test(testSuitePrefix + " should transcode multiple single byte buffers") {
       val (headEng, stageEng) = mkClientServerEngines
 
       val strs = (0 until 10).map(_.toString)
@@ -103,14 +106,15 @@ class SSLStageSpec extends Specification {
         .base(head)
 
       head.sendInboundCommand(Connected)
-      Await.result(tail.startLoop(), 20.seconds)
 
-      if (debug) println(head.results)
-
-      BufferTools.mkString(head.results) must_== strs.mkString("")
+      for {
+        _ <- assertFuture_(tail.startLoop())
+        _ = if (debug) println(head.results)
+        _ <- assertFuture(Future(BufferTools.mkString(head.results)), strs.mkString(""))
+      } yield ()
     }
 
-    "Transcode multiple buffers" in {
+    test(testSuitePrefix + " should transcode multiple buffers") {
       val (headEng, stageEng) = mkClientServerEngines
 
       val strs = (0 until 10).map(i => "Buffer " + i + ", ")
@@ -121,14 +125,15 @@ class SSLStageSpec extends Specification {
         .base(head)
 
       head.sendInboundCommand(Connected)
-      Await.result(tail.startLoop(), 20.seconds)
 
-      if (debug) println(head.results)
-
-      BufferTools.mkString(head.results) must_== strs.mkString("")
+      for {
+        _ <- assertFuture_(tail.startLoop())
+        _ = if (debug) println(head.results)
+        _ <- assertFuture(Future(BufferTools.mkString(head.results)), strs.mkString(""))
+      } yield ()
     }
 
-    "Handle empty buffers gracefully" in {
+    test(testSuitePrefix + " should handle empty buffers gracefully") {
       val (headEng, stageEng) = mkClientServerEngines
 
       val strs = (0 until 10).map(i => "Buffer " + i + ", ")
@@ -140,14 +145,15 @@ class SSLStageSpec extends Specification {
         .base(head)
 
       head.sendInboundCommand(Connected)
-      Await.result(tail.startLoop(), 20.seconds)
 
-      if (debug) println(head.results)
-
-      BufferTools.mkString(head.results) must_== strs.mkString("")
+      for {
+        _ <- assertFuture_(tail.startLoop())
+        _ = if (debug) println(head.results)
+        _ <- assertFuture(Future(BufferTools.mkString(head.results)), strs.mkString(""))
+      } yield ()
     }
 
-    "Survive aggressive handshaking" in {
+    test(testSuitePrefix + " should survive aggressive handshaking") {
       val (headEng, stageEng) = mkClientServerEngines
 
       val strs = (0 until 100).map(i => "Buffer " + i + ", ")
@@ -158,14 +164,15 @@ class SSLStageSpec extends Specification {
         .base(head)
 
       head.sendInboundCommand(Connected)
-      Await.result(tail.startLoop(), 20.seconds)
 
-      if (debug) println(head.results)
-
-      BufferTools.mkString(head.results) must_== strs.mkString("")
+      for {
+        _ <- assertFuture_(tail.startLoop())
+        _ = if (debug) println(head.results)
+        _ <- assertFuture(Future(BufferTools.mkString(head.results)), strs.mkString(""))
+      } yield ()
     }
 
-    "Survive aggressive handshaking with single byte buffers" in {
+    test(testSuitePrefix + " should survive aggressive handshaking with single byte buffers") {
       val (headEng, stageEng) = mkClientServerEngines
 
       val strs = (0 until 100).map(_.toString)
@@ -176,14 +183,15 @@ class SSLStageSpec extends Specification {
         .base(head)
 
       head.sendInboundCommand(Connected)
-      Await.result(tail.startLoop(), 20.seconds)
 
-      if (debug) println(head.results)
-
-      BufferTools.mkString(head.results) must_== strs.mkString("")
+      for {
+        _ <- assertFuture_(tail.startLoop())
+        _ = if (debug) println(head.results)
+        _ <- assertFuture(Future(BufferTools.mkString(head.results)), strs.mkString(""))
+      } yield ()
     }
 
-    "Survive aggressive handshaking with empty buffers" in {
+    test(testSuitePrefix + " should survive aggressive handshaking with empty buffers") {
       val (headEng, stageEng) = mkClientServerEngines
 
       val strs = (0 until 10).map(i => "Buffer " + i + ", ")
@@ -195,18 +203,19 @@ class SSLStageSpec extends Specification {
         .base(head)
 
       head.sendInboundCommand(Connected)
-      Await.result(tail.startLoop(), 20.seconds)
 
-      if (debug) println(head.results)
-
-      BufferTools.mkString(head.results) must_== strs.mkString("")
+      for {
+        _ <- assertFuture_(tail.startLoop())
+        _ = if (debug) println(head.results)
+        _ <- assertFuture(Future(BufferTools.mkString(head.results)), strs.mkString(""))
+      } yield ()
     }
   }
 
-  def mkBuffer(str: String): ByteBuffer =
+  private def mkBuffer(str: String): ByteBuffer =
     ByteBuffer.wrap(str.getBytes(StandardCharsets.UTF_8))
 
-  def mkClientServerEngines(): (SSLEngine, SSLEngine) = {
+  private def mkClientServerEngines(): (SSLEngine, SSLEngine) = {
     val clientEng = GenericSSLContext.clientSSLContext().createSSLEngine()
     clientEng.setUseClientMode(true)
 
