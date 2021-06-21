@@ -161,7 +161,8 @@ class ClientParserSuite extends BlazeTestSuite {
     assertEquals(p.reason, "")
   }
 
-  test("A client parser should throw invalid state if trying to parse the response line more than once") {
+  test(
+    "A client parser should throw invalid state if trying to parse the response line more than once") {
     val p = new TestParser
     assert(p.parseResponse(wrap(resp.getBytes(ISO_8859_1))))
 
@@ -249,7 +250,8 @@ class ClientParserSuite extends BlazeTestSuite {
     assertEquals(ISO_8859_1.decode(out).toString, body)
   }
 
-  test("A client parser should parse a body with a Content-Length and `Transfer-Encoding: identity` header") {
+  test(
+    "A client parser should parse a body with a Content-Length and `Transfer-Encoding: identity` header") {
     val p = new TestParser
     val full = resp + content_length + "Transfer-Encoding: identity\r\n" + l_headersstr + body
     val bts = wrap(full.getBytes(ISO_8859_1))

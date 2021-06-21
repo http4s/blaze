@@ -16,39 +16,39 @@
 
 package org.http4s.blaze.http.parser
 
-import org.specs2.mutable._
-
 import org.http4s.blaze.http.parser.BaseExceptions.BadMessage
+import org.http4s.blaze.testkit.BlazeTestSuite
 
-class HttpTokensSpec extends Specification {
-  val smalChrs =
+class HttpTokensSuite extends BlazeTestSuite {
+  private val smalChrs =
     List('0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'a', 'b', 'c', 'd', 'e', 'f')
-  val bigChrs = smalChrs.map(_.toTitleCase)
+  private val bigChrs = smalChrs.map(_.toTitleCase)
 
-  "HttpTokens" should {
-    "parse hex chars to ints" in {
-      smalChrs.map(c => HttpTokens.hexCharToInt(c)) should_== ((0 until 16).toList)
+  test("An HttpTokens should parse hex chars to ints") {
 
-      bigChrs.map(c => HttpTokens.hexCharToInt(c)) should_== ((0 until 16).toList)
+    assertEquals(smalChrs.map(c => HttpTokens.hexCharToInt(c)), (0 until 16).toList)
 
-      HttpTokens.hexCharToInt('x') should throwA[BadMessage]
-    }
+    assertEquals(bigChrs.map(c => HttpTokens.hexCharToInt(c)), (0 until 16).toList)
 
-    "Identify hex chars" in {
+    intercept[BadMessage](HttpTokens.hexCharToInt('x'))
+  }
+
+  test("An HttpTokens should identify hex chars") {
+    assert(
       (0 until 256)
-        .map { i =>
-          HttpTokens.isHexChar(i.toByte) should_== (smalChrs.contains(i.toChar) || bigChrs.contains(
+        .forall { i =>
+          HttpTokens.isHexChar(i.toByte) == (smalChrs.contains(i.toChar) || bigChrs.contains(
             i.toChar))
         }
-        .reduce(_.and(_))
-    }
+    )
+  }
 
-    "Identify whitespace" in {
+  test("An HttpTokens should identify whitespace") {
+    assert(
       (0 until 256)
-        .map { i =>
-          HttpTokens.isWhiteSpace(i.toChar) should_== (i.toChar == ' ' || i.toChar == '\t')
+        .forall { i =>
+          HttpTokens.isWhiteSpace(i.toChar) == (i.toChar == ' ' || i.toChar == '\t')
         }
-        .reduce(_.and(_))
-    }
+    )
   }
 }
