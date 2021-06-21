@@ -20,9 +20,9 @@ import java.net.{InetSocketAddress, Socket}
 import java.nio.ByteBuffer
 import java.util.concurrent.atomic.AtomicInteger
 
-import org.http4s.blaze.BlazeTestSuite
 import org.http4s.blaze.channel.nio1.NIO1SocketServerGroup
 import org.http4s.blaze.pipeline.{LeafBuilder, TailStage}
+import org.http4s.blaze.testkit.BlazeTestSuite
 import org.http4s.blaze.util.Execution
 
 import scala.concurrent.{Future, Promise}

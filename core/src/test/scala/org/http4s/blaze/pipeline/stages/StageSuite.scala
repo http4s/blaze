@@ -18,8 +18,8 @@ package org.http4s.blaze.pipeline.stages
 
 import java.util.concurrent.TimeoutException
 
-import org.http4s.blaze.BlazeTestSuite
 import org.http4s.blaze.pipeline.{LeafBuilder, TailStage}
+import org.http4s.blaze.testkit.BlazeTestSuite
 
 import scala.concurrent.duration._
 

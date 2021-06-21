@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package org.http4s.blaze
+package org.http4s.blaze.testkit
 
 import munit.{Assertions, FunSuite, Location}
 
