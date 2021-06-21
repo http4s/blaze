@@ -19,10 +19,10 @@ package org.http4s.blaze.http.parser
 import java.nio.ByteBuffer
 import java.nio.charset.StandardCharsets
 
+import org.http4s.blaze.testkit.BlazeTestSuite
 import scala.collection.mutable.ListBuffer
-import org.specs2.mutable._
 
-class Benchmarks extends Specification {
+class Benchmarks extends BlazeTestSuite {
   val request = "POST /enlighten/calais.asmx HTTP/1.1\r\n"
 
   val headers = "From: someuser@jmarshall.com  \r\n" +
@@ -185,12 +185,9 @@ class Benchmarks extends Specification {
     run(iterations)(iteration(_))
   }
 
-  "Benchmark" should {
-    "work" in {
-      checkingBenchmark(3)
-      rawBenchmark(3)
-      headerCounterBenchmark(3)
-      true should_== true
-    }
+  test("Benchmark should work") {
+    checkingBenchmark(3)
+    rawBenchmark(3)
+    headerCounterBenchmark(3)
   }
 }
