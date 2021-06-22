@@ -16,18 +16,17 @@
 
 package org.http4s.blaze.http.http2
 
-import org.specs2.mutable.Specification
+import org.http4s.blaze.testkit.BlazeTestSuite
 
-class HeaderEncoderSpec extends Specification {
+class HeaderEncoderSuite extends BlazeTestSuite {
   private val headers = Seq("foo" -> "bar")
-  "HeaderEncoder" should {
-    "encode headers" in {
-      val enc = new HeaderEncoder(Http2Settings.DefaultSettings.HEADER_TABLE_SIZE)
-      val bb = enc.encodeHeaders(headers)
 
-      HeaderCodecHelpers.decodeHeaders(
-        bb,
-        Http2Settings.DefaultSettings.HEADER_TABLE_SIZE) must_== headers
-    }
+  test("A HeaderEncoder should encode headers") {
+    val enc = new HeaderEncoder(Http2Settings.DefaultSettings.HEADER_TABLE_SIZE)
+    val bb = enc.encodeHeaders(headers)
+
+    assertEquals(
+      HeaderCodecHelpers.decodeHeaders(bb, Http2Settings.DefaultSettings.HEADER_TABLE_SIZE),
+      headers)
   }
 }
