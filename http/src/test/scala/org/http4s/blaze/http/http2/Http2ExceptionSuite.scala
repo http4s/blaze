@@ -16,15 +16,20 @@
 
 package org.http4s.blaze.http.http2
 
-import org.specs2.mutable.Specification
+import org.http4s.blaze.testkit.BlazeTestSuite
 
-class Http2ExceptionSpec extends Specification {
+class Http2ExceptionSuite extends BlazeTestSuite {
   import Http2Exception._
 
-  "Http2Exception" should {
-    "be a connection error for stream id 0" in {
-      PROTOCOL_ERROR.goaway("") must beAnInstanceOf[Http2SessionException]
-      PROTOCOL_ERROR.rst(1, "") must beAnInstanceOf[Http2StreamException]
+  test("A Http2Exception should be a connection error for stream id 0") {
+    PROTOCOL_ERROR.goaway("") match {
+      case _: Http2SessionException => ()
+      case _ => fail("Unexpected goaway result")
+    }
+
+    PROTOCOL_ERROR.rst(1, "") match {
+      case _: Http2StreamException => ()
+      case _ => fail("Unexpected rst result")
     }
   }
 }
