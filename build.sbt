@@ -74,7 +74,7 @@ lazy val blaze = project.in(file("."))
 lazy val testkit = Project("blaze-testkit", file("testkit"))
   .enablePlugins(NoPublishPlugin)
   .settings(commonSettings)
-  .settings(libraryDependencies += munit)
+  .settings(libraryDependencies ++= Seq(munit, scalacheckMunit))
   .settings(Revolver.settings)
 
 lazy val core = Project("blaze-core", file("core"))
