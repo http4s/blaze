@@ -17,10 +17,9 @@
 package org.http4s.blaze.http.http2
 
 import org.http4s.blaze.http.http2.mocks.{MockTools, ObservingSessionFlowControl}
-import org.specs2.mock.Mockito
 import org.specs2.mutable.Specification
 
-class StreamFlowWindowSpec extends Specification with Mockito {
+class StreamFlowWindowSpec extends Specification {
   private class Tools extends MockTools(isClient = true) {
     override lazy val sessionFlowControl: SessionFlowControl =
       new ObservingSessionFlowControl(this)
@@ -32,9 +31,21 @@ class StreamFlowWindowSpec extends Specification with Mockito {
       val initialSessionWindow = tools.sessionFlowControl.sessionOutboundWindow
 
       initialSessionWindow must beGreaterThan(10) // sanity check
-      val window = mock[StreamFlowWindow]
-      window.streamOutboundWindow.returns(10)
-      window.sessionFlowControl.returns(tools.sessionFlowControl)
+
+      val window = new StreamFlowWindow {
+        def sessionFlowControl: SessionFlowControl = tools.sessionFlowControl
+        def streamId: Int = ???
+        def streamUnconsumedBytes: Int = ???
+        def streamOutboundWindow: Int = 10
+        def remoteSettingsInitialWindowChange(delta: Int): Option[Http2Exception] = ???
+        def streamOutboundAcked(count: Int): Option[Http2Exception] = ???
+        def outboundRequest(request: Int): Int = ???
+        def streamInboundWindow: Int = ???
+        def inboundObserved(count: Int): Boolean = ???
+        def inboundConsumed(count: Int): Unit = ???
+        def streamInboundAcked(count: Int): Unit = ???
+      }
+
       window.outboundWindow must_== 10
 
       // deplete the session window and make sure we get a 0 out
@@ -49,22 +60,35 @@ class StreamFlowWindowSpec extends Specification with Mockito {
       val initialSessionWindow = tools.sessionFlowControl.sessionOutboundWindow
 
       tools.sessionFlowControl.sessionOutboundWindow must beGreaterThan(10) // sanity check
-      val window = mock[StreamFlowWindow]
-      window.streamOutboundWindow.returns(10)
-      window.sessionFlowControl.returns(tools.sessionFlowControl)
-      window.outboundWindowAvailable must beTrue // neither depleted
 
-      window.streamOutboundWindow.returns(0)
-      window.outboundWindowAvailable must beFalse // stream depleted
+      def window(streamOutboundWindowMock: Int) = new StreamFlowWindow {
+        def sessionFlowControl: SessionFlowControl = tools.sessionFlowControl
+        def streamId: Int = ???
+        def streamUnconsumedBytes: Int = ???
+        def streamOutboundWindow: Int = streamOutboundWindowMock
+        def remoteSettingsInitialWindowChange(delta: Int): Option[Http2Exception] = ???
+        def streamOutboundAcked(count: Int): Option[Http2Exception] = ???
+        def outboundRequest(request: Int): Int = ???
+        def streamInboundWindow: Int = ???
+        def inboundObserved(count: Int): Boolean = ???
+        def inboundConsumed(count: Int): Unit = ???
+        def streamInboundAcked(count: Int): Unit = ???
+      }
+
+      val window1 = window(10)
+
+      window1.outboundWindowAvailable must beTrue // neither depleted
+
+      val window2 = window(0)
+      window2.outboundWindowAvailable must beFalse // stream depleted
 
       // deplete the session window and make sure we get a false
       tools.sessionFlowControl
         .newStreamFlowWindow(1)
         .outboundRequest(initialSessionWindow) must_== initialSessionWindow
-      window.outboundWindowAvailable must beFalse // both depleted
+      window2.outboundWindowAvailable must beFalse // both depleted
 
-      window.streamOutboundWindow.returns(10)
-      window.outboundWindowAvailable must beFalse // session depleted
+      window1.outboundWindowAvailable must beFalse // session depleted
     }
   }
 }
