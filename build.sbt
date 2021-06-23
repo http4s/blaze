@@ -105,12 +105,7 @@ lazy val http = Project("blaze-http", file("http"))
     // General Dependencies
     libraryDependencies += twitterHPACK,
     // Test Dependencies
-    libraryDependencies ++= Seq(
-      asyncHttpClient,
-      scalacheck.cross(CrossVersion.for3Use2_13),
-      specs2Scalacheck.cross(CrossVersion.for3Use2_13),
-      specs2Mock.cross(CrossVersion.for3Use2_13)
-    ).map(_ % Test),
+    libraryDependencies += asyncHttpClient % Test,
     mimaBinaryIssueFilters ++= Seq(
       ProblemFilters.exclude[MissingClassProblem]("org.http4s.blaze.http.http2.PingManager$PingState"),
       ProblemFilters.exclude[MissingClassProblem]("org.http4s.blaze.http.http2.PingManager$PingState$"),
