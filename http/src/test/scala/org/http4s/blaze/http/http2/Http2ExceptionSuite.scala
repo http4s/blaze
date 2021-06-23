@@ -24,12 +24,10 @@ class Http2ExceptionSuite extends BlazeTestSuite {
   test("A Http2Exception should be a connection error for stream id 0") {
     PROTOCOL_ERROR.goaway("") match {
       case _: Http2SessionException => ()
-      case _ => fail("Unexpected goaway result")
     }
 
     PROTOCOL_ERROR.rst(1, "") match {
       case _: Http2StreamException => ()
-      case _ => fail("Unexpected rst result")
     }
   }
 }
