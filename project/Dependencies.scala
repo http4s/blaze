@@ -9,5 +9,5 @@ object Dependencies {
   lazy val specs2              = "org.specs2"                 %% "specs2-core"         % "4.12.1"
   lazy val specs2Mock          = "org.specs2"                 %% "specs2-mock"         % specs2.revision
   lazy val specs2Scalacheck    = "org.specs2"                 %% "specs2-scalacheck"   % specs2.revision
-  lazy val munit               = "org.scalameta"              %% "munit"               % "0.7.26"
+  lazy val munit               = "org.scalameta"              %% "munit"               % "0.7.27"
 }
