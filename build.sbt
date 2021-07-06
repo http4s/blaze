@@ -71,16 +71,19 @@ lazy val blaze = project.in(file("."))
   .settings(commonSettings)
   .aggregate(core, http, examples)
 
+lazy val testkit = Project("blaze-testkit", file("testkit"))
+  .enablePlugins(NoPublishPlugin)
+  .settings(commonSettings)
+  .settings(libraryDependencies ++= Seq(munit, scalacheckMunit))
+  .settings(Revolver.settings)
+
 lazy val core = Project("blaze-core", file("core"))
   .enablePlugins(Http4sOrgPlugin)
   .enablePlugins(BuildInfoPlugin)
   .settings(commonSettings)
   .settings(
     libraryDependencies ++= Seq(log4s),
-    libraryDependencies ++= Seq(
-      logbackClassic,
-      munit
-    ).map(_ % Test),
+    libraryDependencies += logbackClassic % Test,
     buildInfoPackage := "org.http4s.blaze",
     buildInfoKeys := Seq[BuildInfoKey](
       version,
@@ -93,6 +96,7 @@ lazy val core = Project("blaze-core", file("core"))
       ProblemFilters.exclude[DirectMissingMethodProblem]("org.http4s.blaze.channel.nio1.NIO1SocketServerGroup.this")
     )
   )
+  .dependsOn(testkit % Test)
 
 lazy val http = Project("blaze-http", file("http"))
   .enablePlugins(Http4sOrgPlugin)
@@ -101,19 +105,15 @@ lazy val http = Project("blaze-http", file("http"))
     // General Dependencies
     libraryDependencies += twitterHPACK,
     // Test Dependencies
-    libraryDependencies ++= Seq(
-      asyncHttpClient,
-      scalacheck.cross(CrossVersion.for3Use2_13),
-      specs2Scalacheck.cross(CrossVersion.for3Use2_13),
-      specs2Mock.cross(CrossVersion.for3Use2_13)
-    ).map(_ % Test),
+    libraryDependencies += asyncHttpClient % Test,
     mimaBinaryIssueFilters ++= Seq(
       ProblemFilters.exclude[MissingClassProblem]("org.http4s.blaze.http.http2.PingManager$PingState"),
       ProblemFilters.exclude[MissingClassProblem]("org.http4s.blaze.http.http2.PingManager$PingState$"),
       ProblemFilters.exclude[MissingClassProblem]("org.http4s.blaze.http.http2.client.ALPNClientSelector$ClientProvider"),
       ProblemFilters.exclude[MissingClassProblem]("org.http4s.blaze.http.http2.server.ALPNServerSelector$ServerProvider")
     )
-  ).dependsOn(core % "test->test;compile->compile")
+  )
+  .dependsOn(testkit % Test, core % "test->test;compile->compile")
 
 lazy val examples = Project("blaze-examples",file("examples"))
   .enablePlugins(NoPublishPlugin)

@@ -16,7 +16,7 @@
 
 package org.http4s.blaze.pipeline
 
-import org.http4s.blaze.BlazeTestSuite
+import org.http4s.blaze.testkit.BlazeTestSuite
 import org.http4s.blaze.util.{Execution, FutureUnit}
 
 import scala.concurrent.Future

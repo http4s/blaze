@@ -19,8 +19,8 @@ package org.http4s.blaze.pipeline.stages
 import java.nio.ByteBuffer
 import java.nio.charset.StandardCharsets
 
-import org.http4s.blaze.BlazeTestSuite
 import org.http4s.blaze.pipeline.{Command, LeafBuilder}
+import org.http4s.blaze.testkit.BlazeTestSuite
 
 import scala.concurrent.Future
 import scala.concurrent.duration._

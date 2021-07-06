@@ -16,8 +16,8 @@
 
 package org.http4s.blaze.util
 
-import org.http4s.blaze.BlazeTestSuite
 import org.http4s.blaze.pipeline.Command
+import org.http4s.blaze.testkit.BlazeTestSuite
 
 import scala.collection.mutable.ListBuffer
 import scala.concurrent.Future

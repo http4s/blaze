@@ -22,9 +22,9 @@ import javax.net.ssl.{SSLEngine, SSLEngineResult}
 import SSLEngineResult.HandshakeStatus._
 import java.nio.charset.StandardCharsets
 
-import org.http4s.blaze.BlazeTestSuite
 import org.http4s.blaze.pipeline.Command.Connected
 import org.http4s.blaze.pipeline.LeafBuilder
+import org.http4s.blaze.testkit.BlazeTestSuite
 import org.http4s.blaze.util.{BufferTools, Execution, FutureUnit, GenericSSLContext}
 
 import scala.concurrent.{ExecutionContext, Future}
