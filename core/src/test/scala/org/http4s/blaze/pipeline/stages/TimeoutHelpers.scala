@@ -16,28 +16,22 @@
 
 package org.http4s.blaze.pipeline.stages
 
-import org.specs2.mutable.Specification
-import org.http4s.blaze.pipeline.{Command, LeafBuilder}
 import java.nio.ByteBuffer
 import java.nio.charset.StandardCharsets
 
-import org.specs2.matcher.MatchResult
+import org.http4s.blaze.pipeline.{Command, LeafBuilder}
+import org.http4s.blaze.testkit.BlazeTestSuite
 
-import scala.concurrent.{Await, Future}
+import scala.concurrent.Future
 import scala.concurrent.duration._
 
-abstract class TimeoutHelpers extends Specification {
+abstract class TimeoutHelpers extends BlazeTestSuite {
   def genDelayStage(timeout: Duration): TimeoutStageBase[ByteBuffer]
 
   def newBuff: ByteBuffer = ByteBuffer.wrap("Foo".getBytes(StandardCharsets.UTF_8))
 
-  def checkBuff(buff: ByteBuffer): MatchResult[Any] =
-    StandardCharsets.UTF_8.decode(buff).toString should_== "Foo"
-
-  def checkFuture(f: Future[ByteBuffer], timeout: Duration = 2.seconds): MatchResult[Any] = {
-    val r = Await.result(f, timeout)
-    checkBuff(r)
-  }
+  def checkFuture(f: => Future[ByteBuffer]): Future[Unit] =
+    assertFuture(f.map(StandardCharsets.UTF_8.decode(_).toString), "Foo")
 
   def slow(duration: Duration): DelayHead[ByteBuffer] =
     new DelayHead[ByteBuffer](duration) { def next() = newBuff }
