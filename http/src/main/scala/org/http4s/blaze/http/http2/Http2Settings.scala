@@ -24,52 +24,46 @@ import scala.collection.mutable
   *
   * These represent the HTTP2 settings for either the client or server.
   *
-  * @see https://tools.ietf.org/html/rfc7540#section-6.5.2, where the
-  *      doc strings were obtained.
+  * @see
+  *   https://tools.ietf.org/html/rfc7540#section-6.5.2, where the doc strings were obtained.
   */
 sealed abstract class Http2Settings {
 
-  /** Allows the sender to inform the remote endpoint of the maximum size
-    * of the header compression table used to decode header blocks, in
-    * octets.  The encoder can select any size equal to or less than this
-    * value by using signaling specific to the header compression format
-    * inside a header block.
+  /** Allows the sender to inform the remote endpoint of the maximum size of the header compression
+    * table used to decode header blocks, in octets. The encoder can select any size equal to or
+    * less than this value by using signaling specific to the header compression format inside a
+    * header block.
     */
   def headerTableSize: Int
 
-  /** Indicates the sender's initial window size (in octets) for
-    * stream-level flow control.
+  /** Indicates the sender's initial window size (in octets) for stream-level flow control.
     */
   def initialWindowSize: Int
 
   /** This setting can be used to disable server push (Section 8.2). */
   def pushEnabled: Boolean
 
-  /** Indicates the maximum number of concurrent streams that the
-    * sender will allow.  This limit is directional: it applies to the
-    * number of streams that the sender permits the receiver to create.
-    * Initially, there is no limit to this value.  It is recommended that
-    * this value be no smaller than 100, so as to not unnecessarily limit
-    * parallelism.
+  /** Indicates the maximum number of concurrent streams that the sender will allow. This limit is
+    * directional: it applies to the number of streams that the sender permits the receiver to
+    * create. Initially, there is no limit to this value. It is recommended that this value be no
+    * smaller than 100, so as to not unnecessarily limit parallelism.
     *
-    * A value of 0 for SETTINGS_MAX_CONCURRENT_STREAMS SHOULD NOT be
-    * treated as special by endpoints.  A zero value does prevent the
-    * creation of new streams; however, this can also happen for any
-    * limit that is exhausted with active streams.  Servers SHOULD only
-    * set a zero value for short durations; if a server does not wish to
-    * accept requests, closing the connection is more appropriate.
+    * A value of 0 for SETTINGS_MAX_CONCURRENT_STREAMS SHOULD NOT be treated as special by
+    * endpoints. A zero value does prevent the creation of new streams; however, this can also
+    * happen for any limit that is exhausted with active streams. Servers SHOULD only set a zero
+    * value for short durations; if a server does not wish to accept requests, closing the
+    * connection is more appropriate.
     */
   def maxConcurrentStreams: Int
 
-  /** Indicates the size of the largest frame payload that the sender is
-    * willing to receive, in octets.
+  /** Indicates the size of the largest frame payload that the sender is willing to receive, in
+    * octets.
     */
   def maxFrameSize: Int
 
-  /** This advisory setting informs a peer of the maximum size of header
-    * list that the sender is prepared to accept, in octets.  The value is
-    * based on the uncompressed size of header fields, including the length
-    * of the name and value in octets plus an overhead of 32 octets for each
+  /** This advisory setting informs a peer of the maximum size of header list that the sender is
+    * prepared to accept, in octets. The value is based on the uncompressed size of header fields,
+    * including the length of the name and value in octets plus an overhead of 32 octets for each
     * header field.
     */
   def maxHeaderListSize: Int
@@ -145,7 +139,8 @@ object Http2Settings {
 
   /** Helper for extracting invalid settings
     *
-    * @see https://tools.ietf.org/html/rfc7540#section-6.5.2
+    * @see
+    *   https://tools.ietf.org/html/rfc7540#section-6.5.2
     */
   object InvalidSetting {
     def unapply(setting: Setting): Option[Http2Exception] =
@@ -159,7 +154,7 @@ object Http2Settings {
         case Setting(_, value) if value < 0 =>
           Some(
             Http2Exception.PROTOCOL_ERROR.goaway(
-              s"Integer overflow for setting ${setting.name}: ${value}"))
+              s"Integer overflow for setting ${setting.name}: $value"))
 
         case _ => None
       }

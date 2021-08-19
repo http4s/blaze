@@ -31,8 +31,9 @@ import scala.util.{Failure, Success}
 
 /** Representation of the HTTP/2 connection.
   *
-  * @note the TailStage needs to be ready to go as this session will start
-  *       reading from the channel immediately.
+  * @note
+  *   the TailStage needs to be ready to go as this session will start reading from the channel
+  *   immediately.
   */
 private final class ConnectionImpl(
     tailStage: TailStage[ByteBuffer],

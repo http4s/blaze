@@ -53,8 +53,8 @@ private final class FrameEncoder(remoteSettings: Http2Settings, headerEncoder: H
 
   /** Generate stream data frame(s) for the specified data
     *
-    * If the data exceeds the peers MAX_FRAME_SIZE setting, it is fragmented
-    * into a series of frames.
+    * If the data exceeds the peers MAX_FRAME_SIZE setting, it is fragmented into a series of
+    * frames.
     */
   def dataFrame(streamId: Int, endStream: Boolean, data: ByteBuffer): collection.Seq[ByteBuffer] = {
     val limit = maxFrameSize
@@ -74,9 +74,8 @@ private final class FrameEncoder(remoteSettings: Http2Settings, headerEncoder: H
 
   /** Generate stream header frames from the provided header sequence
     *
-    * If the compressed representation of the headers exceeds the MAX_FRAME_SIZE
-    * setting of the peer, it will be broken into a HEADERS frame and a series of
-    * CONTINUATION frames.
+    * If the compressed representation of the headers exceeds the MAX_FRAME_SIZE setting of the
+    * peer, it will be broken into a HEADERS frame and a series of CONTINUATION frames.
     */
   def headerFrame(
       streamId: Int,

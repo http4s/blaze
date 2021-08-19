@@ -22,18 +22,19 @@ import scala.util.control.NoStackTrace
 object Command {
   trait InboundCommand
 
-  /** Signals that the pipeline [[HeadStage]] is connected and ready to accept read and write requests */
+  /** Signals that the pipeline [[HeadStage]] is connected and ready to accept read and write
+    * requests
+    */
   case object Connected extends InboundCommand
 
-  /** Signals to the tail of the pipeline that it has been disconnected and
-    * shutdown. Any following reads or writes will result in an exception, [[EOF]],
-    * a general Exception signaling the stage is not connected, or otherwise.
+  /** Signals to the tail of the pipeline that it has been disconnected and shutdown. Any following
+    * reads or writes will result in an exception, [[EOF]], a general Exception signaling the stage
+    * is not connected, or otherwise.
     */
   case object Disconnected extends InboundCommand
 
-  /** Signals to the entire pipeline that the [[HeadStage]] has been disconnected and
-    * shutdown. Any following reads or writes will result in an exception, [[EOF]]
-    * or otherwise
+  /** Signals to the entire pipeline that the [[HeadStage]] has been disconnected and shutdown. Any
+    * following reads or writes will result in an exception, [[EOF]] or otherwise
     */
   case object EOF extends Exception("EOF") with InboundCommand with NoStackTrace {
     override def toString: String = getMessage

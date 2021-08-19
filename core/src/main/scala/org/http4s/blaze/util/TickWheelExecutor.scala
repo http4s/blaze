@@ -26,17 +26,20 @@ import org.log4s.getLogger
 
 /** Low resolution execution scheduler
   *
-  * @note The ideas for [[org.http4s.blaze.util.TickWheelExecutor]] is based off of loosely came from the
-  * Akka scheduler, which was based on the Netty HashedWheelTimer which was in term
-  * based on concepts in <a href="http://cseweb.ucsd.edu/users/varghese/">George Varghese</a>
-  * and Tony Lauck's paper <a href="http://cseweb.ucsd.edu/users/varghese/PAPERS/twheel.ps.Z">'Hashed
-  * and Hierarchical Timing Wheels: data structures to efficiently implement a
-  * timer facility'</a>
+  * @note
+  *   The ideas for [[org.http4s.blaze.util.TickWheelExecutor]] is based off of loosely came from
+  *   the Akka scheduler, which was based on the Netty HashedWheelTimer which was in term based on
+  *   concepts in <a href="http://cseweb.ucsd.edu/users/varghese/">George Varghese</a> and Tony
+  *   Lauck's paper <a href="http://cseweb.ucsd.edu/users/varghese/PAPERS/twheel.ps.Z">'Hashed and
+  *   Hierarchical Timing Wheels: data structures to efficiently implement a timer facility'</a>
   *
-  * @constructor primary constructor which immediately spins up a thread and begins ticking
+  * @constructor
+  *   primary constructor which immediately spins up a thread and begins ticking
   *
-  * @param wheelSize number of spokes on the wheel. Each tick, the wheel will advance a spoke
-  * @param tick duration between ticks
+  * @param wheelSize
+  *   number of spokes on the wheel. Each tick, the wheel will advance a spoke
+  * @param tick
+  *   duration between ticks
   */
 class TickWheelExecutor(wheelSize: Int = DefaultWheelSize, val tick: Duration = 200.milli) {
   require(wheelSize > 0, "Need finite size number of ticks")
@@ -80,15 +83,17 @@ class TickWheelExecutor(wheelSize: Int = DefaultWheelSize, val tick: Duration = 
 
   /** Schedule the `Runnable` on the [[TickWheelExecutor]]
     *
-    * Execution is performed on the [[TickWheelExecutor]]s thread, so only extremely small
-    * tasks should be submitted with this method.
-    * timeouts of Inf duration are ignored, timeouts of zero or negative duration are executed
-    * immediately on the submitting thread.
+    * Execution is performed on the [[TickWheelExecutor]] s thread, so only extremely small tasks
+    * should be submitted with this method. timeouts of Inf duration are ignored, timeouts of zero
+    * or negative duration are executed immediately on the submitting thread.
     *
-    * @param r `Runnable` to be executed
-    * @param timeout `Duration` to wait before execution
-    * @return a [[Cancellable]]. This is not a `java.util.concurrent.Cancellable`,
-    *         which is a richer interface.
+    * @param r
+    *   `Runnable` to be executed
+    * @param timeout
+    *   `Duration` to wait before execution
+    * @return
+    *   a [[Cancellable]]. This is not a `java.util.concurrent.Cancellable`, which is a richer
+    *   interface.
     */
   def schedule(r: Runnable, timeout: Duration): Cancelable =
     schedule(r, Execution.directec, timeout)
@@ -98,11 +103,15 @@ class TickWheelExecutor(wheelSize: Int = DefaultWheelSize, val tick: Duration = 
     * timeouts of Inf duration are ignored, timeouts of zero or negative duration are executed
     * immediately on the submitting thread.
     *
-    * @param r `Runnable` to be executed
-    * @param ec `ExecutionContext` to submit the `Runnable`
-    * @param timeout `Duration` to wait before execution
-    * @return a [[Cancellable]]. This is not a `java.util.concurrent.Cancellable`,
-    *         which is a richer interface.
+    * @param r
+    *   `Runnable` to be executed
+    * @param ec
+    *   `ExecutionContext` to submit the `Runnable`
+    * @param timeout
+    *   `Duration` to wait before execution
+    * @return
+    *   a [[Cancellable]]. This is not a `java.util.concurrent.Cancellable`, which is a richer
+    *   interface.
     */
   def schedule(r: Runnable, ec: ExecutionContext, timeout: Duration): Cancelable =
     if (alive)
@@ -193,7 +202,8 @@ class TickWheelExecutor(wheelSize: Int = DefaultWheelSize, val tick: Duration = 
 
     /** Removes expired and canceled elements from this bucket, executing expired elements
       *
-      * @param time current system time (in milliseconds)
+      * @param time
+      *   current system time (in milliseconds)
       */
     def prune(time: Long): Unit = {
       @tailrec
@@ -218,10 +228,14 @@ class TickWheelExecutor(wheelSize: Int = DefaultWheelSize, val tick: Duration = 
   }
 
   /** A Link in a single linked list which can also be passed to the user as a Cancelable
-    * @param r [[java.lang.Runnable]] which will be executed after the expired time
-    * @param ec [[scala.concurrent.ExecutionContext]] on which to execute the Runnable
-    * @param expiration time in milliseconds after which this Node is expired
-    * @param next next Node in the list or `tailNode` if this is the last element
+    * @param r
+    *   [[java.lang.Runnable]] which will be executed after the expired time
+    * @param ec
+    *   [[scala.concurrent.ExecutionContext]] on which to execute the Runnable
+    * @param expiration
+    *   time in milliseconds after which this Node is expired
+    * @param next
+    *   next Node in the list or `tailNode` if this is the last element
     */
   final private class Node(
       r: Runnable,

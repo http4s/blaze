@@ -26,22 +26,28 @@ trait FlowStrategy {
 
   /** Decide if the session window needs to send a WINDOW_UPDATE frame
     *
-    * @note This must not mutate the [[SessionFlowControl]] in any way.
-    * @note This verison should only be used in situations where the stream associated
-    *       with the data does not exist. For example, it may have already closed and
-    *       sent a RST frame.
+    * @note
+    *   This must not mutate the [[SessionFlowControl]] in any way.
+    * @note
+    *   This verison should only be used in situations where the stream associated with the data
+    *   does not exist. For example, it may have already closed and sent a RST frame.
     *
-    * @param session the session [[SessionFlowControl]]
-    * @return number of bytes to update the session flow window with.
+    * @param session
+    *   the session [[SessionFlowControl]]
+    * @return
+    *   number of bytes to update the session flow window with.
     */
   def checkSession(session: SessionFlowControl): Int
 
   /** Decide if the stream and/or the session need a WINDOW_UPDATE frame
     *
-    * @note This must not mutate the [[SessionFlowControl]] or the [[StreamFlowWindow]] in any way.
+    * @note
+    *   This must not mutate the [[SessionFlowControl]] or the [[StreamFlowWindow]] in any way.
     *
-    * @param stream the stream [[StreamFlowWindow]]
-    * @return the number of bytes to update the session and stream flow window with.
+    * @param stream
+    *   the stream [[StreamFlowWindow]]
+    * @return
+    *   the number of bytes to update the session and stream flow window with.
     */
   def checkStream(stream: StreamFlowWindow): Increment
 }
