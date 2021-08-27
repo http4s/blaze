@@ -28,10 +28,13 @@ private[http4s] object StageTools {
 
   /** Accumulate bytes from a pipeline
     *
-    * @param bytes the minimum number of by bytes desired
-    * @param stage pipeline stage that you want to pull the bytes from
-    * @return a `Future` which contains a `ByteBuffer` with at least `bytes` bytes or a
-    *         `Throwable` received by the pipeline.
+    * @param bytes
+    *   the minimum number of by bytes desired
+    * @param stage
+    *   pipeline stage that you want to pull the bytes from
+    * @return
+    *   a `Future` which contains a `ByteBuffer` with at least `bytes` bytes or a `Throwable`
+    *   received by the pipeline.
     */
   def accumulateAtLeast(bytes: Int, stage: TailStage[ByteBuffer]): Future[ByteBuffer] =
     if (bytes < 0)

@@ -32,7 +32,8 @@ object BufferTools {
 
   /** Allocate a new `ByteBuffer` on the heap
     *
-    * @param size size of desired `ByteBuffer`
+    * @param size
+    *   size of desired `ByteBuffer`
     */
   def allocate(size: Int): ByteBuffer = ByteBuffer.allocate(size)
 
@@ -66,8 +67,8 @@ object BufferTools {
       new String(arr, charset)
     }
 
-  /** Join the two buffers into a single ByteBuffer. This method is
-    * guaranteed to return a ByteBuffer, but it may be empty.
+  /** Join the two buffers into a single ByteBuffer. This method is guaranteed to return a
+    * ByteBuffer, but it may be empty.
     */
   def concatBuffers(oldbuff: ByteBuffer, newbuff: ByteBuffer): ByteBuffer =
     if (oldbuff == null)
@@ -101,9 +102,13 @@ object BufferTools {
 
   /** Take a slice of bytes from the `ByteBuffer`, consuming the bytes.
     *
-    * @param buffer `ByteBuffer` to slice
-    * @param size number of bytes to slice. Must be less than or equal to the number of bytes remaining in `buffer`.
-    * @return the resulting view
+    * @param buffer
+    *   `ByteBuffer` to slice
+    * @param size
+    *   number of bytes to slice. Must be less than or equal to the number of bytes remaining in
+    *   `buffer`.
+    * @return
+    *   the resulting view
     */
   def takeSlice(buffer: ByteBuffer, size: Int): ByteBuffer = {
     if (size < 0 || size > buffer.remaining())
@@ -121,8 +126,10 @@ object BufferTools {
 
   /** Check the array of buffers to ensure they are all empty
     *
-    * @param buffers `ByteBuffer`s to check for data
-    * @return true if they are empty, false if there is data remaining
+    * @param buffers
+    *   `ByteBuffer`s to check for data
+    * @return
+    *   true if they are empty, false if there is data remaining
     */
   def checkEmpty(buffers: Array[ByteBuffer]): Boolean = {
     @tailrec
@@ -133,9 +140,9 @@ object BufferTools {
     checkEmpty(buffers.length - 1)
   }
 
-  /** Replaces any empty buffers except for the last one with the `emptyBuffer`
-    * to allow GC of depleted ByteBuffers and returns the index of the first
-    * non-empty ByteBuffer, or the last index, whichever comes first.
+  /** Replaces any empty buffers except for the last one with the `emptyBuffer` to allow GC of
+    * depleted ByteBuffers and returns the index of the first non-empty ByteBuffer, or the last
+    * index, whichever comes first.
     */
   def dropEmpty(buffers: Array[ByteBuffer]): Int = {
     val max = buffers.length - 1
@@ -149,8 +156,10 @@ object BufferTools {
 
   /** Check the array of buffers to ensure they are all empty
     *
-    * @param buffers `ByteBuffer`s to check for data
-    * @return true if they are empty, false if there is data remaining
+    * @param buffers
+    *   `ByteBuffer`s to check for data
+    * @return
+    *   true if they are empty, false if there is data remaining
     */
   def checkEmpty(buffers: Iterable[ByteBuffer]): Boolean =
     !buffers.iterator.exists(_.hasRemaining)
@@ -161,14 +170,16 @@ object BufferTools {
     charset.decode(b).toString()
   }
 
-  /** Copies as much data from the input buffers as possible without modifying positions
-    * of the input buffers
+  /** Copies as much data from the input buffers as possible without modifying positions of the
+    * input buffers
     *
-    * @param buffers collection of buffers to copy. This may be an empty array and the array
-    *             may contain `null` elements. The positions, marks, and marks of the input
-    *             buffers will not be modified.
-    * @param out `ByteBuffer` that the data will be copied into. This must not be `null`
-    * @return Number of bytes copied.
+    * @param buffers
+    *   collection of buffers to copy. This may be an empty array and the array may contain `null`
+    *   elements. The positions, marks, and marks of the input buffers will not be modified.
+    * @param out
+    *   `ByteBuffer` that the data will be copied into. This must not be `null`
+    * @return
+    *   Number of bytes copied.
     */
   private[blaze] def copyBuffers(buffers: Array[ByteBuffer], out: ByteBuffer): Int = {
     val start = out.position()
@@ -198,11 +209,14 @@ object BufferTools {
 
   /** Forward the positions of the collection of `ByteBuffer`s
     *
-    * @param buffers `ByteBuffers` to modify. The positions will be incremented from the
-    *               first in the collection to the last.
-    * @param size Number of bytes to fast-forward the arrays
-    * @return whether there was enough bytes in the collection of buffers or if the size
-    *         overran the available data.
+    * @param buffers
+    *   `ByteBuffers` to modify. The positions will be incremented from the first in the collection
+    *   to the last.
+    * @param size
+    *   Number of bytes to fast-forward the arrays
+    * @return
+    *   whether there was enough bytes in the collection of buffers or if the size overran the
+    *   available data.
     */
   private[blaze] def fastForwardBuffers(buffers: Array[ByteBuffer], size: Int): Boolean = {
     require(size >= 0)
@@ -240,8 +254,9 @@ object BufferTools {
     *
     * The passed buffer is not mutated, even temporarily.
     *
-    * @note this is not intended to be a high performance method and should only
-    * be used for debugging purposes.
+    * @note
+    *   this is not intended to be a high performance method and should only be used for debugging
+    *   purposes.
     */
   private[blaze] def hexString(buffer: ByteBuffer, limit: Int = Int.MaxValue): String = {
     val sb = new StringBuilder(buffer.toString)

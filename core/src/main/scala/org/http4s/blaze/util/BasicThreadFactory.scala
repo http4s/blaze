@@ -23,8 +23,8 @@ private[blaze] object BasicThreadFactory {
 
   /** Construct a basic `ThreadFactory`
     *
-    * Resulting threads are named with their prefix plus '-unique_id'
-    * where unique id is an increasing integer.
+    * Resulting threads are named with their prefix plus '-unique_id' where unique id is an
+    * increasing integer.
     */
   def apply(prefix: String, daemonThreads: Boolean): ThreadFactory =
     new Impl(prefix, daemonThreads)

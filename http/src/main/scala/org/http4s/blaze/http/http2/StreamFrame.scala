@@ -28,10 +28,11 @@ sealed trait StreamFrame {
 
 /** Data frame for http2
   *
-  * @param endStream if this is the last message of the stream
-  * @param data actual stream data. The `ByteBuffer` indexes may be modified by the receiver.
-  *             The `ByteBuffer` indexes are considered owned by this DataFrame, but its
-  *             data must not be modified.
+  * @param endStream
+  *   if this is the last message of the stream
+  * @param data
+  *   actual stream data. The `ByteBuffer` indexes may be modified by the receiver. The `ByteBuffer`
+  *   indexes are considered owned by this DataFrame, but its data must not be modified.
   */
 case class DataFrame(endStream: Boolean, data: ByteBuffer) extends StreamFrame {
   def flowBytes: Int = data.remaining()
@@ -39,9 +40,12 @@ case class DataFrame(endStream: Boolean, data: ByteBuffer) extends StreamFrame {
 
 /** Headers frame for http2
   *
-  * @param priority priority of this stream
-  * @param endStream signal if this is the last frame of the stream
-  * @param headers attached headers
+  * @param priority
+  *   priority of this stream
+  * @param endStream
+  *   signal if this is the last frame of the stream
+  * @param headers
+  *   attached headers
   */
 case class HeadersFrame(priority: Priority, endStream: Boolean, headers: Headers)
     extends StreamFrame {

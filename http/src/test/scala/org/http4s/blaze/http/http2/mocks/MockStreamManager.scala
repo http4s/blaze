@@ -17,7 +17,7 @@
 package org.http4s.blaze.http.http2.mocks
 
 import org.http4s.blaze.http.Headers
-import org.http4s.blaze.http.http2.{Result, MaybeError, _}
+import org.http4s.blaze.http.http2.{MaybeError, Result, _}
 
 import scala.collection.mutable
 import scala.concurrent.Future
