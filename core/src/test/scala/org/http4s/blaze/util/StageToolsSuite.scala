@@ -18,8 +18,8 @@ package org.http4s.blaze.util
 
 import java.nio.ByteBuffer
 
-import org.http4s.blaze.BlazeTestSuite
 import org.http4s.blaze.pipeline.TailStage
+import org.http4s.blaze.testkit.BlazeTestSuite
 
 import scala.concurrent.Future
 import scala.concurrent.duration._

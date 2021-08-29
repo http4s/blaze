@@ -16,15 +16,17 @@
 
 package org.http4s.blaze.http.http2
 
-import org.specs2.mutable.Specification
+import org.http4s.blaze.testkit.BlazeTestSuite
 
-class Http2ExceptionSpec extends Specification {
-  import Http2Exception._
+class HeaderEncoderSuite extends BlazeTestSuite {
+  private val headers = Seq("foo" -> "bar")
 
-  "Http2Exception" should {
-    "be a connection error for stream id 0" in {
-      PROTOCOL_ERROR.goaway("") must beAnInstanceOf[Http2SessionException]
-      PROTOCOL_ERROR.rst(1, "") must beAnInstanceOf[Http2StreamException]
-    }
+  test("A HeaderEncoder should encode headers") {
+    val enc = new HeaderEncoder(Http2Settings.DefaultSettings.HEADER_TABLE_SIZE)
+    val bb = enc.encodeHeaders(headers)
+
+    assertEquals(
+      HeaderCodecHelpers.decodeHeaders(bb, Http2Settings.DefaultSettings.HEADER_TABLE_SIZE),
+      headers)
   }
 }

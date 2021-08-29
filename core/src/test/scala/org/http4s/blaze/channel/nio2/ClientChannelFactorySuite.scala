@@ -18,7 +18,7 @@ package org.http4s.blaze.channel.nio2
 
 import java.net.{InetSocketAddress, SocketTimeoutException}
 
-import org.http4s.blaze.BlazeTestSuite
+import org.http4s.blaze.testkit.BlazeTestSuite
 import org.http4s.blaze.util.TickWheelExecutor
 
 import scala.concurrent.Future
