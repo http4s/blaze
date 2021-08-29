@@ -52,8 +52,8 @@ class TickWheelExecutor(wheelSize: Int = DefaultWheelSize, val tick: Duration = 
 
   @volatile private var alive = true
 
-  private val tickMilli = tick.toMillis
-  private val _tickInv = 1.0 / tickMilli.toDouble
+  private val tickNanos = tick.toNanos
+  private val _tickInv = 1.0 / tickNanos.toDouble
 
   private val head = new AtomicReference[ScheduleEvent](Tail)
 
@@ -65,7 +65,7 @@ class TickWheelExecutor(wheelSize: Int = DefaultWheelSize, val tick: Duration = 
 
   private val thread = new Thread(s"blaze-tick-wheel-executor") {
     override def run(): Unit =
-      cycle(System.currentTimeMillis())
+      cycle(System.nanoTime())
   }
 
   thread.setDaemon(true)
@@ -109,9 +109,9 @@ class TickWheelExecutor(wheelSize: Int = DefaultWheelSize, val tick: Duration = 
       if (!timeout.isFinite) // This will never timeout, so don't schedule it.
         Cancelable.NoopCancel
       else {
-        val millis = timeout.toMillis
-        if (millis > 0) {
-          val expires = millis + System.currentTimeMillis()
+        val nanos = timeout.toNanos
+        if (nanos > 0) {
+          val expires = nanos + System.nanoTime()
 
           val node = new Node(r, ec, expires, null, null)
 
@@ -155,7 +155,7 @@ class TickWheelExecutor(wheelSize: Int = DefaultWheelSize, val tick: Duration = 
   private def cycle(lastTickTime: Long): Unit = {
     handleTasks() // Deal with scheduling and cancellations
 
-    val thisTickTime = System.currentTimeMillis()
+    val thisTickTime = System.nanoTime()
     val lastTick = (lastTickTime * _tickInv).toLong
     val thisTick = (thisTickTime * _tickInv).toLong
     val ticks = math.min(thisTick - lastTick, wheelSize.toLong)
@@ -171,9 +171,9 @@ class TickWheelExecutor(wheelSize: Int = DefaultWheelSize, val tick: Duration = 
     go(0)
 
     if (alive) {
-      val nextTickTime = (thisTick + 1) * tickMilli
-      val sleep = nextTickTime - System.currentTimeMillis()
-      if (sleep > 0) Thread.sleep(sleep)
+      val nextTickTime = (thisTick + 1) * tickNanos
+      val sleep = nextTickTime - System.nanoTime()
+      if (sleep > 0) Thread.sleep(sleep / 1000000)
       cycle(thisTickTime)
     } else // delete all our buckets so we don't hold any references
       for { i <- 0 until wheelSize } clockFace(i) = null
@@ -193,7 +193,7 @@ class TickWheelExecutor(wheelSize: Int = DefaultWheelSize, val tick: Duration = 
 
     /** Removes expired and canceled elements from this bucket, executing expired elements
       *
-      * @param time current system time (in milliseconds)
+      * @param time current system time (in nanoseconds)
       */
     def prune(time: Long): Unit = {
       @tailrec
@@ -220,7 +220,7 @@ class TickWheelExecutor(wheelSize: Int = DefaultWheelSize, val tick: Duration = 
   /** A Link in a single linked list which can also be passed to the user as a Cancelable
     * @param r [[java.lang.Runnable]] which will be executed after the expired time
     * @param ec [[scala.concurrent.ExecutionContext]] on which to execute the Runnable
-    * @param expiration time in milliseconds after which this Node is expired
+    * @param expiration time in nanoseconds after which this Node is expired
     * @param next next Node in the list or `tailNode` if this is the last element
     */
   final private class Node(
