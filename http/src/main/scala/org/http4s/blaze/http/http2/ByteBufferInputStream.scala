@@ -19,9 +19,8 @@ package org.http4s.blaze.http.http2
 import java.io.{IOException, InputStream}
 import java.nio.ByteBuffer
 
-/** Wrap a `ByteBuffer` in an `InputStream` interface.
-  * This is just an adapter to work with the twitter hpack
-  * implementation. I would really like to get rid of it.
+/** Wrap a `ByteBuffer` in an `InputStream` interface. This is just an adapter to work with the
+  * twitter hpack implementation. I would really like to get rid of it.
   */
 private final class ByteBufferInputStream(buffer: ByteBuffer) extends InputStream {
   private[this] var markSize = -1

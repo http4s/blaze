@@ -228,9 +228,12 @@ class SSLStageSuite extends BlazeTestSuite {
   /** This stage assumes the data coming from Tail is secured
     *
     * It was a pain in the end to make this thing which is really only useful for testing
-    * @param data collection of ByteBuffers to hold in the Head
-    * @param engine SSLEngine to use for encryption
-    * @param handshakeInterval interval with which to induce another handshake
+    * @param data
+    *   collection of ByteBuffers to hold in the Head
+    * @param engine
+    *   SSLEngine to use for encryption
+    * @param handshakeInterval
+    *   interval with which to induce another handshake
     */
   class SSLSeqHead(data: Seq[ByteBuffer], engine: SSLEngine, handshakeInterval: Int = -1)
       extends SeqHead[ByteBuffer](data) {

@@ -24,9 +24,8 @@ import scala.util.control.NonFatal
 
 import org.http4s.blaze.util.Actor.DefaultMaxIterations
 
-/** Lightweight actor system HEAVILY inspired by the scalaz actors.
-  * scalaz actors would have been a good fit except a heavyweight dependency
-  * is very undesirable for this library.
+/** Lightweight actor system HEAVILY inspired by the scalaz actors. scalaz actors would have been a
+  * good fit except a heavyweight dependency is very undesirable for this library.
   */
 private[blaze] abstract class Actor[M](
     ec: ExecutionContext,

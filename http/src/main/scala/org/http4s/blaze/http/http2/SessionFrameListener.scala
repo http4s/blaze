@@ -25,8 +25,8 @@ import org.http4s.blaze.http.http2.Http2Settings.Setting
 
 /** Receives frames from the `Http2FrameDecoder`
   *
-  * Concurrency is not controlled by this type; it is expected that thread safety
-  * will be managed by the [[ConnectionImpl]].
+  * Concurrency is not controlled by this type; it is expected that thread safety will be managed by
+  * the [[ConnectionImpl]].
   */
 private class SessionFrameListener(
     session: SessionCore,

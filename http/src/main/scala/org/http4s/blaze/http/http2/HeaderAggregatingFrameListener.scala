@@ -22,16 +22,16 @@ import org.http4s.blaze.http.Headers
 import org.http4s.blaze.util.BufferTools
 import Http2Exception.PROTOCOL_ERROR
 
-/** A [[FrameListener]] that decodes raw HEADERS, PUSH_PROMISE,
-  * and CONTINUATION frames from ByteBuffer packets to a complete
-  * collections of headers.
+/** A [[FrameListener]] that decodes raw HEADERS, PUSH_PROMISE, and CONTINUATION frames from
+  * ByteBuffer packets to a complete collections of headers.
   *
-  * If the size of the raw header blcok exceeds the MAX_HEADER_LIST_SIZE parameter
-  * we send a GOAWAY frame. This can legally be handled with a 431 response, but the
-  * headers must be processed to keep the header decompressor in a valid state.
+  * If the size of the raw header blcok exceeds the MAX_HEADER_LIST_SIZE parameter we send a GOAWAY
+  * frame. This can legally be handled with a 431 response, but the headers must be processed to
+  * keep the header decompressor in a valid state.
   * https://tools.ietf.org/html/rfc7540#section-10.5.1
   *
-  * @note This class is not 'thread safe' and should be treated accordingly.
+  * @note
+  *   This class is not 'thread safe' and should be treated accordingly.
   */
 private abstract class HeaderAggregatingFrameListener(
     localSettings: Http2Settings,
@@ -58,10 +58,14 @@ private abstract class HeaderAggregatingFrameListener(
 
   /** Called on the successful receipt of a complete HEADERS block
     *
-    * @param streamId stream id of the HEADERS block. The codec will never pass 0.
-    * @param priority optional priority information associated with this HEADERS block.
-    * @param endStream this is the last inbound frame for this stream.
-    * @param headers decompressed headers.
+    * @param streamId
+    *   stream id of the HEADERS block. The codec will never pass 0.
+    * @param priority
+    *   optional priority information associated with this HEADERS block.
+    * @param endStream
+    *   this is the last inbound frame for this stream.
+    * @param headers
+    *   decompressed headers.
     */
   def onCompleteHeadersFrame(
       streamId: Int,
@@ -72,9 +76,12 @@ private abstract class HeaderAggregatingFrameListener(
 
   /** Called on the successful receipt of a complete PUSH_PROMISE block
     *
-    * @param streamId stream id of the associated stream. The codec will never pass 0.
-    * @param promisedId promised stream id. This must be a valid, idle stream id. The codec will never pass 0.
-    * @param headers decompressed headers.
+    * @param streamId
+    *   stream id of the associated stream. The codec will never pass 0.
+    * @param promisedId
+    *   promised stream id. This must be a valid, idle stream id. The codec will never pass 0.
+    * @param headers
+    *   decompressed headers.
     */
   def onCompletePushPromiseFrame(streamId: Int, promisedId: Int, headers: Headers): Result
 

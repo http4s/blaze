@@ -27,15 +27,14 @@ import scala.concurrent.{Future, Promise}
 
 /** Virtual pipeline head for representing HTTP/2 streams
   *
-  * It provides the junction for de-multiplexing stream messages
-  * into an individual stream. It handles commands and errors for the
-  * stream and manages the lifetime in the parent session accordingly.
+  * It provides the junction for de-multiplexing stream messages into an individual stream. It
+  * handles commands and errors for the stream and manages the lifetime in the parent session
+  * accordingly.
   *
-  * @note While `StreamState` does enforce the end-stream semantics
-  *       defined by HTTP/2, it doesn't attempt to enforce the semantics
-  *       of the HTTP dispatch, specifically it doesn't enforce that
-  *       HEADERS come before DATA, etc, and that duty belongs to the
-  *       streams dispatcher.
+  * @note
+  *   While `StreamState` does enforce the end-stream semantics defined by HTTP/2, it doesn't
+  *   attempt to enforce the semantics of the HTTP dispatch, specifically it doesn't enforce that
+  *   HEADERS come before DATA, etc, and that duty belongs to the streams dispatcher.
   */
 private abstract class StreamStateImpl(session: SessionCore) extends StreamState {
   // State associated with the streams inbound data flow
@@ -142,8 +141,8 @@ private abstract class StreamStateImpl(session: SessionCore) extends StreamState
         doRegisterWriteInterest()
     }
 
-  /** Called when the outbound flow window of the session or this stream has had some data
-    * acked and we may now be able to make forward progress.
+  /** Called when the outbound flow window of the session or this stream has had some data acked and
+    * we may now be able to make forward progress.
     */
   final override def outboundFlowWindowChanged(): Unit =
     if (writePromise != null && flowWindow.outboundWindowAvailable)

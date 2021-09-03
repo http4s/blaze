@@ -52,8 +52,10 @@ private class SessionFlowControlImpl(
 
   /** Called when bytes have been consumed from a live stream
     *
-    * @param stream stream associated with the consumed bytes
-    * @param consumed number of bytes consumed
+    * @param stream
+    *   stream associated with the consumed bytes
+    * @param consumed
+    *   number of bytes consumed
     */
   protected def onStreamBytesConsumed(stream: StreamFlowWindow, consumed: Int): Unit = {
     val _ = consumed
@@ -80,10 +82,11 @@ private class SessionFlowControlImpl(
 
   // Concrete methods /////////////////////////////////////////////////////////////
 
-  /** Create a new [[StreamFlowWindow]] for a stream which will update and check the
-    * bounds of the session flow control state.
+  /** Create a new [[StreamFlowWindow]] for a stream which will update and check the bounds of the
+    * session flow control state.
     *
-    * @note the stream [[StreamFlowWindow]] is not thread safe.
+    * @note
+    *   the stream [[StreamFlowWindow]] is not thread safe.
     */
   final override def newStreamFlowWindow(streamId: Int): StreamFlowWindow = {
     require(0 < streamId)
@@ -96,8 +99,10 @@ private class SessionFlowControlImpl(
 
   /** Observe inbound bytes that don't belong to an active inbound stream
     *
-    * @param count bytes observed
-    * @return `true` if there was sufficient session flow window remaining, `false` otherwise.
+    * @param count
+    *   bytes observed
+    * @return
+    *   `true` if there was sufficient session flow window remaining, `false` otherwise.
     */
   final override def sessionInboundObserved(count: Int): Boolean = {
     logger.trace(s"Observed $count inbound session bytes. $sessionWindowString")
@@ -141,9 +146,9 @@ private class SessionFlowControlImpl(
 
   /** Update the session outbound window
     *
-    * @note there is no way to withdraw outbound bytes directly from
-    *       the session as there should always be an associated stream
-    *       when sending flow control counted bytes outbound.
+    * @note
+    *   there is no way to withdraw outbound bytes directly from the session as there should always
+    *   be an associated stream when sending flow control counted bytes outbound.
     */
   final override def sessionOutboundAcked(count: Int): Option[Http2Exception] = {
     logger.trace(s"$count outbound session bytes were ACKed. $sessionWindowString")
