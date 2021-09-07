@@ -80,9 +80,9 @@ private[blaze] final class TaskQueue {
 
   /** Execute all tasks in the queue
     *
-    * All tasks, including those that are scheduled during the invocation of
-    * this method, either by this a task that is executed or those scheduled
-    * from another thread, will be executed in the calling thread.
+    * All tasks, including those that are scheduled during the invocation of this method, either by
+    * this a task that is executed or those scheduled from another thread, will be executed in the
+    * calling thread.
     */
   def executeTasks(): Unit = {
     // spin while we wait for the tail of the node to resolve

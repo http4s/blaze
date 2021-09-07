@@ -27,24 +27,28 @@ private trait Connection {
 
   /** An estimate for the current quality of the connection
     *
-    * Quality is intended to provide a metric for health of a session.
-    * Factors considered may be the number of outstanding streams, available
-    * outbound streams, and flow window status and behavior.
+    * Quality is intended to provide a metric for health of a session. Factors considered may be the
+    * number of outstanding streams, available outbound streams, and flow window status and
+    * behavior.
     *
-    * @see [[Http2ClientSession]]
+    * @see
+    *   [[Http2ClientSession]]
     *
-    * @return a number with domain [0, 1] signifying the health or quality of
-    *         the session. The scale is intended to be linear.
+    * @return
+    *   a number with domain [0, 1] signifying the health or quality of the session. The scale is
+    *   intended to be linear.
     */
   def quality: Double
 
   /** Get the status of session
     *
-    * Status is intended to be used for deciding if a session is ready for
-    * dispatches or needs to be cleaned up.
+    * Status is intended to be used for deciding if a session is ready for dispatches or needs to be
+    * cleaned up.
     *
-    * @note The status is racy and is only intended to be used as advisory.
-    * @see `quality` for a metric of health of the session
+    * @note
+    *   The status is racy and is only intended to be used as advisory.
+    * @see
+    *   `quality` for a metric of health of the session
     */
   def status: Status
 
@@ -53,9 +57,9 @@ private trait Connection {
 
   /** Signal that the session should shutdown within the grace period
     *
-    * Only the first invocation is guaranteed to run, and the behavior of further
-    * invocations result in implementation specific behavior. The resultant
-    * `Future` will resolve once the session has drained.
+    * Only the first invocation is guaranteed to run, and the behavior of further invocations result
+    * in implementation specific behavior. The resultant `Future` will resolve once the session has
+    * drained.
     */
   def drainSession(gracePeriod: Duration): Future[Unit]
 
@@ -64,8 +68,8 @@ private trait Connection {
 
   /** Create a new outbound stream
     *
-    * Resources are not necessarily allocated to this stream, therefore it is
-    * not guaranteed to succeed.
+    * Resources are not necessarily allocated to this stream, therefore it is not guaranteed to
+    * succeed.
     */
   // TODO: right now this only benefits the client. We need to get the push-promise support for the server side
   def newOutboundStream(): HeadStage[StreamFrame]
@@ -80,15 +84,14 @@ private[blaze] object Connection {
     final def running: Boolean = this == Running
   }
 
-  /** The `Running` state represents a session that is active and able to accept
-    * new streams.
+  /** The `Running` state represents a session that is active and able to accept new streams.
     */
   case object Running extends State
 
   sealed abstract class Closing extends State
 
-  /** The `Draining` state represents a session that is no longer accepting new
-    * streams and is in the process of draining existing connection.
+  /** The `Draining` state represents a session that is no longer accepting new streams and is in
+    * the process of draining existing connection.
     */
   case object Draining extends Closing
 

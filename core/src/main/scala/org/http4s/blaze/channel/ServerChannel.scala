@@ -36,8 +36,8 @@ abstract class ServerChannel extends Closeable { self =>
 
   /** Close out any resources associated with the [[ServerChannel]]
     *
-    * @note Regardless of the number of times `close()` is called
-    *       this method will only be called once.
+    * @note
+    *   Regardless of the number of times `close()` is called this method will only be called once.
     */
   protected def closeChannel(): Unit
 
@@ -46,7 +46,8 @@ abstract class ServerChannel extends Closeable { self =>
 
   /** Close the [[ServerChannel]] and execute any shutdown hooks
     *
-    * @note this method is idempotent
+    * @note
+    *   this method is idempotent
     */
   final def close(): Unit = {
     val hooks = shutdownHooks.synchronized {
@@ -64,8 +65,8 @@ abstract class ServerChannel extends Closeable { self =>
     scheduleHooks(hooks)
   }
 
-  /** Wait for this server channel to close, including execution of all successfully
-    * registered shutdown hooks.
+  /** Wait for this server channel to close, including execution of all successfully registered
+    * shutdown hooks.
     */
   final def join(): Unit =
     shutdownHooks.synchronized {
@@ -75,11 +76,14 @@ abstract class ServerChannel extends Closeable { self =>
 
   /** Add code to be executed when the [[ServerChannel]] is closed
     *
-    * @note There are no guarantees as to order of shutdown hook execution
-    *       or that they will be executed sequentially.
+    * @note
+    *   There are no guarantees as to order of shutdown hook execution or that they will be executed
+    *   sequentially.
     *
-    * @param f hook to execute on shutdown
-    * @return true if the hook was successfully registered, false otherwise.
+    * @param f
+    *   hook to execute on shutdown
+    * @return
+    *   true if the hook was successfully registered, false otherwise.
     */
   final def addShutdownHook(f: () => Unit)(implicit
       ec: ExecutionContext = Execution.directec): Boolean =

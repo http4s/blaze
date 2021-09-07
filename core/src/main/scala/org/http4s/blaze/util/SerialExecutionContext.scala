@@ -20,12 +20,13 @@ import scala.concurrent.ExecutionContext
 
 /** Serialize execution of work, ensuring that no passed work is executed in parallel.
   *
-  * Tasks are executed sequentially, in the order they are offered. Each task has a
-  * happens-before relationship with subsequent tasks, meaning mutations performed
-  * in a task are observed by all sequent tasks.
+  * Tasks are executed sequentially, in the order they are offered. Each task has a happens-before
+  * relationship with subsequent tasks, meaning mutations performed in a task are observed by all
+  * sequent tasks.
   *
-  * @param parent `ExecutionContext` with which to perform the work, which may consist
-  *              of many tasks queued in the `SerialExecutionContext`.
+  * @param parent
+  *   `ExecutionContext` with which to perform the work, which may consist of many tasks queued in
+  *   the `SerialExecutionContext`.
   */
 class SerialExecutionContext(
     parent: ExecutionContext

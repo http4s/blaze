@@ -32,13 +32,17 @@ private[http2] object FrameSerializer {
 
   /** Create a DATA frame
     *
-    * @param streamId stream id of the associated data frame
-    * @param endStream whether to set the END_STREAM flag
-    * @param padding number of octets by which to pad the message, with 0 meaning the flag is not set,
-    *                1 meaning the flag is set and the pad length field is added, and padding = [2-256]
-    *                meaning the flag is set, length field is added, and (padding - 1) bytes (0x00) are
-    *                added to the end of the frame.
-    * @param data data consisting of the payload
+    * @param streamId
+    *   stream id of the associated data frame
+    * @param endStream
+    *   whether to set the END_STREAM flag
+    * @param padding
+    *   number of octets by which to pad the message, with 0 meaning the flag is not set, 1 meaning
+    *   the flag is set and the pad length field is added, and padding = [2-256] meaning the flag is
+    *   set, length field is added, and (padding - 1) bytes (0x00) are added to the end of the
+    *   frame.
+    * @param data
+    *   data consisting of the payload
     */
   def mkDataFrame(
       streamId: Int,

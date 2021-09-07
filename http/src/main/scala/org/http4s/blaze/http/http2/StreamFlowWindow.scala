@@ -18,8 +18,8 @@ package org.http4s.blaze.http.http2
 
 /** Representation of the flow control state of a stream belonging to a session
   *
-  * The `StreamFlowWindow` provides the tools for tracking the flow window for
-  * both the individual stream and the session that it belongs to.
+  * The `StreamFlowWindow` provides the tools for tracking the flow window for both the individual
+  * stream and the session that it belongs to.
   */
 abstract class StreamFlowWindow {
 
@@ -39,8 +39,8 @@ abstract class StreamFlowWindow {
   final def outboundWindow: Int =
     math.min(streamOutboundWindow, sessionFlowControl.sessionOutboundWindow)
 
-  /** Determine whether we have available flow window remaining, considering
-    * both the stream and the session flow windows
+  /** Determine whether we have available flow window remaining, considering both the stream and the
+    * session flow windows
     */
   final def outboundWindowAvailable: Boolean =
     streamOutboundWindow > 0 && sessionFlowControl.sessionOutboundWindow > 0
@@ -49,19 +49,21 @@ abstract class StreamFlowWindow {
     *
     * If an error is returned, the internal state _must not_ be modified.
     *
-    * @param delta change in intial window size. Maybe be positive or negative, but must not
-    *              cause the window to overflow Int.MaxValue.
+    * @param delta
+    *   change in intial window size. Maybe be positive or negative, but must not cause the window
+    *   to overflow Int.MaxValue.
     */
   def remoteSettingsInitialWindowChange(delta: Int): Option[Http2Exception]
 
   /** Signal that a stream window update was received for `count` bytes */
   def streamOutboundAcked(count: Int): Option[Http2Exception]
 
-  /** Request to withdraw bytes from the outbound window of the stream
-    * and the session.
+  /** Request to withdraw bytes from the outbound window of the stream and the session.
     *
-    * @param request maximum bytes to withdraw
-    * @return actual bytes withdrawn from the window
+    * @param request
+    *   maximum bytes to withdraw
+    * @return
+    *   actual bytes withdrawn from the window
     */
   def outboundRequest(request: Int): Int
 
@@ -73,13 +75,15 @@ abstract class StreamFlowWindow {
     * If there are sufficient bytes in the stream and session flow windows, they are subtracted,
     * otherwise the window is unmodified.
     *
-    * @return `true` if withdraw was successful, `false` otherwise.
+    * @return
+    *   `true` if withdraw was successful, `false` otherwise.
     */
   def inboundObserved(count: Int): Boolean
 
   /** Signal that `count` bytes have been consumed by the stream
     *
-    * @note The consumed bytes are also counted for the session flow window.
+    * @note
+    *   The consumed bytes are also counted for the session flow window.
     */
   def inboundConsumed(count: Int): Unit
 

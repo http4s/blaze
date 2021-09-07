@@ -33,19 +33,23 @@ trait ByteToObjectStage[O] extends MidStage[ByteBuffer, O] {
   /////////////////////////////////////////////////////////////////////////////
 
   /** Encode objects to buffers
-    * @param in object to decode
-    * @return sequence of ByteBuffers to pass to the head
+    * @param in
+    *   object to decode
+    * @return
+    *   sequence of ByteBuffers to pass to the head
     */
   def messageToBuffer(in: O): collection.Seq[ByteBuffer]
 
   /** Method that decodes ByteBuffers to objects. None reflects not enough data to decode a message
     * Any unused data in the ByteBuffer will be recycled and available for the next read.
     *
-    * WARNING: don't count on the underlying array of the ByteBuffer. This uses the slice method, which
-    * could preserve access to the buffer, but mess with the various positions.
+    * WARNING: don't count on the underlying array of the ByteBuffer. This uses the slice method,
+    * which could preserve access to the buffer, but mess with the various positions.
     *
-    * @param in ByteBuffer of immediately available data
-    * @return optional message if enough data was available
+    * @param in
+    *   ByteBuffer of immediately available data
+    * @return
+    *   optional message if enough data was available
     */
   def bufferToMessage(in: ByteBuffer): Option[O]
 

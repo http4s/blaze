@@ -16,11 +16,13 @@
 
 package org.http4s.blaze.pipeline
 
-/** By requiring a LeafBuilder, you are ensuring that the pipeline is capped
-  * with a TailStage as the only way to get a LeafBuilder if by capping with a
-  * TailStage or getting a new LeafBuilder from a TailStage
-  * @param leaf the capped pipeline
-  * @tparam I type the pipeline will read and write
+/** By requiring a LeafBuilder, you are ensuring that the pipeline is capped with a TailStage as the
+  * only way to get a LeafBuilder if by capping with a TailStage or getting a new LeafBuilder from a
+  * TailStage
+  * @param leaf
+  *   the capped pipeline
+  * @tparam I
+  *   type the pipeline will read and write
   */
 final class LeafBuilder[I] private[pipeline] (leaf: Tail[I]) {
   def prepend[N](stage: MidStage[N, I]): LeafBuilder[N] = {
@@ -49,8 +51,8 @@ object LeafBuilder {
   def apply[T](leaf: TailStage[T]): LeafBuilder[T] = new LeafBuilder[T](leaf)
 }
 
-/** Facilitates starting a pipeline from a MidStage. Can be appended and prepended
-  * to build up the pipeline
+/** Facilitates starting a pipeline from a MidStage. Can be appended and prepended to build up the
+  * pipeline
   */
 final class TrunkBuilder[I1, O] private[pipeline] (
     protected val head: MidStage[I1, _],

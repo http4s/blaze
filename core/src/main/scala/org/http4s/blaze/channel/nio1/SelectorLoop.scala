@@ -34,12 +34,15 @@ import scala.util.control.{ControlThrowable, NonFatal}
 
 /** A special thread that listens for events on the provided selector.
   *
-  * @param selector `Selector` to listen on.
-  * @param bufferSize Size of the scratch buffer instantiated for this thread.
-  * @param threadFactory Factory to make the `Thread` instance to run the loop.
+  * @param selector
+  *   `Selector` to listen on.
+  * @param bufferSize
+  *   Size of the scratch buffer instantiated for this thread.
+  * @param threadFactory
+  *   Factory to make the `Thread` instance to run the loop.
   *
-  * @note when the `SelectorLoop` is closed all registered `Selectable`s
-  *       are closed with it.
+  * @note
+  *   when the `SelectorLoop` is closed all registered `Selectable`s are closed with it.
   */
 final class SelectorLoop(
     selector: Selector,
@@ -73,9 +76,8 @@ final class SelectorLoop(
 
   /** Schedule the provided `Runnable` for execution, potentially running it now
     *
-    * The provided task may be executed *now* if the calling thread is `this`
-    * `SelectorLoop`, otherwise it is added to the task queue to be executed by
-    * the `SelectorLoop` thread later.
+    * The provided task may be executed *now* if the calling thread is `this` `SelectorLoop`,
+    * otherwise it is added to the task queue to be executed by the `SelectorLoop` thread later.
     */
   @inline
   @throws[RejectedExecutionException]
@@ -87,12 +89,12 @@ final class SelectorLoop(
 
   /** Schedule to provided `Runnable` for execution later
     *
-    * The task will be added to the end of the queue of tasks scheduled
-    * for execution regardless of where this method is called.
+    * The task will be added to the end of the queue of tasks scheduled for execution regardless of
+    * where this method is called.
     *
-    * @see `executeTask` for a method that will execute the task now if
-    *     the calling thread is `this` `SelectorLoop`, or schedule it for
-    *     later otherwise.
+    * @see
+    *   `executeTask` for a method that will execute the task now if the calling thread is `this`
+    *   `SelectorLoop`, or schedule it for later otherwise.
     */
   @throws[RejectedExecutionException]
   def enqueueTask(runnable: Runnable): Unit =
@@ -116,11 +118,11 @@ final class SelectorLoop(
 
   /** Initialize a new `Selectable` channel
     *
-    * The `SelectableChannel` is added to the selector loop the
-    * `Selectable` will be notified when it has events ready.
+    * The `SelectableChannel` is added to the selector loop the `Selectable` will be notified when
+    * it has events ready.
     *
-    * @note the underlying `SelectableChannel` _must_ be
-    *       configured in non-blocking mode.
+    * @note
+    *   the underlying `SelectableChannel` _must_ be configured in non-blocking mode.
     */
   def initChannel(
       ch: NIO1Channel,
@@ -245,16 +247,16 @@ final class SelectorLoop(
         throw ex
     }
 
-  /** A Runnable that will only execute in this selector loop and provides
-    * access to the `SelectorLoop`s scratch buffer.
+  /** A Runnable that will only execute in this selector loop and provides access to the
+    * `SelectorLoop`s scratch buffer.
     */
   abstract class LoopRunnable extends Runnable {
 
     /** Execute the task with the borrowed scratch `ByteBuffer`
       *
-      * @param scratch a `ByteBuffer` that is owned by the parent
-      *                `SelectorLoop`, and as such, the executing task
-      *                _must not_ retain a refer to it.
+      * @param scratch
+      *   a `ByteBuffer` that is owned by the parent `SelectorLoop`, and as such, the executing task
+      *   _must not_ retain a refer to it.
       */
     def run(scratch: ByteBuffer): Unit
 

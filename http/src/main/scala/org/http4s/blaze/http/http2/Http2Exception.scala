@@ -33,7 +33,8 @@ sealed abstract class Http2Exception(msg: String)
 
   /** Convert this exception to a stream exception
     *
-    * @note If this is already a stream exception but with a different stream id, the id will be changed
+    * @note
+    *   If this is already a stream exception but with a different stream id, the id will be changed
     */
   final def toStreamException(streamId: Int): Http2StreamException =
     this match {
@@ -50,9 +51,8 @@ sealed abstract class Http2Exception(msg: String)
 
   /** Was the exception due to refusal by the peer.
     *
-    * These exceptions are safe to automatically retry even if the HTTP method
-    * is not an idempotent method. See https://tools.ietf.org/html/rfc7540#section-8.1.4
-    * for more details.
+    * These exceptions are safe to automatically retry even if the HTTP method is not an idempotent
+    * method. See https://tools.ietf.org/html/rfc7540#section-8.1.4 for more details.
     */
   final def isRefusedStream: Boolean =
     code == Http2Exception.REFUSED_STREAM.code

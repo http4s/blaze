@@ -96,12 +96,17 @@ private class FrameDecoder(localSettings: Http2Settings, listener: FrameListener
     *
     * https://tools.ietf.org/html/rfc7540#section-5.5
     *
-    * @param code the frame type of this extension frame
-    * @param streamId stream id associated with this extension frame
-    * @param flags the flags associated with this extension frame
-    * @param buffer the payload associated with this extension frame
-    * @return result of handling the message. If this extension frame is of
-    *         unknown type, it MUST be ignored by spec.
+    * @param code
+    *   the frame type of this extension frame
+    * @param streamId
+    *   stream id associated with this extension frame
+    * @param flags
+    *   the flags associated with this extension frame
+    * @param buffer
+    *   the payload associated with this extension frame
+    * @return
+    *   result of handling the message. If this extension frame is of unknown type, it MUST be
+    *   ignored by spec.
     */
   def onExtensionFrame(code: Byte, streamId: Int, flags: Byte, buffer: ByteBuffer): Result = {
     val _ = (code, streamId, flags, buffer)
@@ -298,8 +303,8 @@ private object FrameDecoder {
 
   /** Get the length field of the frame, consuming the bytes from the buffer.
     *
-    * @return -1 if the buffer doesn't have 3 bytes for the length field,
-    *         and the length field otherwise.
+    * @return
+    * -1 if the buffer doesn't have 3 bytes for the length field, and the length field otherwise.
     */
   def getLengthField(buffer: ByteBuffer): Int =
     ((buffer.get() & 0xff) << 16) |
@@ -318,8 +323,8 @@ private object FrameDecoder {
     Priority.Dependent(Flags.DepID(rawInt), ex, priority)
   }
 
-  /** Read the padding length and strip the requisite bytes from the end of
-    * the buffer using the `ByteBuffer.limit` method.
+  /** Read the padding length and strip the requisite bytes from the end of the buffer using the
+    * `ByteBuffer.limit` method.
     */
   private def limitPadding(padding: Int, buffer: ByteBuffer): MaybeError =
     if (padding == 0) Continue

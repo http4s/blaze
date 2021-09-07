@@ -18,11 +18,15 @@ package org.http4s.blaze.http
 
 /** Standard HTTP request
   *
-  * @param method HTTP request method
-  * @param url request url
-  * @param headers request headers
-  * @param body function which returns the next chunk of the request body. Termination is
-  *             signaled by an __empty__ `ByteBuffer` as determined by `ByteBuffer.hasRemaining()`.
+  * @param method
+  *   HTTP request method
+  * @param url
+  *   request url
+  * @param headers
+  *   request headers
+  * @param body
+  *   function which returns the next chunk of the request body. Termination is signaled by an
+  *   __empty__ `ByteBuffer` as determined by `ByteBuffer.hasRemaining()`.
   */
 case class HttpRequest(
     method: Method,
@@ -41,9 +45,9 @@ case class HttpRequest(
 
   /** A String representation of this request that includes the headers
     *
-    * @note it is generally a security flaw to log headers as they may contain
-    *       sensitive user data. As such, this method should be used sparingly
-    *       and almost never in a production environment.
+    * @note
+    *   it is generally a security flaw to log headers as they may contain sensitive user data. As
+    *   such, this method should be used sparingly and almost never in a production environment.
     */
   def sensitiveToString: String = formatStr(headers.toString)
 }

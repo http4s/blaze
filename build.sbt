@@ -31,15 +31,24 @@ lazy val commonSettings = Seq(
   },
   run / fork := true,
   developers ++= List(
-    Developer("bryce-anderson"       , "Bryce L. Anderson"     , "bryce.anderson22@gamil.com"       , url("https://github.com/bryce-anderson")),
-    Developer("rossabaker"           , "Ross A. Baker"         , "ross@rossabaker.com"              , url("https://github.com/rossabaker")),
-    Developer("ChristopherDavenport" , "Christopher Davenport" , "chris@christopherdavenport.tech"  , url("https://github.com/ChristopherDavenport"))
+    Developer(
+      "bryce-anderson",
+      "Bryce L. Anderson",
+      "bryce.anderson22@gamil.com",
+      url("https://github.com/bryce-anderson")),
+    Developer(
+      "rossabaker",
+      "Ross A. Baker",
+      "ross@rossabaker.com",
+      url("https://github.com/rossabaker")),
+    Developer(
+      "ChristopherDavenport",
+      "Christopher Davenport",
+      "chris@christopherdavenport.tech",
+      url("https://github.com/ChristopherDavenport"))
   ),
-
   licenses := Seq("Apache-2.0" -> url("https://www.apache.org/licenses/LICENSE-2.0.html")),
-
   homepage := Some(url("https://github.com/http4s/blaze")),
-
   scmInfo := Some(
     ScmInfo(
       url("https://github.com/http4s/blaze"),
@@ -47,7 +56,7 @@ lazy val commonSettings = Seq(
       Some("scm:git:git@github.com:http4s/blaze.git")
     )
   ),
-  startYear := Some(2014),
+  startYear := Some(2014)
 )
 
 ThisBuild / githubWorkflowJavaVersions := Seq("adopt@1.8")
@@ -65,7 +74,8 @@ ThisBuild / githubWorkflowBuild := Seq(
   WorkflowStep.Sbt(List("validate-ci"))
 )
 
-lazy val blaze = project.in(file("."))
+lazy val blaze = project
+  .in(file("."))
   .enablePlugins(Http4sOrgPlugin)
   .enablePlugins(NoPublishPlugin)
   .settings(commonSettings)
@@ -93,7 +103,8 @@ lazy val core = Project("blaze-core", file("core"))
     buildInfoOptions += BuildInfoOption.BuildTime,
     mimaBinaryIssueFilters ++= Seq(
       // private constructor for which there are no sensible defaults
-      ProblemFilters.exclude[DirectMissingMethodProblem]("org.http4s.blaze.channel.nio1.NIO1SocketServerGroup.this")
+      ProblemFilters.exclude[DirectMissingMethodProblem](
+        "org.http4s.blaze.channel.nio1.NIO1SocketServerGroup.this")
     )
   )
   .dependsOn(testkit % Test)
@@ -107,15 +118,19 @@ lazy val http = Project("blaze-http", file("http"))
     // Test Dependencies
     libraryDependencies += asyncHttpClient % Test,
     mimaBinaryIssueFilters ++= Seq(
-      ProblemFilters.exclude[MissingClassProblem]("org.http4s.blaze.http.http2.PingManager$PingState"),
-      ProblemFilters.exclude[MissingClassProblem]("org.http4s.blaze.http.http2.PingManager$PingState$"),
-      ProblemFilters.exclude[MissingClassProblem]("org.http4s.blaze.http.http2.client.ALPNClientSelector$ClientProvider"),
-      ProblemFilters.exclude[MissingClassProblem]("org.http4s.blaze.http.http2.server.ALPNServerSelector$ServerProvider")
+      ProblemFilters.exclude[MissingClassProblem](
+        "org.http4s.blaze.http.http2.PingManager$PingState"),
+      ProblemFilters.exclude[MissingClassProblem](
+        "org.http4s.blaze.http.http2.PingManager$PingState$"),
+      ProblemFilters.exclude[MissingClassProblem](
+        "org.http4s.blaze.http.http2.client.ALPNClientSelector$ClientProvider"),
+      ProblemFilters.exclude[MissingClassProblem](
+        "org.http4s.blaze.http.http2.server.ALPNServerSelector$ServerProvider")
     )
   )
   .dependsOn(testkit % Test, core % "test->test;compile->compile")
 
-lazy val examples = Project("blaze-examples",file("examples"))
+lazy val examples = Project("blaze-examples", file("examples"))
   .enablePlugins(NoPublishPlugin)
   .settings(commonSettings)
   .settings(Revolver.settings)
@@ -124,7 +139,11 @@ lazy val examples = Project("blaze-examples",file("examples"))
 /* Helper Functions */
 
 // use it in the local development process
-addCommandAlias("validate", ";scalafmtCheckAll ;javafmtCheckAll ;+test:compile ;test ;unusedCompileDependenciesTest ;mimaReportBinaryIssues")
+addCommandAlias(
+  "validate",
+  ";scalafmtCheckAll ;scalafmtSbtCheck ;javafmtCheckAll ;+test:compile ;test ;unusedCompileDependenciesTest ;mimaReportBinaryIssues")
 
 // use it in the CI pipeline
-addCommandAlias("validate-ci", ";scalafmtCheckAll ;javafmtCheckAll ;test ;unusedCompileDependenciesTest ;mimaReportBinaryIssues")
+addCommandAlias(
+  "validate-ci",
+  ";scalafmtCheckAll ;scalafmtSbtCheck ;javafmtCheckAll ;test ;unusedCompileDependenciesTest ;mimaReportBinaryIssues")

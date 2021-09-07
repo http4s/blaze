@@ -59,8 +59,9 @@ object NIO1SocketServerGroup {
 
   /** Create a new [[NIO1SocketServerGroup]] from the [[SelectorLoopPool]].
     *
-    * @note The worker pool is not owned by the group and therefore not
-    *       shutdown when the group is shutdown.
+    * @note
+    *   The worker pool is not owned by the group and therefore not shutdown when the group is
+    *   shutdown.
     */
   def create(
       acceptorPool: SelectorLoopPool,
@@ -70,11 +71,9 @@ object NIO1SocketServerGroup {
   ): ServerChannelGroup =
     new NIO1SocketServerGroup(acceptorPool, workerPool, channelOptions, maxConnections)
 
-  /** Create a new [[NIO1SocketServerGroup]] with a fresh [[FixedSelectorPool]
-    * ]
-    *
-    * The resulting [[ServerChannelGroup]] takes ownership of the created pool,
-    * shutting it down when the group is shutdown.
+  /** Create a new [[NIO1SocketServerGroup]] with a fresh
+    * [[FixedSelectorPool] ] The resulting [[ServerChannelGroup]] takes ownership of the created
+    * pool, shutting it down when the group is shutdown.
     */
   def fixed(
       workerThreads: Int = DefaultPoolSize,
@@ -114,9 +113,10 @@ object NIO1SocketServerGroup {
 
 /** A thread resource group for NIO1 network operations
   *
-  * @param workerPool [[SelectorLoopPool]] that will belong to this group. The group
-  *                    assumes responsibility for shutting it down. Shutting down the
-  *                    pool after giving it to this group will result in undefined behavior.
+  * @param workerPool
+  *   [[SelectorLoopPool]] that will belong to this group. The group assumes responsibility for
+  *   shutting it down. Shutting down the pool after giving it to this group will result in
+  *   undefined behavior.
   */
 private final class NIO1SocketServerGroup private (
     acceptorPool: SelectorLoopPool,
@@ -247,8 +247,8 @@ private final class NIO1SocketServerGroup private (
     toClose.foreach(_.close())
   }
 
-  /** Create a [[org.http4s.blaze.channel.ServerChannel]] that will serve the
-    * services on the requisite sockets
+  /** Create a [[org.http4s.blaze.channel.ServerChannel]] that will serve the services on the
+    * requisite sockets
     */
   override def bind(
       address: InetSocketAddress,
