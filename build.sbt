@@ -141,9 +141,9 @@ lazy val examples = Project("blaze-examples", file("examples"))
 // use it in the local development process
 addCommandAlias(
   "validate",
-  ";scalafmtCheckAll ;javafmtCheckAll ;+test:compile ;test ;unusedCompileDependenciesTest ;mimaReportBinaryIssues")
+  ";scalafmtCheckAll ;scalafmtSbtCheck ;javafmtCheckAll ;+test:compile ;test ;unusedCompileDependenciesTest ;mimaReportBinaryIssues")
 
 // use it in the CI pipeline
 addCommandAlias(
   "validate-ci",
-  ";scalafmtCheckAll ;javafmtCheckAll ;test ;unusedCompileDependenciesTest ;mimaReportBinaryIssues")
+  ";scalafmtCheckAll ;scalafmtSbtCheck ;javafmtCheckAll ;test ;unusedCompileDependenciesTest ;mimaReportBinaryIssues")
