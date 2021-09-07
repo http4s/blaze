@@ -304,7 +304,7 @@ private object FrameDecoder {
   /** Get the length field of the frame, consuming the bytes from the buffer.
     *
     * @return
-    *   -1 if the buffer doesn't have 3 bytes for the length field, and the length field otherwise.
+    * -1 if the buffer doesn't have 3 bytes for the length field, and the length field otherwise.
     */
   def getLengthField(buffer: ByteBuffer): Int =
     ((buffer.get() & 0xff) << 16) |
