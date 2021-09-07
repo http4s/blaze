@@ -22,7 +22,8 @@ import org.http4s.blaze.http.http2.Http2Settings.Setting
 import org.http4s.blaze.http.http2.bits.{Flags, FrameTypes}
 
 /** Utility for decoding a settings frame
-  * @see https://tools.ietf.org/html/rfc7540#section-6.5
+  * @see
+  *   https://tools.ietf.org/html/rfc7540#section-6.5
   */
 private[blaze] object SettingsDecoder {
 
@@ -36,8 +37,10 @@ private[blaze] object SettingsDecoder {
 
   /** Decode a settings frame
     *
-    * @param buffer `ByteBuffer` consisting of exactly the frame, including the header.
-    * @return A [[SettingsFrame]] or a [[Http2Exception]]
+    * @param buffer
+    *   `ByteBuffer` consisting of exactly the frame, including the header.
+    * @return
+    *   A [[SettingsFrame]] or a [[Http2Exception]]
     */
   def decodeSettingsFrame(buffer: ByteBuffer): Either[Http2Exception, SettingsFrame] = {
     val len = FrameDecoder.getLengthField(buffer)
@@ -56,9 +59,12 @@ private[blaze] object SettingsDecoder {
 
   /** Decode the body of a SETTINGS frame
     *
-    * @param buffer `ByteBuffer` containing exactly the body of the settings frame
-    * @param streamId stream id obtained from the frame header. Must be 0x0.
-    * @param flags flags obtained from the frame header.
+    * @param buffer
+    *   `ByteBuffer` containing exactly the body of the settings frame
+    * @param streamId
+    *   stream id obtained from the frame header. Must be 0x0.
+    * @param flags
+    *   flags obtained from the frame header.
     */
   def decodeSettingsFrame(
       buffer: ByteBuffer,

@@ -27,11 +27,13 @@ import scala.concurrent.Future
 /** Generic interface used by HTTP2 types to write data */
 private trait WriteController {
 
-  /** Register a [[WriteInterest]] with this listener to be invoked later once it is
-    * possible to write data to the outbound channel.
+  /** Register a [[WriteInterest]] with this listener to be invoked later once it is possible to
+    * write data to the outbound channel.
     *
-    * @param interest the `WriteListener` with an interest in performing a write operation.
-    * @return true if registration successful, false otherwise
+    * @param interest
+    *   the `WriteListener` with an interest in performing a write operation.
+    * @return
+    *   true if registration successful, false otherwise
     */
   def registerWriteInterest(interest: WriteInterest): Boolean
 
@@ -40,13 +42,15 @@ private trait WriteController {
 
   /** Queue multiple buffers for writing
     *
-    * @return true if the data was scheduled for writing, false otherwise.
+    * @return
+    *   true if the data was scheduled for writing, false otherwise.
     */
   def write(data: Seq[ByteBuffer]): Boolean
 
   /** Queue a buffer for writing
     *
-    * @return true if the data was scheduled for writing, false otherwise.
+    * @return
+    *   true if the data was scheduled for writing, false otherwise.
     */
   def write(data: ByteBuffer): Boolean
 }

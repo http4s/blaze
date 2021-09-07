@@ -19,10 +19,11 @@ package org.http4s.blaze.http.http2
 /** Flow control representation of a Http2 Session */
 abstract class SessionFlowControl {
 
-  /** Create a new [[StreamFlowWindow]] for a stream which will update and check the
-    * bounds of the session flow control state.
+  /** Create a new [[StreamFlowWindow]] for a stream which will update and check the bounds of the
+    * session flow control state.
     *
-    * @note the stream [[StreamFlowWindow]] is not thread safe.
+    * @note
+    *   the stream [[StreamFlowWindow]] is not thread safe.
     */
   def newStreamFlowWindow(streamId: Int): StreamFlowWindow
 
@@ -31,8 +32,10 @@ abstract class SessionFlowControl {
 
   /** Observe inbound bytes that don't belong to an active inbound stream
     *
-    * @param count bytes observed
-    * @return `true` if there was sufficient session flow window remaining, `false` otherwise.
+    * @param count
+    *   bytes observed
+    * @return
+    *   `true` if there was sufficient session flow window remaining, `false` otherwise.
     */
   def sessionInboundObserved(count: Int): Boolean
 
@@ -50,9 +53,9 @@ abstract class SessionFlowControl {
 
   /** Update the session outbound window
     *
-    * @note there is no way to withdraw outbound bytes directly from
-    *       the session as there should always be an associated stream
-    *       when sending flow control counted bytes outbound.
+    * @note
+    *   there is no way to withdraw outbound bytes directly from the session as there should always
+    *   be an associated stream when sending flow control counted bytes outbound.
     */
   def sessionOutboundAcked(count: Int): Option[Http2Exception]
 }

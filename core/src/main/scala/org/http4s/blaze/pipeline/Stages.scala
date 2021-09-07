@@ -53,32 +53,31 @@ sealed trait Stage {
 
   /** Start the stage, allocating resources etc.
     *
-    * This method should not effect other stages by sending commands etc unless it creates them.
-    * It is not impossible that the stage will receive other commands besides `Connected`
-    * before this method is called. It is not impossible for this method to be called multiple
-    * times by misbehaving stages. It is therefore recommended that the method be idempotent.
+    * This method should not effect other stages by sending commands etc unless it creates them. It
+    * is not impossible that the stage will receive other commands besides `Connected` before this
+    * method is called. It is not impossible for this method to be called multiple times by
+    * misbehaving stages. It is therefore recommended that the method be idempotent.
     */
   protected def stageStartup(): Unit =
     logger.debug(s"Starting up.")
 
   /** Shuts down the stage, deallocating resources, etc.
     *
-    * It will be called when the stage receives a `Disconnected`
-    * command unless [[inboundCommand]] is overridden.  This method
-    * should not send or `Disconnected` commands.
+    * It will be called when the stage receives a `Disconnected` command unless [[inboundCommand]]
+    * is overridden. This method should not send or `Disconnected` commands.
     *
-    * It is possible that this will not be called due to failure of
-    * other stages to propagate shutdown commands. Conversely, it is
-    * also possible for this to be called more than once due to the
-    * reception of multiple shutdown commands. It is therefore
-    * recommended that the method be idempotent.
+    * It is possible that this will not be called due to failure of other stages to propagate
+    * shutdown commands. Conversely, it is also possible for this to be called more than once due to
+    * the reception of multiple shutdown commands. It is therefore recommended that the method be
+    * idempotent.
     */
   protected def stageShutdown(): Unit =
     logger.debug(s"Shutting down.")
 
   /** Handle basic startup and shutdown commands.
     *
-    * @param cmd a command originating from the channel
+    * @param cmd
+    *   a command originating from the channel
     */
   def inboundCommand(cmd: InboundCommand): Unit =
     cmd match {
@@ -205,11 +204,15 @@ sealed trait Tail[I] extends Stage {
 
   ///////////////////////////////////////////////////////////////////
   /** Schedules a timeout and sets it to race against the provided future
-    * @param p Promise[T] to be completed by whichever comes first:
-    *          the timeout or resolution of the Future[T] f
-    * @param f Future the timeout is racing against
-    * @param timeout time from now which is considered a timeout
-    * @tparam T type of result expected
+    * @param p
+    *   Promise[T] to be completed by whichever comes first: the timeout or resolution of the
+    *   Future[T] f
+    * @param f
+    *   Future the timeout is racing against
+    * @param timeout
+    *   time from now which is considered a timeout
+    * @tparam T
+    *   type of result expected
     */
   private def scheduleTimeout[T](p: Promise[T], f: Future[T], timeout: Duration): Unit = {
     val r = new Runnable {
@@ -237,21 +240,25 @@ sealed trait Head[O] extends Stage {
 
   /** Called by the next inbound `Stage` to signal interest in reading data.
     *
-    * @param size Hint as to the size of the message intended to be read. May not be meaningful or honored.
-    * @return     `Future` that will resolve with the requested inbound data, or an error.
+    * @param size
+    *   Hint as to the size of the message intended to be read. May not be meaningful or honored.
+    * @return
+    *   `Future` that will resolve with the requested inbound data, or an error.
     */
   def readRequest(size: Int): Future[O]
 
   /** Data that the next inbound `Stage` wants to send outbound.
     *
-    * @return a `Future` that resolves when the data has been handled.
+    * @return
+    *   a `Future` that resolves when the data has been handled.
     */
   def writeRequest(data: O): Future[Unit]
 
   /** Collection of data that the next inbound `Stage` wants to sent outbound.
     *
     * It is generally assumed that the order of elements has meaning.
-    * @return a `Future` that resolves when the data has been handled.
+    * @return
+    *   a `Future` that resolves when the data has been handled.
     */
   def writeRequest(data: collection.Seq[O]): Future[Unit] =
     data.foldLeft[Future[Unit]](FutureUnit)((f, d) => f.flatMap(_ => writeRequest(d))(directec))
@@ -274,8 +281,7 @@ sealed trait Head[O] extends Stage {
     }
   }
 
-  /** Receives inbound commands
-    * Override to capture commands.
+  /** Receives inbound commands Override to capture commands.
     */
   override def inboundCommand(cmd: InboundCommand): Unit = {
     super.inboundCommand(cmd)
@@ -324,7 +330,8 @@ trait HeadStage[O] extends Head[O] {
 
   /** Close the channel with an error
     *
-    * @note EOF is a valid error to close the channel with and signals normal termination.
+    * @note
+    *   EOF is a valid error to close the channel with and signals normal termination.
     */
   protected def doClosePipeline(cause: Option[Throwable]): Unit
 
@@ -355,7 +362,7 @@ trait MidStage[I, O] extends Tail[I] with Head[O] {
     stageShutdown()
 
     if (_prevStage != null && _nextStage != null) {
-      logger.debug(s"Removed mid-stage: ${name}")
+      logger.debug(s"Removed mid-stage: $name")
       val me: MidStage[I, I] = ev(this)
       _prevStage._nextStage = me._nextStage
       me._nextStage._prevStage = me._prevStage
@@ -363,6 +370,6 @@ trait MidStage[I, O] extends Tail[I] with Head[O] {
       _nextStage = null
       _prevStage = null
     } else
-      logger.debug(s"Attempted to remove a disconnected mid-stage: ${name}")
+      logger.debug(s"Attempted to remove a disconnected mid-stage: $name")
   }
 }

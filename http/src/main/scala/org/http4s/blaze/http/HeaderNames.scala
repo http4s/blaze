@@ -19,8 +19,7 @@ package org.http4s.blaze.http
 import scala.annotation.tailrec
 import scala.collection.BitSet
 
-/** Incomplete collection of header names, all lower case for
-  * easy compatibility with HTTP/2.
+/** Incomplete collection of header names, all lower case for easy compatibility with HTTP/2.
   */
 object HeaderNames {
   val Connection = "connection"
@@ -30,8 +29,8 @@ object HeaderNames {
   val TE = "te"
   val TransferEncoding = "transfer-encoding"
 
-  /** Check of the header key is a valid HTTP/2 header key.
-    * Pseudo headers are considered invalid and should be screened before hand.
+  /** Check of the header key is a valid HTTP/2 header key. Pseudo headers are considered invalid
+    * and should be screened before hand.
     */
   def validH2HeaderKey(str: String): Boolean = {
     val s = str.length()

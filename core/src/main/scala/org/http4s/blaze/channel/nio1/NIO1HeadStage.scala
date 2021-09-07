@@ -39,11 +39,11 @@ private[nio1] object NIO1HeadStage {
 
   /** Performs the read operation
     *
-    * @param scratch a ByteBuffer in which to load read data. The method
-    *                doesn't take and ownership interest in the buffer, eg it's
-    *                reference is not retained.
-    * @return a `Try` representing successfully loading data into `scratch`, or
-    *         the failure cause.
+    * @param scratch
+    *   a ByteBuffer in which to load read data. The method doesn't take and ownership interest in
+    *   the buffer, eg it's reference is not retained.
+    * @return
+    *   a `Try` representing successfully loading data into `scratch`, or the failure cause.
     */
   private def performRead(ch: NIO1ClientChannel, scratch: ByteBuffer, size: Int): Try[Unit] =
     try {
@@ -64,8 +64,10 @@ private[nio1] object NIO1HeadStage {
     }
 
   /** Perform the write operation for this channel
-    * @param buffers buffers to be written to the channel
-    * @return a WriteResult that is one of Complete, Incomplete or WriteError(e: Exception)
+    * @param buffers
+    *   buffers to be written to the channel
+    * @return
+    *   a WriteResult that is one of Complete, Incomplete or WriteError(e: Exception)
     */
   private def performWrite(
       ch: NIO1ClientChannel,
@@ -338,8 +340,7 @@ private[nio1] final class NIO1HeadStage(
     }
   }
 
-  /** Unsets a channel interest
-    *  only to be called by the SelectorLoop thread
+  /** Unsets a channel interest only to be called by the SelectorLoop thread
     */
   private[this] def unsetOp(op: Int): Unit =
     // assert(Thread.currentThread() == loop,

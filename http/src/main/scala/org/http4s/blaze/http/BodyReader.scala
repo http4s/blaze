@@ -26,9 +26,9 @@ import scala.util.{Failure, Success}
 
 /** Representation of a HTTP message body
   *
-  * @note The release of resources must be idempotent, meaning that `discard()` may
-  *       be called after complete consumption of the body and it may also be called
-  *       numerous times.
+  * @note
+  *   The release of resources must be idempotent, meaning that `discard()` may be called after
+  *   complete consumption of the body and it may also be called numerous times.
   */
 trait BodyReader {
 
@@ -45,20 +45,21 @@ trait BodyReader {
     *
     * This may be a result of being discarded, failure, or deletion of the data stream.
     *
-    * Because [[BodyReader]] is async it is not, in general, possible to definitively determine
-    * if more data remains in the stream. Therefore, the contract of this method is that a return
-    * value of `true` guarantees that no more data can be obtained from this [[BodyReader]], but a
-    * return value of `false` does not guarantee more data.
+    * Because [[BodyReader]] is async it is not, in general, possible to definitively determine if
+    * more data remains in the stream. Therefore, the contract of this method is that a return value
+    * of `true` guarantees that no more data can be obtained from this [[BodyReader]], but a return
+    * value of `false` does not guarantee more data.
     */
   def isExhausted: Boolean
 
   /** Accumulate any remaining data.
     *
-    * The remainder of the message body will be accumulated into a single buffer. If no data remains,
-    * the `ByteBuffer` will be empty as defined by `ByteBuffer.hasRemaining()`
+    * The remainder of the message body will be accumulated into a single buffer. If no data
+    * remains, the `ByteBuffer` will be empty as defined by `ByteBuffer.hasRemaining()`
     *
-    * @param max maximum bytes to accumulate before resulting in a failed future with the exception
-    *            [[BodyReader.BodyReaderOverflowException]].
+    * @param max
+    *   maximum bytes to accumulate before resulting in a failed future with the exception
+    *   [[BodyReader.BodyReaderOverflowException]].
     */
   def accumulate(max: Int = Int.MaxValue): Future[ByteBuffer] =
     BodyReader.accumulate(max, this)
@@ -79,8 +80,8 @@ object BodyReader {
 
   /** The canonical empty [[BodyReader]]
     *
-    * This should be the instance you use if you want to signal that the message body is
-    * in guaranteed to be empty.
+    * This should be the instance you use if you want to signal that the message body is in
+    * guaranteed to be empty.
     */
   val EmptyBodyReader: BodyReader = new BodyReader {
     override def discard(): Unit = ()
@@ -90,10 +91,11 @@ object BodyReader {
 
   /** Construct a [[BodyReader]] with exactly one chunk of data
     *
-    * This method takes ownership if the passed `ByteBuffer`: any changes to the underlying
-    * buffer will be visible to the consumer of this [[BodyReader]] and vice versa.
+    * This method takes ownership if the passed `ByteBuffer`: any changes to the underlying buffer
+    * will be visible to the consumer of this [[BodyReader]] and vice versa.
     *
-    * @note if the passed buffer is empty, the `EmptyBodyReader` is returned.
+    * @note
+    *   if the passed buffer is empty, the `EmptyBodyReader` is returned.
     */
   def singleBuffer(buffer: ByteBuffer): BodyReader =
     if (!buffer.hasRemaining) EmptyBodyReader
@@ -121,8 +123,8 @@ object BodyReader {
           }
       }
 
-  /** The remainder of the message body will be accumulated into a single buffer. If no data remains,
-    * the `ByteBuffer` will be empty as defined by `ByteBuffer.hasRemaining()`
+  /** The remainder of the message body will be accumulated into a single buffer. If no data
+    * remains, the `ByteBuffer` will be empty as defined by `ByteBuffer.hasRemaining()`
     */
   def accumulate(max: Int, body: BodyReader): Future[ByteBuffer] = {
     require(max >= 0)

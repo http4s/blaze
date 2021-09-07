@@ -19,13 +19,11 @@ package org.http4s.blaze.util
 import java.nio.ByteBuffer
 import org.log4s.getLogger
 
-/** Create a cache of thread-local ByteBuffer instances useful
-  * for scratch purposes.
+/** Create a cache of thread-local ByteBuffer instances useful for scratch purposes.
   *
-  * This is an advanced feature and should be used with extreme
-  * caution. It is _very_ easy to let one of these buffers escape
-  * the current thread, or even be used improperly by the _same_
-  * thread, resulting in data corruption.
+  * This is an advanced feature and should be used with extreme caution. It is _very_ easy to let
+  * one of these buffers escape the current thread, or even be used improperly by the _same_ thread,
+  * resulting in data corruption.
   */
 private[blaze] final class ThreadLocalScratchBuffer(useDirect: Boolean) {
   private[this] val logger = getLogger
@@ -37,10 +35,8 @@ private[blaze] final class ThreadLocalScratchBuffer(useDirect: Boolean) {
 
   /** Get a thread-local scratch buffer
     *
-    * The resulting buffer is stored in a ThreadLocal and is thus
-    * shared between invocations by a single thread. As such, the
-    * resulting buffers must only be used within the current call
-    * stack.
+    * The resulting buffer is stored in a ThreadLocal and is thus shared between invocations by a
+    * single thread. As such, the resulting buffers must only be used within the current call stack.
     */
   final def getScratchBuffer(size: Int): ByteBuffer = {
     val b = localBuffer.get()
@@ -58,8 +54,7 @@ private[blaze] final class ThreadLocalScratchBuffer(useDirect: Boolean) {
 
   /** Remove current scratch buffer.
     *
-    * Clears the current thread local buffer. This is useful for
-    * making them available to GC.
+    * Clears the current thread local buffer. This is useful for making them available to GC.
     */
   final def clearScratchBuffer(): Unit = {
     logger.trace("Removing thread local ByteBuffer")

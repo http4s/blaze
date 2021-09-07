@@ -26,8 +26,8 @@ import com.twitter.hpack.Encoder
 
 /** HTTP/2 HPACK header encoder
   *
-  * @param initialMaxTableSize maximum HPACK table size the peer
-  *                            will allow.
+  * @param initialMaxTableSize
+  *   maximum HPACK table size the peer will allow.
   */
 class HeaderEncoder(initialMaxTableSize: Int) {
   private[this] val encoder = new Encoder(initialMaxTableSize)

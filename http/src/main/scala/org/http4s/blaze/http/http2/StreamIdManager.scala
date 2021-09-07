@@ -74,11 +74,13 @@ private final class StreamIdManager private (
 
   /** Mark the stream id non-idle, and any idle inbound streams with lower ids
     *
-    * If the stream id is an inbound stream id and is idle then the specified it
-    * and all inbound id's preceding it are marked as non-idle.
+    * If the stream id is an inbound stream id and is idle then the specified it and all inbound
+    * id's preceding it are marked as non-idle.
     *
-    * @param id stream id to observe
-    * @return `true` if observed, `false` otherwise.
+    * @param id
+    *   stream id to observe
+    * @return
+    *   `true` if observed, `false` otherwise.
     */
   def observeInboundId(id: Int): Boolean =
     if (!isIdleInboundId(id)) false
@@ -89,7 +91,8 @@ private final class StreamIdManager private (
 
   /** Acquire the next outbound stream id
     *
-    * @return the next streamId wrapped in `Some` if it exists, `None` otherwise.
+    * @return
+    *   the next streamId wrapped in `Some` if it exists, `None` otherwise.
     */
   def takeOutboundId(): Option[Int] =
     // Returns `None` if the stream id overflows, which is when a signed Int overflows

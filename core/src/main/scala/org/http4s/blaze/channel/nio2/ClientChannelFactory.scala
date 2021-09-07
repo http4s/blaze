@@ -33,9 +33,11 @@ import scala.util.control.NonFatal
   *
   * Provides a way to easily make TCP connections which can then serve as the Head for a pipeline
   *
-  * @param bufferSize default buffer size to perform reads
-  * @param group The `AsynchronousChannelGroup` which will manage the connection.
-  *              `None` will use the system default
+  * @param bufferSize
+  *   default buffer size to perform reads
+  * @param group
+  *   The `AsynchronousChannelGroup` which will manage the connection. `None` will use the system
+  *   default
   */
 final class ClientChannelFactory(
     bufferSize: Int = DefaultBufferSize,

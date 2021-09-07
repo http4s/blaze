@@ -32,11 +32,10 @@ abstract class PriorKnowledgeHandshaker[T](localSettings: ImmutableHttp2Settings
 
   /** Handle the prior knowledge preface
     *
-    * The preface is the magic string "PRI * HTTP/2.0\r\n\r\nSM\r\n\r\n"
-    * which is intended to cause HTTP/1.x connections to fail gracefully.
-    * For clients, this involves sending the magic string and for servers
-    * this consists of receiving the magic string. The return value of this
-    * function is any unconsumed inbound data.
+    * The preface is the magic string "PRI * HTTP/2.0\r\n\r\nSM\r\n\r\n" which is intended to cause
+    * HTTP/1.x connections to fail gracefully. For clients, this involves sending the magic string
+    * and for servers this consists of receiving the magic string. The return value of this function
+    * is any unconsumed inbound data.
     */
   protected def handlePreface(): Future[ByteBuffer]
 

@@ -21,18 +21,20 @@ import java.nio.ByteBuffer
 import javax.net.ssl.SSLEngine
 import java.util
 import org.http4s.blaze.internal.compat.CollectionConverters._
-import org.http4s.blaze.pipeline.{LeafBuilder, TailStage, Command => Cmd}
+import org.http4s.blaze.pipeline.{Command => Cmd, LeafBuilder, TailStage}
 import org.http4s.blaze.util.Execution.trampoline
 import scala.util.{Failure, Success}
 import scala.util.control.NonFatal
 
 /** Dynamically inject an appropriate pipeline using ALPN negotiation.
   *
-  * @param engine the `SSLEngine` in use for the connection
-  * @param selector selects the preferred protocol from the sequence of
-  *                 supported clients. May receive an empty sequence.
-  * @param builder builds the appropriate pipeline based on the negotiated
-  *                protocol
+  * @param engine
+  *   the `SSLEngine` in use for the connection
+  * @param selector
+  *   selects the preferred protocol from the sequence of supported clients. May receive an empty
+  *   sequence.
+  * @param builder
+  *   builds the appropriate pipeline based on the negotiated protocol
   */
 final class ALPNServerSelector(
     engine: SSLEngine,
