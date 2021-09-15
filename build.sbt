@@ -60,7 +60,14 @@ lazy val commonSettings = Seq(
       Some("scm:git:git@github.com:http4s/blaze.git")
     )
   ),
-  startYear := Some(2014)
+  startYear := Some(2014),
+  libraryDependencies ++= (
+    if (ScalaArtifacts.isScala3(scalaVersion.value)) Nil
+    else
+      Seq(
+        compilerPlugin(kindProjector.cross(CrossVersion.full))
+      )
+  )
 )
 
 ThisBuild / githubWorkflowJavaVersions := Seq("adopt@1.8")
