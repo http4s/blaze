@@ -13,7 +13,11 @@ ThisBuild / versionIntroduced := Map(
   "3.0.0-RC3" -> "0.15.0"
 )
 
-ThisBuild / crossScalaVersions := Seq("2.12.14", "2.13.6", "3.0.2")
+val Scala212 = "2.12.15"
+val Scala213 = "2.13.6"
+val Scala3 = "3.0.2"
+
+ThisBuild / crossScalaVersions := Seq(Scala212, Scala213, Scala3)
 ThisBuild / scalaVersion := crossScalaVersions.value.filter(_.startsWith("2.")).last
 
 lazy val commonSettings = Seq(
@@ -56,7 +60,14 @@ lazy val commonSettings = Seq(
       Some("scm:git:git@github.com:http4s/blaze.git")
     )
   ),
-  startYear := Some(2014)
+  startYear := Some(2014),
+  libraryDependencies ++= (
+    if (ScalaArtifacts.isScala3(scalaVersion.value)) Nil
+    else
+      Seq(
+        compilerPlugin(kindProjector.cross(CrossVersion.full))
+      )
+  )
 )
 
 ThisBuild / githubWorkflowJavaVersions := Seq("adopt@1.8")
