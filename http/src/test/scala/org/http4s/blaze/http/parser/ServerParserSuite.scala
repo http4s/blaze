@@ -69,7 +69,7 @@ class ServerParserSuite extends BlazeTestSuite {
     }
   }
 
-  private def toChunk(str: String): String = s"${Integer.toHexString(str.length)}\r\n${str}\r\n"
+  private def toChunk(str: String): String = s"${Integer.toHexString(str.length)}\r\n$str\r\n"
 
   private val l_headers = ("From", "someuser@jmarshall.com  ") ::
     ("HOST", "www.foo.com") ::
