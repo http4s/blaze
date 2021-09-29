@@ -70,7 +70,7 @@ lazy val commonSettings = Seq(
   )
 )
 
-ThisBuild / githubWorkflowJavaVersions := Seq("adoptium@1.8")
+ThisBuild / githubWorkflowJavaVersions := Seq("adoptium@8")
 
 ThisBuild / githubWorkflowTargetTags ++= Seq("v*")
 
