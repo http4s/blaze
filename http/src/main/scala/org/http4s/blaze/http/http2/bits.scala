@@ -49,7 +49,7 @@ private[http2] object bits {
     val CONTINUATION: Byte = 0x09
   }
 
-  //////////////////////////////////////////////////
+  // ////////////////////////////////////////////////
 
   object Flags {
     val END_STREAM: Byte = 0x1

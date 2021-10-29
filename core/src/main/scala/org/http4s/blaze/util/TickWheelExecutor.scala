@@ -63,7 +63,7 @@ class TickWheelExecutor(wheelSize: Int = DefaultWheelSize, val tick: Duration = 
   private val clockFace: Array[Bucket] =
     (0 until wheelSize).map(_ => new Bucket()).toArray
 
-  /////////////////////////////////////////////////////
+  // ///////////////////////////////////////////////////
   // new Thread that actually runs the execution.
 
   private val thread = new Thread(s"blaze-tick-wheel-executor") {
@@ -74,7 +74,7 @@ class TickWheelExecutor(wheelSize: Int = DefaultWheelSize, val tick: Duration = 
   thread.setDaemon(true)
   thread.start()
 
-  /////////////////////////////////////////////////////
+  // ///////////////////////////////////////////////////
 
   def shutdown(): Unit =
     alive = false

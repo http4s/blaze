@@ -77,20 +77,20 @@ final class SSLStage(engine: SSLEngine, maxWrite: Int = 1024 * 1024)
       engine.closeOutbound()
     } catch {
       case e: SSLException =>
-        //Ignore cleanup errors. Example: With JDK SSLContextImpl, if the connection is closed before even handshake
-        //began(like port scanning), an SSLException might be thrown.
+        // Ignore cleanup errors. Example: With JDK SSLContextImpl, if the connection is closed before even handshake
+        // began(like port scanning), an SSLException might be thrown.
         logger.debug(e)("Error while closing SSL Engine")
     }
 
   private[this] val maxNetSize = engine.getSession.getPacketBufferSize
   private[this] val maxBuffer = math.max(maxNetSize, engine.getSession.getApplicationBufferSize)
 
-  ///////////// State maintained by the SSLStage //////////////////////
+  // /////////// State maintained by the SSLStage //////////////////////
   private[this] val handshakeQueue = new ListBuffer[DelayedOp]
   private[this] var readLeftover: ByteBuffer = null
-  /////////////////////////////////////////////////////////////////////
+  // ///////////////////////////////////////////////////////////////////
 
-  /////////////////////////////////////////////////////////////////////
+  // ///////////////////////////////////////////////////////////////////
 
   override def writeRequest(data: collection.Seq[ByteBuffer]): Future[Unit] =
     writeArray(data.toArray)
@@ -104,7 +104,7 @@ final class SSLStage(engine: SSLEngine, maxWrite: Int = 1024 * 1024)
     p.future
   }
 
-  /////////////////////////////////////////////////////////////////////
+  // ///////////////////////////////////////////////////////////////////
 
   private[this] def writeArray(data: Array[ByteBuffer]): Future[Unit] = {
     val p = Promise[Unit]()

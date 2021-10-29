@@ -173,7 +173,7 @@ class ClientParserSuite extends BlazeTestSuite {
     val p = new TestParser
     val msg = resp + l_headersstr
 
-    //println(msg.replace("\r\n", "\\r\\n\r\n"))
+    // println(msg.replace("\r\n", "\\r\\n\r\n"))
 
     val bts = wrap(msg.getBytes(ISO_8859_1))
     assert(p.parseResponse(bts))

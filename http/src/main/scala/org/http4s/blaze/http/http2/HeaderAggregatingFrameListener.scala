@@ -54,7 +54,7 @@ private abstract class HeaderAggregatingFrameListener(
 
   private[this] var hInfo: PartialFrame = null
 
-  ///////////////////////////////////////////////////////////////////////////
+  // /////////////////////////////////////////////////////////////////////////
 
   /** Called on the successful receipt of a complete HEADERS block
     *
@@ -85,7 +85,7 @@ private abstract class HeaderAggregatingFrameListener(
     */
   def onCompletePushPromiseFrame(streamId: Int, promisedId: Int, headers: Headers): Result
 
-  ////////////////////////////////////////////////////////////////////////////
+  // //////////////////////////////////////////////////////////////////////////
 
   final def setMaxHeaderTableSize(maxSize: Int): Unit =
     headerDecoder.setMaxHeaderTableSize(maxSize)
