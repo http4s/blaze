@@ -34,7 +34,7 @@ abstract class TimeoutStageBase[T](timeout: Duration, exec: TickWheelExecutor)
 
   override def name: String = s"${this.getClass.getName} Stage: $timeout"
 
-  /////////// Private impl bits //////////////////////////////////////////
+  // ///////// Private impl bits //////////////////////////////////////////
 
   private val lastTimeout =
     new AtomicReference[Cancelable](Cancelable.NoopCancel)
@@ -56,7 +56,7 @@ abstract class TimeoutStageBase[T](timeout: Duration, exec: TickWheelExecutor)
     } else prev.cancel()
   }
 
-  /////////// Pass through implementations ////////////////////////////////
+  // ///////// Pass through implementations ////////////////////////////////
 
   override def readRequest(size: Int): Future[T] = channelRead(size)
 
@@ -64,7 +64,7 @@ abstract class TimeoutStageBase[T](timeout: Duration, exec: TickWheelExecutor)
 
   override def writeRequest(data: collection.Seq[T]): Future[Unit] = channelWrite(data)
 
-  /////////// Protected impl bits //////////////////////////////////////////
+  // ///////// Protected impl bits //////////////////////////////////////////
 
   override protected def stageShutdown(): Unit = {
     setAndCancel(closedTag)

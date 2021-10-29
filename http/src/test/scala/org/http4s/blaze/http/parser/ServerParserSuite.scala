@@ -63,7 +63,7 @@ class ServerParserSuite extends BlazeTestSuite {
     }
 
     def headerComplete(name: String, value: String) = {
-      //println(s"Found header: '$name': '$value'")
+      // println(s"Found header: '$name': '$value'")
       h += ((name, value))
       false
     }
@@ -303,7 +303,7 @@ class ServerParserSuite extends BlazeTestSuite {
     val req = mockChunked.substring(0, mockChunked.length - 2) + "Foo\r\n\r\n"
     val b = strToBuffer(req)
 
-    //println(mockChunked)
+    // println(mockChunked)
 
     assert(p.parseLine(b))
 

@@ -147,7 +147,7 @@ class SessionFlowControlSuite extends BlazeTestSuite {
     }
   }
 
-  ////////////////// Streams ////////////////////////////
+  // //////////////// Streams ////////////////////////////
 
   test(
     "A SessionFlowControl.StreamFlowWindow inbound window should start with the config initial flow windows") {

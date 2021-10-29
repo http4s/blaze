@@ -25,7 +25,7 @@ import scala.concurrent.duration.Duration
 /** Shut down the pipeline after a period of inactivity */
 class QuietTimeoutStage[T](timeout: Duration, exec: TickWheelExecutor = scheduler)
     extends TimeoutStageBase[T](timeout, exec) {
-  ////////////////////////////////////////////////////////////////////////////////
+  // //////////////////////////////////////////////////////////////////////////////
 
   override protected def stageStartup(): Unit = {
     super.stageStartup()

@@ -202,7 +202,7 @@ sealed trait Tail[I] extends Stage {
       p.future
     } else f
 
-  ///////////////////////////////////////////////////////////////////
+  // /////////////////////////////////////////////////////////////////
   /** Schedules a timeout and sets it to race against the provided future
     * @param p
     *   Promise[T] to be completed by whichever comes first: the timeout or resolution of the

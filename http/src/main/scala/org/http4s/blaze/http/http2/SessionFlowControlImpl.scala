@@ -170,7 +170,7 @@ private class SessionFlowControlImpl(
   private[this] def sessionWindowString: String =
     s"Session: {inbound: $sessionInboundWindow, unconsumed: $sessionUnconsumedBytes, outbound: $sessionOutboundWindow}"
 
-  ////////////////////////////////////////////////////////////////////
+  // //////////////////////////////////////////////////////////////////
 
   private[this] final class StreamFlowWindowImpl(val streamId: Int) extends StreamFlowWindow {
     private[this] var _streamInboundWindow: Int =

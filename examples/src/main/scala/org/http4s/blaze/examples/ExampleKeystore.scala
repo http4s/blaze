@@ -48,7 +48,7 @@ object ExampleKeystore {
      */
 
     val ksStream =
-      getClass.getResourceAsStream("/clientauth/server.jks") //BogusKeystore.asInputStream()
+      getClass.getResourceAsStream("/clientauth/server.jks") // BogusKeystore.asInputStream()
     assert(ksStream != null)
 
     val ks = KeyStore.getInstance("JKS")

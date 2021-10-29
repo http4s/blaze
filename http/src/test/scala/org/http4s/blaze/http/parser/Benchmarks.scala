@@ -81,7 +81,7 @@ class Benchmarks extends BlazeTestSuite {
       }
 
       override def headerComplete(name: String, value: String): Boolean =
-        //println(s"Header($name, $value)")
+        // println(s"Header($name, $value)")
         super.headerComplete(name, value)
 
       //      override def submitRequestLine(methodString: String, uri: String, scheme: String, majorversion: Int, minorversion: Int): Unit = {
@@ -104,7 +104,7 @@ class Benchmarks extends BlazeTestSuite {
       assert(p.parseLine(b)) // should equal(true)
       assert(p.requestLineComplete())
 
-      p.parseheaders(b) //should equal(true)
+      p.parseheaders(b) // should equal(true)
       assert(p.headersComplete())
 
       p.parsecontent(b)

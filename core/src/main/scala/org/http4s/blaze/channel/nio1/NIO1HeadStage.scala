@@ -194,7 +194,7 @@ private[nio1] final class NIO1HeadStage(
     }
   }
 
-  ///  channel reading bits //////////////////////////////////////////////
+  // /  channel reading bits //////////////////////////////////////////////
 
   final override def readRequest(size: Int): Future[ByteBuffer] = {
     logger.trace(s"NIOHeadStage received a read request of size $size")
@@ -234,7 +234,7 @@ private[nio1] final class NIO1HeadStage(
     p.future
   }
 
-  /// channel write bits /////////////////////////////////////////////////
+  // / channel write bits /////////////////////////////////////////////////
 
   final override def writeRequest(data: ByteBuffer): Future[Unit] =
     writeRequest(data :: Nil)
@@ -285,7 +285,7 @@ private[nio1] final class NIO1HeadStage(
     p.future
   }
 
-  ///////////////////////////////// Channel Ops ////////////////////////////////////////
+  // /////////////////////////////// Channel Ops ////////////////////////////////////////
 
   final override def close(cause: Option[Throwable]): Unit = doClosePipeline(cause)
 

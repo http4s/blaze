@@ -105,7 +105,7 @@ private[blaze] final class TaskQueue {
           // If we are not the last cell, we will spin until the cons resolves and continue
           if (!queueTail.compareAndSet(node, null))
             go(spin(node))
-          //else () // Finished the last node. All done.
+          // else () // Finished the last node. All done.
         } else go(next)
       }
 

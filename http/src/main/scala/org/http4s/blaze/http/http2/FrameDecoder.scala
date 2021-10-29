@@ -113,9 +113,9 @@ private class FrameDecoder(localSettings: Http2Settings, listener: FrameListener
     Continue
   }
 
-  //////////////// Decoding algorithms ///////////////////////////////////////////////////////////
+  // ////////////// Decoding algorithms ///////////////////////////////////////////////////////////
 
-  //////////// DATA ///////////////
+  // ////////// DATA ///////////////
   // https://tools.ietf.org/html/rfc7540#section-6.1
   private[this] def decodeDataFrame(buffer: ByteBuffer, streamId: Int, flags: Byte): Result =
     if (streamId == 0)
@@ -143,7 +143,7 @@ private class FrameDecoder(localSettings: Http2Settings, listener: FrameListener
         listener.onDataFrame(streamId, Flags.END_STREAM(flags), buffer.slice(), flowBytes)
     }
 
-  //////////// HEADERS ///////////////
+  // ////////// HEADERS ///////////////
   private[this] def decodeHeaderFrame(buffer: ByteBuffer, streamId: Int, flags: Byte): Result =
     if (streamId == 0)
       Error(PROTOCOL_ERROR.goaway("Headers frame with stream id 0x0"))
@@ -174,7 +174,7 @@ private class FrameDecoder(localSettings: Http2Settings, listener: FrameListener
         }
     }
 
-  //////////// PRIORITY ///////////////
+  // ////////// PRIORITY ///////////////
   private[this] def decodePriorityFrame(buffer: ByteBuffer, streamId: Int): Result =
     if (streamId == 0)
       Error(PROTOCOL_ERROR.goaway("Priority frame with stream id 0x0"))
@@ -189,7 +189,7 @@ private class FrameDecoder(localSettings: Http2Settings, listener: FrameListener
         listener.onPriorityFrame(streamId, priority)
     }
 
-  //////////// RST_STREAM ///////////////
+  // ////////// RST_STREAM ///////////////
   private[this] def decodeRstStreamFrame(buffer: ByteBuffer, streamId: Int): Result =
     if (streamId == 0)
       Error(PROTOCOL_ERROR.goaway("RST_STREAM frame with stream id 0x0"))
@@ -201,7 +201,7 @@ private class FrameDecoder(localSettings: Http2Settings, listener: FrameListener
       listener.onRstStreamFrame(streamId, code)
     }
 
-  //////////// SETTINGS ///////////////
+  // ////////// SETTINGS ///////////////
   private[this] def decodeSettingsFrame(buffer: ByteBuffer, streamId: Int, flags: Byte): Result =
     SettingsDecoder.decodeSettingsFrame(buffer, streamId, flags) match {
       case Right(SettingsFrame(settings)) =>
@@ -211,7 +211,7 @@ private class FrameDecoder(localSettings: Http2Settings, listener: FrameListener
         Error(ex)
     }
 
-  //////////// PUSH_PROMISE ///////////////
+  // ////////// PUSH_PROMISE ///////////////
   private[this] def decodePushPromiseFrame(buffer: ByteBuffer, streamId: Int, flags: Byte): Result =
     if (streamId == 0)
       Error(PROTOCOL_ERROR.goaway("PUSH_PROMISE frame with stream id 0x0"))
@@ -240,7 +240,7 @@ private class FrameDecoder(localSettings: Http2Settings, listener: FrameListener
       }
     }
 
-  //////////// PING ///////////////
+  // ////////// PING ///////////////
   private[this] def decodePingFrame(buffer: ByteBuffer, streamId: Int, flags: Byte): Result = {
     val PingSize = 8
     if (streamId != 0)
@@ -255,7 +255,7 @@ private class FrameDecoder(localSettings: Http2Settings, listener: FrameListener
     }
   }
 
-  //////////// GOAWAY ///////////////
+  // ////////// GOAWAY ///////////////
   private[this] def decodeGoAwayFrame(buffer: ByteBuffer, streamId: Int): Result =
     if (streamId != 0)
       Error(PROTOCOL_ERROR.goaway(s"GOAWAY frame with stream id ${hexStr(streamId)} != 0x0."))
@@ -268,7 +268,7 @@ private class FrameDecoder(localSettings: Http2Settings, listener: FrameListener
       listener.onGoAwayFrame(lastStream, code, data)
     }
 
-  //////////// WINDOW_UPDATE ///////////////
+  // ////////// WINDOW_UPDATE ///////////////
   private[this] def decodeWindowUpdateFrame(buffer: ByteBuffer, streamId: Int): Result =
     if (buffer.remaining != 4)
       Error(
@@ -287,7 +287,7 @@ private class FrameDecoder(localSettings: Http2Settings, listener: FrameListener
         }
     }
 
-  //////////// CONTINUATION ///////////////
+  // ////////// CONTINUATION ///////////////
   private[this] def decodeContinuationFrame(
       buffer: ByteBuffer,
       streamId: Int,

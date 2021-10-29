@@ -206,7 +206,7 @@ private abstract class StreamStateImpl(session: SessionCore) extends StreamState
       }
   }
 
-  ///////////////////// Inbound messages ///////////////////////////////
+  // /////////////////// Inbound messages ///////////////////////////////
 
   final override def invokeInboundData(
       endStream: Boolean,
@@ -249,7 +249,7 @@ private abstract class StreamStateImpl(session: SessionCore) extends StreamState
       Continue
     }
 
-  //////////////////////////////////////////////////////////////////////
+  // ////////////////////////////////////////////////////////////////////
 
   final override protected def doClosePipeline(cause: Option[Throwable]): Unit =
     session.serialExecutor.execute(new Runnable { def run(): Unit = doCloseWithError(cause) })
