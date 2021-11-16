@@ -14,16 +14,12 @@
  * limitations under the License.
  */
 
-package org.http4s
-package blaze
-package client
+package org.http4s.client
 
-import cats.effect.Resource
-import org.http4s.blaze.pipeline.TailStage
-import org.http4s.client.Connection
+package object blaze {
+  @deprecated("use org.http4s.blaze.client.BlazeClientBuilder", "0.22")
+  type BlazeClientBuilder[F[_]] = org.http4s.blaze.client.BlazeClientBuilder[F]
 
-import java.nio.ByteBuffer
-
-private trait BlazeConnection[F[_]] extends TailStage[ByteBuffer] with Connection[F] {
-  def runRequest(req: Request[F]): F[Resource[F, Response[F]]]
+  @deprecated("use org.http4s.blaze.client.BlazeClientBuilder", "0.22")
+  val BlazeClientBuilder = org.http4s.blaze.client.BlazeClientBuilder
 }
