@@ -1,7 +1,7 @@
 import sbt._
 
 object Dependencies {
-  lazy val logbackClassic = "ch.qos.logback" % "logback-classic" % "1.2.8"
+  lazy val logbackClassic = "ch.qos.logback" % "logback-classic" % "1.2.9"
   lazy val twitterHPACK = "com.twitter" % "hpack" % "1.0.2"
   lazy val asyncHttpClient = "org.asynchttpclient" % "async-http-client" % "2.12.3"
   lazy val log4s = "org.log4s" %% "log4s" % "1.10.0"
