@@ -123,9 +123,9 @@ abstract class ServerChannel extends Closeable { self =>
         case NonFatal(t) =>
           logger.error(t)(s"Exception occurred during Channel shutdown.")
       } finally
-      // If we're the last hook to run, we notify any listeners
-      if (countdown.decrementAndGet() == 0)
-        closeAndNotify()
+        // If we're the last hook to run, we notify any listeners
+        if (countdown.decrementAndGet() == 0)
+          closeAndNotify()
   }
 }
 

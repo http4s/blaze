@@ -98,10 +98,11 @@ sealed trait Tail[I] extends Stage {
   }
 
   def channelRead(size: Int = -1, timeout: Duration = Duration.Inf): Future[I] =
-    try if (_prevStage != null) {
-      val f = _prevStage.readRequest(size)
-      checkTimeout(timeout, f)
-    } else _stageDisconnected()
+    try
+      if (_prevStage != null) {
+        val f = _prevStage.readRequest(size)
+        checkTimeout(timeout, f)
+      } else _stageDisconnected()
     catch { case NonFatal(t) => Future.failed(t) }
 
   /** Write a single outbound message to the pipeline */

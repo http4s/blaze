@@ -61,24 +61,25 @@ private class FrameDecoder(localSettings: Http2Settings, listener: FrameListener
       val endOfFrame = buffer.position() + len
       buffer.limit(endOfFrame)
 
-      try frameType match {
-        case FrameTypes.DATA => decodeDataFrame(buffer, streamId, flags)
-        case FrameTypes.HEADERS => decodeHeaderFrame(buffer, streamId, flags)
-        case FrameTypes.PRIORITY => decodePriorityFrame(buffer, streamId)
-        case FrameTypes.RST_STREAM => decodeRstStreamFrame(buffer, streamId)
-        case FrameTypes.SETTINGS => decodeSettingsFrame(buffer, streamId, flags)
-        case FrameTypes.PUSH_PROMISE =>
-          decodePushPromiseFrame(buffer, streamId, flags)
-        case FrameTypes.PING => decodePingFrame(buffer, streamId, flags)
-        case FrameTypes.GOAWAY => decodeGoAwayFrame(buffer, streamId)
-        case FrameTypes.WINDOW_UPDATE =>
-          decodeWindowUpdateFrame(buffer, streamId)
-        case FrameTypes.CONTINUATION =>
-          decodeContinuationFrame(buffer, streamId, flags)
+      try
+        frameType match {
+          case FrameTypes.DATA => decodeDataFrame(buffer, streamId, flags)
+          case FrameTypes.HEADERS => decodeHeaderFrame(buffer, streamId, flags)
+          case FrameTypes.PRIORITY => decodePriorityFrame(buffer, streamId)
+          case FrameTypes.RST_STREAM => decodeRstStreamFrame(buffer, streamId)
+          case FrameTypes.SETTINGS => decodeSettingsFrame(buffer, streamId, flags)
+          case FrameTypes.PUSH_PROMISE =>
+            decodePushPromiseFrame(buffer, streamId, flags)
+          case FrameTypes.PING => decodePingFrame(buffer, streamId, flags)
+          case FrameTypes.GOAWAY => decodeGoAwayFrame(buffer, streamId)
+          case FrameTypes.WINDOW_UPDATE =>
+            decodeWindowUpdateFrame(buffer, streamId)
+          case FrameTypes.CONTINUATION =>
+            decodeContinuationFrame(buffer, streamId, flags)
 
-        // this concludes the types established by HTTP/2.0, but it could be an extension
-        case code => onExtensionFrame(code, streamId, flags, buffer.slice())
-      } catch {
+          // this concludes the types established by HTTP/2.0, but it could be an extension
+          case code => onExtensionFrame(code, streamId, flags, buffer.slice())
+        } catch {
         case _: BufferUnderflowException =>
           Error(
             FRAME_SIZE_ERROR.goaway(

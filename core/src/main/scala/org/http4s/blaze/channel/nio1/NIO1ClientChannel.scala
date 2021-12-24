@@ -62,8 +62,9 @@ private[blaze] final class NIO1ClientChannel(
 
   override def close(): Unit =
     try underlying.close()
-    finally if (closed.compareAndSet(false, true)) {
-      onClose()
-    }
+    finally
+      if (closed.compareAndSet(false, true)) {
+        onClose()
+      }
 
 }

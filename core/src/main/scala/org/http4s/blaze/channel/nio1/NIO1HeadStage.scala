@@ -73,41 +73,43 @@ private[nio1] object NIO1HeadStage {
       ch: NIO1ClientChannel,
       scratch: ByteBuffer,
       buffers: Array[ByteBuffer]): WriteResult =
-    try if (BufferTools.areDirectOrEmpty(buffers)) {
-      ch.write(buffers)
-      if (util.BufferTools.checkEmpty(buffers)) Complete
-      else Incomplete
-    } else {
-      // To sidestep the java NIO "memory leak" (see http://www.evanjones.ca/java-bytebuffer-leak.html)
-      // We copy the data to the scratch buffer (which should be a direct ByteBuffer)
-      // before the write. We then check to see how much data was written and fast-forward
-      // the input buffers accordingly.
-      // This is very similar to the pattern used by the Oracle JDK implementation in its
-      // IOUtil class: if the provided buffers are not direct buffers, they are copied to
-      // temporary direct ByteBuffers and written.
-      @tailrec
-      def writeLoop(): WriteResult = {
-        scratch.clear()
-        BufferTools.copyBuffers(buffers, scratch)
-        scratch.flip()
+    try
+      if (BufferTools.areDirectOrEmpty(buffers)) {
+        ch.write(buffers)
+        if (util.BufferTools.checkEmpty(buffers)) Complete
+        else Incomplete
+      } else {
+        // To sidestep the java NIO "memory leak" (see http://www.evanjones.ca/java-bytebuffer-leak.html)
+        // We copy the data to the scratch buffer (which should be a direct ByteBuffer)
+        // before the write. We then check to see how much data was written and fast-forward
+        // the input buffers accordingly.
+        // This is very similar to the pattern used by the Oracle JDK implementation in its
+        // IOUtil class: if the provided buffers are not direct buffers, they are copied to
+        // temporary direct ByteBuffers and written.
+        @tailrec
+        def writeLoop(): WriteResult = {
+          scratch.clear()
+          BufferTools.copyBuffers(buffers, scratch)
+          scratch.flip()
 
-        val written = ch.write(scratch)
-        if (written > 0)
-          assert(BufferTools.fastForwardBuffers(buffers, written))
+          val written = ch.write(scratch)
+          if (written > 0)
+            assert(BufferTools.fastForwardBuffers(buffers, written))
 
-        if (scratch.remaining > 0)
-          // Couldn't write all the data.
-          Incomplete
-        else if (util.BufferTools.checkEmpty(buffers))
-          // All data was written
-          Complete
-        else
-          // May still be able to write more to the socket buffer.
-          writeLoop()
+          if (scratch.remaining > 0)
+            // Couldn't write all the data.
+            Incomplete
+          else if (util.BufferTools.checkEmpty(buffers))
+            // All data was written
+            Complete
+          else
+            // May still be able to write more to the socket buffer.
+            writeLoop()
+        }
+
+        writeLoop()
       }
-
-      writeLoop()
-    } catch {
+    catch {
       case _: ClosedChannelException => WriteError(EOF)
       case e: IOException if ChannelHead.brokePipeMessages.contains(e.getMessage) =>
         WriteError(EOF)
@@ -318,21 +320,22 @@ private[nio1] final class NIO1HeadStage(
       sendInboundCommand(Disconnected)
     }
 
-    try selectorLoop.executeTask(new Runnable {
-      def run(): Unit = {
-        logger.trace(
-          s"closeWithError($cause); readPromise: $readPromise, writePromise: $writePromise")
-        val c = cause match {
-          case Some(ex) =>
-            logger.error(cause.get)("Abnormal NIO1HeadStage termination")
-            ex
-          case None => EOF
+    try
+      selectorLoop.executeTask(new Runnable {
+        def run(): Unit = {
+          logger.trace(
+            s"closeWithError($cause); readPromise: $readPromise, writePromise: $writePromise")
+          val c = cause match {
+            case Some(ex) =>
+              logger.error(cause.get)("Abnormal NIO1HeadStage termination")
+              ex
+            case None => EOF
+          }
+          if (key.isValid) key.interestOps(0)
+          key.attach(null)
+          doClose(c)
         }
-        if (key.isValid) key.interestOps(0)
-        key.attach(null)
-        doClose(c)
-      }
-    })
+      })
     catch {
       case e: RejectedExecutionException =>
         logger.error(e)("Event loop closed. Closing in current thread.")
