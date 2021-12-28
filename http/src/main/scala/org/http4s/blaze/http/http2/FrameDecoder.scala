@@ -79,7 +79,8 @@ private class FrameDecoder(localSettings: Http2Settings, listener: FrameListener
 
           // this concludes the types established by HTTP/2.0, but it could be an extension
           case code => onExtensionFrame(code, streamId, flags, buffer.slice())
-        } catch {
+        }
+      catch {
         case _: BufferUnderflowException =>
           Error(
             FRAME_SIZE_ERROR.goaway(
