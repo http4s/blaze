@@ -153,20 +153,22 @@ final class SelectorLoop(
   private[this] def runLoop(): Unit = {
     var cleanShutdown = true
 
-    try while (!isClosed) {
-      // Block here until some I/O event happens or someone adds
-      // a task to run and wakes the loop.
-      val selected = selector.select()
+    try
+      while (!isClosed) {
+        // Block here until some I/O event happens or someone adds
+        // a task to run and wakes the loop.
+        val selected = selector.select()
 
-      // Run any pending tasks. These may set interest ops,
-      // just compute something, etc.
-      taskQueue.executeTasks()
+        // Run any pending tasks. These may set interest ops,
+        // just compute something, etc.
+        taskQueue.executeTasks()
 
-      // We have some new I/O operations waiting for us. Process them.
-      if (selected > 0) {
-        processKeys(scratch, selector.selectedKeys)
+        // We have some new I/O operations waiting for us. Process them.
+        if (selected > 0) {
+          processKeys(scratch, selector.selectedKeys)
+        }
       }
-    } catch {
+    catch {
       case e: ClosedSelectorException =>
         logger.error(e)("Selector unexpectedly closed")
         cleanShutdown = false
@@ -192,16 +194,18 @@ final class SelectorLoop(
       it.remove()
 
       val selectable = getAttachment(k)
-      try if (k.isValid) {
-        if (selectable != null) {
-          selectable.opsReady(scratch)
-        } else {
-          k.cancel()
-          logger.error("Illegal state: selector key had null attachment.")
+      try
+        if (k.isValid) {
+          if (selectable != null) {
+            selectable.opsReady(scratch)
+          } else {
+            k.cancel()
+            logger.error("Illegal state: selector key had null attachment.")
+          }
+        } else if (selectable != null) {
+          selectable.close(None)
         }
-      } else if (selectable != null) {
-        selectable.close(None)
-      } catch {
+      catch {
         case t @ (NonFatal(_) | _: ControlThrowable) =>
           logger.error(t)("Error performing channel operations. Closing channel.")
           try selectable.close(Some(t))

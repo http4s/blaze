@@ -220,11 +220,11 @@ private final class NIO1SocketServerGroup private (
       }
 
       try
-      // We use `enqueueTask` deliberately so as to not jump ahead
-      // of channel initialization.
-      selectorLoop.enqueueTask(new Runnable {
-        override def run(): Unit = doClose()
-      })
+        // We use `enqueueTask` deliberately so as to not jump ahead
+        // of channel initialization.
+        selectorLoop.enqueueTask(new Runnable {
+          override def run(): Unit = doClose()
+        })
       catch {
         case _: RejectedExecutionException =>
           this.logger.info("Selector loop closed. Closing in local thread.")
