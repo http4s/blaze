@@ -352,7 +352,7 @@ class SSLStageSuite extends BlazeTestSuite {
                 else super.writeRequest(o)
 
               case _ =>
-                val f = {
+                val f =
                   if (o.hasRemaining)
                     super.writeRequest(o).flatMap(_ => writeRequest(data))
                   else {
@@ -361,7 +361,6 @@ class SSLStageSuite extends BlazeTestSuite {
                       writeBuffer = data
                     FutureUnit
                   }
-                }
 
                 f.flatMap { _ =>
                   handShake()
