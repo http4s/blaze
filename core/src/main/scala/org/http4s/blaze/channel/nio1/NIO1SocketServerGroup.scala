@@ -313,7 +313,7 @@ private final class NIO1SocketServerGroup private (
           case Success(tail) =>
             tail.base(head)
             head.inboundCommand(Command.Connected)
-            logger.info(s"Accepted connection from $address")
+            logger.debug(s"Accepted connection from $address")
 
           case Failure(ex) =>
             // Service rejection isn't a network failure, so we close with None
