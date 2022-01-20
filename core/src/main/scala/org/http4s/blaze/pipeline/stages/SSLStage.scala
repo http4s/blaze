@@ -236,6 +236,13 @@ final class SSLStage(engine: SSLEngine, maxWrite: Int = 1024 * 1024)
             case DelayedRead(sz, p) => doRead(sz, p)
             case DelayedWrite(d, p) => doWrite(d, p)
           }
+
+        case unexpected =>
+          // This warns as unreachable on Scala 3 / Java 8, but does
+          // not warn on Scala 2, so we can't use @nowarn.
+
+          // Java 9 adds NEED_UNWRAP_AGAIN, which only applies to DTLS
+          handshakeFailure(util.bug(s"Unknown status: ${unexpected}"))
       }
 
     val start = System.nanoTime

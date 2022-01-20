@@ -14,6 +14,8 @@ ThisBuild / tlVersionIntroduced := Map(
   "3" -> "0.15.0"
 )
 
+ThisBuild / tlFatalWarningsInCi := !tlIsScala3.value // See SSLStage
+
 lazy val commonSettings = Seq(
   description := "NIO Framework for Scala",
   Test / scalacOptions ~= (_.filterNot(Set("-Ywarn-dead-code", "-Wdead-code"))), // because mockito
