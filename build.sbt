@@ -8,13 +8,14 @@ val Scala3 = "3.0.2"
 ThisBuild / crossScalaVersions := Seq(Scala3, Scala212, Scala213)
 ThisBuild / scalaVersion := crossScalaVersions.value.filter(_.startsWith("2.")).last
 ThisBuild / tlBaseVersion := "0.15"
-
 ThisBuild / tlVersionIntroduced := Map(
   "2.13" -> "0.14.5",
   "3" -> "0.15.0"
 )
-
 ThisBuild / tlFatalWarningsInCi := !tlIsScala3.value // See SSLStage
+
+// 11 and 17 blocked by https://github.com/http4s/blaze/issues/376
+ThisBuild / githubWorkflowJavaVersions := Seq(JavaSpec.temurin("8"))
 
 lazy val commonSettings = Seq(
   description := "NIO Framework for Scala",
