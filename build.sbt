@@ -11,7 +11,7 @@ ThisBuild / tlBaseVersion := "0.15"
 
 ThisBuild / tlVersionIntroduced := Map(
   "2.13" -> "0.14.5",
-  "3" -> "0.15.0",
+  "3" -> "0.15.0"
 )
 
 lazy val commonSettings = Seq(
@@ -45,7 +45,7 @@ lazy val commonSettings = Seq(
       "chris@christopherdavenport.tech",
       url("https://github.com/ChristopherDavenport"))
   ),
-  startYear := Some(2014),
+  startYear := Some(2014)
 )
 
 // currently only publishing tags
@@ -53,7 +53,9 @@ ThisBuild / githubWorkflowPublishTargetBranches :=
   Seq(RefPredicate.StartsWith(Ref.Tag("v")), RefPredicate.Equals(Ref.Branch("main")))
 
 ThisBuild / githubWorkflowBuild ++= Seq(
-  WorkflowStep.Sbt(List("${{ matrix.ci }}", "javafmtCheckAll"), name = Some("Check Java formatting")),
+  WorkflowStep.Sbt(
+    List("${{ matrix.ci }}", "javafmtCheckAll"),
+    name = Some("Check Java formatting"))
 )
 
 lazy val blaze = project
