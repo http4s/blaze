@@ -1,24 +1,21 @@
 import com.typesafe.tools.mima.core._
 import Dependencies._
 
-ThisBuild / publishGithubUser := "rossabaker"
-ThisBuild / publishFullName := "Ross A. Baker"
-ThisBuild / baseVersion := "0.15"
-
-ThisBuild / versionIntroduced := Map(
-  "2.13" -> "0.14.5",
-  "3.0.0-M3" -> "0.15.0",
-  "3.0.0-RC1" -> "0.15.0",
-  "3.0.0-RC2" -> "0.15.0",
-  "3.0.0-RC3" -> "0.15.0"
-)
-
 val Scala212 = "2.12.15"
 val Scala213 = "2.13.8"
 val Scala3 = "3.0.2"
 
-ThisBuild / crossScalaVersions := Seq(Scala212, Scala213, Scala3)
+ThisBuild / crossScalaVersions := Seq(Scala3, Scala212, Scala213)
 ThisBuild / scalaVersion := crossScalaVersions.value.filter(_.startsWith("2.")).last
+ThisBuild / tlBaseVersion := "0.15"
+ThisBuild / tlVersionIntroduced := Map(
+  "2.13" -> "0.14.5",
+  "3" -> "0.15.0"
+)
+ThisBuild / tlFatalWarningsInCi := !tlIsScala3.value // See SSLStage
+
+// 11 and 17 blocked by https://github.com/http4s/blaze/issues/376
+ThisBuild / githubWorkflowJavaVersions := Seq(JavaSpec.temurin("8"))
 
 lazy val commonSettings = Seq(
   description := "NIO Framework for Scala",
@@ -51,35 +48,17 @@ lazy val commonSettings = Seq(
       "chris@christopherdavenport.tech",
       url("https://github.com/ChristopherDavenport"))
   ),
-  licenses := Seq("Apache-2.0" -> url("https://www.apache.org/licenses/LICENSE-2.0.html")),
-  homepage := Some(url("https://github.com/http4s/blaze")),
-  scmInfo := Some(
-    ScmInfo(
-      url("https://github.com/http4s/blaze"),
-      "scm:git:https://github.com/http4s/blaze.git",
-      Some("scm:git:git@github.com:http4s/blaze.git")
-    )
-  ),
-  startYear := Some(2014),
-  libraryDependencies ++= (
-    if (ScalaArtifacts.isScala3(scalaVersion.value)) Nil
-    else
-      Seq(
-        compilerPlugin(kindProjector.cross(CrossVersion.full))
-      )
-  )
+  startYear := Some(2014)
 )
-
-ThisBuild / githubWorkflowJavaVersions := Seq("adoptium@8")
-
-ThisBuild / githubWorkflowTargetTags ++= Seq("v*")
 
 // currently only publishing tags
 ThisBuild / githubWorkflowPublishTargetBranches :=
   Seq(RefPredicate.StartsWith(Ref.Tag("v")), RefPredicate.Equals(Ref.Branch("main")))
 
-ThisBuild / githubWorkflowBuild := Seq(
-  WorkflowStep.Sbt(List("validate-ci"))
+ThisBuild / githubWorkflowBuild ++= Seq(
+  WorkflowStep.Sbt(
+    List("${{ matrix.ci }}", "javafmtCheckAll"),
+    name = Some("Check Java formatting"))
 )
 
 lazy val blaze = project
@@ -150,8 +129,3 @@ lazy val examples = Project("blaze-examples", file("examples"))
 addCommandAlias(
   "validate",
   ";scalafmtCheckAll ;scalafmtSbtCheck ;javafmtCheckAll ;+test:compile ;test ;unusedCompileDependenciesTest ;mimaReportBinaryIssues")
-
-// use it in the CI pipeline
-addCommandAlias(
-  "validate-ci",
-  ";scalafmtCheckAll ;scalafmtSbtCheck ;javafmtCheckAll ;test ;unusedCompileDependenciesTest ;mimaReportBinaryIssues")
