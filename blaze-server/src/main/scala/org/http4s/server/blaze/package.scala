@@ -1,5 +1,5 @@
 /*
- * Copyright 2013 http4s.org
+ * Copyright 2014 http4s.org
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,17 +14,12 @@
  * limitations under the License.
  */
 
-package com.example.http4s.blaze.demo.server.endpoints
+package org.http4s.server
 
-import cats.effect.Sync
-import org.http4s.dsl.Http4sDsl
-import org.http4s.{ApiVersion => _, _}
+package object blaze {
+  @deprecated("use org.http4s.blaze.server.BlazeServerBuilder", "0.22")
+  type BlazeServerBuilder[F[_]] = org.http4s.blaze.server.BlazeServerBuilder[F]
 
-class HexNameHttpEndpoint[F[_]: Sync] extends Http4sDsl[F] {
-  object NameQueryParamMatcher extends QueryParamDecoderMatcher[String]("name")
-
-  val service: HttpRoutes[F] = HttpRoutes.of {
-    case GET -> Root / ApiVersion / "hex" :? NameQueryParamMatcher(name) =>
-      Ok(name.getBytes("UTF-8").map("%02x".format(_)).mkString)
-  }
+  @deprecated("use org.http4s.blaze.server.BlazeServerBuilder", "0.22")
+  val BlazeServerBuilder = org.http4s.blaze.server.BlazeServerBuilder
 }

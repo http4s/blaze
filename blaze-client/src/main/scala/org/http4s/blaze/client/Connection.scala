@@ -18,24 +18,19 @@ package org.http4s
 package blaze
 package client
 
-import cats.effect.IO
-import java.nio.ByteBuffer
-import org.http4s.blaze.pipeline.{HeadStage, LeafBuilder}
-import org.http4s.client.ConnectionBuilder
+import org.http4s.client.RequestKey
 
-private[client] object MockClientBuilder {
-  def builder(
-      head: => HeadStage[ByteBuffer],
-      tail: => BlazeConnection[IO]): ConnectionBuilder[IO, BlazeConnection[IO]] = { _ =>
-    IO {
-      val t = tail
-      LeafBuilder(t).base(head)
-      t
-    }
-  }
+private[client] trait Connection[F[_]] {
 
-  def manager(
-      head: => HeadStage[ByteBuffer],
-      tail: => BlazeConnection[IO]): ConnectionManager[IO, BlazeConnection[IO]] =
-    ConnectionManager.basic(builder(head, tail))
+  /** Determine if the connection is closed and resources have been freed */
+  def isClosed: Boolean
+
+  /** Determine if the connection is in a state that it can be recycled for another request. */
+  def isRecyclable: Boolean
+
+  /** Close down the connection, freeing resources and potentially aborting a [[Response]] */
+  def shutdown(): Unit
+
+  /** The key for requests we are able to serve */
+  def requestKey: RequestKey
 }
