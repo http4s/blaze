@@ -23,8 +23,8 @@ import scala.concurrent.{Future, Promise}
 private[http2] class MockHeadStage[T] extends HeadStage[T] {
   override def name: String = "Head"
 
-  val reads = new mutable.Queue[Promise[T]]()
-  val writes = new mutable.Queue[(T, Promise[Unit])]()
+  val reads = new mutable.Queue[Promise[T]]
+  val writes = new mutable.Queue[(T, Promise[Unit])]
 
   var disconnected: Boolean = false
   var error: Option[Throwable] = None

@@ -68,7 +68,7 @@ class Benchmarks extends BlazeTestSuite {
 
   def checkingBenchmark(iterations: Int): Unit = {
     val sb = new StringBuilder
-    val p = new BenchParser() {
+    val p = new BenchParser {
 
       override def parsecontent(s: ByteBuffer): ByteBuffer = {
         val b = super.parsecontent(s)
@@ -130,7 +130,7 @@ class Benchmarks extends BlazeTestSuite {
   }
 
   def rawBenchmark(iterations: Int): Unit = {
-    val p = new BenchParser()
+    val p = new BenchParser
     val b = ByteBuffer.wrap(mockChunked.getBytes(StandardCharsets.UTF_8))
 
     def iteration(remaining: Int): Unit =
@@ -157,7 +157,7 @@ class Benchmarks extends BlazeTestSuite {
 
   def headerCounterBenchmark(iterations: Int): Unit = {
     val headers = new ListBuffer[(String, String)]
-    val p = new BenchParser() {
+    val p = new BenchParser {
       override def headerComplete(name: String, value: String): Boolean = {
         headers += ((name, value))
         false

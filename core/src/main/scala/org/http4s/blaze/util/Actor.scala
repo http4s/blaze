@@ -34,7 +34,7 @@ private[blaze] abstract class Actor[M](
   require(maxTasksBeforeReschedule > 0)
 
   // Keep the tail of the chain
-  private[this] val tailNode = new AtomicReference[Node]()
+  private[this] val tailNode = new AtomicReference[Node]
   // keep a reusable runner around, no need to make more garbage on every actor startup
   private[this] val runner = new RecycleableRunnable(null)
 

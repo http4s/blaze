@@ -134,7 +134,7 @@ private final class ConnectionImpl(
       val maxConcurrent = remoteSettings.maxConcurrentStreams
       val currentStreams = activeStreams
       if (maxConcurrent == 0 || maxConcurrent <= currentStreams) 0.0
-      else 1.0 - (currentStreams.toDouble / maxConcurrent.toDouble)
+      else 1.0 - currentStreams.toDouble / maxConcurrent.toDouble
     }
 
   override def status: Status =

@@ -85,15 +85,15 @@ class ResponseParser extends Http1ClientParser {
 
 object ResponseParser {
   def apply(buff: Seq[ByteBuffer]): (Int, Headers, String) =
-    new ResponseParser().parseResponse(buff)
+    new ResponseParser.parseResponse(buff)
   def apply(buff: ByteBuffer): (Int, Headers, String) = parseBuffer(buff)
 
   def parseBuffer(buff: ByteBuffer): (Int, Headers, String) =
-    new ResponseParser().parseResponseBuffer(buff)
+    new ResponseParser.parseResponseBuffer(buff)
 
   /** Make a String representation of the ByteBuffer, without modifying the buffer. */
   def bufferToString(in: ByteBuffer): String = {
-    val sb = new StringBuilder()
+    val sb = new StringBuilder
     val buffer =
       in.asReadOnlyBuffer() // Don't want to modify the original buffers positions or content
     while (buffer.hasRemaining)

@@ -75,5 +75,5 @@ class EchoServer {
 }
 
 object EchoServer {
-  def main(args: Array[String]): Unit = new EchoServer().run(8080)
+  def main(args: Array[String]): Unit = new EchoServer.run(8080)
 }

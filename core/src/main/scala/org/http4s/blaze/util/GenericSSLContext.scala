@@ -33,7 +33,7 @@ object GenericSSLContext {
   def clientSSLContext(): SSLContext =
     try {
       val sslContext = SSLContext.getInstance("TLS")
-      sslContext.init(null, Array(new DefaultTrustManager()), new SecureRandom())
+      sslContext.init(null, Array(new DefaultTrustManager), new SecureRandom)
       sslContext
     } catch {
       case e: NoSuchAlgorithmException =>

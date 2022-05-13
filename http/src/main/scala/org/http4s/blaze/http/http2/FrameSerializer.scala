@@ -282,7 +282,7 @@ private[http2] object FrameSerializer {
     else
       buffer.putInt(p.dependentStreamId)
 
-    buffer.put(((p.priority - 1) & 0xff).toByte)
+    buffer.put((p.priority - 1 & 0xff).toByte)
     ()
   }
 

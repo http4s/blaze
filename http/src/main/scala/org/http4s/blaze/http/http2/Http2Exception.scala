@@ -110,7 +110,7 @@ object Http2Exception {
   /** Get the name associated with the error code */
   def errorName(code: Long): String = errorGenerator(code).name
 
-  private[this] val exceptionsMap = new mutable.HashMap[Long, ErrorGenerator]()
+  private[this] val exceptionsMap = new mutable.HashMap[Long, ErrorGenerator]
 
   private def mkErrorGen(code: Long, name: String): ErrorGenerator = {
     val g = new ErrorGenerator(code, name)

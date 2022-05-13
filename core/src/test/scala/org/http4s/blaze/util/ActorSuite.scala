@@ -49,7 +49,7 @@ class ActorSuite extends FunSuite {
     }
 
   private def load(senders: Int, messages: Int): Unit = {
-    val flag = new AtomicReference[Throwable]()
+    val flag = new AtomicReference[Throwable]
     val latch = new CountDownLatch(senders * messages)
 
     val a = actor(
@@ -109,13 +109,13 @@ class ActorSuite extends FunSuite {
     lazy val a1: Actor[Int] = new Actor[Int](ec) {
       override protected def act(i: Int): Unit =
         if (i == 0) latch.countDown()
-        else a2 ! (i - 1)
+        else a2 ! i - 1
     }
 
     lazy val a2: Actor[Int] = new Actor[Int](ec) {
       override protected def act(i: Int): Unit =
         if (i == 0) latch.countDown()
-        else a2 ! (i - 1)
+        else a2 ! i - 1
     }
 
     a1 ! 100000 // start

@@ -61,7 +61,7 @@ class TickWheelExecutor(wheelSize: Int = DefaultWheelSize, val tick: Duration = 
   private val head = new AtomicReference[ScheduleEvent](Tail)
 
   private val clockFace: Array[Bucket] =
-    (0 until wheelSize).map(_ => new Bucket()).toArray
+    (0 until wheelSize).map(_ => new Bucket).toArray
 
   // ///////////////////////////////////////////////////
   // new Thread that actually runs the execution.
@@ -192,7 +192,7 @@ class TickWheelExecutor(wheelSize: Int = DefaultWheelSize, val tick: Duration = 
     logger.error(t)("Non-Fatal Exception caught while executing scheduled task")
 
   private def getBucket(expiration: Long): Bucket = {
-    val i = ((expiration * _tickInv).toLong) % wheelSize
+    val i = (expiration * _tickInv).toLong % wheelSize
     clockFace(i.toInt)
   }
 

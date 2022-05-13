@@ -85,7 +85,7 @@ object Execution {
   }
 
   // Should only be used for scheduling timeouts for channel writes
-  private[blaze] lazy val scheduler: TickWheelExecutor = new TickWheelExecutor()
+  private[blaze] lazy val scheduler: TickWheelExecutor = new TickWheelExecutor
 
   // Only safe to use from a single thread
   private final class ThreadLocalTrampoline extends ExecutionContext {
@@ -98,7 +98,7 @@ object Execution {
       else if (r1 == null) r1 = runnable
       else if (r2 == null) r2 = runnable
       else {
-        if (rest == null) rest = new util.ArrayDeque[Runnable]()
+        if (rest == null) rest = new util.ArrayDeque[Runnable]
         rest.add(runnable)
       }
 

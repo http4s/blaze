@@ -126,7 +126,7 @@ private final class NIO1SocketServerGroup private (
     extends ServerChannelGroup {
   private[this] val logger = getLogger
   // Also acts as our intrinsic lock.
-  private[this] val listeningSet = new mutable.HashSet[ServerChannelImpl]()
+  private[this] val listeningSet = new mutable.HashSet[ServerChannelImpl]
   // protected by synchronization on the intrinsic lock.
   private[this] var isClosed = false
 

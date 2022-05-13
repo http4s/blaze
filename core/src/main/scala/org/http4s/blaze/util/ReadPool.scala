@@ -27,7 +27,7 @@ import scala.concurrent.{Future, Promise}
 private[blaze] class ReadPool[T] {
   private[this] var closeT: Throwable = null
   private[this] var readP: Promise[T] = null
-  private[this] val offerQ = new util.ArrayDeque[T]()
+  private[this] val offerQ = new util.ArrayDeque[T]
 
   /** Useful for tracking when a message was consumed */
   def messageConsumed(t: T): Unit = {

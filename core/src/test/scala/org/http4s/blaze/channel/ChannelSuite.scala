@@ -137,7 +137,7 @@ abstract class BaseChannelSuite extends BlazeTestSuite {
   private def writeBufferTest(testName: String, batch: Boolean): Unit = {
     val stage = new ZeroWritingStage(batch)
     val ServerPair(group, channel) = bind(_ => Future.successful(LeafBuilder(stage)))
-    val socket = new Socket()
+    val socket = new Socket
 
     test(testName) {
       for {

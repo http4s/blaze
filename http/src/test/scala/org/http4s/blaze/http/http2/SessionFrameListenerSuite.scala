@@ -120,7 +120,7 @@ class SessionFrameListenerSuite extends BlazeTestSuite {
     var sId, pId = -1
     var hss: Headers = Nil
     val tools = new MockTools(isClient = true) {
-      override lazy val streamManager = new MockStreamManager() {
+      override lazy val streamManager = new MockStreamManager {
         override def handlePushPromise(
             streamId: Int,
             promisedId: Int,
@@ -212,7 +212,7 @@ class SessionFrameListenerSuite extends BlazeTestSuite {
   test("A SessionFrameListener on RST_STREAM delegates to the StreamManager") {
     var observedCause: Option[Http2StreamException] = None
     val tools = new MockTools(true) {
-      override lazy val streamManager = new MockStreamManager() {
+      override lazy val streamManager = new MockStreamManager {
         override def rstStream(cause: Http2StreamException) = {
           observedCause = Some(cause)
           Continue
@@ -234,7 +234,7 @@ class SessionFrameListenerSuite extends BlazeTestSuite {
   test("A SessionFrameListener on WINDOW_UPDATE delegates to the StreamManager") {
     var observedIncrement: Option[(Int, Int)] = None
     val tools = new MockTools(true) {
-      override lazy val streamManager = new MockStreamManager() {
+      override lazy val streamManager = new MockStreamManager {
         override def flowWindowUpdate(streamId: Int, sizeIncrement: Int) = {
           observedIncrement = Some(streamId -> sizeIncrement)
           Continue
@@ -244,7 +244,7 @@ class SessionFrameListenerSuite extends BlazeTestSuite {
 
     assertEquals(tools.frameListener.onWindowUpdateFrame(1, 2), Continue)
     observedIncrement match {
-      case Some((1, 2)) => ()
+      case Some(1, 2) => ()
       case _ => fail("Unexpected result found")
     }
   }
@@ -299,7 +299,7 @@ class SessionFrameListenerSuite extends BlazeTestSuite {
       Continue)
 
     observedGoAway match {
-      case Some((1, Http2SessionException(NO_ERROR.code, "lol"))) => ()
+      case Some(1, Http2SessionException(NO_ERROR.code, "lol")) => ()
       case _ => fail("Unexpected result found")
     }
   }

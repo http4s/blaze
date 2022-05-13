@@ -83,31 +83,31 @@ class ByteToObjectStageSuite extends BlazeTestSuite {
   }
 
   test("A ByteToObjectStage should encode One frame") {
-    val msg = new MsgCodec().messageToBuffer(One(1)).head
+    val msg = new MsgCodec.messageToBuffer(One(1)).head
     assertEquals(msg.get, 0.toByte)
     assertEquals(msg.get, 1.toByte)
   }
 
   test("A ByteToObjectStage should encode Two frame") {
-    val msg = new MsgCodec().messageToBuffer(Two(2)).head
+    val msg = new MsgCodec.messageToBuffer(Two(2)).head
     assertEquals(msg.get, 1.toByte)
     assertEquals(msg.getShort, 2.toShort)
   }
 
   test("A ByteToObjectStage should decode One frame") {
-    val one = new MsgCodec().bufferToMessage(oneBuffer)
+    val one = new MsgCodec.bufferToMessage(oneBuffer)
     assertEquals(one, Some(One(1)))
   }
 
   test("A ByteToObjectStage should decode Two frame") {
-    val two = new MsgCodec().bufferToMessage(twoBuffer)
+    val two = new MsgCodec.bufferToMessage(twoBuffer)
     assertEquals(two, Some(Two(2)))
   }
 
   test("A ByteToObjectStage should hault on partial Two frame") {
     val buff = twoBuffer
     buff.limit(2)
-    val codec = new MsgCodec()
+    val codec = new MsgCodec
     val two = codec.bufferToMessage(buff)
     assert(two.isEmpty)
 

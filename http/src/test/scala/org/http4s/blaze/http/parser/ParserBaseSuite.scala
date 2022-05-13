@@ -30,12 +30,12 @@ class ParserBaseSuite extends BlazeTestSuite {
 
   test("A ParserBase.next should provide the next valid char") {
     val buffer = ByteBuffer.wrap("OK".getBytes(StandardCharsets.UTF_8))
-    assertEquals(new Base().next(buffer, false), 'O')
+    assertEquals(new Base.next(buffer, false), 'O')
   }
 
   test("A ParserBase.next should provide the EMPTY_BUFF token on empty ByteBuffer") {
     val buffer = ByteBuffer.allocate(0)
-    assertEquals(new Base().next(buffer, false), HttpTokens.EMPTY_BUFF)
+    assertEquals(new Base.next(buffer, false), HttpTokens.EMPTY_BUFF)
   }
 
   test("A ParserBase.next should throw a BadCharacter if not lenient") {

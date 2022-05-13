@@ -102,7 +102,7 @@ class ServerParserSuite extends BlazeTestSuite {
       body + " again!") + "0 \r\n" + "\r\n"
 
   test("An Http1ServerParser should fail on non-ascii char in request line") {
-    val p = new Parser()
+    val p = new Parser
     val line = "POST /enlighten/calais.asmx HTTP/1.1\r\n"
     val ch = "£"
 
@@ -116,25 +116,25 @@ class ServerParserSuite extends BlazeTestSuite {
   }
 
   test("An Http1ServerParser should parse the request line for HTTP") {
-    assert(new Parser().parseLine("POST /enlighten/calais.asmx HTTP/1.1\r\n"))
+    assert(new Parser.parseLine("POST /enlighten/calais.asmx HTTP/1.1\r\n"))
 
-    assert(new Parser().parseLine("POST /enlighten/calais.asmx HTTP/1.1\n"))
+    assert(new Parser.parseLine("POST /enlighten/calais.asmx HTTP/1.1\n"))
   }
 
   test("An Http1ServerParser should parse the request line for HTTP in segments") {
-    val p = new Parser()
+    val p = new Parser
     assertEquals(p.parseLine("POST /enlighten/cala"), false)
     assert(p.parseLine("is.asmx HTTP/1.1\r\n"))
   }
 
   test("An Http1ServerParser should parse the request line for HTTPS") {
-    val p = new Parser()
+    val p = new Parser
     assert(p.parseLine("POST /enlighten/calais.asmx HTTPS/1.1\r\n"))
     assertEquals(p.minorv, 1)
   }
 
   test("An Http1ServerParser should give bad request on invalid request line") {
-    val p = new Parser()
+    val p = new Parser
     intercept[BadMessage](p.parseLine("POST /enlighten/calais.asmx KTTPS/1.1\r\n"))
 
     p.reset()
@@ -145,7 +145,7 @@ class ServerParserSuite extends BlazeTestSuite {
   }
 
   test("An Http1ServerParser should give bad request on negative content-length") {
-    val p = new Parser()
+    val p = new Parser
     val line = "GET /enlighten/calais.asmx HTTPS/1.0\r\n"
 
     assert(p.parseLine(line))
@@ -153,7 +153,7 @@ class ServerParserSuite extends BlazeTestSuite {
   }
 
   test("An Http1ServerParser should accept multiple same length content-length headers") {
-    val p = new Parser()
+    val p = new Parser
     val line = "GET /enlighten/calais.asmx HTTPS/1.0\r\n"
     assert(p.parseLine(line))
     assert(p.parseheaders(buildHeaderString(Seq("content-length" -> "1", "content-length" -> "1"))))
@@ -161,7 +161,7 @@ class ServerParserSuite extends BlazeTestSuite {
 
   test(
     "An Http1ServerParser should give bad request on multiple different content-length headers") {
-    val p = new Parser()
+    val p = new Parser
     val line = "GET /enlighten/calais.asmx HTTPS/1.0\r\n"
 
     assert(p.parseLine(line))
@@ -171,20 +171,20 @@ class ServerParserSuite extends BlazeTestSuite {
   }
 
   test("An Http1ServerParser should match Http1.0 requests") {
-    val p = new Parser()
+    val p = new Parser
     p.parseLine("POST /enlighten/calais.asmx HTTPS/1.0\r\n")
     assertEquals(p.minorv, 0)
   }
 
   test("An Http1ServerParser should throw an invalid state if the request line is already parsed") {
-    val p = new Parser()
+    val p = new Parser
     val line = "POST /enlighten/calais.asmx HTTPS/1.0\r\n"
     p.parseLine(line)
     intercept[InvalidState](p.parseLine(line))
   }
 
   test("An Http1ServerParser should parse headers") {
-    val p = new Parser()
+    val p = new Parser
     val line = "GET /enlighten/calais.asmx HTTPS/1.0\r\n"
     p.parseLine(line)
 
@@ -194,7 +194,7 @@ class ServerParserSuite extends BlazeTestSuite {
   }
 
   test("An Http1ServerParser should fail on non-ascii char in header name") {
-    val p = new Parser()
+    val p = new Parser
     val ch = "£"
     val k = "Content-Length"
 
@@ -207,7 +207,7 @@ class ServerParserSuite extends BlazeTestSuite {
   }
 
   test("An Http1ServerParser should allow non-ascii char in header value") {
-    val p = new Parser()
+    val p = new Parser
     val ch = "£"
     val k = "Foo-Header"
     val v = "this_is_some_header_value"
@@ -223,7 +223,7 @@ class ServerParserSuite extends BlazeTestSuite {
   test("An Http1ServerParser should accept headers without values") {
     val hsStr =
       "If-Modified-Since\r\nIf-Modified-Since:\r\nIf-Modified-Since: \r\nIf-Modified-Since:\t\r\n\r\n"
-    val p = new Parser()
+    val p = new Parser
     assert(p.parseheaders(hsStr))
     assertEquals(
       p.getContentType,
@@ -233,14 +233,14 @@ class ServerParserSuite extends BlazeTestSuite {
   }
 
   test("An Http1ServerParser should need input on partial headers") {
-    val p = new Parser()
+    val p = new Parser
     assertEquals(p.parseHeaders(headers.substring(0, 20)), false)
     assert(p.parseheaders(headers.substring(20)))
     assertEquals(p.h.result(), l_headers.map { case (a, b) => (a.trim, b.trim) })
   }
 
   test("An Http1ServerParser should parse a full request") {
-    val p = new Parser()
+    val p = new Parser
     val b = strToBuffer(mockFiniteLength)
 
     assert(p.parseLine(b))
@@ -258,7 +258,7 @@ class ServerParserSuite extends BlazeTestSuite {
   }
 
   test("An Http1ServerParser should parse a full request in fragments") {
-    val p = new Parser()
+    val p = new Parser
     val b = strToBuffer(mockFiniteLength)
 
     b.limit()
@@ -281,7 +281,7 @@ class ServerParserSuite extends BlazeTestSuite {
   }
 
   test("An Http1ServerParser should parse a chunked request") {
-    val p = new Parser()
+    val p = new Parser
     val b = strToBuffer(mockChunked)
 
     assert(p.parseLine(b))
@@ -299,7 +299,7 @@ class ServerParserSuite extends BlazeTestSuite {
   }
 
   test("An Http1ServerParser should parse a chunked request with trailers") {
-    val p = new Parser()
+    val p = new Parser
     val req = mockChunked.substring(0, mockChunked.length - 2) + "Foo\r\n\r\n"
     val b = strToBuffer(req)
 
@@ -322,7 +322,7 @@ class ServerParserSuite extends BlazeTestSuite {
   }
 
   test("An Http1ServerParser should give parse a chunked request in fragments") {
-    val p = new Parser()
+    val p = new Parser
     val b = strToBuffer(mockChunked)
     val blim = b.limit()
 
@@ -349,7 +349,7 @@ class ServerParserSuite extends BlazeTestSuite {
   }
 
   test("An Http1ServerParser should give parse a chunked request in fragments with a trailer") {
-    val p = new Parser()
+    val p = new Parser
     val req = mockChunked.substring(0, mockChunked.length - 2) + "Foo\r\n\r\n"
     val b = strToBuffer(req)
     val blim = b.limit()

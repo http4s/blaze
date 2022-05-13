@@ -46,7 +46,7 @@ class ClientParserSuite extends BlazeTestSuite {
 
   private def wrap(bytes: Array[Byte]) = ByteBuffer.wrap(bytes)
 
-  private class TestParser extends Http1ClientParser() {
+  private class TestParser extends Http1ClientParser {
     val headers = new ListBuffer[(String, String)]
     var code: Int = 0
     var reason: String = null
@@ -80,7 +80,7 @@ class ClientParserSuite extends BlazeTestSuite {
   }
 
   test("A client parser should fail on non-ascii char in status line") {
-    val p = new TestParser()
+    val p = new TestParser
     val ch = "£"
 
     for (i <- 0 until resp.length) yield {

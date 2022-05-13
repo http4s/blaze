@@ -123,7 +123,7 @@ private final class WriteControllerImpl(
 
   // The meat and potatoes
   private[this] def doWrite(): Unit = {
-    val toWrite = new ArrayBuffer[ByteBuffer]()
+    val toWrite = new ArrayBuffer[ByteBuffer]
     var bytesToWrite = addDirectWrites(toWrite)
 
     // Accumulate bytes until we run out of interests or have exceeded the high-water mark

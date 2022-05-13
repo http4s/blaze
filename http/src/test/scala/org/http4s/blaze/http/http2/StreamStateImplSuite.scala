@@ -30,7 +30,7 @@ class StreamStateImplSuite extends BlazeTestSuite {
     val sessionConsumed = new scala.collection.mutable.Queue[Int]
 
     class MockTools extends mocks.MockTools(isClient = false) {
-      override lazy val streamManager: MockStreamManager = new MockStreamManager()
+      override lazy val streamManager: MockStreamManager = new MockStreamManager
 
       override lazy val sessionFlowControl: SessionFlowControl =
         new ObservingSessionFlowControl(this) {

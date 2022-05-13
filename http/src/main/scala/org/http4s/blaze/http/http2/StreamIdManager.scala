@@ -47,7 +47,7 @@ private final class StreamIdManager private (
   def isInboundId(id: Int): Boolean = {
     require(id >= 0)
     // For the client, inbound streams will be even. All non-session stream ids are > 0
-    id > 0 && (id % 2 == 0) == isClient
+    id > 0 && id % 2 == 0 == isClient
   }
 
   /** Determine if the id corresponds to an idle stream */

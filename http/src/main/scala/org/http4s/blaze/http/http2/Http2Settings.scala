@@ -129,7 +129,7 @@ object Http2Settings {
   private def settingKey(id: Int): SettingKey =
     settingsMap.getOrElse(id, SettingKey(id, s"UNKNOWN_SETTING(0x${Integer.toHexString(id)})"))
 
-  private val settingsMap = new mutable.HashMap[Int, SettingKey]()
+  private val settingsMap = new mutable.HashMap[Int, SettingKey]
 
   private def makeKey(code: Int, name: String): SettingKey = {
     val k = SettingKey(code, name)
