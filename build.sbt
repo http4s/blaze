@@ -3,19 +3,38 @@ import Dependencies._
 
 val Scala212 = "2.12.15"
 val Scala213 = "2.13.8"
-val Scala3 = "3.0.2"
+val Scala3 = "3.1.2"
+val http4sVersion = "0.23.11"
+
+ThisBuild / resolvers +=
+  "s01 snapshots".at("https://s01.oss.sonatype.org/content/repositories/snapshots/")
 
 ThisBuild / crossScalaVersions := Seq(Scala3, Scala212, Scala213)
 ThisBuild / scalaVersion := crossScalaVersions.value.filter(_.startsWith("2.")).last
-ThisBuild / tlBaseVersion := "0.15"
-ThisBuild / tlVersionIntroduced := Map(
-  "2.13" -> "0.14.5",
-  "3" -> "0.15.0"
-)
+ThisBuild / tlBaseVersion := "0.23"
 ThisBuild / tlFatalWarningsInCi := !tlIsScala3.value // See SSLStage
 
 // 11 and 17 blocked by https://github.com/http4s/blaze/issues/376
 ThisBuild / githubWorkflowJavaVersions := Seq(JavaSpec.temurin("8"))
+
+ThisBuild / developers ++= List(
+  Developer(
+    "bryce-anderson",
+    "Bryce L. Anderson",
+    "bryce.anderson22@gamil.com",
+    url("https://github.com/bryce-anderson")),
+  Developer(
+    "rossabaker",
+    "Ross A. Baker",
+    "ross@rossabaker.com",
+    url("https://github.com/rossabaker")),
+  Developer(
+    "ChristopherDavenport",
+    "Christopher Davenport",
+    "chris@christopherdavenport.tech",
+    url("https://github.com/ChristopherDavenport"))
+)
+ThisBuild / startYear := Some(2014)
 
 lazy val commonSettings = Seq(
   description := "NIO Framework for Scala",
@@ -30,25 +49,7 @@ lazy val commonSettings = Seq(
       }
     }
   },
-  run / fork := true,
-  developers ++= List(
-    Developer(
-      "bryce-anderson",
-      "Bryce L. Anderson",
-      "bryce.anderson22@gamil.com",
-      url("https://github.com/bryce-anderson")),
-    Developer(
-      "rossabaker",
-      "Ross A. Baker",
-      "ross@rossabaker.com",
-      url("https://github.com/rossabaker")),
-    Developer(
-      "ChristopherDavenport",
-      "Christopher Davenport",
-      "chris@christopherdavenport.tech",
-      url("https://github.com/ChristopherDavenport"))
-  ),
-  startYear := Some(2014)
+  run / fork := true
 )
 
 // currently only publishing tags
@@ -66,7 +67,7 @@ lazy val blaze = project
   .enablePlugins(Http4sOrgPlugin)
   .enablePlugins(NoPublishPlugin)
   .settings(commonSettings)
-  .aggregate(core, http, examples)
+  .aggregate(core, http, blazeCore, blazeServer, blazeClient, examples)
 
 lazy val testkit = Project("blaze-testkit", file("testkit"))
   .enablePlugins(NoPublishPlugin)
@@ -117,11 +118,214 @@ lazy val http = Project("blaze-http", file("http"))
   )
   .dependsOn(testkit % Test, core % "test->test;compile->compile")
 
+lazy val blazeCore = project
+  .in(file("blaze-core"))
+  .settings(
+    name := "http4s-blaze-core",
+    description := "Base library for binding blaze to http4s clients and servers",
+    startYear := Some(2014),
+    tlMimaPreviousVersions ++= (0 to 11).map(y => s"0.23.$y").toSet,
+    libraryDependencies ++= Seq(
+      "org.http4s" %% "http4s-core" % http4sVersion
+    ),
+    mimaBinaryIssueFilters := {
+      if (tlIsScala3.value)
+        Seq(
+          ProblemFilters
+            .exclude[DirectMissingMethodProblem]("org.http4s.blazecore.util.BodylessWriter.this"),
+          ProblemFilters
+            .exclude[DirectMissingMethodProblem]("org.http4s.blazecore.util.BodylessWriter.ec"),
+          ProblemFilters
+            .exclude[DirectMissingMethodProblem]("org.http4s.blazecore.util.EntityBodyWriter.ec"),
+          ProblemFilters
+            .exclude[DirectMissingMethodProblem]("org.http4s.blazecore.util.CachingChunkWriter.ec"),
+          ProblemFilters.exclude[DirectMissingMethodProblem](
+            "org.http4s.blazecore.util.CachingStaticWriter.this"
+          ),
+          ProblemFilters.exclude[DirectMissingMethodProblem](
+            "org.http4s.blazecore.util.CachingStaticWriter.ec"
+          ),
+          ProblemFilters.exclude[DirectMissingMethodProblem](
+            "org.http4s.blazecore.util.FlushingChunkWriter.ec"
+          ),
+          ProblemFilters
+            .exclude[DirectMissingMethodProblem]("org.http4s.blazecore.util.Http2Writer.this"),
+          ProblemFilters
+            .exclude[DirectMissingMethodProblem]("org.http4s.blazecore.util.Http2Writer.ec"),
+          ProblemFilters
+            .exclude[DirectMissingMethodProblem]("org.http4s.blazecore.util.IdentityWriter.this"),
+          ProblemFilters
+            .exclude[DirectMissingMethodProblem]("org.http4s.blazecore.util.IdentityWriter.ec")
+        )
+      else Seq.empty
+    }
+  )
+  .dependsOn(http)
+
+lazy val blazeServer = project
+  .in(file("blaze-server"))
+  .settings(
+    name := "http4s-blaze-server",
+    description := "blaze implementation for http4s servers",
+    startYear := Some(2014),
+    tlMimaPreviousVersions ++= (0 to 11).map(y => s"0.23.$y").toSet,
+    libraryDependencies ++= Seq(
+      "org.http4s" %% "http4s-server" % http4sVersion
+    ),
+    mimaBinaryIssueFilters := Seq(
+      ProblemFilters.exclude[DirectMissingMethodProblem](
+        "org.http4s.blaze.server.BlazeServerBuilder.this"
+      ), // private
+      ProblemFilters.exclude[DirectMissingMethodProblem](
+        "org.http4s.blaze.server.WebSocketDecoder.this"
+      ), // private
+      ProblemFilters.exclude[IncompatibleMethTypeProblem](
+        "org.http4s.blaze.server.BlazeServerBuilder.this"
+      ), // private
+      ProblemFilters.exclude[MissingClassProblem](
+        "org.http4s.blaze.server.BlazeServerBuilder$ExecutionContextConfig"
+      ), // private
+      ProblemFilters.exclude[MissingClassProblem](
+        "org.http4s.blaze.server.BlazeServerBuilder$ExecutionContextConfig$"
+      ), // private
+      ProblemFilters.exclude[MissingClassProblem](
+        "org.http4s.blaze.server.BlazeServerBuilder$ExecutionContextConfig$DefaultContext$"
+      ), // private
+      ProblemFilters.exclude[MissingClassProblem](
+        "org.http4s.blaze.server.BlazeServerBuilder$ExecutionContextConfig$ExplicitContext"
+      ), // private
+      ProblemFilters.exclude[MissingClassProblem](
+        "org.http4s.blaze.server.BlazeServerBuilder$ExecutionContextConfig$ExplicitContext$"
+      ), // private
+      ProblemFilters
+        .exclude[DirectMissingMethodProblem]("org.http4s.blaze.server.BlazeServerBuilder.this"),
+      ProblemFilters
+        .exclude[DirectMissingMethodProblem]("org.http4s.blaze.server.WebSocketDecoder.this")
+    ) ++ {
+      if (tlIsScala3.value)
+        Seq(
+          ProblemFilters
+            .exclude[DirectMissingMethodProblem]("org.http4s.blaze.server.Http1ServerStage.apply"),
+          ProblemFilters
+            .exclude[DirectMissingMethodProblem]("org.http4s.blaze.server.Http1ServerStage.apply"),
+          ProblemFilters
+            .exclude[DirectMissingMethodProblem]("org.http4s.blaze.server.ProtocolSelector.apply"),
+          ProblemFilters
+            .exclude[DirectMissingMethodProblem]("org.http4s.blaze.server.ProtocolSelector.apply"),
+          ProblemFilters.exclude[ReversedMissingMethodProblem](
+            "org.http4s.blaze.server.WebSocketSupport.maxBufferSize"
+          ),
+          ProblemFilters.exclude[ReversedMissingMethodProblem](
+            "org.http4s.blaze.server.WebSocketSupport.webSocketKey"
+          )
+        )
+      else Seq.empty,
+    }
+  )
+  .dependsOn(blazeCore % "compile;test->test")
+
+lazy val blazeClient = project
+  .in(file("blaze-client"))
+  .settings(
+    name := "http4s-blaze-client",
+    description := "blaze implementation for http4s clients",
+    startYear := Some(2014),
+    tlMimaPreviousVersions ++= (0 to 11).map(y => s"0.23.$y").toSet,
+    libraryDependencies ++= Seq(
+      "org.http4s" %% "http4s-client" % http4sVersion,
+      "org.http4s" %% "http4s-client-testkit" % "0.23.11-473-e7e64cb-SNAPSHOT" % Test
+    ),
+    mimaBinaryIssueFilters ++= Seq(
+      // private constructor
+      ProblemFilters
+        .exclude[IncompatibleMethTypeProblem]("org.http4s.blaze.client.BlazeClientBuilder.this"),
+      ProblemFilters
+        .exclude[IncompatibleMethTypeProblem]("org.http4s.blaze.client.Http1Support.this"),
+      // These are all private to blaze-client and fallout from from
+      // the deprecation of org.http4s.client.Connection
+      ProblemFilters
+        .exclude[IncompatibleMethTypeProblem]("org.http4s.blaze.client.BasicManager.invalidate"),
+      ProblemFilters
+        .exclude[IncompatibleMethTypeProblem]("org.http4s.blaze.client.BasicManager.release"),
+      ProblemFilters.exclude[MissingTypesProblem]("org.http4s.blaze.client.BlazeConnection"),
+      ProblemFilters
+        .exclude[IncompatibleMethTypeProblem]("org.http4s.blaze.client.ConnectionManager.release"),
+      ProblemFilters.exclude[IncompatibleMethTypeProblem](
+        "org.http4s.blaze.client.ConnectionManager.invalidate"
+      ),
+      ProblemFilters
+        .exclude[ReversedMissingMethodProblem]("org.http4s.blaze.client.ConnectionManager.release"),
+      ProblemFilters.exclude[ReversedMissingMethodProblem](
+        "org.http4s.blaze.client.ConnectionManager.invalidate"
+      ),
+      ProblemFilters.exclude[IncompatibleResultTypeProblem](
+        "org.http4s.blaze.client.ConnectionManager#NextConnection.connection"
+      ),
+      ProblemFilters.exclude[IncompatibleMethTypeProblem](
+        "org.http4s.blaze.client.ConnectionManager#NextConnection.copy"
+      ),
+      ProblemFilters.exclude[IncompatibleResultTypeProblem](
+        "org.http4s.blaze.client.ConnectionManager#NextConnection.copy$default$1"
+      ),
+      ProblemFilters.exclude[IncompatibleMethTypeProblem](
+        "org.http4s.blaze.client.ConnectionManager#NextConnection.this"
+      ),
+      ProblemFilters.exclude[IncompatibleMethTypeProblem](
+        "org.http4s.blaze.client.ConnectionManager#NextConnection.apply"
+      ),
+      ProblemFilters.exclude[MissingTypesProblem]("org.http4s.blaze.client.Http1Connection"),
+      ProblemFilters
+        .exclude[IncompatibleMethTypeProblem]("org.http4s.blaze.client.PoolManager.release"),
+      ProblemFilters
+        .exclude[IncompatibleMethTypeProblem]("org.http4s.blaze.client.PoolManager.invalidate"),
+      ProblemFilters
+        .exclude[IncompatibleMethTypeProblem]("org.http4s.blaze.client.BasicManager.this"),
+      ProblemFilters
+        .exclude[IncompatibleMethTypeProblem]("org.http4s.blaze.client.ConnectionManager.pool"),
+      ProblemFilters
+        .exclude[IncompatibleMethTypeProblem]("org.http4s.blaze.client.ConnectionManager.basic"),
+      ProblemFilters
+        .exclude[IncompatibleMethTypeProblem]("org.http4s.blaze.client.PoolManager.this"),
+      // inside private trait/clas/object
+      ProblemFilters
+        .exclude[DirectMissingMethodProblem]("org.http4s.blaze.client.BlazeConnection.runRequest"),
+      ProblemFilters.exclude[ReversedMissingMethodProblem](
+        "org.http4s.blaze.client.BlazeConnection.runRequest"
+      ),
+      ProblemFilters
+        .exclude[DirectMissingMethodProblem]("org.http4s.blaze.client.Http1Connection.runRequest"),
+      ProblemFilters
+        .exclude[DirectMissingMethodProblem]("org.http4s.blaze.client.Http1Connection.resetWrite"),
+      ProblemFilters.exclude[MissingClassProblem]("org.http4s.blaze.client.Http1Connection$Idle"),
+      ProblemFilters.exclude[MissingClassProblem]("org.http4s.blaze.client.Http1Connection$Idle$"),
+      ProblemFilters.exclude[MissingClassProblem]("org.http4s.blaze.client.Http1Connection$Read$"),
+      ProblemFilters
+        .exclude[MissingClassProblem]("org.http4s.blaze.client.Http1Connection$ReadWrite$"),
+      ProblemFilters.exclude[MissingClassProblem]("org.http4s.blaze.client.Http1Connection$Write$"),
+      ProblemFilters.exclude[IncompatibleResultTypeProblem](
+        "org.http4s.blaze.client.Http1Connection.isRecyclable"
+      ),
+      ProblemFilters
+        .exclude[IncompatibleResultTypeProblem]("org.http4s.blaze.client.Connection.isRecyclable"),
+      ProblemFilters
+        .exclude[ReversedMissingMethodProblem]("org.http4s.blaze.client.Connection.isRecyclable")
+    ) ++ {
+      if (tlIsScala3.value)
+        Seq(
+          ProblemFilters.exclude[IncompatibleResultTypeProblem](
+            "org.http4s.blaze.client.ConnectionManager#NextConnection._1"
+          )
+        )
+      else Seq.empty
+    }
+  )
+  .dependsOn(blazeCore % "compile;test->test")
+
 lazy val examples = Project("blaze-examples", file("examples"))
   .enablePlugins(NoPublishPlugin)
   .settings(commonSettings)
   .settings(Revolver.settings)
-  .dependsOn(http)
+  .dependsOn(blazeServer)
 
 /* Helper Functions */
 
