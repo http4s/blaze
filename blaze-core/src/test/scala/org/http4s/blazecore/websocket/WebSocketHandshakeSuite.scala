@@ -18,9 +18,9 @@ package org.http4s.blazecore.websocket
 
 import cats.effect.IO
 import cats.effect.std.Random
-import org.http4s.Http4sSuite
+import munit.CatsEffectSuite
 
-class WebSocketHandshakeSuite extends Http4sSuite {
+class WebSocketHandshakeSuite extends CatsEffectSuite {
 
   test("WebSocketHandshake should Be able to split multi value header keys") {
     val totalValue = "keep-alive, Upgrade"

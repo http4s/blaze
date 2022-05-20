@@ -23,10 +23,9 @@ import cats.effect.std.Queue
 import cats.syntax.all._
 import fs2.Stream
 import fs2.concurrent.SignallingRef
-import org.http4s.Http4sSuite
+import munit.CatsEffectSuite
 import org.http4s.blaze.pipeline.Command
 import org.http4s.blaze.pipeline.LeafBuilder
-import org.http4s.testing.DispatcherIOFixture
 import org.http4s.websocket.WebSocketFrame
 import org.http4s.websocket.WebSocketFrame._
 import org.http4s.websocket.WebSocketSeparatePipe
@@ -36,7 +35,7 @@ import java.util.concurrent.atomic.AtomicBoolean
 import scala.concurrent.ExecutionContext
 import scala.concurrent.duration._
 
-class Http4sWSStageSpec extends Http4sSuite with DispatcherIOFixture {
+class Http4sWSStageSpec extends CatsEffectSuite with DispatcherIOFixture {
   implicit val testExecutionContext: ExecutionContext = munitExecutionContext
 
   class TestWebsocketStage(

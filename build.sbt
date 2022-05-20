@@ -5,6 +5,7 @@ val Scala212 = "2.12.15"
 val Scala213 = "2.13.8"
 val Scala3 = "3.1.2"
 val http4sVersion = "0.23.11"
+val munitCatsEffectVersion = "1.0.7"
 
 ThisBuild / resolvers +=
   "s01 snapshots".at("https://s01.oss.sonatype.org/content/repositories/snapshots/")
@@ -126,7 +127,8 @@ lazy val blazeCore = project
     startYear := Some(2014),
     tlMimaPreviousVersions ++= (0 to 11).map(y => s"0.23.$y").toSet,
     libraryDependencies ++= Seq(
-      "org.http4s" %% "http4s-core" % http4sVersion
+      "org.http4s" %% "http4s-core" % http4sVersion,
+      "org.typelevel" %% "munit-cats-effect-3" % munitCatsEffectVersion % Test
     ),
     mimaBinaryIssueFilters := {
       if (tlIsScala3.value)
