@@ -50,7 +50,8 @@ lazy val commonSettings = Seq(
       }
     }
   },
-  run / fork := true
+  run / fork := true,
+  scalafmtConfig := file(".scalafmt.blaze.conf")
 )
 
 // currently only publishing tags

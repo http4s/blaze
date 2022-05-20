@@ -76,9 +76,9 @@ object ssl {
               Authority(
                 userInfo = request.uri.authority.flatMap(_.userInfo),
                 host = RegName(host),
-                port = securePort.some,
+                port = securePort.some
               )
-            ),
+            )
           )
           MovedPermanently(Location(baseUri.withPath(request.uri.path)))
         case _ =>

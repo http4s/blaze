@@ -62,7 +62,7 @@ trait BlazeClientBase extends CatsEffectSuite {
       requestTimeout: Duration = 45.seconds,
       chunkBufferMaxSize: Int = 1024,
       sslContextOption: Option[SSLContext] = None,
-      retries: Int = 0
+      retries: Int = 0,
   ): BlazeClientBuilder[IO] = {
     val builder: BlazeClientBuilder[IO] =
       BlazeClientBuilder[IO]
@@ -90,13 +90,13 @@ trait BlazeClientBase extends CatsEffectSuite {
             case _ @(Method.GET -> path) =>
               GetRoutes.getPaths.getOrElse(path.toString, NotFound())
           },
-          dispatcher
+          dispatcher,
         )
       )
       scaffold <- ServerScaffold[IO](
         num,
         secure,
-        HandlersToNettyAdapter[IO](postHandlers, getHandler)
+        HandlersToNettyAdapter[IO](postHandlers, getHandler),
       )
     } yield scaffold
 
@@ -109,7 +109,7 @@ trait BlazeClientBase extends CatsEffectSuite {
             ctx,
             HttpResponseStatus.OK,
             HandlerHelpers.utf8Text("a"),
-            closeConnection = true
+            closeConnection = true,
           )
           ()
         }
@@ -131,7 +131,7 @@ trait BlazeClientBase extends CatsEffectSuite {
           HandlerHelpers.sendResponse(ctx, HttpResponseStatus.OK)
           ()
         }
-      }
+      },
     )
 
   val server: Fixture[ServerScaffold[IO]] =
@@ -141,7 +141,7 @@ trait BlazeClientBase extends CatsEffectSuite {
 
   override val munitFixtures = List(
     server,
-    secureServer
+    secureServer,
   )
 
   implicit class ParseResultSyntax[A](self: ParseResult[A]) {

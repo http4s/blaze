@@ -38,7 +38,7 @@ class ExampleService[F[_]](implicit F: Async[F]) extends Http4sDsl[F] {
   def routes: HttpRoutes[F] =
     Router[F](
       "" -> rootRoutes,
-      "/auth" -> authRoutes,
+      "/auth" -> authRoutes
     )
 
   def rootRoutes: HttpRoutes[F] =
