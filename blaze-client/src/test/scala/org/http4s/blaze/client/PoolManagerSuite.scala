@@ -23,6 +23,7 @@ import cats.effect.std._
 import cats.implicits._
 import com.comcast.ip4s._
 import fs2.Stream
+import munit.CatsEffectSuite
 import org.http4s.client.ConnectionFailure
 import org.http4s.client.RequestKey
 import org.http4s.syntax.AllSyntax
@@ -31,7 +32,7 @@ import java.net.InetSocketAddress
 import scala.concurrent.ExecutionContext
 import scala.concurrent.duration._
 
-class PoolManagerSuite extends Http4sSuite with AllSyntax {
+class PoolManagerSuite extends CatsEffectSuite with AllSyntax {
   private val key =
     RequestKey(Uri.Scheme.http, Uri.Authority(host = Uri.Ipv4Address(ipv4"127.0.0.1")))
   private val otherKey = RequestKey(Uri.Scheme.http, Uri.Authority(host = Uri.RegName("localhost")))

@@ -20,12 +20,14 @@ package client
 import cats.effect._
 import cats.effect.kernel.Resource
 import cats.effect.std.Dispatcher
+import cats.syntax.all._
 import cats.implicits.catsSyntaxApplicativeId
 import fs2.Stream
 import io.netty.channel.ChannelHandlerContext
 import io.netty.handler.codec.http.HttpMethod
 import io.netty.handler.codec.http.HttpRequest
 import io.netty.handler.codec.http.HttpResponseStatus
+import munit.CatsEffectSuite
 import org.http4s.Status.Ok
 import org.http4s._
 import org.http4s.blaze.util.TickWheelExecutor
@@ -39,7 +41,7 @@ import javax.net.ssl.SSLContext
 import javax.net.ssl.X509TrustManager
 import scala.concurrent.duration._
 
-trait BlazeClientBase extends Http4sSuite {
+trait BlazeClientBase extends CatsEffectSuite {
   val tickWheel: TickWheelExecutor = new TickWheelExecutor(tick = 50.millis)
 
   val TrustingSslContext: IO[SSLContext] = IO.blocking {
@@ -60,7 +62,7 @@ trait BlazeClientBase extends Http4sSuite {
       requestTimeout: Duration = 45.seconds,
       chunkBufferMaxSize: Int = 1024,
       sslContextOption: Option[SSLContext] = None,
-      retries: Int = 0,
+      retries: Int = 0
   ): BlazeClientBuilder[IO] = {
     val builder: BlazeClientBuilder[IO] =
       BlazeClientBuilder[IO]
@@ -88,13 +90,13 @@ trait BlazeClientBase extends Http4sSuite {
             case _ @(Method.GET -> path) =>
               GetRoutes.getPaths.getOrElse(path.toString, NotFound())
           },
-          dispatcher,
+          dispatcher
         )
       )
       scaffold <- ServerScaffold[IO](
         num,
         secure,
-        HandlersToNettyAdapter[IO](postHandlers, getHandler),
+        HandlersToNettyAdapter[IO](postHandlers, getHandler)
       )
     } yield scaffold
 
@@ -107,7 +109,7 @@ trait BlazeClientBase extends Http4sSuite {
             ctx,
             HttpResponseStatus.OK,
             HandlerHelpers.utf8Text("a"),
-            closeConnection = true,
+            closeConnection = true
           )
           ()
         }
@@ -129,10 +131,20 @@ trait BlazeClientBase extends Http4sSuite {
           HandlerHelpers.sendResponse(ctx, HttpResponseStatus.OK)
           ()
         }
-      },
+      }
     )
 
-  val server: Fixture[ServerScaffold[IO]] = resourceSuiteFixture("http", makeScaffold(2, false))
+  val server: Fixture[ServerScaffold[IO]] =
+    ResourceSuiteLocalFixture("http", makeScaffold(2, false))
   val secureServer: Fixture[ServerScaffold[IO]] =
-    resourceSuiteFixture("https", makeScaffold(1, true))
+    ResourceSuiteLocalFixture("https", makeScaffold(1, true))
+
+  override val munitFixtures = List(
+    server,
+    secureServer
+  )
+
+  implicit class ParseResultSyntax[A](self: ParseResult[A]) {
+    def yolo: A = self.valueOr(e => sys.error(e.toString))
+  }
 }

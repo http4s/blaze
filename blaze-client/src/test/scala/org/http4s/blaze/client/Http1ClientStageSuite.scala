@@ -24,24 +24,25 @@ import cats.effect.std.Dispatcher
 import cats.effect.std.Queue
 import cats.syntax.all._
 import fs2.Stream
+import munit.CatsEffectSuite
 import org.http4s.BuildInfo
 import org.http4s.blaze.client.bits.DefaultUserAgent
 import org.http4s.blaze.pipeline.Command.EOF
 import org.http4s.blaze.pipeline.LeafBuilder
+import org.http4s.blazecore.DispatcherIOFixture
 import org.http4s.blazecore.QueueTestHead
 import org.http4s.blazecore.SeqTestHead
 import org.http4s.blazecore.TestHead
 import org.http4s.client.RequestKey
 import org.http4s.headers.`User-Agent`
 import org.http4s.syntax.all._
-import org.http4s.testing.DispatcherIOFixture
 
 import java.nio.ByteBuffer
 import java.nio.charset.StandardCharsets
 import scala.concurrent.Future
 import scala.concurrent.duration._
 
-class Http1ClientStageSuite extends Http4sSuite with DispatcherIOFixture {
+class Http1ClientStageSuite extends CatsEffectSuite with DispatcherIOFixture {
 
   private val trampoline = org.http4s.blaze.util.Execution.trampoline
 

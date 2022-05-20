@@ -19,9 +19,10 @@ package blaze
 package client
 
 import cats.effect.IO
+import munit.CatsEffectSuite
 import org.http4s.blaze.channel.ChannelOptions
 
-class BlazeClientBuilderSuite extends Http4sSuite {
+class BlazeClientBuilderSuite extends CatsEffectSuite {
   private def builder = BlazeClientBuilder[IO]
 
   test("default to empty") {

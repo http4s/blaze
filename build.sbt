@@ -4,7 +4,7 @@ import Dependencies._
 val Scala212 = "2.12.15"
 val Scala213 = "2.13.8"
 val Scala3 = "3.1.2"
-val http4sVersion = "0.23.11"
+val http4sVersion = "0.23.11-473-e7e64cb-SNAPSHOT"
 val munitCatsEffectVersion = "1.0.7"
 
 ThisBuild / resolvers +=
@@ -235,7 +235,7 @@ lazy val blazeClient = project
     tlMimaPreviousVersions ++= (0 to 11).map(y => s"0.23.$y").toSet,
     libraryDependencies ++= Seq(
       "org.http4s" %% "http4s-client" % http4sVersion,
-      "org.http4s" %% "http4s-client-testkit" % "0.23.11-473-e7e64cb-SNAPSHOT" % Test
+      "org.http4s" %% "http4s-client-testkit" % http4sVersion % Test
     ),
     mimaBinaryIssueFilters ++= Seq(
       // private constructor
