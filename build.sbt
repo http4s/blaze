@@ -328,7 +328,14 @@ lazy val examples = Project("blaze-examples", file("examples"))
   .enablePlugins(NoPublishPlugin)
   .settings(commonSettings)
   .settings(Revolver.settings)
-  .dependsOn(blazeServer)
+  .settings(
+    libraryDependencies ++= Seq(
+      "org.http4s" %% "http4s-dsl" % http4sVersion,
+      "org.http4s" %% "http4s-circe" % http4sVersion,
+      "io.circe" %% "circe-generic" % "0.14.2"
+    )
+  )
+  .dependsOn(blazeServer, blazeClient)
 
 /* Helper Functions */
 
