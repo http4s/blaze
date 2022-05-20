@@ -23,13 +23,13 @@ import cats.effect.unsafe.IORuntime
 import cats.effect.unsafe.IORuntimeConfig
 import cats.effect.unsafe.Scheduler
 import cats.syntax.all._
+import munit.CatsEffectSuite
 import munit.TestOptions
 import org.http4s.blaze.channel.ChannelOptions
 import org.http4s.dsl.io._
 import org.http4s.internal.threads._
 import org.http4s.multipart.Multipart
 import org.http4s.server.Server
-import org.http4s.testing.AutoCloseableResource
 
 import java.net.HttpURLConnection
 import java.net.URL
@@ -41,7 +41,7 @@ import scala.concurrent.ExecutionContext
 import scala.concurrent.duration._
 import scala.io.Source
 
-class BlazeServerSuite extends Http4sSuite {
+class BlazeServerSuite extends CatsEffectSuite {
 
   override implicit lazy val munitIoRuntime: IORuntime = {
     val TestScheduler: ScheduledExecutorService = {

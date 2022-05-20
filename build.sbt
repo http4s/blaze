@@ -172,7 +172,8 @@ lazy val blazeServer = project
     startYear := Some(2014),
     tlMimaPreviousVersions ++= (0 to 11).map(y => s"0.23.$y").toSet,
     libraryDependencies ++= Seq(
-      "org.http4s" %% "http4s-server" % http4sVersion
+      "org.http4s" %% "http4s-server" % http4sVersion,
+      "org.http4s" %% "http4s-dsl" % http4sVersion % Test
     ),
     mimaBinaryIssueFilters := Seq(
       ProblemFilters.exclude[DirectMissingMethodProblem](

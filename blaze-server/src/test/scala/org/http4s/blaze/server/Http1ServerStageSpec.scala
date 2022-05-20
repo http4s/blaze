@@ -23,6 +23,7 @@ import cats.effect._
 import cats.effect.kernel.Deferred
 import cats.effect.std.Dispatcher
 import cats.syntax.all._
+import munit.CatsEffectSuite
 import org.http4s.blaze.pipeline.Command.Connected
 import org.http4s.blaze.pipeline.Command.Disconnected
 import org.http4s.blaze.util.TickWheelExecutor
@@ -33,7 +34,6 @@ import org.http4s.headers.Date
 import org.http4s.headers.`Content-Length`
 import org.http4s.headers.`Transfer-Encoding`
 import org.http4s.syntax.all._
-import org.http4s.testing.ErrorReporting._
 import org.http4s.websocket.WebSocketContext
 import org.http4s.{headers => H}
 import org.typelevel.ci._
@@ -44,7 +44,7 @@ import java.nio.charset.StandardCharsets
 import scala.annotation.nowarn
 import scala.concurrent.duration._
 
-class Http1ServerStageSpec extends Http4sSuite {
+class Http1ServerStageSpec extends CatsEffectSuite {
 
   private val fixture = ResourceFixture(Resource.make(IO.delay(new TickWheelExecutor())) { twe =>
     IO.delay(twe.shutdown())
@@ -99,7 +99,7 @@ class Http1ServerStageSpec extends Http4sSuite {
       maxReqLine,
       maxHeaders,
       10 * 1024,
-      silentErrorHandler,
+      ErrorReporting.silentErrorHandler,
       30.seconds,
       30.seconds,
       tw,
