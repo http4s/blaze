@@ -29,7 +29,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest]
-        scala: [3.0.2, 2.12.15, 2.13.8]
+        scala: [3.1.2, 2.12.15, 2.13.8]
         java: [temurin@8]
     runs-on: ${{ matrix.os }}
     steps:
@@ -93,11 +93,11 @@ jobs:
 
       - name: Make target directories
         if: github.event_name != 'pull_request' && (startsWith(github.ref, 'refs/tags/v') || github.ref == 'refs/heads/main')
-        run: mkdir -p target examples/target http/target core/target testkit/target project/target
+        run: mkdir -p blaze-client/target blaze-server/target target examples/target http/target blaze-core/target core/target testkit/target project/target
 
       - name: Compress target directories
         if: github.event_name != 'pull_request' && (startsWith(github.ref, 'refs/tags/v') || github.ref == 'refs/heads/main')
-        run: tar cf targets.tar target examples/target http/target core/target testkit/target project/target
+        run: tar cf targets.tar blaze-client/target blaze-server/target target examples/target http/target blaze-core/target core/target testkit/target project/target
 
       - name: Upload target directories
         if: github.event_name != 'pull_request' && (startsWith(github.ref, 'refs/tags/v') || github.ref == 'refs/heads/main')
@@ -150,12 +150,12 @@ jobs:
             ~/Library/Caches/Coursier/v1
           key: ${{ runner.os }}-sbt-cache-v2-${{ hashFiles('**/*.sbt') }}-${{ hashFiles('project/build.properties') }}
 
-      - name: Download target directories (3.0.2)
+      - name: Download target directories (3.1.2)
         uses: actions/download-artifact@v2
         with:
-          name: target-${{ matrix.os }}-${{ matrix.java }}-3.0.2
+          name: target-${{ matrix.os }}-${{ matrix.java }}-3.1.2
 
-      - name: Inflate target directories (3.0.2)
+      - name: Inflate target directories (3.1.2)
         run: |
           tar xf targets.tar
           rm targets.tar
