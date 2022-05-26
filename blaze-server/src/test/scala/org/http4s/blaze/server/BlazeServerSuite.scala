@@ -92,7 +92,7 @@ class BlazeServerSuite extends CatsEffectSuite {
       IO.never
 
     case req @ POST -> Root / "issue2610" =>
-      req.decode[Multipart[IO]] { mp =>
+      req.decode { (mp: Multipart[IO]) =>
         Ok(mp.parts.foldMap(_.body))
       }
 
@@ -115,12 +115,12 @@ class BlazeServerSuite extends CatsEffectSuite {
   private def get(server: Server, path: String): IO[String] = IO.blocking {
     AutoCloseableResource.resource(
       Source
-        .fromURL(new URL(s"http://127.0.0.1:${server.address.getPort}$path"))
+        .fromURL(new URL(s"http://${server.address}$path"))
     )(_.getLines().mkString)
   }
 
   private def getStatus(server: Server, path: String): IO[Status] = {
-    val url = new URL(s"http://127.0.0.1:${server.address.getPort}$path")
+    val url = new URL(s"http://${server.address}$path")
     for {
       conn <- IO.blocking(url.openConnection().asInstanceOf[HttpURLConnection])
       _ = conn.setRequestMethod("GET")
@@ -131,7 +131,7 @@ class BlazeServerSuite extends CatsEffectSuite {
   }
 
   private def post(server: Server, path: String, body: String): IO[String] = IO.blocking {
-    val url = new URL(s"http://127.0.0.1:${server.address.getPort}$path")
+    val url = new URL(s"http://${server.address}$path")
     val conn = url.openConnection().asInstanceOf[HttpURLConnection]
     val bytes = body.getBytes(StandardCharsets.UTF_8)
     conn.setRequestMethod("POST")
@@ -151,7 +151,7 @@ class BlazeServerSuite extends CatsEffectSuite {
       body: String,
   ): IO[String] =
     IO.blocking {
-      val url = new URL(s"http://127.0.0.1:${server.address.getPort}$path")
+      val url = new URL(s"http://${server.address}$path")
       val conn = url.openConnection().asInstanceOf[HttpURLConnection]
       val bytes = body.getBytes(StandardCharsets.UTF_8)
       conn.setRequestMethod("POST")
