@@ -29,7 +29,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest]
-        scala: [3.1.2, 2.12.15, 2.13.8]
+        scala: [3.1.2, 2.13.8]
         java: [temurin@8]
     runs-on: ${{ matrix.os }}
     steps:
@@ -156,16 +156,6 @@ jobs:
           name: target-${{ matrix.os }}-${{ matrix.java }}-3.1.2
 
       - name: Inflate target directories (3.1.2)
-        run: |
-          tar xf targets.tar
-          rm targets.tar
-
-      - name: Download target directories (2.12.15)
-        uses: actions/download-artifact@v2
-        with:
-          name: target-${{ matrix.os }}-${{ matrix.java }}-2.12.15
-
-      - name: Inflate target directories (2.12.15)
         run: |
           tar xf targets.tar
           rm targets.tar
