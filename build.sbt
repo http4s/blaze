@@ -126,7 +126,6 @@ lazy val blazeCore = project
     name := "http4s-blaze-core",
     description := "Base library for binding blaze to http4s clients and servers",
     startYear := Some(2014),
-    tlMimaPreviousVersions ++= (0 to 11).map(y => s"0.23.$y").toSet,
     libraryDependencies ++= Seq(
       "org.http4s" %% "http4s-core" % http4sVersion,
       "org.typelevel" %% "munit-cats-effect-3" % munitCatsEffectVersion % Test
@@ -171,7 +170,6 @@ lazy val blazeServer = project
     name := "http4s-blaze-server",
     description := "blaze implementation for http4s servers",
     startYear := Some(2014),
-    tlMimaPreviousVersions ++= (0 to 11).map(y => s"0.23.$y").toSet,
     libraryDependencies ++= Seq(
       "org.http4s" %% "http4s-server" % http4sVersion,
       "org.http4s" %% "http4s-dsl" % http4sVersion % Test
@@ -234,7 +232,6 @@ lazy val blazeClient = project
     name := "http4s-blaze-client",
     description := "blaze implementation for http4s clients",
     startYear := Some(2014),
-    tlMimaPreviousVersions ++= (0 to 11).map(y => s"0.23.$y").toSet,
     libraryDependencies ++= Seq(
       "org.http4s" %% "http4s-client" % http4sVersion,
       "org.http4s" %% "http4s-client-testkit" % http4sVersion % Test
