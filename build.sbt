@@ -1,18 +1,17 @@
 import com.typesafe.tools.mima.core._
 import Dependencies._
 
-val Scala212 = "2.12.15"
 val Scala213 = "2.13.8"
 val Scala3 = "3.1.2"
-val http4sVersion = "0.23.12"
+val http4sVersion = "1.0.0-M33"
 val munitCatsEffectVersion = "1.0.7"
 
 ThisBuild / resolvers +=
   "s01 snapshots".at("https://s01.oss.sonatype.org/content/repositories/snapshots/")
 
-ThisBuild / crossScalaVersions := Seq(Scala3, Scala212, Scala213)
+ThisBuild / crossScalaVersions := Seq(Scala3, Scala213)
 ThisBuild / scalaVersion := crossScalaVersions.value.filter(_.startsWith("2.")).last
-ThisBuild / tlBaseVersion := "0.23"
+ThisBuild / tlBaseVersion := "1.0"
 ThisBuild / tlFatalWarningsInCi := !tlIsScala3.value // See SSLStage
 
 // 11 and 17 blocked by https://github.com/http4s/blaze/issues/376
@@ -126,7 +125,6 @@ lazy val blazeCore = project
     name := "http4s-blaze-core",
     description := "Base library for binding blaze to http4s clients and servers",
     startYear := Some(2014),
-    tlMimaPreviousVersions ++= (0 to 11).map(y => s"0.23.$y").toSet,
     libraryDependencies ++= Seq(
       "org.http4s" %% "http4s-core" % http4sVersion,
       "org.typelevel" %% "munit-cats-effect-3" % munitCatsEffectVersion % Test
@@ -171,7 +169,6 @@ lazy val blazeServer = project
     name := "http4s-blaze-server",
     description := "blaze implementation for http4s servers",
     startYear := Some(2014),
-    tlMimaPreviousVersions ++= (0 to 11).map(y => s"0.23.$y").toSet,
     libraryDependencies ++= Seq(
       "org.http4s" %% "http4s-server" % http4sVersion,
       "org.http4s" %% "http4s-dsl" % http4sVersion % Test
@@ -234,7 +231,6 @@ lazy val blazeClient = project
     name := "http4s-blaze-client",
     description := "blaze implementation for http4s clients",
     startYear := Some(2014),
-    tlMimaPreviousVersions ++= (0 to 11).map(y => s"0.23.$y").toSet,
     libraryDependencies ++= Seq(
       "org.http4s" %% "http4s-client" % http4sVersion,
       "org.http4s" %% "http4s-client-testkit" % http4sVersion % Test

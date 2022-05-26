@@ -233,9 +233,9 @@ private class Http2NodeStage[F[_]](
     if (error.length > 0)
       closePipeline(Some(Http2Exception.PROTOCOL_ERROR.rst(streamId, error)))
     else {
-      val body = if (endStream) EmptyBody else getBody(contentLength)
+      val entity = if (endStream) Entity.Empty else Entity(getBody(contentLength))
       val hs = Headers(headers.result())
-      val req = Request(method, path, HttpVersion.`HTTP/2`, hs, body, attributes())
+      val req = Request(method, path, HttpVersion.`HTTP/2`, hs, entity, attributes())
       executionContext.execute(new Runnable {
         def run(): Unit = {
           val action = F
@@ -275,7 +275,7 @@ private class Http2NodeStage[F[_]](
       }
     }
 
-    new Http2Writer(this, hs).writeEntityBody(resp.body).attempt.map {
+    new Http2Writer(this, hs).writeEntityBody(resp.entity).attempt.map {
       case Right(_) => closePipeline(None)
       case Left(Cmd.EOF) => stageShutdown()
       case Left(t) => closePipeline(Some(t))

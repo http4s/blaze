@@ -33,7 +33,7 @@ class WebSocketHandshakeSuite extends CatsEffectSuite {
       random <- Random.javaSecuritySecureRandom[IO]
       client <- WebSocketHandshake.clientHandshaker[IO]("www.foo.com", random)
       hs = client.initHeaders
-      valid = WebSocketHandshake.serverHandshake(hs)
+      valid <- WebSocketHandshake.serverHandshake[IO](hs)
       _ = assert(valid.isRight)
       response = client.checkResponse(valid.toOption.get)
       _ = assert(response.isRight, response.swap.toOption.get)

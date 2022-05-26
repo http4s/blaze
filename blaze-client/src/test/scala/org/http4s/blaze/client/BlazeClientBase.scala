@@ -20,8 +20,8 @@ package client
 import cats.effect._
 import cats.effect.kernel.Resource
 import cats.effect.std.Dispatcher
-import cats.syntax.all._
 import cats.implicits.catsSyntaxApplicativeId
+import cats.syntax.all._
 import fs2.Stream
 import io.netty.channel.ChannelHandlerContext
 import io.netty.handler.codec.http.HttpMethod
