@@ -16,8 +16,8 @@ and the http4s backend.
 These have minimal external dependencies.  They represent the original
 vision of the blaze project and are less functional in nature.
 
-* [`blaze-core`][./core]: the core NIO library
-* [`blaze-http`][./blaze-http]: HTTP codecs built on `blaze-core`.
+* [`blaze-core`](./core): the core NIO library 
+* [`blaze-http`](./blaze-http): HTTP codecs built on `blaze-core`.
 
 ### http4s backend
 
@@ -25,11 +25,11 @@ These modules were housed in the [http4s][http4s] repository through
 v0.23.11.  They are now maintained alongside the blaze core.  These
 modules depend on `http4s-core` and `blaze-http`.
 
-* [`http4s-blaze-core`][./blaze-core]: common, functional code to in
+* [`http4s-blaze-core`](./blaze-core): common, functional code to in
   support of the backends.  Most of this code is package private.
-* [`http4s-blaze-server`][./blaze-server]: the original server backend
+* [`http4s-blaze-server`](./blaze-server): the original server backend
   for http4s
-* [`http4s-blaze-client`][./blaze-client]: the original client backend
+* [`http4s-blaze-client`](./blaze-client): the original client backend
   for http4s
 
 ## Features
@@ -37,7 +37,7 @@ modules depend on `http4s-core` and `blaze-http`.
 - Type safe pipeline composition
 - NIO1 and NIO2 socket engines
 - SSL integration
-- HTTP/1.x and HTT/P2 codecs
+- HTTP/1.x and HTTP/2 codecs
 - Basic HTTP/1.x server and client
 - Basic HTTP/2 server
 
