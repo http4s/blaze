@@ -31,7 +31,7 @@ import scala.concurrent.{ExecutionContext, Future}
 import scala.util.control.NonFatal
 
 class SSLStageSuite extends BlazeTestSuite {
-  private implicit def ec: ExecutionContext = Execution.trampoline
+  implicit private def ec: ExecutionContext = Execution.trampoline
 
   private def debug = false
 
@@ -42,7 +42,8 @@ class SSLStageSuite extends BlazeTestSuite {
   // The battery of tests for both client and server
   private def testBattery(
       testSuitePrefix: String,
-      mkClientServerEngines: => (SSLEngine, SSLEngine)) = {
+      mkClientServerEngines: => (SSLEngine, SSLEngine),
+  ) = {
     test(testSuitePrefix + " should transcode a single buffer") {
       val (headEng, stageEng) = mkClientServerEngines
       val head = new SSLSeqHead(Seq(mkBuffer("Foo")), headEng)
@@ -92,7 +93,9 @@ class SSLStageSuite extends BlazeTestSuite {
             r <- Future(BufferTools.mkString(head.results))
             h <- Future(head.multipleWrite)
           } yield r -> h,
-          s + s -> false))
+          s + s -> false,
+        )
+      )
     }
 
     test(testSuitePrefix + " should transcode multiple single byte buffers") {

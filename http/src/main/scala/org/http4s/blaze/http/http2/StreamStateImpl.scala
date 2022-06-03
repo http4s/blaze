@@ -84,7 +84,8 @@ private abstract class StreamStateImpl(session: SessionCore) extends StreamState
     if (pendingRead != null) {
       doCloseWithError(Some(INTERNAL_ERROR.rst(streamId)))
       p.failure(
-        new IllegalStateException(s"Already have an outstanding read on a stream ($streamId)"))
+        new IllegalStateException(s"Already have an outstanding read on a stream ($streamId)")
+      )
       ()
     } else if (streamIsClosed) {
       // `.get` is safe since it must be Some if `streamIsClosed == true`
@@ -107,7 +108,7 @@ private abstract class StreamStateImpl(session: SessionCore) extends StreamState
           ()
       }
 
-  final override def writeRequest(msg: StreamFrame): Future[Unit] = {
+  override final def writeRequest(msg: StreamFrame): Future[Unit] = {
     val p = Promise[Unit]()
     // Move the work into the session executor
     session.serialExecutor.execute(new Runnable {
@@ -144,12 +145,12 @@ private abstract class StreamStateImpl(session: SessionCore) extends StreamState
   /** Called when the outbound flow window of the session or this stream has had some data acked and
     * we may now be able to make forward progress.
     */
-  final override def outboundFlowWindowChanged(): Unit =
+  override final def outboundFlowWindowChanged(): Unit =
     if (writePromise != null && flowWindow.outboundWindowAvailable)
       doRegisterWriteInterest()
 
   /** Must be called by the [[WriteController]] from within the session executor */
-  final override def performStreamWrite(): collection.Seq[ByteBuffer] = {
+  override final def performStreamWrite(): collection.Seq[ByteBuffer] = {
     interestRegistered = false
 
     // Nothing waiting to go out, so return fast
@@ -208,10 +209,11 @@ private abstract class StreamStateImpl(session: SessionCore) extends StreamState
 
   // /////////////////// Inbound messages ///////////////////////////////
 
-  final override def invokeInboundData(
+  override final def invokeInboundData(
       endStream: Boolean,
       data: ByteBuffer,
-      flowBytes: Int): MaybeError =
+      flowBytes: Int,
+  ): MaybeError =
     if (receivedEndStream)
       // https://tools.ietf.org/html/rfc7540#section-5.1 section 'half-closed'
       Error(STREAM_CLOSED.rst(streamId, s"Stream($streamId) received DATA frame after EOS"))
@@ -232,10 +234,11 @@ private abstract class StreamStateImpl(session: SessionCore) extends StreamState
       Error(FLOW_CONTROL_ERROR.goaway(s"stream($streamId) flow control error"))
 
   // Must be called with a complete headers block, either the prelude or trailers
-  final override def invokeInboundHeaders(
+  override final def invokeInboundHeaders(
       priority: Priority,
       endStream: Boolean,
-      headers: Headers): MaybeError =
+      headers: Headers,
+  ): MaybeError =
     if (receivedEndStream)
       // https://tools.ietf.org/html/rfc7540#section-5.1 section 'half-closed'
       Error(STREAM_CLOSED.rst(streamId, s"Stream($streamId received HEADERS frame after EOS"))
@@ -251,12 +254,12 @@ private abstract class StreamStateImpl(session: SessionCore) extends StreamState
 
   // ////////////////////////////////////////////////////////////////////
 
-  final override protected def doClosePipeline(cause: Option[Throwable]): Unit =
+  override protected final def doClosePipeline(cause: Option[Throwable]): Unit =
     session.serialExecutor.execute(new Runnable { def run(): Unit = doCloseWithError(cause) })
 
   // Shuts down the stream and calls `StreamManager.streamFinished` with any potential errors.
   // WARNING: this must be called from within the session executor.
-  final override def doCloseWithError(cause: Option[Throwable]): Unit =
+  override final def doCloseWithError(cause: Option[Throwable]): Unit =
     if (!streamIsClosed) {
       closedReason = cause match {
         case None => StreamStateImpl.SomeEOF

@@ -40,7 +40,8 @@ class StreamStateImplSuite extends BlazeTestSuite {
           }
           override protected def onStreamBytesConsumed(
               stream: StreamFlowWindow,
-              consumed: Int): Unit = {
+              consumed: Int,
+          ): Unit = {
             streamConsumed += consumed
             ()
           }
@@ -52,7 +53,8 @@ class StreamStateImplSuite extends BlazeTestSuite {
     lazy val streamState: StreamStateImpl = new InboundStreamStateImpl(
       session = tools,
       streamId = streamId,
-      flowWindow = tools.sessionFlowControl.newStreamFlowWindow(streamId))
+      flowWindow = tools.sessionFlowControl.newStreamFlowWindow(streamId),
+    )
   }
 
   test("A StreamState should register a write interest when it is written to") {
@@ -126,7 +128,8 @@ class StreamStateImplSuite extends BlazeTestSuite {
   }
 
   test(
-    "A StreamState should close down when receiving Disconnect Command with RST if stream not finished") {
+    "A StreamState should close down when receiving Disconnect Command with RST if stream not finished"
+  ) {
     val ctx = new Ctx
     import ctx._
 
@@ -138,7 +141,8 @@ class StreamStateImplSuite extends BlazeTestSuite {
   }
 
   test(
-    "A StreamState should close down when receiving Disconnect Command without RST if stream is finished") {
+    "A StreamState should close down when receiving Disconnect Command without RST if stream is finished"
+  ) {
     val ctx = new Ctx
     import ctx._
 
@@ -180,7 +184,8 @@ class StreamStateImplSuite extends BlazeTestSuite {
   }
 
   test(
-    "A StreamState should signal that flow bytes have been consumed to the flow control on complete pending read") {
+    "A StreamState should signal that flow bytes have been consumed to the flow control on complete pending read"
+  ) {
     val ctx = new Ctx
     import ctx._
 
@@ -195,17 +200,17 @@ class StreamStateImplSuite extends BlazeTestSuite {
 
     // We should count the flow bytes size, not the actual buffer size
     assertEquals(
-      streamState.invokeInboundData(
-        endStream = false,
-        data = BufferTools.allocate(1),
-        flowBytes = 1),
-      Continue)
+      streamState
+        .invokeInboundData(endStream = false, data = BufferTools.allocate(1), flowBytes = 1),
+      Continue,
+    )
 
     assertEquals(streamConsumed.dequeue(), 1)
   }
 
   test(
-    "A StreamState should signal that flow bytes have been consumed to the flow control on complete non-pending read") {
+    "A StreamState should signal that flow bytes have been consumed to the flow control on complete non-pending read"
+  ) {
     val ctx = new Ctx
     import ctx._
 
@@ -227,14 +232,16 @@ class StreamStateImplSuite extends BlazeTestSuite {
 
   test(
     "A StreamState should fail result in an session exception if the inbound " +
-      "stream flow window is violated by an inbound message") {
+      "stream flow window is violated by an inbound message"
+  ) {
     val ctx = new Ctx
     import ctx._
 
     tools.sessionFlowControl.sessionInboundAcked(10)
 
     assert(
-      streamState.flowWindow.streamInboundWindow < tools.sessionFlowControl.sessionInboundWindow)
+      streamState.flowWindow.streamInboundWindow < tools.sessionFlowControl.sessionInboundWindow
+    )
 
     // Need to open the stream
     assertEquals(streamState.invokeInboundHeaders(Priority.NoPriority, false, Seq.empty), Continue)
@@ -243,7 +250,8 @@ class StreamStateImplSuite extends BlazeTestSuite {
     streamState.invokeInboundData(
       endStream = false,
       data = BufferTools.emptyBuffer,
-      flowBytes = streamState.flowWindow.streamInboundWindow + 1) match {
+      flowBytes = streamState.flowWindow.streamInboundWindow + 1,
+    ) match {
       case Error(ex: Http2SessionException) =>
         assertEquals(ex.code, Http2Exception.FLOW_CONTROL_ERROR.code)
       case _ =>
@@ -253,7 +261,8 @@ class StreamStateImplSuite extends BlazeTestSuite {
 
   test(
     "A StreamState should fail result in an session exception if the inbound session " +
-      "flow window is violated by an inbound message") {
+      "flow window is violated by an inbound message"
+  ) {
     val ctx = new Ctx
     import ctx._
 
@@ -263,7 +272,8 @@ class StreamStateImplSuite extends BlazeTestSuite {
     streamState.flowWindow.streamInboundAcked(10)
 
     assert(
-      streamState.flowWindow.streamInboundWindow > tools.sessionFlowControl.sessionInboundWindow)
+      streamState.flowWindow.streamInboundWindow > tools.sessionFlowControl.sessionInboundWindow
+    )
 
     // Need to open the stream
     assertEquals(streamState.invokeInboundHeaders(Priority.NoPriority, false, Seq.empty), Continue)
@@ -272,7 +282,8 @@ class StreamStateImplSuite extends BlazeTestSuite {
     streamState.invokeInboundData(
       endStream = false,
       data = BufferTools.emptyBuffer,
-      flowBytes = tools.sessionFlowControl.sessionInboundWindow + 1) match {
+      flowBytes = tools.sessionFlowControl.sessionInboundWindow + 1,
+    ) match {
       case Error(ex: Http2SessionException) =>
         assertEquals(ex.code, Http2Exception.FLOW_CONTROL_ERROR.code)
       case _ =>

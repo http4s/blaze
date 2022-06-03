@@ -71,13 +71,13 @@ abstract class TimeoutStageBase[T](timeout: Duration, exec: TickWheelExecutor)
     super.stageShutdown()
   }
 
-  final protected def resetTimeout(): Unit =
+  protected final def resetTimeout(): Unit =
     setAndCancel(exec.schedule(killswitch, timeout))
 
-  final protected def cancelTimeout(): Unit =
+  protected final def cancelTimeout(): Unit =
     setAndCancel(Cancelable.NoopCancel)
 
-  final protected def startTimeout(): Unit = resetTimeout()
+  protected final def startTimeout(): Unit = resetTimeout()
 }
 
 private object TimeoutStageBase {
