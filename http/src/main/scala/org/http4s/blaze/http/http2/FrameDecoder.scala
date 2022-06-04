@@ -84,7 +84,9 @@ private class FrameDecoder(localSettings: Http2Settings, listener: FrameListener
         case _: BufferUnderflowException =>
           Error(
             FRAME_SIZE_ERROR.goaway(
-              s"Frame type ${hexStr(frameType.toInt)} and size $len underflowed"))
+              s"Frame type ${hexStr(frameType.toInt)} and size $len underflowed"
+            )
+          )
       } finally {
         // reset buffer limits
         buffer.limit(oldLimit)
@@ -172,7 +174,8 @@ private class FrameDecoder(localSettings: Http2Settings, listener: FrameListener
               priority,
               Flags.END_HEADERS(flags),
               Flags.END_STREAM(flags),
-              buffer.slice())
+              buffer.slice(),
+            )
         }
     }
 
@@ -229,7 +232,9 @@ private class FrameDecoder(localSettings: Http2Settings, listener: FrameListener
       else if (promisedId == streamId)
         Error(
           PROTOCOL_ERROR.goaway(
-            s"PUSH_PROMISE frame with promised stream of the same stream ${hexStr(streamId)}"))
+            s"PUSH_PROMISE frame with promised stream of the same stream ${hexStr(streamId)}"
+          )
+        )
       else {
         val r = limitPadding(padding, buffer)
         if (!r.success) r
@@ -238,7 +243,8 @@ private class FrameDecoder(localSettings: Http2Settings, listener: FrameListener
             streamId,
             promisedId,
             Flags.END_HEADERS(flags),
-            buffer.slice())
+            buffer.slice(),
+          )
       }
     }
 
@@ -275,7 +281,9 @@ private class FrameDecoder(localSettings: Http2Settings, listener: FrameListener
     if (buffer.remaining != 4)
       Error(
         FRAME_SIZE_ERROR.goaway(
-          s"WindowUpdate with invalid frame size. Expected 4, found ${buffer.remaining}"))
+          s"WindowUpdate with invalid frame size. Expected 4, found ${buffer.remaining}"
+        )
+      )
     else {
       val size = buffer.getInt() & Masks.INT31
       if (size != 0) listener.onWindowUpdateFrame(streamId, size)
@@ -293,7 +301,8 @@ private class FrameDecoder(localSettings: Http2Settings, listener: FrameListener
   private[this] def decodeContinuationFrame(
       buffer: ByteBuffer,
       streamId: Int,
-      flags: Byte): Result =
+      flags: Byte,
+  ): Result =
     if (streamId == 0) {
       val msg = s"CONTINUATION frame with invalid stream dependency on 0x0"
       Error(PROTOCOL_ERROR.goaway(msg))
@@ -335,7 +344,8 @@ private object FrameDecoder {
       // frame payload or greater, the recipient MUST treat this as a
       // connection error (Section 5.4.1) of type PROTOCOL_ERROR.
       Error(
-        PROTOCOL_ERROR.goaway(s"Padding ($padding) exceeds payload length: ${buffer.remaining}"))
+        PROTOCOL_ERROR.goaway(s"Padding ($padding) exceeds payload length: ${buffer.remaining}")
+      )
     else {
       buffer.limit(buffer.limit() - padding)
       Continue

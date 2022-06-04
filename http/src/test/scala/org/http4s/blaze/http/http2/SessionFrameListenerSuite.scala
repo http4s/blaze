@@ -34,7 +34,8 @@ class SessionFrameListenerSuite extends BlazeTestSuite {
       new HeaderDecoder(
         localSettings.maxHeaderListSize,
         true, // discard overflow headers
-        localSettings.headerTableSize)
+        localSettings.headerTableSize,
+      )
 
     lazy val newInboundStream: Option[Int => LeafBuilder[StreamFrame]] = None
 
@@ -57,7 +58,8 @@ class SessionFrameListenerSuite extends BlazeTestSuite {
       streamId = os.streamId,
       priority = Priority.NoPriority,
       endStream = false,
-      headers = hs)
+      headers = hs,
+    )
 
     os.readRequest(1).value match {
       case Some(Success(HeadersFrame(Priority.NoPriority, false, hss))) =>
@@ -68,7 +70,8 @@ class SessionFrameListenerSuite extends BlazeTestSuite {
   }
 
   test(
-    "A SessionFrameListener should on HEADERS frame initiate a new stream for idle inbound stream (server)") {
+    "A SessionFrameListener should on HEADERS frame initiate a new stream for idle inbound stream (server)"
+  ) {
     val head = new BasicTail[StreamFrame]("")
     val tools = new MockTools(isClient = false) {
       override lazy val newInboundStream = Some((_: Int) => LeafBuilder(head))
@@ -80,7 +83,8 @@ class SessionFrameListenerSuite extends BlazeTestSuite {
       streamId = 1,
       priority = Priority.NoPriority,
       endStream = false,
-      headers = hs)
+      headers = hs,
+    )
 
     assert(tools.streamManager.get(1).isDefined)
     head.channelRead().value match {
@@ -124,7 +128,7 @@ class SessionFrameListenerSuite extends BlazeTestSuite {
         override def handlePushPromise(
             streamId: Int,
             promisedId: Int,
-            headers: Headers
+            headers: Headers,
         ) = {
           sId = streamId
           pId = promisedId
@@ -158,7 +162,8 @@ class SessionFrameListenerSuite extends BlazeTestSuite {
   }
 
   test(
-    "A SessionFrameListener on DATA frame update session flow bytes as consumed for closed streams") {
+    "A SessionFrameListener on DATA frame update session flow bytes as consumed for closed streams"
+  ) {
     val tools = new MockTools(isClient = true)
 
     val os = tools.streamManager.newOutboundStream()
@@ -289,14 +294,15 @@ class SessionFrameListenerSuite extends BlazeTestSuite {
     val tools = new MockTools(true) {
       override def invokeGoAway(
           lastHandledOutboundStream: Int,
-          reason: Http2SessionException
+          reason: Http2SessionException,
       ): Unit =
         observedGoAway = Some(lastHandledOutboundStream -> reason)
     }
 
     assertEquals(
       tools.frameListener.onGoAwayFrame(1, NO_ERROR.code, "lol".getBytes(StandardCharsets.UTF_8)),
-      Continue)
+      Continue,
+    )
 
     observedGoAway match {
       case Some((1, Http2SessionException(NO_ERROR.code, "lol"))) => ()

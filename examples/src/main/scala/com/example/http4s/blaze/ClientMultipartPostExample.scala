@@ -37,14 +37,14 @@ object ClientMultipartPostExample extends IOApp with Http4sClientDsl[IO] {
     val url = Uri(
       scheme = Some(Scheme.http),
       authority = Some(Authority(host = RegName("httpbin.org"))),
-      path = path"/post"
+      path = path"/post",
     )
 
     multiparts
       .multipart(
         Vector(
           Part.formData("text", "This is text."),
-          Part.fileData[IO]("BALL", bottle, `Content-Type`(MediaType.image.png))
+          Part.fileData[IO]("BALL", bottle, `Content-Type`(MediaType.image.png)),
         )
       )
       .flatMap { multipart =>

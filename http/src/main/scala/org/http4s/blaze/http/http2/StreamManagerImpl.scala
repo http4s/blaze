@@ -24,7 +24,7 @@ import scala.concurrent.{Future, Promise}
 
 private final class StreamManagerImpl(
     session: SessionCore,
-    inboundStreamBuilder: Option[Int => LeafBuilder[StreamFrame]]
+    inboundStreamBuilder: Option[Int => LeafBuilder[StreamFrame]],
 ) extends StreamManager {
   private[this] val logger = org.log4s.getLogger
   private[this] val streams = new HashMap[Int, StreamState]
@@ -106,7 +106,9 @@ private final class StreamManagerImpl(
     } else if (inboundStreamBuilder.isEmpty)
       Left(
         PROTOCOL_ERROR.goaway(
-          s"Client received request for new inbound stream ($streamId) without push promise"))
+          s"Client received request for new inbound stream ($streamId) without push promise"
+        )
+      )
     else if (drainingP.isDefined)
       Left(REFUSED_STREAM.rst(streamId, "Session draining"))
     else if (session.localSettings.maxConcurrentStreams <= size)
@@ -169,11 +171,12 @@ private final class StreamManagerImpl(
   override def handlePushPromise(streamId: Int, promisedId: Int, headers: Headers): Result =
     if (session.idManager.isIdleOutboundId(streamId))
       Error(
-        PROTOCOL_ERROR.goaway(
-          s"Received PUSH_PROMISE for associated to an idle stream ($streamId)"))
+        PROTOCOL_ERROR.goaway(s"Received PUSH_PROMISE for associated to an idle stream ($streamId)")
+      )
     else if (!session.idManager.isInboundId(promisedId))
       Error(
-        PROTOCOL_ERROR.goaway(s"Received PUSH_PROMISE frame with illegal stream id: $promisedId"))
+        PROTOCOL_ERROR.goaway(s"Received PUSH_PROMISE frame with illegal stream id: $promisedId")
+      )
     else if (!session.idManager.observeInboundId(promisedId))
       Error(PROTOCOL_ERROR.goaway("Received PUSH_PROMISE frame on non-idle stream"))
     else {

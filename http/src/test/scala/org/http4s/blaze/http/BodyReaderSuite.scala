@@ -66,7 +66,7 @@ class BodyReaderSuite extends BlazeTestSuite {
   test("A BodyReader.accumulate(max, bodyReader) should accumulate multiple buffers") {
     val reader = new MultiByteReader(
       ByteBuffer.allocate(10),
-      ByteBuffer.allocate(1)
+      ByteBuffer.allocate(1),
     )
 
     val bytes = BodyReader.accumulate(Int.MaxValue, reader).map(_.remaining())

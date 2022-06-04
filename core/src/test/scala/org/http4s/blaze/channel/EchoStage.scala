@@ -28,9 +28,9 @@ class EchoStage extends TailStage[ByteBuffer] {
 
   val msg = "echo: ".getBytes
 
-  private implicit def ec: ExecutionContext = util.Execution.trampoline
+  implicit private def ec: ExecutionContext = util.Execution.trampoline
 
-  final override def stageStartup(): Unit =
+  override final def stageStartup(): Unit =
     channelRead().onComplete {
       case Success(buff) =>
         val b = ByteBuffer.allocate(buff.remaining() + msg.length)

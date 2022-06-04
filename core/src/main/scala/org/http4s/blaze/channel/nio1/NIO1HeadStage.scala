@@ -72,7 +72,8 @@ private[nio1] object NIO1HeadStage {
   private def performWrite(
       ch: NIO1ClientChannel,
       scratch: ByteBuffer,
-      buffers: Array[ByteBuffer]): WriteResult =
+      buffers: Array[ByteBuffer],
+  ): WriteResult =
     try
       if (BufferTools.areDirectOrEmpty(buffers)) {
         ch.write(buffers)
@@ -121,7 +122,7 @@ private[nio1] object NIO1HeadStage {
 private[nio1] final class NIO1HeadStage(
     ch: NIO1ClientChannel,
     selectorLoop: SelectorLoop,
-    key: SelectionKey
+    key: SelectionKey,
 ) extends ChannelHead
     with Selectable {
   import NIO1HeadStage._
@@ -198,7 +199,7 @@ private[nio1] final class NIO1HeadStage(
 
   // /  channel reading bits //////////////////////////////////////////////
 
-  final override def readRequest(size: Int): Future[ByteBuffer] = {
+  override final def readRequest(size: Int): Future[ByteBuffer] = {
     logger.trace(s"NIOHeadStage received a read request of size $size")
     val p = Promise[ByteBuffer]()
 
@@ -238,10 +239,10 @@ private[nio1] final class NIO1HeadStage(
 
   // / channel write bits /////////////////////////////////////////////////
 
-  final override def writeRequest(data: ByteBuffer): Future[Unit] =
+  override final def writeRequest(data: ByteBuffer): Future[Unit] =
     writeRequest(data :: Nil)
 
-  final override def writeRequest(data: collection.Seq[ByteBuffer]): Future[Unit] = {
+  override final def writeRequest(data: collection.Seq[ByteBuffer]): Future[Unit] = {
     logger.trace(s"NIO1HeadStage Write Request: $data")
     val p = Promise[Unit]()
     selectorLoop.executeTask(new selectorLoop.LoopRunnable {
@@ -289,9 +290,9 @@ private[nio1] final class NIO1HeadStage(
 
   // /////////////////////////////// Channel Ops ////////////////////////////////////////
 
-  final override def close(cause: Option[Throwable]): Unit = doClosePipeline(cause)
+  override final def close(cause: Option[Throwable]): Unit = doClosePipeline(cause)
 
-  final override protected def doClosePipeline(cause: Option[Throwable]): Unit = {
+  override protected final def doClosePipeline(cause: Option[Throwable]): Unit = {
     // intended to be called from within the SelectorLoop but if
     // it's closed it will be performed in the current thread
     def doClose(t: Throwable): Unit = {
@@ -324,7 +325,8 @@ private[nio1] final class NIO1HeadStage(
       selectorLoop.executeTask(new Runnable {
         def run(): Unit = {
           logger.trace(
-            s"closeWithError($cause); readPromise: $readPromise, writePromise: $writePromise")
+            s"closeWithError($cause); readPromise: $readPromise, writePromise: $writePromise"
+          )
           val c = cause match {
             case Some(ex) =>
               logger.error(cause.get)("Abnormal NIO1HeadStage termination")

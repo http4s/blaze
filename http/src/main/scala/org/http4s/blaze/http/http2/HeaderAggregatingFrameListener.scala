@@ -35,8 +35,8 @@ import Http2Exception.PROTOCOL_ERROR
   */
 private abstract class HeaderAggregatingFrameListener(
     localSettings: Http2Settings,
-    headerDecoder: HeaderDecoder)
-    extends FrameListener {
+    headerDecoder: HeaderDecoder,
+) extends FrameListener {
   private[this] sealed trait PartialFrame {
     def streamId: Int
     var buffer: ByteBuffer
@@ -46,8 +46,8 @@ private abstract class HeaderAggregatingFrameListener(
       streamId: Int,
       priority: Priority,
       endStream: Boolean,
-      var buffer: ByteBuffer)
-      extends PartialFrame
+      var buffer: ByteBuffer,
+  ) extends PartialFrame
 
   private[this] case class PPromise(streamId: Int, promisedId: Int, var buffer: ByteBuffer)
       extends PartialFrame
@@ -71,7 +71,7 @@ private abstract class HeaderAggregatingFrameListener(
       streamId: Int,
       priority: Priority,
       endStream: Boolean,
-      headers: Headers
+      headers: Headers,
   ): Result
 
   /** Called on the successful receipt of a complete PUSH_PROMISE block
@@ -90,19 +90,22 @@ private abstract class HeaderAggregatingFrameListener(
   final def setMaxHeaderTableSize(maxSize: Int): Unit =
     headerDecoder.setMaxHeaderTableSize(maxSize)
 
-  final override def inHeaderSequence: Boolean = hInfo != null
+  override final def inHeaderSequence: Boolean = hInfo != null
 
-  final override def onHeadersFrame(
+  override final def onHeadersFrame(
       streamId: Int,
       priority: Priority,
       endHeaders: Boolean,
       endStream: Boolean,
-      buffer: ByteBuffer
+      buffer: ByteBuffer,
   ): Result =
     if (inHeaderSequence)
       Error(
-        PROTOCOL_ERROR.goaway(s"Received HEADERS frame while in in headers sequence. Stream id " +
-          FrameDecoder.hexStr(streamId)))
+        PROTOCOL_ERROR.goaway(
+          s"Received HEADERS frame while in in headers sequence. Stream id " +
+            FrameDecoder.hexStr(streamId)
+        )
+      )
     else if (buffer.remaining > localSettings.maxHeaderListSize)
       headerSizeError(buffer.remaining, streamId)
     else if (endHeaders) {
@@ -117,11 +120,11 @@ private abstract class HeaderAggregatingFrameListener(
       Continue
     }
 
-  final override def onPushPromiseFrame(
+  override final def onPushPromiseFrame(
       streamId: Int,
       promisedId: Int,
       endHeaders: Boolean,
-      buffer: ByteBuffer
+      buffer: ByteBuffer,
   ): Result =
     if (localSettings.maxHeaderListSize < buffer.remaining)
       headerSizeError(buffer.remaining, streamId)
@@ -137,10 +140,10 @@ private abstract class HeaderAggregatingFrameListener(
       Continue
     }
 
-  final override def onContinuationFrame(
+  override final def onContinuationFrame(
       streamId: Int,
       endHeaders: Boolean,
-      buffer: ByteBuffer
+      buffer: ByteBuffer,
   ): Result =
     if (hInfo.streamId != streamId) {
       val msg = s"Invalid CONTINUATION frame: stream Id's don't match. " +
