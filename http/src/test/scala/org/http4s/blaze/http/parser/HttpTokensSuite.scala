@@ -37,8 +37,8 @@ class HttpTokensSuite extends BlazeTestSuite {
     assert(
       (0 until 256)
         .forall { i =>
-          HttpTokens.isHexChar(i.toByte) == (smalChrs.contains(i.toChar) || bigChrs.contains(
-            i.toChar))
+          HttpTokens
+            .isHexChar(i.toByte) == (smalChrs.contains(i.toChar) || bigChrs.contains(i.toChar))
         }
     )
   }

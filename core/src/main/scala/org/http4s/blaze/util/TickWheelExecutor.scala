@@ -237,13 +237,13 @@ class TickWheelExecutor(wheelSize: Int = DefaultWheelSize, val tick: Duration = 
     * @param next
     *   next Node in the list or `tailNode` if this is the last element
     */
-  final private class Node(
+  private final class Node(
       r: Runnable,
       ec: ExecutionContext,
       val expiration: Long,
       var prev: Node,
       var next: Node,
-      var canceled: Boolean = false
+      var canceled: Boolean = false,
   ) extends Cancelable {
 
     /** Remove this node from its linked list */

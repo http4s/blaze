@@ -23,7 +23,7 @@ import scala.concurrent.Future
 import scala.concurrent.ExecutionContext
 
 class PipelineSuite extends BlazeTestSuite {
-  private implicit def ec: ExecutionContext = Execution.trampoline
+  implicit private def ec: ExecutionContext = Execution.trampoline
 
   class IntHead extends HeadStage[Int] {
     def name = "IntHead"

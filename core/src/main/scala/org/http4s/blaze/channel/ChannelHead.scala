@@ -47,6 +47,6 @@ object ChannelHead {
     "Connection reset", // Found on Linux, Java 13
     "An existing connection was forcibly closed by the remote host", // Found on Windows
     "Broken pipe", // also found on Linux
-    "The specified network name is no longer available.\r\n" // Found on Windows NIO2
+    "The specified network name is no longer available.\r\n", // Found on Windows NIO2
   )
 }

@@ -30,23 +30,23 @@ private abstract class OutboundStreamStateImpl(session: SessionCore)
 
   protected def registerStream(): Option[Int]
 
-  final override def initialized: Boolean = lazyStreamId != -1
+  override final def initialized: Boolean = lazyStreamId != -1
 
-  final override def name: String = {
+  override final def name: String = {
     val id = if (initialized) Integer.toString(streamId) else "uninitialized"
     s"OutboundStreamState($id)"
   }
 
-  final override def streamId: Int =
+  override final def streamId: Int =
     if (initialized) lazyStreamId
     else uninitializedException()
 
-  final override def flowWindow: StreamFlowWindow =
+  override final def flowWindow: StreamFlowWindow =
     if (initialized) lazyFlowWindow
     else uninitializedException()
 
   // We need to establish whether the stream has been initialized yet and try to acquire a new ID if not
-  final override protected def invokeStreamWrite(msg: StreamFrame, p: Promise[Unit]): Unit =
+  override protected final def invokeStreamWrite(msg: StreamFrame, p: Promise[Unit]): Unit =
     if (initialized)
       super.invokeStreamWrite(msg, p)
     else if (session.state.closing) {

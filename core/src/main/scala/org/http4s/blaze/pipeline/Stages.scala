@@ -45,7 +45,7 @@ import scala.util.control.NonFatal
  */
 
 sealed trait Stage {
-  final protected val logger = getLogger(this.getClass)
+  protected final val logger = getLogger(this.getClass)
 
   def name: String
 

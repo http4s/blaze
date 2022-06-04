@@ -36,7 +36,8 @@ class Benchmarks extends BlazeTestSuite {
 
   val mockChunked =
     request + chunked + headers + toChunk(body) + toChunk(
-      ", " + body + " again!") + "0 \r\n" + "\r\n"
+      ", " + body + " again!"
+    ) + "0 \r\n" + "\r\n"
 
   def toChunk(str: String): String = {
     val len = Integer.toHexString(str.length) + "\r\n"

@@ -57,12 +57,14 @@ class ActorSuite extends FunSuite {
         flag.set(t)
         latch.countDown()
       },
-      global)
+      global,
+    )
 
     for (_ <- 0 until senders)
       global.execute(() =>
         for (_ <- 0 until messages)
-          a ! Continuation(_ => latch.countDown()))
+          a ! Continuation(_ => latch.countDown())
+      )
 
     assert(latch.await(15, TimeUnit.SECONDS))
 
@@ -102,7 +104,8 @@ class ActorSuite extends FunSuite {
   }
 
   test(
-    "An actor under load shouldn't have a stack overflow dueling actors with a trampolining ec") {
+    "An actor under load shouldn't have a stack overflow dueling actors with a trampolining ec"
+  ) {
     val latch = new CountDownLatch(1)
     implicit val ec = Execution.trampoline
 

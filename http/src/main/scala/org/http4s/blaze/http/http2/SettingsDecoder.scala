@@ -69,7 +69,8 @@ private[blaze] object SettingsDecoder {
   def decodeSettingsFrame(
       buffer: ByteBuffer,
       streamId: Int,
-      flags: Byte): Either[Http2Exception, SettingsFrame] = {
+      flags: Byte,
+  ): Either[Http2Exception, SettingsFrame] = {
     import Http2Exception._
 
     val len = buffer.remaining

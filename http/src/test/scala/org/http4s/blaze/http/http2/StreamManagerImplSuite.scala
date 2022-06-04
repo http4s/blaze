@@ -57,7 +57,8 @@ class StreamManagerImplSuite extends BlazeTestSuite {
     assert(
       tools.streamManager
         .drain(100, Http2Exception.NO_ERROR.goaway("whatever"))
-        .isCompleted)
+        .isCompleted
+    )
 
     // Since the streams are closed stream operations should fail
     val hs = HeadersFrame(Priority.NoPriority, false, Seq.empty)
@@ -98,7 +99,8 @@ class StreamManagerImplSuite extends BlazeTestSuite {
   }
 
   test(
-    "A StreamManagerImpl close streams should new streams are rejected after a GOAWAY is issued") {
+    "A StreamManagerImpl close streams should new streams are rejected after a GOAWAY is issued"
+  ) {
     val tools = new MockTools(isClient = false)
 
     // Need a stream so it doesn't all shut down
@@ -149,7 +151,8 @@ class StreamManagerImplSuite extends BlazeTestSuite {
   }
 
   test(
-    "A StreamManagerImpl create streams should reject inbound streams with for non-idle streams") {
+    "A StreamManagerImpl create streams should reject inbound streams with for non-idle streams"
+  ) {
     val tools = new MockTools(isClient = false)
 
     assert(tools.streamManager.newInboundStream(1).isRight)
@@ -164,7 +167,8 @@ class StreamManagerImplSuite extends BlazeTestSuite {
   }
 
   test(
-    "A StreamManagerImpl create streams should reject inbound streams when MAX_CONCURRENT_STREAMS hit") {
+    "A StreamManagerImpl create streams should reject inbound streams when MAX_CONCURRENT_STREAMS hit"
+  ) {
     val tools = new MockTools(isClient = false)
 
     tools.localSettings.maxConcurrentStreams = 1
@@ -211,18 +215,20 @@ class StreamManagerImplSuite extends BlazeTestSuite {
   }
 
   test(
-    "A StreamManagerImpl flow windows should update streams flow window on a successful initial flow window change") {
+    "A StreamManagerImpl flow windows should update streams flow window on a successful initial flow window change"
+  ) {
     // https://tools.ietf.org/html/rfc7540#section-6.9.2
     val tools = new MockTools(isClient = false)
 
     val Right(s) = tools.streamManager.newInboundStream(1)
     val startFlowWindow = s.flowWindow.outboundWindow
     assertEquals(tools.streamManager.initialFlowWindowChange(1), Continue)
-    assertEquals(s.flowWindow.streamOutboundWindow, (startFlowWindow + 1))
+    assertEquals(s.flowWindow.streamOutboundWindow, startFlowWindow + 1)
   }
 
   test(
-    "A StreamManagerImpl flow windows should close streams flow window on a failed initial flow window change") {
+    "A StreamManagerImpl flow windows should close streams flow window on a failed initial flow window change"
+  ) {
     // https://tools.ietf.org/html/rfc7540#section-6.9.2
     val tools = new MockTools(isClient = false)
 
@@ -240,7 +246,8 @@ class StreamManagerImplSuite extends BlazeTestSuite {
   }
 
   test(
-    "A StreamManagerImpl flow windows should results in GOAWAY(PROTOCOL_ERROR) for update on idle stream") {
+    "A StreamManagerImpl flow windows should results in GOAWAY(PROTOCOL_ERROR) for update on idle stream"
+  ) {
     new MockTools(isClient = true).streamManager
       .flowWindowUpdate(1, 1) match {
       case Error(ex: Http2SessionException) =>
@@ -251,13 +258,14 @@ class StreamManagerImplSuite extends BlazeTestSuite {
   }
 
   test(
-    "A StreamManagerImpl flow windows should handle successful flow window updates for streams") {
+    "A StreamManagerImpl flow windows should handle successful flow window updates for streams"
+  ) {
     val tools = new MockTools(isClient = false)
 
     val Right(s) = tools.streamManager.newInboundStream(1)
     val initFlowWindow = s.flowWindow.outboundWindow
     assertEquals(tools.streamManager.flowWindowUpdate(streamId = 1, sizeIncrement = 1), Continue)
-    assertEquals(s.flowWindow.streamOutboundWindow, (initFlowWindow + 1))
+    assertEquals(s.flowWindow.streamOutboundWindow, initFlowWindow + 1)
   }
 
   test("A StreamManagerImpl flow windows should handle failed flow window updates for streams") {
@@ -265,7 +273,8 @@ class StreamManagerImplSuite extends BlazeTestSuite {
 
     val Right(s) = tools.streamManager.newInboundStream(1)
     assert(
-      s.flowWindow.streamOutboundAcked(Int.MaxValue - s.flowWindow.streamOutboundWindow).isEmpty)
+      s.flowWindow.streamOutboundAcked(Int.MaxValue - s.flowWindow.streamOutboundWindow).isEmpty
+    )
 
     tools.streamManager.flowWindowUpdate(streamId = 1, sizeIncrement = 1) match {
       case Error(ex: Http2StreamException) =>
@@ -276,7 +285,8 @@ class StreamManagerImplSuite extends BlazeTestSuite {
   }
 
   test(
-    "A StreamManagerImpl flow windows should handle successful flow window updates for the session") {
+    "A StreamManagerImpl flow windows should handle successful flow window updates for the session"
+  ) {
     var sessionAcked: Option[Int] = None
     val tools = new MockTools(true) {
       override lazy val sessionFlowControl: SessionFlowControl = new MockSessionFlowControl {
@@ -292,7 +302,8 @@ class StreamManagerImplSuite extends BlazeTestSuite {
   }
 
   test(
-    "A StreamManagerImpl flow windows should handle failed flow window updates for the session") {
+    "A StreamManagerImpl flow windows should handle failed flow window updates for the session"
+  ) {
     var sessionAcked: Option[Int] = None
     val tools = new MockTools(true) {
       override lazy val sessionFlowControl: SessionFlowControl = new MockSessionFlowControl {
@@ -313,7 +324,8 @@ class StreamManagerImplSuite extends BlazeTestSuite {
   }
 
   test(
-    "A StreamManagerImpl flow windows should PUSH_PROMISE frames are rejected by default by the client") {
+    "A StreamManagerImpl flow windows should PUSH_PROMISE frames are rejected by default by the client"
+  ) {
     val tools = new MockTools(isClient = true)
 
     tools.streamManager
@@ -368,7 +380,8 @@ class StreamManagerImplSuite extends BlazeTestSuite {
   }
 
   test(
-    "A StreamManagerImpl flow windows should PUSH_PROMISE with promised stream which is not idle") {
+    "A StreamManagerImpl flow windows should PUSH_PROMISE with promised stream which is not idle"
+  ) {
     val promisedId = 2
     val tools = new MockTools(isClient = true)
     val streamId = tools.idManager.takeOutboundId().getOrElse(sys.error("failed to acquire id"))

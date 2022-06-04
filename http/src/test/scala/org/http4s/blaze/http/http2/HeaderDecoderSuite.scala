@@ -74,10 +74,12 @@ class HeaderDecoderSuite extends BlazeTestSuite {
   test("A HeaderDecoder should now overflow the maxHeaderBlockSize") {
     val bb = HeaderCodecHelpers.encodeHeaders(
       testHeaders ++ testHeaders,
-      Http2Settings.DefaultSettings.HEADER_TABLE_SIZE)
+      Http2Settings.DefaultSettings.HEADER_TABLE_SIZE,
+    )
     val dec = new HeaderDecoder(
       headersBlockSize, /*discardOnOverflow*/ true,
-      Http2Settings.DefaultSettings.HEADER_TABLE_SIZE)
+      Http2Settings.DefaultSettings.HEADER_TABLE_SIZE,
+    )
 
     assertEquals(dec.decode(bb, -1, true), Continue)
     assert(dec.headerListSizeOverflow)
