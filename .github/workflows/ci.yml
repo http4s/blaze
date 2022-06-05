@@ -87,6 +87,10 @@ jobs:
       - name: Check Java formatting
         run: sbt '++${{ matrix.scala }}' '${{ matrix.ci }}' javafmtCheckAll
 
+      - name: Check scalafix lints
+        if: matrix.java == 'temurin@8' && !startsWith(matrix.scala, '3.')
+        run: sbt '++${{ matrix.scala }}' 'scalafixAll --check'
+
       - name: Check unused compile dependencies
         if: matrix.java == 'temurin@8'
         run: sbt '++${{ matrix.scala }}' unusedCompileDependenciesTest
