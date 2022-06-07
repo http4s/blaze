@@ -23,7 +23,7 @@ import org.log4s.getLogger
 /** Flow control representation of a Http2 Session */
 private class SessionFlowControlImpl(
     session: SessionCore,
-    flowStrategy: FlowStrategy,
+    flowStrategy: FlowStrategy
 ) extends SessionFlowControl {
   private[this] val logger = getLogger
 

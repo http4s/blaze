@@ -41,7 +41,7 @@ private final class ConnectionImpl(
     val remoteSettings: MutableHttp2Settings,
     flowStrategy: FlowStrategy,
     inboundStreamBuilder: Option[Int => LeafBuilder[StreamFrame]],
-    parentExecutor: ExecutionContext,
+    parentExecutor: ExecutionContext
 ) extends SessionCore
     with Connection {
   // Shortcut methods
@@ -57,9 +57,9 @@ private final class ConnectionImpl(
       new HeaderDecoder(
         maxHeaderListSize = localSettings.maxHeaderListSize,
         discardOverflowHeaders = true,
-        maxTableSize = localSettings.headerTableSize,
-      ),
-    ),
+        maxTableSize = localSettings.headerTableSize
+      )
+    )
   )
 
   @volatile

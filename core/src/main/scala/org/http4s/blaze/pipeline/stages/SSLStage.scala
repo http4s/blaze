@@ -32,7 +32,7 @@ import org.http4s.blaze.util.{
   BufferTools,
   Execution,
   SerialExecutionContext,
-  ThreadLocalScratchBuffer,
+  ThreadLocalScratchBuffer
 }
 import org.http4s.blaze.util.BufferTools._
 

@@ -40,7 +40,7 @@ import scala.util.control.NonFatal
 private final class WriteControllerImpl(
     session: SessionCore,
     highWaterMark: Int,
-    tailStage: TailStage[ByteBuffer],
+    tailStage: TailStage[ByteBuffer]
 ) extends WriteController {
   import WriteControllerImpl._
 
@@ -109,7 +109,7 @@ private final class WriteControllerImpl(
 
   private[this] def addBuffs(
       dest: ArrayBuffer[ByteBuffer],
-      data: collection.Seq[ByteBuffer],
+      data: collection.Seq[ByteBuffer]
   ): Int = {
     var written = 0
     data.foreach { buf =>

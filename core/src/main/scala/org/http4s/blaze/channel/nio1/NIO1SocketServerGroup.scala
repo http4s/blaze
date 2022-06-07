@@ -28,7 +28,7 @@ import org.http4s.blaze.channel.{
   DefaultPoolSize,
   ServerChannel,
   ServerChannelGroup,
-  SocketPipelineBuilder,
+  SocketPipelineBuilder
 }
 import org.http4s.blaze.pipeline.Command
 import org.http4s.blaze.util.{BasicThreadFactory, Connections}
@@ -67,7 +67,7 @@ object NIO1SocketServerGroup {
       acceptorPool: SelectorLoopPool,
       workerPool: SelectorLoopPool,
       channelOptions: ChannelOptions = ChannelOptions.DefaultOptions,
-      maxConnections: Int = DefaultMaxConnections,
+      maxConnections: Int = DefaultMaxConnections
   ): ServerChannelGroup =
     new NIO1SocketServerGroup(acceptorPool, workerPool, channelOptions, maxConnections)
 
@@ -82,7 +82,7 @@ object NIO1SocketServerGroup {
       selectorThreadFactory: ThreadFactory = defaultWorkerThreadFactory,
       acceptorThreads: Int = 1,
       acceptorThreadFactory: ThreadFactory = defaultAcceptorThreadFactory,
-      maxConnections: Int = DefaultMaxConnections,
+      maxConnections: Int = DefaultMaxConnections
   ): ServerChannelGroup = {
     val acceptorPool = new FixedSelectorPool(acceptorThreads, 1, acceptorThreadFactory)
     val workerPool = new FixedSelectorPool(workerThreads, bufferSize, selectorThreadFactory)
@@ -104,7 +104,7 @@ object NIO1SocketServerGroup {
 
       override def bind(
           address: InetSocketAddress,
-          service: SocketPipelineBuilder,
+          service: SocketPipelineBuilder
       ): Try[ServerChannel] =
         underlying.bind(address, service)
     }
@@ -122,7 +122,7 @@ private final class NIO1SocketServerGroup private (
     acceptorPool: SelectorLoopPool,
     workerPool: SelectorLoopPool,
     channelOptions: ChannelOptions,
-    maxConnections: Int,
+    maxConnections: Int
 ) extends ServerChannelGroup {
   private[this] val logger = getLogger
   // Also acts as our intrinsic lock.
@@ -140,7 +140,7 @@ private final class NIO1SocketServerGroup private (
   private[this] class SocketAcceptor(
       key: SelectionKey,
       ch: ServerChannelImpl,
-      service: SocketPipelineBuilder,
+      service: SocketPipelineBuilder
   ) extends Selectable {
     // Save it since once the channel is closed, we're in trouble.
     private[this] val closed = new AtomicBoolean(false)
@@ -192,7 +192,7 @@ private final class NIO1SocketServerGroup private (
   // minimize race conditions.
   private[this] final class ServerChannelImpl(
       val selectableChannel: ServerSocketChannel,
-      selectorLoop: SelectorLoop,
+      selectorLoop: SelectorLoop
   ) extends ServerChannel
       with NIO1Channel {
     @volatile
@@ -252,7 +252,7 @@ private final class NIO1SocketServerGroup private (
     */
   override def bind(
       address: InetSocketAddress,
-      service: SocketPipelineBuilder,
+      service: SocketPipelineBuilder
   ): Try[ServerChannel] =
     Try {
       val ch = ServerSocketChannel.open().bind(address)
@@ -283,7 +283,7 @@ private final class NIO1SocketServerGroup private (
   // Will be called from within the SelectorLoop
   private[this] def buildSocketAcceptor(
       ch: ServerChannelImpl,
-      service: SocketPipelineBuilder,
+      service: SocketPipelineBuilder
   )(key: SelectionKey): Selectable = {
     val acceptor = new SocketAcceptor(key, ch, service)
     try key.interestOps(SelectionKey.OP_ACCEPT)
@@ -295,7 +295,7 @@ private final class NIO1SocketServerGroup private (
 
   private[this] def handleClientChannel(
       clientChannel: NIO1ClientChannel,
-      service: SocketPipelineBuilder,
+      service: SocketPipelineBuilder
   ): Unit =
     try {
       clientChannel.configureBlocking(false)

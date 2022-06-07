@@ -42,7 +42,7 @@ class SSLStageSuite extends BlazeTestSuite {
   // The battery of tests for both client and server
   private def testBattery(
       testSuitePrefix: String,
-      mkClientServerEngines: => (SSLEngine, SSLEngine),
+      mkClientServerEngines: => (SSLEngine, SSLEngine)
   ) = {
     test(testSuitePrefix + " should transcode a single buffer") {
       val (headEng, stageEng) = mkClientServerEngines
@@ -93,9 +93,8 @@ class SSLStageSuite extends BlazeTestSuite {
             r <- Future(BufferTools.mkString(head.results))
             h <- Future(head.multipleWrite)
           } yield r -> h,
-          s + s -> false,
-        )
-      )
+          s + s -> false
+        ))
     }
 
     test(testSuitePrefix + " should transcode multiple single byte buffers") {

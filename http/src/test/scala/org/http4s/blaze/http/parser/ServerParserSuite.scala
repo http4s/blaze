@@ -56,7 +56,7 @@ class ServerParserSuite extends BlazeTestSuite {
         uri: String,
         scheme: String,
         majorversion: Int,
-        minorversion: Int,
+        minorversion: Int
     ) = {
       //      println(s"$methodString, $uri, $scheme/$majorversion.$minorversion")
       minorv = minorversion
@@ -231,7 +231,7 @@ class ServerParserSuite extends BlazeTestSuite {
     assert(p.parseheaders(hsStr))
     assertEquals(
       p.getContentType,
-      EndOfContent.END,
+      EndOfContent.END
     ) // since the headers didn't indicate any content
     assertEquals(p.h.result(), List.fill(4)(("If-Modified-Since", "")))
   }

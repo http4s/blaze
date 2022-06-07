@@ -68,7 +68,7 @@ private[nio2] final class ByteBufferHead(channel: AsynchronousSocketChannel, buf
                   p.success(())
                   ()
                 }
-            },
+            }
           )
 
         go(0)
@@ -107,7 +107,7 @@ private[nio2] final class ByteBufferHead(channel: AsynchronousSocketChannel, buf
               p.success(BufferTools.copyBuffer(scratchBuffer))
               ()
           }
-      },
+      }
     )
     p.future
   }

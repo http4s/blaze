@@ -35,7 +35,7 @@ private[http2] object StreamIdManager {
 private final class StreamIdManager private (
     isClient: Boolean,
     private var nextInbound: Int,
-    private var nextOutbound: Int,
+    private var nextOutbound: Int
 ) {
 
   /** Get the last inbound stream to be observed, or 0 if no streams have been processed */
