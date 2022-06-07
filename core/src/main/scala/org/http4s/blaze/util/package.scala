@@ -26,7 +26,8 @@ package object util {
     */
   private[blaze] def bug(message: String): AssertionError =
     new AssertionError(
-      s"This is a bug. Please report to https://github.com/http4s/blaze/issues: $message")
+      s"This is a bug. Please report to https://github.com/http4s/blaze/issues: $message"
+    )
 
   // Can replace with `Future.unit` when we drop 2.11 support
   private[blaze] val FutureUnit: Future[Unit] = Future.successful(())

@@ -49,7 +49,8 @@ final class ALPNServerSelector(
         logger.debug("Available protocols: " + available)
         selector(available.toSet)
       }
-    })
+    }
+  )
 
   override def name: String = "PipelineSelector"
 

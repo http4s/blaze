@@ -37,7 +37,8 @@ class FrameDecoderSuite extends BlazeTestSuite {
         streamId: Int,
         endStream: Boolean,
         data: ByteBuffer,
-        flowSize: Int): Result = {
+        flowSize: Int
+    ): Result = {
       this.streamId = Some(streamId)
       this.endStream = Some(endStream)
       this.data = data
@@ -113,7 +114,8 @@ class FrameDecoderSuite extends BlazeTestSuite {
       0x00,
       0x00,
       0x00,
-      0x00)
+      0x00
+    )
     val listener = new DataListener
     val dec = new FrameDecoder(Http2Settings.default, listener)
     assertEquals(dec.decodeBuffer(testData), Continue)
@@ -141,7 +143,8 @@ class FrameDecoderSuite extends BlazeTestSuite {
       0x00,
       0x00,
       0x00,
-      0x00)
+      0x00
+    )
     val listener = new DataListener
     val dec = new FrameDecoder(Http2Settings.default, listener)
     assertEquals(dec.decodeBuffer(testData), Continue)
@@ -172,7 +175,8 @@ class FrameDecoderSuite extends BlazeTestSuite {
       0x00,
       0x00,
       0x00,
-      0x00)
+      0x00
+    )
     val listener = new DataListener
     val dec = new FrameDecoder(Http2Settings.default, listener)
     assertEquals(dec.decodeBuffer(testData), Continue)
@@ -203,7 +207,8 @@ class FrameDecoderSuite extends BlazeTestSuite {
       0x00,
       0x00,
       0x00,
-      0x00)
+      0x00
+    )
     val listener = new DataListener
     val dec = new FrameDecoder(Http2Settings.default, listener)
     dec.decodeBuffer(testData) match {
@@ -240,7 +245,8 @@ class FrameDecoderSuite extends BlazeTestSuite {
         priority: Priority,
         end_headers: Boolean,
         end_stream: Boolean,
-        buffer: ByteBuffer): Result = {
+        buffer: ByteBuffer
+    ): Result = {
       this.streamId = Some(streamId)
       this.priority = Some(priority)
       this.endHeaders = Some(end_headers)
@@ -331,7 +337,8 @@ class FrameDecoderSuite extends BlazeTestSuite {
       0x00,
       0x00,
       0x00,
-      0x00)
+      0x00
+    )
     val listener = new HeadersListener
     val dec = new FrameDecoder(Http2Settings.default, listener)
 
@@ -394,7 +401,8 @@ class FrameDecoderSuite extends BlazeTestSuite {
       0x00,
       0x00,
       0x00,
-      0x01)
+      0x01
+    )
     val listener = new HeadersListener
     val dec = new FrameDecoder(Http2Settings.default, listener)
 
@@ -526,7 +534,8 @@ class FrameDecoderSuite extends BlazeTestSuite {
       0x00,
       0x00,
       0x02, // stream dependency 2
-      0x00)
+      0x00
+    )
     val listener = new PriorityListener
     val dec = new FrameDecoder(Http2Settings.default, listener)
 
@@ -817,7 +826,8 @@ class FrameDecoderSuite extends BlazeTestSuite {
         streamId: Int,
         promisedId: Int,
         end_headers: Boolean,
-        data: ByteBuffer): Result = {
+        data: ByteBuffer
+    ): Result = {
       this.streamId = Some(streamId)
       this.promisedId = Some(promisedId)
       this.endHeaders = Some(end_headers)
@@ -1325,7 +1335,8 @@ class FrameDecoderSuite extends BlazeTestSuite {
     override def onContinuationFrame(
         streamId: Int,
         endHeaders: Boolean,
-        data: ByteBuffer): Result = {
+        data: ByteBuffer
+    ): Result = {
       this.streamId = Some(streamId)
       this.endHeaders = Some(endHeaders)
       this.data = data
@@ -1444,7 +1455,8 @@ class FrameDecoderSuite extends BlazeTestSuite {
           _code: Byte,
           _streamId: Int,
           _flags: Byte,
-          buffer: ByteBuffer): Result = {
+          buffer: ByteBuffer
+      ): Result = {
         data = buffer
         code = Some(_code)
         streamId = Some(_streamId)

@@ -61,5 +61,6 @@ object HeaderNames {
 
    */
   private val validChars = BitSet(
-    (('0' to '9') ++ ('a' to 'z') ++ "!#$%&'*+-.^_`|~").map(_.toInt): _*)
+    (('0' to '9') ++ ('a' to 'z') ++ "!#$%&'*+-.^_`|~").map(_.toInt): _*
+  )
 }

@@ -107,7 +107,8 @@ class TaskQueueSuite extends FunSuite {
         counter.incrementAndGet()
         ()
       },
-      TaskQueue.Enqueued)
+      TaskQueue.Enqueued
+    )
 
     sleepLatch.countDown()
     t.join(30000) // 30 seconds max

@@ -36,7 +36,8 @@ class StageToolsSuite extends BlazeTestSuite {
   }
 
   test(
-    "StageTools.accumulateAtLeast should accumulate only one buffer if it satisfies the number of bytes required") {
+    "StageTools.accumulateAtLeast should accumulate only one buffer if it satisfies the number of bytes required"
+  ) {
     val buff = ByteBuffer.wrap(Array[Byte](1, 2, 3))
     val stage = new TailStage[ByteBuffer] {
       def name: String = "TestTailStage"

@@ -51,7 +51,8 @@ class SessionFlowControlSuite extends BlazeTestSuite {
   }
 
   test(
-    "A SessionFlowControl session inbound window should start with the http2 default flow windows") {
+    "A SessionFlowControl session inbound window should start with the http2 default flow windows"
+  ) {
     val flow = flowControl()
     assertEquals(flow.sessionInboundWindow, DefaultSettings.INITIAL_WINDOW_SIZE)
     assertEquals(flow.sessionOutboundWindow, DefaultSettings.INITIAL_WINDOW_SIZE)
@@ -84,7 +85,8 @@ class SessionFlowControlSuite extends BlazeTestSuite {
 
   test(
     "A SessionFlowControl session inbound withdrawals greater than " +
-      "the window result in false and don't deplete the window") {
+      "the window result in false and don't deplete the window"
+  ) {
     val flow = flowControl()
     assertEquals(flow.sessionInboundObserved(DefaultSettings.INITIAL_WINDOW_SIZE + 1), false)
     assertEquals(flow.sessionInboundWindow, DefaultSettings.INITIAL_WINDOW_SIZE)
@@ -122,7 +124,8 @@ class SessionFlowControlSuite extends BlazeTestSuite {
 
   // https://tools.ietf.org/html/rfc7540#section-6.9
   test(
-    "A SessionFlowControl session outbound deposits of 0 throw Http2Exception with flag FLOW_CONTROL") {
+    "A SessionFlowControl session outbound deposits of 0 throw Http2Exception with flag FLOW_CONTROL"
+  ) {
     val flow = flowControl()
     flow.sessionOutboundAcked(0) match {
       case Some(Http2SessionException(code, _)) =>
@@ -136,7 +139,8 @@ class SessionFlowControlSuite extends BlazeTestSuite {
   // https://tools.ietf.org/html/rfc7540#section-6.9.1
   test(
     "A SessionFlowControl session outbound deposits that overflow " +
-      "the window throw Http2Exception with flag FLOW_CONTROL") {
+      "the window throw Http2Exception with flag FLOW_CONTROL"
+  ) {
     val flow = flowControl()
     val overflowBy1 = Int.MaxValue - flow.sessionOutboundWindow + 1
     flow.sessionOutboundAcked(overflowBy1) match {
@@ -150,7 +154,8 @@ class SessionFlowControlSuite extends BlazeTestSuite {
   // //////////////// Streams ////////////////////////////
 
   test(
-    "A SessionFlowControl.StreamFlowWindow inbound window should start with the config initial flow windows") {
+    "A SessionFlowControl.StreamFlowWindow inbound window should start with the config initial flow windows"
+  ) {
     val inbound = Http2Settings.default.copy(initialWindowSize = 2)
     val outbound = Http2Settings.default.copy(initialWindowSize = 1)
     val flow = flowControl(inbound, outbound).newStreamFlowWindow(1)
@@ -190,7 +195,8 @@ class SessionFlowControlSuite extends BlazeTestSuite {
   }
 
   test(
-    "A SessionFlowControl.StreamFlowWindow inbound withdrawals less than the window are successful") {
+    "A SessionFlowControl.StreamFlowWindow inbound withdrawals less than the window are successful"
+  ) {
     val session = flowControl()
     val flow = session.newStreamFlowWindow(1)
     assert(flow.inboundObserved(1))
@@ -201,7 +207,8 @@ class SessionFlowControlSuite extends BlazeTestSuite {
 
   test(
     "A SessionFlowControl.StreamFlowWindow inbound withdrawals greater than " +
-      "the window result in false and don't deplete the window") {
+      "the window result in false and don't deplete the window"
+  ) {
     val session = flowControl()
     val flow = session.newStreamFlowWindow(1)
     assertEquals(flow.inboundObserved(DefaultSettings.INITIAL_WINDOW_SIZE + 1), false)
@@ -211,7 +218,8 @@ class SessionFlowControlSuite extends BlazeTestSuite {
   }
 
   test(
-    "A SessionFlowControl.StreamFlowWindow inbound withdrawals equal than the window are successful") {
+    "A SessionFlowControl.StreamFlowWindow inbound withdrawals equal than the window are successful"
+  ) {
     val session = flowControl()
     val flow = session.newStreamFlowWindow(1)
 
@@ -259,7 +267,8 @@ class SessionFlowControlSuite extends BlazeTestSuite {
 
   // https://tools.ietf.org/html/rfc7540#section-6.9
   test(
-    "A SessionFlowControlStreamFlowWindow outbound deposits of 0 throw Http2Exception with flag FLOW_CONTROL") {
+    "A SessionFlowControlStreamFlowWindow outbound deposits of 0 throw Http2Exception with flag FLOW_CONTROL"
+  ) {
     val flow = flowControl().newStreamFlowWindow(1)
 
     flow.streamOutboundAcked(0) match {
@@ -273,7 +282,8 @@ class SessionFlowControlSuite extends BlazeTestSuite {
   // https://tools.ietf.org/html/rfc7540#section-6.9.1
   test(
     "A SessionFlowControlStreamFlowWindow outbound deposits that overflow " +
-      "the window throw Http2Exception with flag FLOW_CONTROL") {
+      "the window throw Http2Exception with flag FLOW_CONTROL"
+  ) {
     val flow = flowControl().newStreamFlowWindow(1)
 
     val overflowBy1 = Int.MaxValue - flow.streamOutboundWindow + 1
@@ -302,7 +312,8 @@ class SessionFlowControlSuite extends BlazeTestSuite {
 
     assertEquals(
       flow.outboundRequest(DefaultSettings.INITIAL_WINDOW_SIZE),
-      DefaultSettings.INITIAL_WINDOW_SIZE)
+      DefaultSettings.INITIAL_WINDOW_SIZE
+    )
     assertEquals(flow.streamOutboundWindow, 0)
     assertEquals(session.sessionOutboundWindow, 0)
   }
@@ -313,14 +324,16 @@ class SessionFlowControlSuite extends BlazeTestSuite {
 
     assertEquals(
       flow.outboundRequest(DefaultSettings.INITIAL_WINDOW_SIZE + 1),
-      DefaultSettings.INITIAL_WINDOW_SIZE)
+      DefaultSettings.INITIAL_WINDOW_SIZE
+    )
     assertEquals(flow.streamOutboundWindow, 0)
     assertEquals(session.sessionOutboundWindow, 0)
   }
 
   test(
     "A SessionFlowControlStreamFlowWindow outbound withdrawals that exceed " +
-      "the window consume the max from stream or session") {
+      "the window consume the max from stream or session"
+  ) {
     val config = Http2Settings.default.copy(initialWindowSize = 1)
     val session = flowControl(config, config)
     val flow = session.newStreamFlowWindow(1)

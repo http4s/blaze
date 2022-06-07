@@ -26,7 +26,8 @@ import scala.util.{Failure, Success}
 
 class ServerPriorKnowledgeHandshakerSuite extends BlazeTestSuite {
   private def makeHandshaker(
-      localSettings: ImmutableHttp2Settings): ServerPriorKnowledgeHandshaker = {
+      localSettings: ImmutableHttp2Settings
+  ): ServerPriorKnowledgeHandshaker = {
     val flowStrategy = new DefaultFlowStrategy(localSettings)
     new ServerPriorKnowledgeHandshaker(
       localSettings = localSettings,
@@ -79,7 +80,8 @@ class ServerPriorKnowledgeHandshakerSuite extends BlazeTestSuite {
 
   test(
     "A ServerPriorKnowledgeHandshaker should sends a GOAWAY(PROTOCOL_ERROR) " +
-      "if settings frame that exceeds the local MAX_FRAME_SIZE") {
+      "if settings frame that exceeds the local MAX_FRAME_SIZE"
+  ) {
     val localSettings = Http2Settings.default.copy(maxFrameSize = 0)
     val head = new MockByteBufferHeadStage
     val handshaker = makeHandshaker(localSettings)
@@ -120,7 +122,8 @@ class ServerPriorKnowledgeHandshakerSuite extends BlazeTestSuite {
 
   test(
     "A ServerPriorKnowledgeHandshaker should sends a GOAWAY(PROTOCOL_ERROR) " +
-      "if the first frame isn't a settings frame") {
+      "if the first frame isn't a settings frame"
+  ) {
     val localSettings = Http2Settings.default
     val head = new MockByteBufferHeadStage
     val handshaker = makeHandshaker(localSettings)

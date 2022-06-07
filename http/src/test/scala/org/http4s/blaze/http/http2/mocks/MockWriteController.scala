@@ -48,6 +48,6 @@ private[http2] class MockWriteController extends WriteController {
   }
 
   /** Queue a buffer for writing */
-  final override def write(data: ByteBuffer): Boolean =
+  override final def write(data: ByteBuffer): Boolean =
     write(data :: Nil)
 }
