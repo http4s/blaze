@@ -55,7 +55,8 @@ lazy val commonSettings = Seq(
     }
   },
   run / fork := true,
-  scalafmtConfig := file(".scalafmt.blaze.conf")
+  scalafmtConfig := file(".scalafmt.blaze.conf"),
+  scalafixAll := {} // let's disable Scalafix for old modules *for a while*
 )
 
 // currently only publishing tags
