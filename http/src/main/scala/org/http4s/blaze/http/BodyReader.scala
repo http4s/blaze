@@ -76,7 +76,8 @@ object BodyReader {
 
   final class BodyReaderOverflowException(val max: Int, val accumulated: Long)
       extends Exception(
-        s"Message body overflowed. Maximum permitted: $max, accumulated: $accumulated")
+        s"Message body overflowed. Maximum permitted: $max, accumulated: $accumulated"
+      )
 
   /** The canonical empty [[BodyReader]]
     *

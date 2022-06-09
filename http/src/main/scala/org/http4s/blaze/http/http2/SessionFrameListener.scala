@@ -31,15 +31,16 @@ import org.http4s.blaze.http.http2.Http2Settings.Setting
 private class SessionFrameListener(
     session: SessionCore,
     isClient: Boolean,
-    headerDecoder: HeaderDecoder)
-    extends HeaderAggregatingFrameListener(session.localSettings, headerDecoder) {
+    headerDecoder: HeaderDecoder
+) extends HeaderAggregatingFrameListener(session.localSettings, headerDecoder) {
   // Concrete methods ////////////////////////////////////////////////////////////////////
 
   override def onCompleteHeadersFrame(
       streamId: Int,
       priority: Priority,
       endStream: Boolean,
-      headers: Headers): Result =
+      headers: Headers
+  ): Result =
     session.streamManager.get(streamId) match {
       case Some(stream) =>
         stream.invokeInboundHeaders(priority, endStream, headers)
@@ -56,7 +57,8 @@ private class SessionFrameListener(
   override def onCompletePushPromiseFrame(
       streamId: Int,
       promisedId: Int,
-      headers: Headers): Result =
+      headers: Headers
+  ): Result =
     if (!isClient)
       // A client cannot push. Thus, servers MUST treat the receipt of a
       // PUSH_PROMISE frame as a connection error of type PROTOCOL_ERROR.

@@ -38,7 +38,8 @@ class HeaderAggregatingFrameListenerSuite extends BlazeTestSuite {
           streamId: Int,
           priority: Priority,
           end_stream: Boolean,
-          headers: Headers): Result = {
+          headers: Headers
+      ): Result = {
         assertEquals(sId, streamId)
         assertEquals(p, priority)
         assertEquals(es, end_stream)
@@ -55,7 +56,8 @@ class HeaderAggregatingFrameListenerSuite extends BlazeTestSuite {
 
     assertEquals(
       mkDecoder(1, Priority.NoPriority, true, hs).decodeBuffer(BufferTools.joinBuffers(bs)),
-      Halt)
+      Halt
+    )
   }
 
   test("HEADERS frame with compressors should make a round trip with a continuation frame") {
@@ -155,7 +157,8 @@ class HeaderAggregatingFrameListenerSuite extends BlazeTestSuite {
           streamId: Int,
           promisedId: Int,
           end_headers: Boolean,
-          data: ByteBuffer): Result = {
+          data: ByteBuffer
+      ): Result = {
         assertEquals(sId, streamId)
         assertEquals(pId, promisedId)
         assertEquals(end_h, end_headers)
@@ -195,7 +198,8 @@ class HeaderAggregatingFrameListenerSuite extends BlazeTestSuite {
       override def onCompletePushPromiseFrame(
           streamId: Int,
           promisedId: Int,
-          headers: Headers): Result = {
+          headers: Headers
+      ): Result = {
         assertEquals(sId, streamId)
         assertEquals(pId, promisedId)
         assertEquals(hs, headers)
@@ -214,7 +218,8 @@ class HeaderAggregatingFrameListenerSuite extends BlazeTestSuite {
   }
 
   test(
-    "PUSH_PROMISE frame with header decoder should make a round trip with a continuation frame") {
+    "PUSH_PROMISE frame with header decoder should make a round trip with a continuation frame"
+  ) {
     val hs = Seq("foo" -> "bar", "biz" -> "baz")
     val hsBuf = encodeHeaders(hs)
     val bs = FrameSerializer.mkPushPromiseFrame(1, 2, false, 0, hsBuf)
@@ -232,7 +237,8 @@ class HeaderAggregatingFrameListenerSuite extends BlazeTestSuite {
   }
 
   test(
-    "PUSH_PROMISE frame with header decoder should make a round trip with a zero leanth HEADERS and a continuation frame") {
+    "PUSH_PROMISE frame with header decoder should make a round trip with a zero leanth HEADERS and a continuation frame"
+  ) {
     val hs = Seq("foo" -> "bar", "biz" -> "baz")
 
     val bs = FrameSerializer.mkPushPromiseFrame(1, 2, false, 0, BufferTools.emptyBuffer)
@@ -250,7 +256,8 @@ class HeaderAggregatingFrameListenerSuite extends BlazeTestSuite {
   }
 
   test(
-    "PUSH_PROMISE frame with header decoder should make a round trip with a continuation frame") {
+    "PUSH_PROMISE frame with header decoder should make a round trip with a continuation frame"
+  ) {
     val hs1 = Seq("foo" -> "bar")
     val hs2 = Seq("biz" -> "baz")
     val bs = FrameSerializer.mkPushPromiseFrame(1, 2, false, 0, encodeHeaders(hs1))
@@ -268,7 +275,8 @@ class HeaderAggregatingFrameListenerSuite extends BlazeTestSuite {
   }
 
   test(
-    "PUSH_PROMISE frame with header decoder should fail on invalid frame sequence (wrong streamId)") {
+    "PUSH_PROMISE frame with header decoder should fail on invalid frame sequence (wrong streamId)"
+  ) {
     val hs1 = Seq("foo" -> "bar")
     val hs2 = Seq("biz" -> "baz")
     val bs = FrameSerializer.mkPushPromiseFrame(1, 2, false, 0, encodeHeaders(hs1))
@@ -285,7 +293,8 @@ class HeaderAggregatingFrameListenerSuite extends BlazeTestSuite {
   }
 
   test(
-    "PUSH_PROMISE frame with header decoder should fail on invalid frame sequence (wrong frame type)") {
+    "PUSH_PROMISE frame with header decoder should fail on invalid frame sequence (wrong frame type)"
+  ) {
     val hs1 = Seq("foo" -> "bar")
     val bs = FrameSerializer.mkPushPromiseFrame(1, 2, false, 0, encodeHeaders(hs1))
 

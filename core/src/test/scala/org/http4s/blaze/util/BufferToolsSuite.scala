@@ -54,7 +54,8 @@ class BufferToolsSuite extends FunSuite {
   }
 
   test(
-    "BufferTools.concatBuffers should append the result of one to the end of another if there is room") {
+    "BufferTools.concatBuffers should append the result of one to the end of another if there is room"
+  ) {
     val b1 = ByteBuffer.allocate(9)
     b1.position(1) // offset by 1 to simulated already having read a byte
     b1.putInt(1).flip().position(1)
@@ -102,7 +103,8 @@ class BufferToolsSuite extends FunSuite {
   }
 
   test(
-    "BufferTools.takeSlice should throw an `IllegalArgumentException` if you try to slice too many bytes") {
+    "BufferTools.takeSlice should throw an `IllegalArgumentException` if you try to slice too many bytes"
+  ) {
     val a = ByteBuffer.allocate(10)
     a.putInt(123).putInt(456).flip()
     assertEquals(a.remaining(), 8)
@@ -116,12 +118,14 @@ class BufferToolsSuite extends FunSuite {
       },
       _ =>
         fail(
-          "BufferTools.takeSlice should throw an `IllegalArgumentException` if you try to slice too many bytes")
+          "BufferTools.takeSlice should throw an `IllegalArgumentException` if you try to slice too many bytes"
+        )
     )
   }
 
   test(
-    "BufferTools.takeSlice should throw an `IllegalArgumentException` if you try to slice negative bytes") {
+    "BufferTools.takeSlice should throw an `IllegalArgumentException` if you try to slice negative bytes"
+  ) {
     val a = ByteBuffer.allocate(10)
     a.putInt(123).putInt(456).flip()
     assertEquals(a.remaining(), 8)
@@ -135,14 +139,16 @@ class BufferToolsSuite extends FunSuite {
       },
       _ =>
         fail(
-          "BufferTools.takeSlice should throw an `IllegalArgumentException` if you try to slice negative bytes")
+          "BufferTools.takeSlice should throw an `IllegalArgumentException` if you try to slice negative bytes"
+        )
     )
   }
 
   test("BufferTools.checkEmpty should check if buffers are empty") {
     assertEquals(
       BufferTools.checkEmpty(Array(ByteBuffer.allocate(0), ByteBuffer.allocate(3))),
-      false)
+      false
+    )
     assertEquals(BufferTools.checkEmpty(Seq(ByteBuffer.allocate(0), ByteBuffer.allocate(3))), false)
 
     assert(BufferTools.checkEmpty(Array(ByteBuffer.allocate(0), ByteBuffer.allocate(0))))
@@ -173,7 +179,8 @@ class BufferToolsSuite extends FunSuite {
   }
 
   test(
-    "BufferTools.dropEmpty should drop empty buffers until the first non-empty buffer except the last") {
+    "BufferTools.dropEmpty should drop empty buffers until the first non-empty buffer except the last"
+  ) {
     val arr = Array(buff0, buff0)
     assertEquals(BufferTools.dropEmpty(arr), 1)
     assert(arr(0) eq BufferTools.emptyBuffer)
@@ -295,21 +302,24 @@ class BufferToolsSuite extends FunSuite {
   }
 
   test(
-    "BufferTools.areDirectOrEmpty should be true for a collection of direct buffers with a null element") {
+    "BufferTools.areDirectOrEmpty should be true for a collection of direct buffers with a null element"
+  ) {
     val buffs = getDirect(4)
     buffs(3) = null
     assert(BufferTools.areDirectOrEmpty(buffs))
   }
 
   test(
-    "BufferTools.areDirectOrEmpty should be false for a collection with a non-empty heap buffer in it") {
+    "BufferTools.areDirectOrEmpty should be false for a collection with a non-empty heap buffer in it"
+  ) {
     val buffs = getDirect(4)
     buffs(3) = ByteBuffer.allocate(4)
     assertEquals(BufferTools.areDirectOrEmpty(buffs), false)
   }
 
   test(
-    "BufferTools.areDirectOrEmpty should be true for a collection with an empty heap buffer in it") {
+    "BufferTools.areDirectOrEmpty should be true for a collection with an empty heap buffer in it"
+  ) {
     val buffs = getDirect(4)
     buffs(3) = ByteBuffer.allocate(0)
     assert(BufferTools.areDirectOrEmpty(buffs))

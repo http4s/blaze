@@ -237,7 +237,7 @@ class TickWheelExecutor(wheelSize: Int = DefaultWheelSize, val tick: Duration = 
     * @param next
     *   next Node in the list or `tailNode` if this is the last element
     */
-  final private class Node(
+  private final class Node(
       r: Runnable,
       ec: ExecutionContext,
       val expiration: Long,

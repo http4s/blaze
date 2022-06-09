@@ -85,8 +85,9 @@ abstract class ServerChannel extends Closeable { self =>
     * @return
     *   true if the hook was successfully registered, false otherwise.
     */
-  final def addShutdownHook(f: () => Unit)(implicit
-      ec: ExecutionContext = Execution.directec): Boolean =
+  final def addShutdownHook(
+      f: () => Unit
+  )(implicit ec: ExecutionContext = Execution.directec): Boolean =
     shutdownHooks.synchronized {
       if (state != Open) false
       else {

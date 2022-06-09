@@ -62,9 +62,11 @@ class ChannelOptionsSuite extends FunSuite {
 
     assertEquals(
       ch.getOption[java.lang.Boolean](java.net.StandardSocketOptions.TCP_NODELAY),
-      java.lang.Boolean.TRUE)
+      java.lang.Boolean.TRUE
+    )
     assertEquals(
       ch.getOption[java.lang.Boolean](java.net.StandardSocketOptions.SO_KEEPALIVE),
-      java.lang.Boolean.FALSE)
+      java.lang.Boolean.FALSE
+    )
   }
 }

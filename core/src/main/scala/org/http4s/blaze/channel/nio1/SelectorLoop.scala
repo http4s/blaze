@@ -264,7 +264,7 @@ final class SelectorLoop(
       */
     def run(scratch: ByteBuffer): Unit
 
-    final override def run(): Unit = {
+    override final def run(): Unit = {
       val currentThread = Thread.currentThread
       if (currentThread == thread) run(scratch)
       else {

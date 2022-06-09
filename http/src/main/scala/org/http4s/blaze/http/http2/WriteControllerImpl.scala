@@ -109,7 +109,8 @@ private final class WriteControllerImpl(
 
   private[this] def addBuffs(
       dest: ArrayBuffer[ByteBuffer],
-      data: collection.Seq[ByteBuffer]): Int = {
+      data: collection.Seq[ByteBuffer]
+  ): Int = {
     var written = 0
     data.foreach { buf =>
       val rem = buf.remaining

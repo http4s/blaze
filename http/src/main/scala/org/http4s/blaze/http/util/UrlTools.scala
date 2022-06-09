@@ -45,8 +45,8 @@ private[blaze] object UrlTools {
     def getAddress: InetSocketAddress = {
       val port =
         if (uri.getPort > 0) uri.getPort
-        else (if (uri.getScheme.equalsIgnoreCase("http")) 80
-              else 443)
+        else if (uri.getScheme.equalsIgnoreCase("http")) 80
+        else 443
       new InetSocketAddress(uri.getHost, port)
     }
   }
