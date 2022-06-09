@@ -54,7 +54,8 @@ lazy val commonSettings = Seq(
     }
   },
   run / fork := true,
-  scalafmtConfig := file(".scalafmt.blaze.conf")
+  scalafmtConfig := file(".scalafmt.blaze.conf"),
+  scalafixConfig := Some(file(".scalafix.blaze.conf"))
 )
 
 // currently only publishing tags
@@ -168,7 +169,8 @@ lazy val blazeCore = project
             .exclude[DirectMissingMethodProblem]("org.http4s.blazecore.util.IdentityWriter.ec")
         )
       else Seq.empty
-    }
+    },
+    Test / scalafixConfig := Some(file(".scalafix.test.conf"))
   )
   .dependsOn(http)
 
@@ -231,7 +233,8 @@ lazy val blazeServer = project
           )
         )
       else Seq.empty,
-    }
+    },
+    Test / scalafixConfig := Some(file(".scalafix.test.conf"))
   )
   .dependsOn(blazeCore % "compile;test->test")
 
@@ -328,7 +331,8 @@ lazy val blazeClient = project
           )
         )
       else Seq.empty
-    }
+    },
+    Test / scalafixConfig := Some(file(".scalafix.test.conf"))
   )
   .dependsOn(blazeCore % "compile;test->test")
 
@@ -341,7 +345,8 @@ lazy val examples = Project("blaze-examples", file("examples"))
       "org.http4s" %% "http4s-dsl" % http4sVersion,
       "org.http4s" %% "http4s-circe" % http4sVersion,
       "io.circe" %% "circe-generic" % "0.14.2"
-    )
+    ),
+    Test / scalafixConfig := Some(file(".scalafix.test.conf"))
   )
   .dependsOn(blazeServer, blazeClient)
 
