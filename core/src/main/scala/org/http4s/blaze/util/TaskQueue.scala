@@ -139,7 +139,8 @@ private[blaze] object TaskQueue {
     def run(): Unit = {
       val ex = bug(
         "Illegal state reached! TaskQueue found executing " +
-          "a marker node. Please report as a bug.")
+          "a marker node. Please report as a bug."
+      )
       logger.error(ex)("Unexpected state")
     }
   })

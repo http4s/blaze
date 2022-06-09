@@ -26,7 +26,7 @@ import org.http4s.blaze.testkit.BlazeTestSuite
 import scala.collection.mutable.ListBuffer
 
 class ServerParserSuite extends BlazeTestSuite {
-  private implicit def strToBuffer(str: String): ByteBuffer =
+  implicit private def strToBuffer(str: String): ByteBuffer =
     ByteBuffer.wrap(str.getBytes(StandardCharsets.ISO_8859_1))
 
   private class Parser(maxReq: Int = 1034, maxHeader: Int = 1024)
@@ -56,7 +56,8 @@ class ServerParserSuite extends BlazeTestSuite {
         uri: String,
         scheme: String,
         majorversion: Int,
-        minorversion: Int) = {
+        minorversion: Int
+    ) = {
       //      println(s"$methodString, $uri, $scheme/$majorversion.$minorversion")
       minorv = minorversion
       false
@@ -99,7 +100,8 @@ class ServerParserSuite extends BlazeTestSuite {
 
   private val mockChunked =
     request + host + chunked + headers + toChunk(body) + toChunk(
-      body + " again!") + "0 \r\n" + "\r\n"
+      body + " again!"
+    ) + "0 \r\n" + "\r\n"
 
   test("An Http1ServerParser should fail on non-ascii char in request line") {
     val p = new Parser()
@@ -160,14 +162,16 @@ class ServerParserSuite extends BlazeTestSuite {
   }
 
   test(
-    "An Http1ServerParser should give bad request on multiple different content-length headers") {
+    "An Http1ServerParser should give bad request on multiple different content-length headers"
+  ) {
     val p = new Parser()
     val line = "GET /enlighten/calais.asmx HTTPS/1.0\r\n"
 
     assert(p.parseLine(line))
 
     intercept[BadMessage](
-      p.parseheaders(buildHeaderString(Seq("content-length" -> "1", "content-length" -> "2"))))
+      p.parseheaders(buildHeaderString(Seq("content-length" -> "1", "content-length" -> "2")))
+    )
   }
 
   test("An Http1ServerParser should match Http1.0 requests") {

@@ -88,8 +88,8 @@ case class ImmutableHttp2Settings(
     pushEnabled: Boolean,
     maxConcurrentStreams: Int,
     maxFrameSize: Int,
-    maxHeaderListSize: Int)
-    extends Http2Settings
+    maxHeaderListSize: Int
+) extends Http2Settings
 
 object Http2Settings {
   type SettingValue = Int
@@ -154,7 +154,9 @@ object Http2Settings {
         case Setting(_, value) if value < 0 =>
           Some(
             Http2Exception.PROTOCOL_ERROR.goaway(
-              s"Integer overflow for setting ${setting.name}: $value"))
+              s"Integer overflow for setting ${setting.name}: $value"
+            )
+          )
 
         case _ => None
       }

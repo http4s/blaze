@@ -122,8 +122,8 @@ private final class NIO1SocketServerGroup private (
     acceptorPool: SelectorLoopPool,
     workerPool: SelectorLoopPool,
     channelOptions: ChannelOptions,
-    maxConnections: Int)
-    extends ServerChannelGroup {
+    maxConnections: Int
+) extends ServerChannelGroup {
   private[this] val logger = getLogger
   // Also acts as our intrinsic lock.
   private[this] val listeningSet = new mutable.HashSet[ServerChannelImpl]()
@@ -140,8 +140,8 @@ private final class NIO1SocketServerGroup private (
   private[this] class SocketAcceptor(
       key: SelectionKey,
       ch: ServerChannelImpl,
-      service: SocketPipelineBuilder)
-      extends Selectable {
+      service: SocketPipelineBuilder
+  ) extends Selectable {
     // Save it since once the channel is closed, we're in trouble.
     private[this] val closed = new AtomicBoolean(false)
 
@@ -192,8 +192,8 @@ private final class NIO1SocketServerGroup private (
   // minimize race conditions.
   private[this] final class ServerChannelImpl(
       val selectableChannel: ServerSocketChannel,
-      selectorLoop: SelectorLoop)
-      extends ServerChannel
+      selectorLoop: SelectorLoop
+  ) extends ServerChannel
       with NIO1Channel {
     @volatile
     private[this] var closed = false

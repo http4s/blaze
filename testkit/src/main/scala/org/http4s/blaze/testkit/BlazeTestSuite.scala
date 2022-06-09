@@ -31,19 +31,19 @@ trait BlazeAssertions { self: Assertions =>
   def assertFuture[A, B](
       obtained: => Future[A],
       returns: B,
-      clue: => Any = "values are not the same"
+      clue: => Any = "values are not the same",
   )(implicit ev: B <:< A, loc: Location, ec: ExecutionContext): Future[Unit] =
     obtained.flatMap(a => Future(assertEquals(a, returns, clue)))
 
   def assertFuture_(
       obtained: => Future[Unit],
-      clue: => Any = "values are not the same"
+      clue: => Any = "values are not the same",
   )(implicit loc: Location, ec: ExecutionContext): Future[Unit] =
     obtained.flatMap(a => Future(assertEquals(a, (), clue)))
 
   protected def assertFutureBoolean(
       obtained: => Future[Boolean],
-      clue: => Any = "values are not the same"
+      clue: => Any = "values are not the same",
   )(implicit loc: Location, ec: ExecutionContext): Future[Unit] =
     assertFuture(obtained, true, clue)
 
@@ -54,15 +54,16 @@ trait BlazeAssertions { self: Assertions =>
 
   private def runInterceptFuture[T <: Throwable](
       exceptionMessage: Option[String],
-      body: => Future[Any]
+      body: => Future[Any],
   )(implicit T: ClassTag[T], loc: Location, ec: ExecutionContext): Future[T] =
     body.transformWith {
       case Success(value) =>
         Future(
           fail(
             s"intercept failed, expected exception of type '${T.runtimeClass.getName}' but body evaluated successfully",
-            clues(value)
-          ))
+            clues(value),
+          )
+        )
 
       case Failure(e: FailExceptionLike[_]) if !T.runtimeClass.isAssignableFrom(e.getClass) =>
         Future.failed(e)
@@ -78,7 +79,7 @@ trait BlazeAssertions { self: Assertions =>
               s"intercept failed, exception '$obtained' had message '${e.getMessage}', which was different from expected message '${exceptionMessage.get}'",
               cause = e,
               isStackTracesEnabled = false,
-              location = loc
+              location = loc,
             )
           )
         }
@@ -92,7 +93,7 @@ trait BlazeAssertions { self: Assertions =>
             s"intercept failed, exception '$obtained' is not a subtype of '$expected",
             cause = e,
             isStackTracesEnabled = false,
-            location = loc
+            location = loc,
           )
         )
 

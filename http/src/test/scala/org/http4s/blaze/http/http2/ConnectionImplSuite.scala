@@ -174,7 +174,8 @@ class ConnectionImplSuite extends BlazeTestSuite {
   }
 
   test(
-    "A ConnectionImpl.invokeShutdownWithError won't send a GOAWAY frame if a GOAWAY has been sent") {
+    "A ConnectionImpl.invokeShutdownWithError won't send a GOAWAY frame if a GOAWAY has been sent"
+  ) {
     val ctx = new Ctx
     import ctx._
 

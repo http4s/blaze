@@ -517,7 +517,7 @@ class Http1ServerStageSpec extends CatsEffectSuite {
     .orNotFound
 
   fixture.test("Http1ServerStage: routes should Handle trailing headers") { tw =>
-    (runRequest(tw, Seq(req("foo")), routes2).result).map { buff =>
+    runRequest(tw, Seq(req("foo")), routes2).result.map { buff =>
       val results = dropDate(ResponseParser.parseBuffer(buff))
       assertEquals(results._1, Ok)
       assertEquals(results._3, "Foo: Bar")

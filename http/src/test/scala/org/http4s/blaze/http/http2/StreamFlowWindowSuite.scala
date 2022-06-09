@@ -52,7 +52,8 @@ class StreamFlowWindowSuite extends BlazeTestSuite {
       tools.sessionFlowControl
         .newStreamFlowWindow(1)
         .outboundRequest(initialSessionWindow),
-      initialSessionWindow)
+      initialSessionWindow
+    )
     assertEquals(window.outboundWindow, 0)
   }
 
@@ -88,7 +89,8 @@ class StreamFlowWindowSuite extends BlazeTestSuite {
       tools.sessionFlowControl
         .newStreamFlowWindow(1)
         .outboundRequest(initialSessionWindow),
-      initialSessionWindow)
+      initialSessionWindow
+    )
     assertEquals(window2.outboundWindowAvailable, false) // both depleted
 
     assertEquals(window1.outboundWindowAvailable, false) // session depleted

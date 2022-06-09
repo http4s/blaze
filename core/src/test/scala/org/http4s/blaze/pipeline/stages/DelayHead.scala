@@ -63,7 +63,8 @@ abstract class DelayHead[I](delay: Duration) extends HeadStage[I] {
         }
       },
       delay.toNanos,
-      TimeUnit.NANOSECONDS)
+      TimeUnit.NANOSECONDS
+    )
     p.future
   }
 
@@ -77,7 +78,8 @@ abstract class DelayHead[I](delay: Duration) extends HeadStage[I] {
         }
       },
       delay.toNanos,
-      TimeUnit.NANOSECONDS)
+      TimeUnit.NANOSECONDS
+    )
 
     rememberPromise(p)
     p.future

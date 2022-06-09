@@ -44,7 +44,8 @@ class FrameEncoderSuite extends BlazeTestSuite {
         priority: Priority,
         endHeaders: Boolean,
         endStream: Boolean,
-        data: ByteBuffer): Result =
+        data: ByteBuffer
+    ): Result =
       onHeadersFrameMock(streamId, priority, endHeaders, endStream, data)
 
     def onContinuationFrame(streamId: Int, endHeaders: Boolean, data: ByteBuffer): Result =
@@ -60,7 +61,8 @@ class FrameEncoderSuite extends BlazeTestSuite {
         streamId: Int,
         promisedId: Int,
         end_headers: Boolean,
-        data: ByteBuffer): Result = ???
+        data: ByteBuffer
+    ): Result = ???
 
     def onPingFrame(ack: Boolean, data: Array[Byte]): Result = ???
 
@@ -96,7 +98,8 @@ class FrameEncoderSuite extends BlazeTestSuite {
   }
 
   test(
-    "An Http2FrameEncoder should fragments data frames if they exceed the localSettings.maxFrameSize") {
+    "An Http2FrameEncoder should fragments data frames if they exceed the localSettings.maxFrameSize"
+  ) {
     val tools = new MockTools(true)
     val zeroBuffer5 = zeroBuffer(5)
     val zeroBuffer10 = zeroBuffer(10)
