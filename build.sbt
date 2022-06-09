@@ -14,7 +14,6 @@ ThisBuild / crossScalaVersions := Seq(Scala3, Scala212, Scala213)
 ThisBuild / scalaVersion := crossScalaVersions.value.filter(_.startsWith("2.")).last
 ThisBuild / tlBaseVersion := "0.23"
 ThisBuild / tlFatalWarningsInCi := !tlIsScala3.value // See SSLStage
-ThisBuild / Test / scalafixConfig := Some(file(".scalafix.test.conf"))
 
 // 11 and 17 blocked by https://github.com/http4s/blaze/issues/376
 ThisBuild / githubWorkflowJavaVersions := Seq(JavaSpec.temurin("8"))
@@ -56,7 +55,7 @@ lazy val commonSettings = Seq(
   },
   run / fork := true,
   scalafmtConfig := file(".scalafmt.blaze.conf"),
-  scalafixAll := {} // let's disable Scalafix for old modules *for a while*
+  scalafixConfig := Some(file(".scalafix.blaze.conf"))
 )
 
 // currently only publishing tags
@@ -170,7 +169,8 @@ lazy val blazeCore = project
             .exclude[DirectMissingMethodProblem]("org.http4s.blazecore.util.IdentityWriter.ec")
         )
       else Seq.empty
-    }
+    },
+    Test / scalafixConfig := Some(file(".scalafix.test.conf"))
   )
   .dependsOn(http)
 
@@ -233,7 +233,8 @@ lazy val blazeServer = project
           )
         )
       else Seq.empty,
-    }
+    },
+    Test / scalafixConfig := Some(file(".scalafix.test.conf"))
   )
   .dependsOn(blazeCore % "compile;test->test")
 
@@ -330,7 +331,8 @@ lazy val blazeClient = project
           )
         )
       else Seq.empty
-    }
+    },
+    Test / scalafixConfig := Some(file(".scalafix.test.conf"))
   )
   .dependsOn(blazeCore % "compile;test->test")
 
@@ -343,7 +345,8 @@ lazy val examples = Project("blaze-examples", file("examples"))
       "org.http4s" %% "http4s-dsl" % http4sVersion,
       "org.http4s" %% "http4s-circe" % http4sVersion,
       "io.circe" %% "circe-generic" % "0.14.2"
-    )
+    ),
+    Test / scalafixConfig := Some(file(".scalafix.test.conf"))
   )
   .dependsOn(blazeServer, blazeClient)
 
