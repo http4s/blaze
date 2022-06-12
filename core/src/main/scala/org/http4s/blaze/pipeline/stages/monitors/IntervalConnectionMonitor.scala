@@ -85,7 +85,7 @@ class IntervalConnectionMonitor(val interval: Duration) extends ConnectionMonito
         if (math.max(itotal, ototal) > 1024.0 * mb) (1024.0 * mb, "GB")
         else (mb, "MB")
 
-      s"""                 Mean (%s/s)     Total (%s)
+      """                 Mean (%s/s)     Total (%s)
          |Inbound bytes    %11.3f     %10.3f
          |Outbound bytes   %11.3f     %10.3f
          |

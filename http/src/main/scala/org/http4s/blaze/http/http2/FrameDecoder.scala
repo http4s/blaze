@@ -51,7 +51,7 @@ private class FrameDecoder(localSettings: Http2Settings, listener: FrameListener
       Error(PROTOCOL_ERROR.goaway(msg))
     } else if (frameType == FrameTypes.CONTINUATION && !listener.inHeaderSequence)
       // Received a CONTINUATION without preceding HEADERS or PUSH_PROMISE frames
-      Error(PROTOCOL_ERROR.goaway(s"Received CONTINUATION frame outside of a HEADERS sequence"))
+      Error(PROTOCOL_ERROR.goaway("Received CONTINUATION frame outside of a HEADERS sequence"))
     else if (buffer.remaining < len) { // We still don't have a full frame
       buffer.reset()
       BufferUnderflow
@@ -289,7 +289,7 @@ private class FrameDecoder(localSettings: Http2Settings, listener: FrameListener
       if (size != 0) listener.onWindowUpdateFrame(streamId, size)
       else
         Error { // never less than 0 due to the mask above
-          val msg = s"WINDOW_UPDATE with invalid update size 0"
+          val msg = "WINDOW_UPDATE with invalid update size 0"
           if (streamId == 0)
             PROTOCOL_ERROR.goaway(msg)
           else
@@ -304,7 +304,7 @@ private class FrameDecoder(localSettings: Http2Settings, listener: FrameListener
       flags: Byte
   ): Result =
     if (streamId == 0) {
-      val msg = s"CONTINUATION frame with invalid stream dependency on 0x0"
+      val msg = "CONTINUATION frame with invalid stream dependency on 0x0"
       Error(PROTOCOL_ERROR.goaway(msg))
     } else
       listener.onContinuationFrame(streamId, Flags.END_HEADERS(flags), buffer.slice())

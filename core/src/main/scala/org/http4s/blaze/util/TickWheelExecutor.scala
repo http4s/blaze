@@ -66,7 +66,7 @@ class TickWheelExecutor(wheelSize: Int = DefaultWheelSize, val tick: Duration = 
   // ///////////////////////////////////////////////////
   // new Thread that actually runs the execution.
 
-  private val thread = new Thread(s"blaze-tick-wheel-executor") {
+  private val thread = new Thread("blaze-tick-wheel-executor") {
     override def run(): Unit =
       cycle(System.nanoTime())
   }

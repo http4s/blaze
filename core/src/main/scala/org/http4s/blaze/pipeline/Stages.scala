@@ -59,7 +59,7 @@ sealed trait Stage {
     * misbehaving stages. It is therefore recommended that the method be idempotent.
     */
   protected def stageStartup(): Unit =
-    logger.debug(s"Starting up.")
+    logger.debug("Starting up.")
 
   /** Shuts down the stage, deallocating resources, etc.
     *
@@ -72,7 +72,7 @@ sealed trait Stage {
     * idempotent.
     */
   protected def stageShutdown(): Unit =
-    logger.debug(s"Shutting down.")
+    logger.debug("Shutting down.")
 
   /** Handle basic startup and shutdown commands.
     *

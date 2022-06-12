@@ -134,7 +134,7 @@ private[nio2] final class ByteBufferHead(channel: AsynchronousSocketChannel, buf
 
     cause match {
       case Some(t) => logger.error(t)("NIO2 channel closed with error")
-      case None => logger.debug(s"doClosePipeline(None)")
+      case None => logger.debug("doClosePipeline(None)")
     }
 
     if (needsClose)
