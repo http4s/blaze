@@ -109,7 +109,8 @@ private final class WriteControllerImpl(
 
   private[this] def addBuffs(
       dest: ArrayBuffer[ByteBuffer],
-      data: collection.Seq[ByteBuffer]): Int = {
+      data: collection.Seq[ByteBuffer]
+  ): Int = {
     var written = 0
     data.foreach { buf =>
       val rem = buf.remaining
@@ -133,7 +134,7 @@ private final class WriteControllerImpl(
         bytesToWrite += addBuffs(toWrite, data)
       } catch {
         case NonFatal(t) =>
-          logger.error(t)(s"Unhandled exception performing stream write operation")
+          logger.error(t)("Unhandled exception performing stream write operation")
       }
 
     logger.debug(s"Flushing $bytesToWrite to the wire")

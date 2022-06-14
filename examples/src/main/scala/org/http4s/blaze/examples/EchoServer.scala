@@ -59,7 +59,7 @@ class EchoServer {
 
     val msg = "echo: ".getBytes
 
-    final override def stageStartup(): Unit =
+    override final def stageStartup(): Unit =
       channelRead().onComplete {
         case Success(buff) =>
           val b = BufferTools.allocate(buff.remaining() + msg.length)

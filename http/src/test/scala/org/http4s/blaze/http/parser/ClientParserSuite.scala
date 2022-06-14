@@ -61,7 +61,8 @@ class ClientParserSuite extends BlazeTestSuite {
         reason: String,
         scheme: String,
         majorversion: Int,
-        minorversion: Int): Unit = {
+        minorversion: Int
+    ): Unit = {
       this.code = code
       this.reason = reason
       this.scheme = scheme
@@ -162,7 +163,8 @@ class ClientParserSuite extends BlazeTestSuite {
   }
 
   test(
-    "A client parser should throw invalid state if trying to parse the response line more than once") {
+    "A client parser should throw invalid state if trying to parse the response line more than once"
+  ) {
     val p = new TestParser
     assert(p.parseResponse(wrap(resp.getBytes(ISO_8859_1))))
 
@@ -251,7 +253,8 @@ class ClientParserSuite extends BlazeTestSuite {
   }
 
   test(
-    "A client parser should parse a body with a Content-Length and `Transfer-Encoding: identity` header") {
+    "A client parser should parse a body with a Content-Length and `Transfer-Encoding: identity` header"
+  ) {
     val p = new TestParser
     val full = resp + content_length + "Transfer-Encoding: identity\r\n" + l_headersstr + body
     val bts = wrap(full.getBytes(ISO_8859_1))

@@ -136,7 +136,7 @@ final class SelectorLoop(
           try {
             // We place all this noise in the `try` since pretty
             // much every method on the `SelectableChannel` can throw.
-            require(!ch.selectableChannel.isBlocking, s"Can only register non-blocking channels")
+            require(!ch.selectableChannel.isBlocking, "Can only register non-blocking channels")
             val key = ch.selectableChannel.register(selector, 0)
             val head = mkStage(key)
             key.attach(head)
@@ -264,7 +264,7 @@ final class SelectorLoop(
       */
     def run(scratch: ByteBuffer): Unit
 
-    final override def run(): Unit = {
+    override final def run(): Unit = {
       val currentThread = Thread.currentThread
       if (currentThread == thread) run(scratch)
       else {

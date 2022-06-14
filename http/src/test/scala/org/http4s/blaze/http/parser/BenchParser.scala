@@ -34,7 +34,8 @@ class BenchParser(maxReq: Int = 1034, maxHeader: Int = 1024)
       uri: String,
       scheme: String,
       majorversion: Int,
-      minorversion: Int): Boolean = false
+      minorversion: Int
+  ): Boolean = false
 
   def headerComplete(name: String, value: String) = false
 }

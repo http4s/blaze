@@ -26,7 +26,7 @@ import scala.concurrent.{ExecutionContext, Future}
 /** Base type for performing the HTTP/2 prior knowledge handshake */
 abstract class PriorKnowledgeHandshaker[T](localSettings: ImmutableHttp2Settings)
     extends TailStage[ByteBuffer] {
-  final protected implicit def ec: ExecutionContext = Execution.trampoline
+  implicit protected final def ec: ExecutionContext = Execution.trampoline
 
   override def name: String = s"${getClass.getSimpleName}($localSettings)"
 
@@ -66,8 +66,9 @@ abstract class PriorKnowledgeHandshaker[T](localSettings: ImmutableHttp2Settings
 
     def insufficientData = {
       logger.debug(
-        s"Insufficient data. Current representation: " +
-          BufferTools.hexString(acc, 256))
+        "Insufficient data. Current representation: " +
+          BufferTools.hexString(acc, 256)
+      )
       channelRead().flatMap(buff => readSettings(BufferTools.concatBuffers(acc, buff)))
     }
 
@@ -78,8 +79,9 @@ abstract class PriorKnowledgeHandshaker[T](localSettings: ImmutableHttp2Settings
         // The settings frame is too large so abort
         val ex = Http2Exception.FRAME_SIZE_ERROR.goaway(
           "While waiting for initial settings frame, encountered frame of " +
-            s"size $size exceeded MAX_FRAME_SIZE (${localSettings.maxFrameSize})")
-        logger.info(ex)(s"Received SETTINGS frame that was to large")
+            s"size $size exceeded MAX_FRAME_SIZE (${localSettings.maxFrameSize})"
+        )
+        logger.info(ex)("Received SETTINGS frame that was to large")
         sendGoAway(ex)
 
       case Some(frameSize) if acc.remaining < frameSize =>
@@ -99,21 +101,23 @@ abstract class PriorKnowledgeHandshaker[T](localSettings: ImmutableHttp2Settings
             remoteSettings.updateSettings(newSettings) match {
               case None =>
                 logger.debug(
-                  s"Successfully received settings frame. Current " +
-                    s"remote settings: $remoteSettings")
+                  "Successfully received settings frame. Current " +
+                    s"remote settings: $remoteSettings"
+                )
                 sendSettingsAck().map(_ => remoteSettings -> acc)
 
               case Some(ex) =>
-                logger.info(ex)(s"Received SETTINGS frame but failed to update.")
+                logger.info(ex)("Received SETTINGS frame but failed to update.")
                 channelWrite(FrameSerializer.mkGoAwayFrame(0, ex)).flatMap { _ =>
                   Future.failed(ex)
                 }
             }
 
           case Right(SettingsFrame(None)) => // was an ack! This is a PROTOCOL_ERROR
-            logger.info(s"Received a SETTINGS ack frame which is a protocol error. Shutting down.")
+            logger.info("Received a SETTINGS ack frame which is a protocol error. Shutting down.")
             val ex = Http2Exception.PROTOCOL_ERROR.goaway(
-              "Received a SETTINGS ack before receiving remote settings")
+              "Received a SETTINGS ack before receiving remote settings"
+            )
             sendGoAway(ex)
 
           case Left(http2Exception) => sendGoAway(http2Exception)

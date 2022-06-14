@@ -189,7 +189,7 @@ private final class ConnectionImpl(
       }
 
       streamManager.forceClose(http2Ex) // Fail hard
-      sendGoAway(http2Ex.getOrElse(Http2Exception.NO_ERROR.goaway(s"No Error")))
+      sendGoAway(http2Ex.getOrElse(Http2Exception.NO_ERROR.goaway("No Error")))
       writeController
         .close()
         .onComplete { _ =>

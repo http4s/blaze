@@ -21,7 +21,8 @@ import scala.concurrent.duration.Duration
 class IntervalConnectionMonitor(val interval: Duration) extends ConnectionMonitor {
   require(
     interval.isFinite && interval.toNanos > 1,
-    "Duration must be Finite and greater than 1 ns")
+    "Duration must be Finite and greater than 1 ns"
+  )
 
   private val alpha = 1.0 / (interval.toNanos + 1).toDouble
 
@@ -74,7 +75,8 @@ class IntervalConnectionMonitor(val interval: Duration) extends ConnectionMonito
       ototal: Long,
       connmean: Double,
       conntotal: Long,
-      connlive: Long) {
+      connlive: Long
+  ) {
     override def toString: String = {
       val mb = (1024 * 1024).toDouble
       val (f1, unit1) =
@@ -83,7 +85,7 @@ class IntervalConnectionMonitor(val interval: Duration) extends ConnectionMonito
         if (math.max(itotal, ototal) > 1024.0 * mb) (1024.0 * mb, "GB")
         else (mb, "MB")
 
-      s"""                 Mean (%s/s)     Total (%s)
+      """                 Mean (%s/s)     Total (%s)
          |Inbound bytes    %11.3f     %10.3f
          |Outbound bytes   %11.3f     %10.3f
          |
@@ -99,7 +101,8 @@ class IntervalConnectionMonitor(val interval: Duration) extends ConnectionMonito
         ototal / f2,
         connmean,
         conntotal,
-        connlive)
+        connlive
+      )
     }
   }
 
@@ -112,7 +115,8 @@ class IntervalConnectionMonitor(val interval: Duration) extends ConnectionMonito
         outbound.getTotal(),
         conns.getMean(),
         conns.getTotal(),
-        conns.getLive())
+        conns.getLive()
+      )
     }))
 
   override protected def connectionAccepted(): Unit = conns.update(1)

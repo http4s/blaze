@@ -29,7 +29,8 @@ private[http2] class MockFrameListener(inHeaders: Boolean) extends FrameListener
       streamId: Int,
       promisedId: Int,
       end_headers: Boolean,
-      data: ByteBuffer): Result = ???
+      data: ByteBuffer
+  ): Result = ???
 
   // For handling unknown stream frames
   override def onHeadersFrame(
@@ -37,7 +38,8 @@ private[http2] class MockFrameListener(inHeaders: Boolean) extends FrameListener
       priority: Priority,
       end_headers: Boolean,
       end_stream: Boolean,
-      buffer: ByteBuffer): Result = ???
+      buffer: ByteBuffer
+  ): Result = ???
   override def onSettingsFrame(settings: Option[Seq[Setting]]): Result = ???
   override def onRstStreamFrame(streamId: Int, code: Long): Result = ???
   override def onPriorityFrame(streamId: Int, priority: Priority.Dependent): Result = ???
@@ -47,6 +49,7 @@ private[http2] class MockFrameListener(inHeaders: Boolean) extends FrameListener
       streamId: Int,
       isLast: Boolean,
       data: ByteBuffer,
-      flowSize: Int): Result = ???
+      flowSize: Int
+  ): Result = ???
   override def onWindowUpdateFrame(streamId: Int, sizeIncrement: Int): Result = ???
 }

@@ -96,7 +96,8 @@ private final class FrameEncoder(remoteSettings: Http2Settings, headerEncoder: H
         endHeaders = true,
         endStream,
         padding = 0,
-        rawHeaders)
+        rawHeaders
+      )
     else {
       // need to fragment
       val acc = new ArrayBuffer[ByteBuffer]
@@ -109,7 +110,8 @@ private final class FrameEncoder(remoteSettings: Http2Settings, headerEncoder: H
         endHeaders = false,
         endStream,
         padding = 0,
-        headersBuf)
+        headersBuf
+      )
 
       while (rawHeaders.hasRemaining) {
         val size = math.min(limit, rawHeaders.remaining)
