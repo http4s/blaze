@@ -109,7 +109,7 @@ class ExampleService[F[_]](implicit F: Async[F]) extends Http4sDsl[F] {
                 val sum = s.split(' ').filter(_.nonEmpty).map(_.trim.toInt).sum
                 Ok(sum.toString)
 
-              case None => BadRequest(s"Invalid data: " + data)
+              case None => BadRequest("Invalid data: " + data)
             }
           }
           .handleErrorWith { // We can handle errors using effect methods

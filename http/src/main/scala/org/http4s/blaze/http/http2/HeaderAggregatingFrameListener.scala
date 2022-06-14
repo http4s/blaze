@@ -102,7 +102,7 @@ private abstract class HeaderAggregatingFrameListener(
     if (inHeaderSequence)
       Error(
         PROTOCOL_ERROR.goaway(
-          s"Received HEADERS frame while in in headers sequence. Stream id " +
+          "Received HEADERS frame while in in headers sequence. Stream id " +
             FrameDecoder.hexStr(streamId)
         )
       )
@@ -146,7 +146,7 @@ private abstract class HeaderAggregatingFrameListener(
       buffer: ByteBuffer
   ): Result =
     if (hInfo.streamId != streamId) {
-      val msg = s"Invalid CONTINUATION frame: stream Id's don't match. " +
+      val msg = "Invalid CONTINUATION frame: stream Id's don't match. " +
         s"Expected ${hInfo.streamId}, received $streamId"
       Error(PROTOCOL_ERROR.goaway(msg))
     } else {

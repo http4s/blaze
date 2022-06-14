@@ -168,7 +168,7 @@ final class SSLStage(engine: SSLEngine, maxWrite: Int = 1024 * 1024)
     val results = handshakeQueue.result()
     handshakeQueue.clear()
     if (results.isEmpty)
-      logger.error(t)(s"Handshake failure with no pending results")
+      logger.error(t)("Handshake failure with no pending results")
     else
       results.foreach {
         case DelayedRead(_, p) => p.failure(t)
@@ -200,7 +200,7 @@ final class SSLStage(engine: SSLEngine, maxWrite: Int = 1024 * 1024)
               }(serialExec)
 
             case Status.CLOSED => // happens if the handshake fails for some reason
-              handshakeFailure(new SSLException(s"SSL Closed"))
+              handshakeFailure(new SSLException("SSL Closed"))
 
             case Status.BUFFER_OVERFLOW =>
               handshakeFailure(util.bug(s"Unexpected status: ${Status.BUFFER_OVERFLOW}"))
