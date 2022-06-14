@@ -139,7 +139,7 @@ private[http2] object FrameSerializer {
 
   def mkRstStreamFrame(streamId: Int, errorCode: Long): ByteBuffer = {
     require(0 < streamId, "Invalid RST_STREAM stream id")
-    require(0 <= errorCode && errorCode <= Masks.INT32, s"Invalid error code")
+    require(0 <= errorCode && errorCode <= Masks.INT32, "Invalid error code")
 
     val payloadSize = 4
     val buffer = BufferTools.allocate(HeaderSize + payloadSize)
