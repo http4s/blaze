@@ -129,16 +129,15 @@ lazy val http = Project("blaze-http", file("http"))
   )
   .dependsOn(testkit % Test, core % "test->test;compile->compile")
 
-lazy val blazeCore = project
-  .in(file("blaze-core"))
+lazy val blazeCore = Project("http4s-blaze-core", file("blaze-core"))
   .settings(
-    name := "http4s-blaze-core",
     description := "Base library for binding blaze to http4s clients and servers",
     startYear := Some(2014),
     tlMimaPreviousVersions ++= (0 to 11).map(y => s"0.23.$y").toSet,
     libraryDependencies ++= Seq(
       "org.http4s" %% "http4s-core" % http4sVersion,
       "org.typelevel" %% "munit-cats-effect-3" % munitCatsEffectVersion % Test,
+      logbackClassic % Test
     ),
     mimaBinaryIssueFilters := {
       if (tlIsScala3.value)
@@ -175,10 +174,8 @@ lazy val blazeCore = project
   )
   .dependsOn(http)
 
-lazy val blazeServer = project
-  .in(file("blaze-server"))
+lazy val blazeServer = Project("http4s-blaze-server", file("blaze-server"))
   .settings(
-    name := "http4s-blaze-server",
     description := "blaze implementation for http4s servers",
     startYear := Some(2014),
     tlMimaPreviousVersions ++= (0 to 11).map(y => s"0.23.$y").toSet,
@@ -239,10 +236,8 @@ lazy val blazeServer = project
   )
   .dependsOn(blazeCore % "compile;test->test")
 
-lazy val blazeClient = project
-  .in(file("blaze-client"))
+lazy val blazeClient = Project("http4s-blaze-client", file("blaze-client"))
   .settings(
-    name := "http4s-blaze-client",
     description := "blaze implementation for http4s clients",
     startYear := Some(2014),
     tlMimaPreviousVersions ++= (0 to 11).map(y => s"0.23.$y").toSet,
