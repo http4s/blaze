@@ -135,7 +135,8 @@ lazy val blazeCore = Project("http4s-blaze-core", file("blaze-core"))
     tlMimaPreviousVersions ++= (0 to 11).map(y => s"0.23.$y").toSet,
     libraryDependencies ++= Seq(
       "org.http4s" %% "http4s-core" % http4sVersion,
-      "org.typelevel" %% "munit-cats-effect-3" % munitCatsEffectVersion % Test
+      "org.typelevel" %% "munit-cats-effect-3" % munitCatsEffectVersion % Test,
+      logbackClassic % Test
     ),
     mimaBinaryIssueFilters := {
       if (tlIsScala3.value)
