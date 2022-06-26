@@ -74,6 +74,7 @@ lazy val blaze = project
   .enablePlugins(Http4sOrgPlugin)
   .enablePlugins(NoPublishPlugin)
   .settings(commonSettings)
+  .settings(scalafmtConfig := file(".scalafmt.conf"))
   .aggregate(core, http, blazeCore, blazeServer, blazeClient, examples)
 
 lazy val testkit = Project("blaze-testkit", file("testkit"))
@@ -136,7 +137,7 @@ lazy val blazeCore = Project("http4s-blaze-core", file("blaze-core"))
     libraryDependencies ++= Seq(
       "org.http4s" %% "http4s-core" % http4sVersion,
       "org.typelevel" %% "munit-cats-effect-3" % munitCatsEffectVersion % Test,
-      logbackClassic % Test
+      logbackClassic % Test,
     ),
     mimaBinaryIssueFilters := {
       if (tlIsScala3.value)
