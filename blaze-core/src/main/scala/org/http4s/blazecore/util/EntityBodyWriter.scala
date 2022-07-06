@@ -70,11 +70,11 @@ private[http4s] trait EntityBodyWriter[F[_]] {
     * If it errors the error stream becomes the stream, which performs an
     * exception flush and then the stream fails.
     */
-  private def writePipe(s: Stream[F, Byte]): Stream[F, INothing] = {
+  private def writePipe(s: Stream[F, Byte]): Stream[F, Nothing] = {
     def writeChunk(chunk: Chunk[Byte]): F[Unit] =
       fromFutureNoShift(F.delay(writeBodyChunk(chunk, flush = false)))
 
-    val writeStream: Stream[F, INothing] =
+    val writeStream: Stream[F, Nothing] =
       s.repeatPull {
         _.uncons.flatMap {
           case None => Pull.pure(None)
@@ -82,7 +82,7 @@ private[http4s] trait EntityBodyWriter[F[_]] {
         }
       }
 
-    val errorStream: Throwable => Stream[F, INothing] = e =>
+    val errorStream: Throwable => Stream[F, Nothing] = e =>
       Stream
         .eval(fromFutureNoShift(F.delay(exceptionFlush())))
         .flatMap(_ => Stream.raiseError[F](e))
