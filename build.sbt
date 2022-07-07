@@ -22,20 +22,20 @@ ThisBuild / developers ++= List(
     "bryce-anderson",
     "Bryce L. Anderson",
     "bryce.anderson22@gamil.com",
-    url("https://github.com/bryce-anderson")
+    url("https://github.com/bryce-anderson"),
   ),
   Developer(
     "rossabaker",
     "Ross A. Baker",
     "ross@rossabaker.com",
-    url("https://github.com/rossabaker")
+    url("https://github.com/rossabaker"),
   ),
   Developer(
     "ChristopherDavenport",
     "Christopher Davenport",
     "chris@christopherdavenport.tech",
-    url("https://github.com/ChristopherDavenport")
-  )
+    url("https://github.com/ChristopherDavenport"),
+  ),
 )
 ThisBuild / startYear := Some(2014)
 
@@ -54,7 +54,7 @@ lazy val commonSettings = Seq(
   },
   run / fork := true,
   scalafmtConfig := file(".scalafmt.blaze.conf"),
-  scalafixConfig := Some(file(".scalafix.blaze.conf"))
+  scalafixConfig := Some(file(".scalafix.blaze.conf")),
 )
 
 // currently only publishing tags
@@ -64,7 +64,7 @@ ThisBuild / githubWorkflowPublishTargetBranches :=
 ThisBuild / githubWorkflowBuild ++= Seq(
   WorkflowStep.Sbt(
     List("${{ matrix.ci }}", "javafmtCheckAll"),
-    name = Some("Check Java formatting")
+    name = Some("Check Java formatting"),
   )
 )
 
@@ -73,6 +73,7 @@ lazy val blaze = project
   .enablePlugins(Http4sOrgPlugin)
   .enablePlugins(NoPublishPlugin)
   .settings(commonSettings)
+  .settings(scalafmtConfig := file(".scalafmt.conf"))
   .aggregate(core, http, blazeCore, blazeServer, blazeClient, examples)
 
 lazy val testkit = Project("blaze-testkit", file("testkit"))
@@ -92,7 +93,7 @@ lazy val core = Project("blaze-core", file("core"))
     buildInfoKeys := Seq[BuildInfoKey](
       version,
       scalaVersion,
-      git.gitHeadCommit
+      git.gitHeadCommit,
     ),
     buildInfoOptions += BuildInfoOption.BuildTime,
     mimaBinaryIssueFilters ++= Seq(
@@ -100,7 +101,7 @@ lazy val core = Project("blaze-core", file("core"))
       ProblemFilters.exclude[DirectMissingMethodProblem](
         "org.http4s.blaze.channel.nio1.NIO1SocketServerGroup.this"
       )
-    )
+    ),
   )
   .dependsOn(testkit % Test)
 
@@ -122,20 +123,19 @@ lazy val http = Project("blaze-http", file("http"))
       ),
       ProblemFilters.exclude[MissingClassProblem](
         "org.http4s.blaze.http.http2.server.ALPNServerSelector$ServerProvider"
-      )
-    )
+      ),
+    ),
   )
   .dependsOn(testkit % Test, core % "test->test;compile->compile")
 
-lazy val blazeCore = project
-  .in(file("blaze-core"))
+lazy val blazeCore = Project("http4s-blaze-core", file("blaze-core"))
   .settings(
-    name := "http4s-blaze-core",
     description := "Base library for binding blaze to http4s clients and servers",
     startYear := Some(2014),
     libraryDependencies ++= Seq(
       "org.http4s" %% "http4s-core" % http4sVersion,
-      "org.typelevel" %% "munit-cats-effect-3" % munitCatsEffectVersion % Test
+      "org.typelevel" %% "munit-cats-effect-3" % munitCatsEffectVersion % Test,
+      logbackClassic % Test,
     ),
     mimaBinaryIssueFilters := {
       if (tlIsScala3.value)
@@ -164,23 +164,21 @@ lazy val blazeCore = project
           ProblemFilters
             .exclude[DirectMissingMethodProblem]("org.http4s.blazecore.util.IdentityWriter.this"),
           ProblemFilters
-            .exclude[DirectMissingMethodProblem]("org.http4s.blazecore.util.IdentityWriter.ec")
+            .exclude[DirectMissingMethodProblem]("org.http4s.blazecore.util.IdentityWriter.ec"),
         )
       else Seq.empty
     },
-    Test / scalafixConfig := Some(file(".scalafix.test.conf"))
+    Test / scalafixConfig := Some(file(".scalafix.test.conf")),
   )
   .dependsOn(http)
 
-lazy val blazeServer = project
-  .in(file("blaze-server"))
+lazy val blazeServer = Project("http4s-blaze-server", file("blaze-server"))
   .settings(
-    name := "http4s-blaze-server",
     description := "blaze implementation for http4s servers",
     startYear := Some(2014),
     libraryDependencies ++= Seq(
       "org.http4s" %% "http4s-server" % http4sVersion,
-      "org.http4s" %% "http4s-dsl" % http4sVersion % Test
+      "org.http4s" %% "http4s-dsl" % http4sVersion % Test,
     ),
     mimaBinaryIssueFilters := Seq(
       ProblemFilters.exclude[DirectMissingMethodProblem](
@@ -210,7 +208,7 @@ lazy val blazeServer = project
       ProblemFilters
         .exclude[DirectMissingMethodProblem]("org.http4s.blaze.server.BlazeServerBuilder.this"),
       ProblemFilters
-        .exclude[DirectMissingMethodProblem]("org.http4s.blaze.server.WebSocketDecoder.this")
+        .exclude[DirectMissingMethodProblem]("org.http4s.blaze.server.WebSocketDecoder.this"),
     ) ++ {
       if (tlIsScala3.value)
         Seq(
@@ -227,23 +225,21 @@ lazy val blazeServer = project
           ),
           ProblemFilters.exclude[ReversedMissingMethodProblem](
             "org.http4s.blaze.server.WebSocketSupport.webSocketKey"
-          )
+          ),
         )
       else Seq.empty,
     },
-    Test / scalafixConfig := Some(file(".scalafix.test.conf"))
+    Test / scalafixConfig := Some(file(".scalafix.test.conf")),
   )
   .dependsOn(blazeCore % "compile;test->test")
 
-lazy val blazeClient = project
-  .in(file("blaze-client"))
+lazy val blazeClient = Project("http4s-blaze-client", file("blaze-client"))
   .settings(
-    name := "http4s-blaze-client",
     description := "blaze implementation for http4s clients",
     startYear := Some(2014),
     libraryDependencies ++= Seq(
       "org.http4s" %% "http4s-client" % http4sVersion,
-      "org.http4s" %% "http4s-client-testkit" % http4sVersion % Test
+      "org.http4s" %% "http4s-client-testkit" % http4sVersion % Test,
     ),
     mimaBinaryIssueFilters ++= Seq(
       // private constructor
@@ -318,7 +314,7 @@ lazy val blazeClient = project
       ProblemFilters
         .exclude[IncompatibleResultTypeProblem]("org.http4s.blaze.client.Connection.isRecyclable"),
       ProblemFilters
-        .exclude[ReversedMissingMethodProblem]("org.http4s.blaze.client.Connection.isRecyclable")
+        .exclude[ReversedMissingMethodProblem]("org.http4s.blaze.client.Connection.isRecyclable"),
     ) ++ {
       if (tlIsScala3.value)
         Seq(
@@ -328,7 +324,7 @@ lazy val blazeClient = project
         )
       else Seq.empty
     },
-    Test / scalafixConfig := Some(file(".scalafix.test.conf"))
+    Test / scalafixConfig := Some(file(".scalafix.test.conf")),
   )
   .dependsOn(blazeCore % "compile;test->test")
 
@@ -340,9 +336,9 @@ lazy val examples = Project("blaze-examples", file("examples"))
     libraryDependencies ++= Seq(
       "org.http4s" %% "http4s-dsl" % http4sVersion,
       "org.http4s" %% "http4s-circe" % http4sVersion,
-      "io.circe" %% "circe-generic" % "0.14.2"
+      "io.circe" %% "circe-generic" % "0.14.2",
     ),
-    Test / scalafixConfig := Some(file(".scalafix.test.conf"))
+    Test / scalafixConfig := Some(file(".scalafix.test.conf")),
   )
   .dependsOn(blazeServer, blazeClient)
 
@@ -351,5 +347,5 @@ lazy val examples = Project("blaze-examples", file("examples"))
 // use it in the local development process
 addCommandAlias(
   "validate",
-  ";scalafmtCheckAll ;scalafmtSbtCheck ;javafmtCheckAll ;+test:compile ;test ;unusedCompileDependenciesTest ;mimaReportBinaryIssues"
+  ";scalafmtCheckAll ;scalafmtSbtCheck ;javafmtCheckAll ;+test:compile ;test ;unusedCompileDependenciesTest ;mimaReportBinaryIssues",
 )
