@@ -97,11 +97,11 @@ jobs:
 
       - name: Make target directories
         if: github.event_name != 'pull_request' && (startsWith(github.ref, 'refs/tags/v') || github.ref == 'refs/heads/main')
-        run: mkdir -p blaze-client/target blaze-server/target target examples/target http/target blaze-core/target core/target testkit/target project/target
+        run: mkdir -p blaze-client/target target blaze-server/target examples/target http/target core/target blaze-core/target testkit/target project/target
 
       - name: Compress target directories
         if: github.event_name != 'pull_request' && (startsWith(github.ref, 'refs/tags/v') || github.ref == 'refs/heads/main')
-        run: tar cf targets.tar blaze-client/target blaze-server/target target examples/target http/target blaze-core/target core/target testkit/target project/target
+        run: tar cf targets.tar blaze-client/target target blaze-server/target examples/target http/target core/target blaze-core/target testkit/target project/target
 
       - name: Upload target directories
         if: github.event_name != 'pull_request' && (startsWith(github.ref, 'refs/tags/v') || github.ref == 'refs/heads/main')
