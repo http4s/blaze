@@ -61,7 +61,7 @@ class ClientParserSuite extends BlazeTestSuite {
         reason: String,
         scheme: String,
         majorversion: Int,
-        minorversion: Int
+        minorversion: Int,
     ): Unit = {
       this.code = code
       this.reason = reason

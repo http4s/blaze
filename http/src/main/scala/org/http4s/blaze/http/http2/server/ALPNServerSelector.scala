@@ -39,7 +39,7 @@ import scala.util.control.NonFatal
 final class ALPNServerSelector(
     engine: SSLEngine,
     selector: Set[String] => String,
-    builder: String => LeafBuilder[ByteBuffer]
+    builder: String => LeafBuilder[ByteBuffer],
 ) extends TailStage[ByteBuffer] {
 
   engine.setHandshakeApplicationProtocolSelector(
