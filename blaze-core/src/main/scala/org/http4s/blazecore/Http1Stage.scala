@@ -181,8 +181,7 @@ private[http4s] trait Http1Stage[F[_]] { self: TailStage[ByteBuffer] =>
     // try parsing the existing buffer: many requests will come as a single chunk
     else if (buffer.hasRemaining) doParseContent(buffer) match {
       case Some(buff) if contentComplete() =>
-        Entity.strict(Chunk.byteBuffer(buff)) -> Http1Stage
-          .futureBufferThunk(buffer)
+        Entity.strict(scodec.bits.ByteVector.view(buff)) -> Http1Stage.futureBufferThunk(buffer)
 
       case Some(buff) =>
         val (rst, end) = streamingEntity(buffer, eofCondition)

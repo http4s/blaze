@@ -58,8 +58,8 @@ private[http4s] trait EntityBodyWriter[F[_]] {
         val writeBodyEnd: F[Boolean] = fromFutureNoShift(F.delay(writeEnd(Chunk.empty)))
         writeBody *> writeBodyEnd
 
-      case Entity.Strict(chunk) =>
-        fromFutureNoShift(F.delay(writeEnd(chunk)))
+      case Entity.Strict(bv) =>
+        fromFutureNoShift(F.delay(writeEnd(Chunk.byteVector(bv))))
 
       case Entity.Empty =>
         fromFutureNoShift(F.delay(writeEnd(Chunk.empty)))
