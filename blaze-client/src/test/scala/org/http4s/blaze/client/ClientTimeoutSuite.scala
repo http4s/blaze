@@ -28,10 +28,10 @@ import munit.CatsEffectSuite
 import org.http4s.blaze.pipeline.HeadStage
 import org.http4s.blaze.pipeline.LeafBuilder
 import org.http4s.blaze.util.TickWheelExecutor
-import org.http4s.blazecore.DispatcherIOFixture
-import org.http4s.blazecore.IdleTimeoutStage
-import org.http4s.blazecore.QueueTestHead
-import org.http4s.blazecore.SlowTestHead
+import org.http4s.blaze.core.DispatcherIOFixture
+import org.http4s.blaze.core.IdleTimeoutStage
+import org.http4s.blaze.core.QueueTestHead
+import org.http4s.blaze.core.SlowTestHead
 import org.http4s.client.Client
 import org.http4s.client.RequestKey
 import org.http4s.syntax.all._

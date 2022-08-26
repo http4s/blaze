@@ -35,9 +35,9 @@ import org.http4s.blaze.pipeline.stages.SSLStage
 import org.http4s.blaze.server.BlazeServerBuilder._
 import org.http4s.blaze.util.TickWheelExecutor
 import org.http4s.blaze.{BuildInfo => BlazeBuildInfo}
-import org.http4s.blazecore.BlazeBackendBuilder
-import org.http4s.blazecore.ExecutionContextConfig
-import org.http4s.blazecore.tickWheelResource
+import org.http4s.blaze.core.BlazeBackendBuilder
+import org.http4s.blaze.core.ExecutionContextConfig
+import org.http4s.blaze.core.tickWheelResource
 import org.http4s.internal.threads.threadFactory
 import org.http4s.internal.tls.deduceKeyLength
 import org.http4s.internal.tls.getCertChain

@@ -23,8 +23,8 @@ import cats.syntax.all._
 import fs2.concurrent.SignallingRef
 import org.http4s._
 import org.http4s.blaze.pipeline.LeafBuilder
-import org.http4s.blazecore.websocket.Http4sWSStage
-import org.http4s.blazecore.websocket.WebSocketHandshake
+import org.http4s.blaze.core.websocket.Http4sWSStage
+import org.http4s.blaze.core.websocket.WebSocketHandshake
 import org.http4s.headers._
 import org.http4s.websocket.WebSocketContext
 import org.typelevel.vault.Key

@@ -141,30 +141,30 @@ lazy val blazeCore = Project("http4s-blaze-core", file("blaze-core"))
       if (tlIsScala3.value)
         Seq(
           ProblemFilters
-            .exclude[DirectMissingMethodProblem]("org.http4s.blazecore.util.BodylessWriter.this"),
+            .exclude[DirectMissingMethodProblem]("org.http4s.blaze.core.util.BodylessWriter.this"),
           ProblemFilters
-            .exclude[DirectMissingMethodProblem]("org.http4s.blazecore.util.BodylessWriter.ec"),
+            .exclude[DirectMissingMethodProblem]("org.http4s.blaze.core.util.BodylessWriter.ec"),
           ProblemFilters
-            .exclude[DirectMissingMethodProblem]("org.http4s.blazecore.util.EntityBodyWriter.ec"),
+            .exclude[DirectMissingMethodProblem]("org.http4s.blaze.core.util.EntityBodyWriter.ec"),
           ProblemFilters
-            .exclude[DirectMissingMethodProblem]("org.http4s.blazecore.util.CachingChunkWriter.ec"),
+            .exclude[DirectMissingMethodProblem]("org.http4s.blaze.core.util.CachingChunkWriter.ec"),
           ProblemFilters.exclude[DirectMissingMethodProblem](
-            "org.http4s.blazecore.util.CachingStaticWriter.this"
+            "org.http4s.blaze.core.util.CachingStaticWriter.this"
           ),
           ProblemFilters.exclude[DirectMissingMethodProblem](
-            "org.http4s.blazecore.util.CachingStaticWriter.ec"
+            "org.http4s.blaze.core.util.CachingStaticWriter.ec"
           ),
           ProblemFilters.exclude[DirectMissingMethodProblem](
-            "org.http4s.blazecore.util.FlushingChunkWriter.ec"
+            "org.http4s.blaze.core.util.FlushingChunkWriter.ec"
           ),
           ProblemFilters
-            .exclude[DirectMissingMethodProblem]("org.http4s.blazecore.util.Http2Writer.this"),
+            .exclude[DirectMissingMethodProblem]("org.http4s.blaze.core.util.Http2Writer.this"),
           ProblemFilters
-            .exclude[DirectMissingMethodProblem]("org.http4s.blazecore.util.Http2Writer.ec"),
+            .exclude[DirectMissingMethodProblem]("org.http4s.blaze.core.util.Http2Writer.ec"),
           ProblemFilters
-            .exclude[DirectMissingMethodProblem]("org.http4s.blazecore.util.IdentityWriter.this"),
+            .exclude[DirectMissingMethodProblem]("org.http4s.blaze.core.util.IdentityWriter.this"),
           ProblemFilters
-            .exclude[DirectMissingMethodProblem]("org.http4s.blazecore.util.IdentityWriter.ec"),
+            .exclude[DirectMissingMethodProblem]("org.http4s.blaze.core.util.IdentityWriter.ec"),
         )
       else Seq.empty
     },
