@@ -147,7 +147,9 @@ lazy val blazeCore = Project("http4s-blaze-core", file("blaze-core"))
           ProblemFilters
             .exclude[DirectMissingMethodProblem]("org.http4s.blaze.core.util.EntityBodyWriter.ec"),
           ProblemFilters
-            .exclude[DirectMissingMethodProblem]("org.http4s.blaze.core.util.CachingChunkWriter.ec"),
+            .exclude[DirectMissingMethodProblem](
+              "org.http4s.blaze.core.util.CachingChunkWriter.ec"
+            ),
           ProblemFilters.exclude[DirectMissingMethodProblem](
             "org.http4s.blaze.core.util.CachingStaticWriter.this"
           ),
