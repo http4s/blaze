@@ -24,8 +24,12 @@ import fs2._
 import fs2.compression.Compression
 import fs2.compression.DeflateParams
 import munit.CatsEffectSuite
-import org.http4s.blaze.core.{DispatcherIOFixture, TestHead}
-import org.http4s.{Entity, EntityBody, Header, Headers}
+import org.http4s.Entity
+import org.http4s.EntityBody
+import org.http4s.Header
+import org.http4s.Headers
+import org.http4s.blaze.core.DispatcherIOFixture
+import org.http4s.blaze.core.TestHead
 import org.http4s.blaze.pipeline.LeafBuilder
 import org.http4s.blaze.pipeline.TailStage
 import org.http4s.util.StringWriter

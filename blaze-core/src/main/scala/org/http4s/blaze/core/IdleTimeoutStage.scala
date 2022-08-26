@@ -17,14 +17,14 @@
 package org.http4s.blaze.core
 
 import org.http4s.Callback
-import org.http4s.blaze.pipeline.MidStage
-import org.http4s.blaze.util.Cancelable
-import org.http4s.blaze.util.Execution
-import org.http4s.blaze.util.TickWheelExecutor
 import org.http4s.blaze.core.IdleTimeoutStage.Disabled
 import org.http4s.blaze.core.IdleTimeoutStage.Enabled
 import org.http4s.blaze.core.IdleTimeoutStage.ShutDown
 import org.http4s.blaze.core.IdleTimeoutStage.State
+import org.http4s.blaze.pipeline.MidStage
+import org.http4s.blaze.util.Cancelable
+import org.http4s.blaze.util.Execution
+import org.http4s.blaze.util.TickWheelExecutor
 
 import java.util.concurrent.TimeoutException
 import java.util.concurrent.atomic.AtomicReference

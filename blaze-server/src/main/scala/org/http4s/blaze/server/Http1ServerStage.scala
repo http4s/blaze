@@ -22,6 +22,10 @@ import cats.effect.Async
 import cats.effect.std.Dispatcher
 import cats.effect.syntax.monadCancel._
 import cats.syntax.all._
+import org.http4s.blaze.core.Http1Stage
+import org.http4s.blaze.core.IdleTimeoutStage
+import org.http4s.blaze.core.util.BodylessWriter
+import org.http4s.blaze.core.util.Http1Writer
 import org.http4s.blaze.http.parser.BaseExceptions.BadMessage
 import org.http4s.blaze.http.parser.BaseExceptions.ParserException
 import org.http4s.blaze.pipeline.Command.EOF
@@ -31,10 +35,6 @@ import org.http4s.blaze.util.BufferTools
 import org.http4s.blaze.util.BufferTools.emptyBuffer
 import org.http4s.blaze.util.Execution._
 import org.http4s.blaze.util.TickWheelExecutor
-import org.http4s.blaze.core.Http1Stage
-import org.http4s.blaze.core.IdleTimeoutStage
-import org.http4s.blaze.core.util.BodylessWriter
-import org.http4s.blaze.core.util.Http1Writer
 import org.http4s.headers.Connection
 import org.http4s.headers.`Content-Length`
 import org.http4s.headers.`Transfer-Encoding`

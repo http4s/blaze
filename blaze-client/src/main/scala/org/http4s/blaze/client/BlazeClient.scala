@@ -26,8 +26,8 @@ import cats.effect.kernel.Resource
 import cats.effect.kernel.Resource.ExitCase
 import cats.effect.std.Dispatcher
 import cats.syntax.all._
-import org.http4s.blaze.util.TickWheelExecutor
 import org.http4s.blaze.core.ResponseHeaderTimeoutStage
+import org.http4s.blaze.util.TickWheelExecutor
 import org.http4s.client.Client
 import org.http4s.client.DefaultClient
 import org.http4s.client.RequestKey

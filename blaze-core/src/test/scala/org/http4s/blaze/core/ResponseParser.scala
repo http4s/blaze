@@ -18,8 +18,9 @@ package org.http4s.blaze.core
 
 import cats.syntax.all._
 import fs2._
+import org.http4s.Header
 import org.http4s.Header.Raw
-import org.http4s.{Header, Status}
+import org.http4s.Status
 import org.http4s.blaze.http.parser.Http1ClientParser
 import org.typelevel.ci.CIString
 

@@ -21,15 +21,20 @@ import cats.effect.std.Dispatcher
 import cats.syntax.all._
 import fs2.Stream._
 import fs2._
+import org.http4s.Entity
 import org.http4s.Entity.Empty
+import org.http4s.Header
 import org.http4s.Header.Raw
-import org.http4s.{Entity, Header, Headers, InvalidBodyException, Method, Request}
+import org.http4s.Headers
+import org.http4s.InvalidBodyException
+import org.http4s.Method
+import org.http4s.Request
+import org.http4s.blaze.core.util._
 import org.http4s.blaze.http.parser.BaseExceptions.ParserException
 import org.http4s.blaze.pipeline.Command
 import org.http4s.blaze.pipeline.TailStage
 import org.http4s.blaze.util.BufferTools
 import org.http4s.blaze.util.BufferTools.emptyBuffer
-import org.http4s.blaze.core.util._
 import org.http4s.headers._
 import org.http4s.syntax.header._
 import org.http4s.util.Renderer
