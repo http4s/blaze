@@ -25,7 +25,7 @@ import java.nio.charset.StandardCharsets._
 import java.security.MessageDigest
 import java.util.Base64
 
-private[http4s] object WebSocketHandshake {
+private[blaze] object WebSocketHandshake {
 
   /** Creates a new [[ClientHandshaker]] */
   def clientHandshaker[F[_]: MonadThrow](host: String, random: Random[F]): F[ClientHandshaker] =

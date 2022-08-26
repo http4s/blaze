@@ -28,7 +28,7 @@ import scala.concurrent.ExecutionContext
 import scala.concurrent.Future
 import scala.concurrent.duration.FiniteDuration
 
-private[http4s] final class ResponseHeaderTimeoutStage[A](
+private[blaze] final class ResponseHeaderTimeoutStage[A](
     timeout: FiniteDuration,
     exec: TickWheelExecutor,
     ec: ExecutionContext,

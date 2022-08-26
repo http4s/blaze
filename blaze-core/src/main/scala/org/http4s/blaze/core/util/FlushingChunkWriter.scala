@@ -27,7 +27,7 @@ import java.nio.ByteBuffer
 import scala.concurrent.ExecutionContext.parasitic
 import scala.concurrent._
 
-private[http4s] class FlushingChunkWriter[F[_]](pipe: TailStage[ByteBuffer], trailer: F[Headers])(
+private[blaze] class FlushingChunkWriter[F[_]](pipe: TailStage[ByteBuffer], trailer: F[Headers])(
     implicit
     protected val F: Async[F],
     private val ec: ExecutionContext,

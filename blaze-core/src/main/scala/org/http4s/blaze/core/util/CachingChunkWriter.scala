@@ -28,7 +28,7 @@ import java.nio.charset.StandardCharsets.ISO_8859_1
 import scala.collection.mutable.Buffer
 import scala.concurrent._
 
-private[http4s] class CachingChunkWriter[F[_]](
+private[blaze] class CachingChunkWriter[F[_]](
     pipe: TailStage[ByteBuffer],
     trailer: F[Headers],
     bufferMaxSize: Int,

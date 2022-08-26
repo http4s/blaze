@@ -23,7 +23,7 @@ import org.http4s.Entity
 
 import scala.concurrent._
 
-private[http4s] trait EntityBodyWriter[F[_]] {
+private[blaze] trait EntityBodyWriter[F[_]] {
   implicit protected def F: Async[F]
 
   /** Write a Chunk to the wire.

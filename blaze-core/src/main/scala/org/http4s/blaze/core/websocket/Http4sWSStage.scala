@@ -42,7 +42,7 @@ import scala.concurrent.ExecutionContext
 import scala.util.Failure
 import scala.util.Success
 
-private[http4s] class Http4sWSStage[F[_]](
+private[blaze] class Http4sWSStage[F[_]](
     ws: WebSocket[F],
     sentClose: AtomicBoolean,
     deadSignal: SignallingRef[F, Boolean],

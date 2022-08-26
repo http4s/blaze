@@ -27,7 +27,7 @@ import java.nio.ByteBuffer
 import java.nio.charset.StandardCharsets
 import scala.concurrent._
 
-private[http4s] trait Http1Writer[F[_]] extends EntityBodyWriter[F] {
+private[blaze] trait Http1Writer[F[_]] extends EntityBodyWriter[F] {
   final def write(headerWriter: StringWriter, entity: Entity[F]): F[Boolean] =
     fromFutureNoShift(F.delay(writeHeaders(headerWriter)))
       .guaranteeCase {

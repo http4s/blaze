@@ -26,7 +26,7 @@ import java.nio.ByteBuffer
 import scala.concurrent.ExecutionContext.parasitic
 import scala.concurrent.Future
 
-private[http4s] class IdentityWriter[F[_]](size: Long, out: TailStage[ByteBuffer])(implicit
+private[blaze] class IdentityWriter[F[_]](size: Long, out: TailStage[ByteBuffer])(implicit
     protected val F: Async[F]
 ) extends Http1Writer[F] {
 

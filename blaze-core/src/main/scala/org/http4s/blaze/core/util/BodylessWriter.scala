@@ -31,7 +31,7 @@ import scala.concurrent._
   *
   * @param pipe the blaze `TailStage`, which takes ByteBuffers which will send the data downstream
   */
-private[http4s] class BodylessWriter[F[_]](pipe: TailStage[ByteBuffer], close: Boolean)(implicit
+private[blaze] class BodylessWriter[F[_]](pipe: TailStage[ByteBuffer], close: Boolean)(implicit
     protected val F: Async[F]
 ) extends Http1Writer[F] {
   def writeHeaders(headerWriter: StringWriter): Future[Unit] =

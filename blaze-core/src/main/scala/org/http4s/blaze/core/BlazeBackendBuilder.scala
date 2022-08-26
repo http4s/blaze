@@ -22,7 +22,7 @@ import org.http4s.blaze.channel.OptionValue
 import java.net.SocketOption
 import java.net.StandardSocketOptions
 
-private[http4s] trait BlazeBackendBuilder[B] {
+private[blaze] trait BlazeBackendBuilder[B] {
   type Self
 
   def channelOptions: ChannelOptions

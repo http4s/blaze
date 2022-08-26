@@ -26,7 +26,7 @@ import scala.collection.mutable.Buffer
 import scala.concurrent.ExecutionContext.parasitic
 import scala.concurrent.Future
 
-private[http4s] class CachingStaticWriter[F[_]](
+private[blaze] class CachingStaticWriter[F[_]](
     out: TailStage[ByteBuffer],
     bufferSize: Int = 8 * 1024,
 )(implicit protected val F: Async[F])

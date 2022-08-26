@@ -23,7 +23,7 @@ import org.http4s.blaze.util.TickWheelExecutor
 
 package object core {
 
-  private[http4s] def tickWheelResource[F[_]](implicit F: Sync[F]): Resource[F, TickWheelExecutor] =
+  private[blaze] def tickWheelResource[F[_]](implicit F: Sync[F]): Resource[F, TickWheelExecutor] =
     Resource(F.delay {
       val s = new TickWheelExecutor()
       (s, F.delay(s.shutdown()))

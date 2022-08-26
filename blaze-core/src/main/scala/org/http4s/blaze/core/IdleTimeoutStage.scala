@@ -34,7 +34,7 @@ import scala.concurrent.Future
 import scala.concurrent.duration.FiniteDuration
 import scala.util.control.NonFatal
 
-private[http4s] final class IdleTimeoutStage[A](
+private[blaze] final class IdleTimeoutStage[A](
     timeout: FiniteDuration,
     exec: TickWheelExecutor,
     ec: ExecutionContext,

@@ -21,14 +21,14 @@ import cats.syntax.all._
 
 import scala.concurrent.ExecutionContext
 
-private[http4s] sealed trait ExecutionContextConfig extends Product with Serializable {
+private[blaze] sealed trait ExecutionContextConfig extends Product with Serializable {
   def getExecutionContext[F[_]: Async]: F[ExecutionContext] = this match {
     case ExecutionContextConfig.DefaultContext => Async[F].executionContext
     case ExecutionContextConfig.ExplicitContext(ec) => ec.pure[F]
   }
 }
 
-private[http4s] object ExecutionContextConfig {
+private[blaze] object ExecutionContextConfig {
   case object DefaultContext extends ExecutionContextConfig
   final case class ExplicitContext(executionContext: ExecutionContext)
       extends ExecutionContextConfig
