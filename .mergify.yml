@@ -1,10 +1,64 @@
 pull_request_rules:
-  - name: automatically merge scala-steward's PRs
-    conditions:
-      - author=scala-steward
-      - status-success=continuous-integration/travis-ci/pr
-      - body~=labels:.*semver-patch.*
-    actions:
-      merge:
-        method: merge
 
+  - name: label series/0.23 PRs
+    conditions:
+      - base=series/0.23
+    actions:
+      label:
+        add: ['series/0.23']
+
+  - name: label http4s-steward's PRs
+    conditions:
+      - author=http4s-steward[bot]
+    actions:
+      label:
+        add: [dependencies]
+
+  - name: label blaze-core PRs
+    conditions:
+      - files~=^core/
+    actions:
+      label:
+        add: ['module:blaze-core']
+
+  - name: label http4s-blaze-client PRs
+    conditions:
+      - files~=^blaze-client/
+    actions:
+      label:
+        add: ['module:http4s-blaze-client']
+
+  - name: label http4s-blaze-core PRs
+    conditions:
+      - files~=^blaze-core/
+    actions:
+      label:
+        add: ['module:http4s-blaze-core']
+
+  - name: label http4s-blaze-server PRs
+    conditions:
+      - files~=^blaze-server/
+    actions:
+      label:
+        add: ['module:http4s-blaze-server']
+
+  - name: label blaze-examples PRs
+    conditions:
+      - files~=^examples/
+    actions:
+      label:
+        add: ['module:blaze-examples']
+
+  - name: label blaze-testkit PRs
+    conditions:
+      - files~=^testkit/
+    actions:
+      label:
+        add: ['module:blaze-testkit']
+
+  - name: label ember-server PRs
+    conditions:
+      - files~=^ember-server/
+    actions:
+      label:
+        add: ['module:ember-server']
