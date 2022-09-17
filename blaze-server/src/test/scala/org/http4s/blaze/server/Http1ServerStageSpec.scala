@@ -46,7 +46,7 @@ import scala.concurrent.duration._
 
 class Http1ServerStageSpec extends CatsEffectSuite {
 
-  private val fixture = ResourceFixture(Resource.make(IO.delay(new TickWheelExecutor())) { twe =>
+  private val fixture = ResourceFunFixture(Resource.make(IO.delay(new TickWheelExecutor())) { twe =>
     IO.delay(twe.shutdown())
   })
 
