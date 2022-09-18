@@ -24,6 +24,7 @@ import cats.effect.kernel.Deferred
 import cats.effect.std.Dispatcher
 import cats.syntax.all._
 import munit.CatsEffectSuite
+import munit.catseffect.IOFixture
 import org.http4s.blaze.pipeline.Command.Connected
 import org.http4s.blaze.pipeline.Command.Disconnected
 import org.http4s.blaze.util.TickWheelExecutor
@@ -51,18 +52,20 @@ class Http1ServerStageSpec extends CatsEffectSuite {
   })
 
   // todo replace with DispatcherIOFixture
-  val dispatcher = new Fixture[Dispatcher[IO]]("dispatcher") {
+  val dispatcher = new IOFixture[Dispatcher[IO]]("dispatcher") {
 
     private var d: Dispatcher[IO] = null
     private var shutdown: IO[Unit] = null
     def apply() = d
-    override def beforeAll(): Unit = {
-      val dispatcherAndShutdown = Dispatcher[IO].allocated.unsafeRunSync()
-      shutdown = dispatcherAndShutdown._2
-      d = dispatcherAndShutdown._1
-    }
-    override def afterAll(): Unit =
-      shutdown.unsafeRunSync()
+
+    override def beforeAll(): IO[Unit] =
+      Dispatcher[IO].allocated.map { case (dispatcher, cancelation) =>
+        shutdown = cancelation
+        d = dispatcher
+      }
+
+    override def afterAll(): IO[Unit] =
+      shutdown
   }
   override def munitFixtures = List(dispatcher)
 
