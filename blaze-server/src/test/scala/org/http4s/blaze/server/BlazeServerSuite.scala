@@ -24,7 +24,6 @@ import cats.effect.unsafe.IORuntimeConfig
 import cats.effect.unsafe.Scheduler
 import cats.syntax.all._
 import munit.CatsEffectSuite
-import munit.TestOptions
 import org.http4s.blaze.channel.ChannelOptions
 import org.http4s.dsl.io._
 import org.http4s.internal.threads._
@@ -42,6 +41,8 @@ import scala.concurrent.duration._
 import scala.io.Source
 
 class BlazeServerSuite extends CatsEffectSuite {
+
+  override val munitIOTimeout: Duration = 10.seconds
 
   override implicit lazy val munitIoRuntime: IORuntime = {
     val TestScheduler: ScheduledExecutorService = {
@@ -70,8 +71,6 @@ class BlazeServerSuite extends CatsEffectSuite {
       IORuntimeConfig(),
     )
   }
-
-  override def afterAll(): Unit = munitIoRuntime.shutdown()
 
   private def builder =
     BlazeServerBuilder[IO]
@@ -106,11 +105,7 @@ class BlazeServerSuite extends CatsEffectSuite {
       .resource
 
   private val blazeServer =
-    ResourceFixture[Server](
-      serverR,
-      (_: TestOptions, _: Server) => IO.unit,
-      (_: Server) => IO.sleep(100.milliseconds) *> IO.unit,
-    )
+    ResourceFunFixture[Server](serverR)
 
   private def get(server: Server, path: String): IO[String] = IO.blocking {
     AutoCloseableResource.resource(

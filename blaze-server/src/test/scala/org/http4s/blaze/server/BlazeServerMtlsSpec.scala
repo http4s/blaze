@@ -142,7 +142,7 @@ class BlazeServerMtlsSpec extends CatsEffectSuite {
     }
 
   private def blazeServer(sslParameters: SSLParameters) =
-    ResourceFixture(serverR(sslParameters))
+    ResourceFunFixture(serverR(sslParameters))
 
   /** Test "required" auth mode
     */
