@@ -42,6 +42,8 @@ import scala.io.Source
 
 class BlazeServerSuite extends CatsEffectSuite {
 
+  override val munitIOTimeout: Duration = 10.seconds
+
   override implicit lazy val munitIoRuntime: IORuntime = {
     val TestScheduler: ScheduledExecutorService = {
       val s =
@@ -69,8 +71,6 @@ class BlazeServerSuite extends CatsEffectSuite {
       IORuntimeConfig(),
     )
   }
-
-  override def afterAll(): Unit = munitIoRuntime.shutdown()
 
   private def builder =
     BlazeServerBuilder[IO]
