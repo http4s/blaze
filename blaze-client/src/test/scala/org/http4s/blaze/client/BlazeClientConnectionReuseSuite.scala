@@ -30,7 +30,7 @@ import java.util.concurrent.TimeUnit
 import scala.concurrent.duration._
 
 class BlazeClientConnectionReuseSuite extends BlazeClientBase {
-  override def munitTimeout: Duration = new FiniteDuration(50, TimeUnit.SECONDS)
+  override def munitIOTimeout: Duration = new FiniteDuration(50, TimeUnit.SECONDS)
 
   test("BlazeClient should reuse the connection after a simple successful request") {
     builder().resource.use { client =>
