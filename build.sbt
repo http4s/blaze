@@ -324,7 +324,9 @@ lazy val blazeClient = Project("http4s-blaze-client", file("blaze-client"))
         Seq(
           ProblemFilters.exclude[IncompatibleResultTypeProblem](
             "org.http4s.blaze.client.ConnectionManager#NextConnection._1"
-          )
+          ),
+          ProblemFilters
+            .exclude[DirectMissingMethodProblem]("org.http4s.blaze.client.BlazeClient.makeClient"),
         )
       else Seq.empty
     },
