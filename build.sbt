@@ -2,8 +2,8 @@ import Dependencies._
 
 val Scala213 = "2.13.8"
 val Scala3 = "3.1.3"
-val http4sVersion = "1.0.0-M36"
-val munitCatsEffectVersion = "1.0.7"
+val http4sVersion = "1.0.0-M37"
+val munitCatsEffectVersion = "2.0.0-M3"
 
 ThisBuild / resolvers +=
   "s01 snapshots".at("https://s01.oss.sonatype.org/content/repositories/snapshots/")
@@ -115,7 +115,7 @@ lazy val blazeCore = Project("http4s-blaze-core", file("blaze-core"))
     startYear := Some(2014),
     libraryDependencies ++= Seq(
       "org.http4s" %% "http4s-core" % http4sVersion,
-      "org.typelevel" %% "munit-cats-effect-3" % munitCatsEffectVersion % Test,
+      "org.typelevel" %% "munit-cats-effect" % munitCatsEffectVersion % Test,
       logbackClassic % Test,
     ),
     Test / scalafixConfig := Some(file(".scalafix.test.conf")),
@@ -154,7 +154,7 @@ lazy val examples = Project("blaze-examples", file("examples"))
     libraryDependencies ++= Seq(
       "org.http4s" %% "http4s-dsl" % http4sVersion,
       "org.http4s" %% "http4s-circe" % http4sVersion,
-      "io.circe" %% "circe-generic" % "0.14.2",
+      "io.circe" %% "circe-generic" % "0.14.3",
     ),
     Test / scalafixConfig := Some(file(".scalafix.test.conf")),
   )

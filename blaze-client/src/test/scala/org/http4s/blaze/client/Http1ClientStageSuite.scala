@@ -54,7 +54,7 @@ class Http1ClientStageSuite extends CatsEffectSuite with DispatcherIOFixture {
   val resp = "HTTP/1.1 200 OK\r\nContent-Length: 4\r\n\r\ndone"
 
   private val fooConnection =
-    ResourceFixture[Http1Connection[IO]] {
+    ResourceFunFixture[Http1Connection[IO]] {
       for {
         dispatcher <- Dispatcher[IO]
         connection <- mkConnection(FooRequestKey, dispatcher)
