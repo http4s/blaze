@@ -25,11 +25,11 @@ import cats.effect.std.Dispatcher
 import cats.syntax.all._
 import munit.CatsEffectSuite
 import munit.catseffect.IOFixture
+import org.http4s.blaze.core.ResponseParser
+import org.http4s.blaze.core.SeqTestHead
 import org.http4s.blaze.pipeline.Command.Connected
 import org.http4s.blaze.pipeline.Command.Disconnected
 import org.http4s.blaze.util.TickWheelExecutor
-import org.http4s.blazecore.ResponseParser
-import org.http4s.blazecore.SeqTestHead
 import org.http4s.dsl.io._
 import org.http4s.headers.Date
 import org.http4s.headers.`Content-Length`

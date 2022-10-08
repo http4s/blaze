@@ -28,10 +28,10 @@ import cats.syntax.all._
 import fs2._
 import org.http4s.Uri.Authority
 import org.http4s.Uri.RegName
+import org.http4s.blaze.core.Http1Stage
+import org.http4s.blaze.core.IdleTimeoutStage
+import org.http4s.blaze.core.util.Http1Writer
 import org.http4s.blaze.pipeline.Command.EOF
-import org.http4s.blazecore.Http1Stage
-import org.http4s.blazecore.IdleTimeoutStage
-import org.http4s.blazecore.util.Http1Writer
 import org.http4s.client.RequestKey
 import org.http4s.headers.Host
 import org.http4s.headers.`Content-Length`

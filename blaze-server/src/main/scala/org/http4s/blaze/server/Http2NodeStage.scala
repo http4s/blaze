@@ -24,15 +24,15 @@ import cats.effect.syntax.temporal._
 import cats.syntax.all._
 import fs2.Stream._
 import fs2._
+import org.http4s.blaze.core.IdleTimeoutStage
+import org.http4s.blaze.core.util.End
+import org.http4s.blaze.core.util.Http2Writer
 import org.http4s.blaze.http.HeaderNames
 import org.http4s.blaze.http.Headers
 import org.http4s.blaze.http.http2._
 import org.http4s.blaze.pipeline.TailStage
 import org.http4s.blaze.pipeline.{Command => Cmd}
 import org.http4s.blaze.util.TickWheelExecutor
-import org.http4s.blazecore.IdleTimeoutStage
-import org.http4s.blazecore.util.End
-import org.http4s.blazecore.util.Http2Writer
 import org.http4s.server.ServiceErrorHandler
 import org.http4s.{Method => HMethod}
 import org.typelevel.vault._

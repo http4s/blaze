@@ -30,14 +30,14 @@ import com.comcast.ip4s.Port
 import com.comcast.ip4s.SocketAddress
 import org.http4s.blaze.channel._
 import org.http4s.blaze.channel.nio1.NIO1SocketServerGroup
+import org.http4s.blaze.core.BlazeBackendBuilder
+import org.http4s.blaze.core.ExecutionContextConfig
+import org.http4s.blaze.core.tickWheelResource
 import org.http4s.blaze.pipeline.LeafBuilder
 import org.http4s.blaze.pipeline.stages.SSLStage
 import org.http4s.blaze.server.BlazeServerBuilder._
 import org.http4s.blaze.util.TickWheelExecutor
 import org.http4s.blaze.{BuildInfo => BlazeBuildInfo}
-import org.http4s.blazecore.BlazeBackendBuilder
-import org.http4s.blazecore.ExecutionContextConfig
-import org.http4s.blazecore.tickWheelResource
 import org.http4s.internal.threads.threadFactory
 import org.http4s.internal.tls.deduceKeyLength
 import org.http4s.internal.tls.getCertChain
