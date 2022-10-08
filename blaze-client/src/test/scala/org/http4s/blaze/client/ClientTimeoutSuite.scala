@@ -44,9 +44,9 @@ import scala.concurrent.duration._
 
 class ClientTimeoutSuite extends CatsEffectSuite with DispatcherIOFixture {
 
-  override def munitTimeout: Duration = 5.seconds
+  override def munitIOTimeout: Duration = 5.seconds
 
-  private def tickWheelFixture = ResourceFixture(
+  private def tickWheelFixture = ResourceFunFixture(
     Resource.make(IO(new TickWheelExecutor(tick = 50.millis)))(tickWheel =>
       IO(tickWheel.shutdown())
     )

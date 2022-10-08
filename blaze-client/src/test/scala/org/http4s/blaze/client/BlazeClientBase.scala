@@ -28,6 +28,7 @@ import io.netty.handler.codec.http.HttpMethod
 import io.netty.handler.codec.http.HttpRequest
 import io.netty.handler.codec.http.HttpResponseStatus
 import munit.CatsEffectSuite
+import munit.catseffect.IOFixture
 import org.http4s.Status.Ok
 import org.http4s._
 import org.http4s.blaze.util.TickWheelExecutor
@@ -134,9 +135,9 @@ trait BlazeClientBase extends CatsEffectSuite {
       },
     )
 
-  val server: Fixture[ServerScaffold[IO]] =
+  val server: IOFixture[ServerScaffold[IO]] =
     ResourceSuiteLocalFixture("http", makeScaffold(2, false))
-  val secureServer: Fixture[ServerScaffold[IO]] =
+  val secureServer: IOFixture[ServerScaffold[IO]] =
     ResourceSuiteLocalFixture("https", makeScaffold(1, true))
 
   override val munitFixtures = List(

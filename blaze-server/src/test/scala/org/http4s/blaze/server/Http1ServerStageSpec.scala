@@ -26,6 +26,7 @@ import cats.syntax.all._
 import munit.CatsEffectSuite
 import org.http4s.blaze.core.ResponseParser
 import org.http4s.blaze.core.SeqTestHead
+import munit.catseffect.IOFixture
 import org.http4s.blaze.pipeline.Command.Connected
 import org.http4s.blaze.pipeline.Command.Disconnected
 import org.http4s.blaze.util.TickWheelExecutor
@@ -45,23 +46,25 @@ import scala.concurrent.duration._
 
 class Http1ServerStageSpec extends CatsEffectSuite {
 
-  private val fixture = ResourceFixture(Resource.make(IO.delay(new TickWheelExecutor())) { twe =>
+  private val fixture = ResourceFunFixture(Resource.make(IO.delay(new TickWheelExecutor())) { twe =>
     IO.delay(twe.shutdown())
   })
 
   // todo replace with DispatcherIOFixture
-  val dispatcher = new Fixture[Dispatcher[IO]]("dispatcher") {
+  val dispatcher = new IOFixture[Dispatcher[IO]]("dispatcher") {
 
     private var d: Dispatcher[IO] = null
     private var shutdown: IO[Unit] = null
     def apply() = d
-    override def beforeAll(): Unit = {
-      val dispatcherAndShutdown = Dispatcher[IO].allocated.unsafeRunSync()
-      shutdown = dispatcherAndShutdown._2
-      d = dispatcherAndShutdown._1
-    }
-    override def afterAll(): Unit =
-      shutdown.unsafeRunSync()
+
+    override def beforeAll(): IO[Unit] =
+      Dispatcher[IO].allocated.map { case (dispatcher, cancelation) =>
+        shutdown = cancelation
+        d = dispatcher
+      }
+
+    override def afterAll(): IO[Unit] =
+      shutdown
   }
   override def munitFixtures = List(dispatcher)
 
@@ -589,38 +592,38 @@ class Http1ServerStageSpec extends CatsEffectSuite {
       val (_, headers, _) = ResponseParser.parseBuffer(buff)
       assertEquals(headers.find(_.name === ci"Evil"), None)
     }
+  }
 
-    fixture.test("Http1ServerStage: don't deadlock TickWheelExecutor with uncancelable request") {
-      tw =>
-        val reqUncancelable = List("GET /uncancelable HTTP/1.0\r\n\r\n")
-        val reqCancelable = List("GET /cancelable HTTP/1.0\r\n\r\n")
+  fixture.test("Http1ServerStage: don't deadlock TickWheelExecutor with uncancelable request") {
+    tw =>
+      val reqUncancelable = List("GET /uncancelable HTTP/1.0\r\n\r\n")
+      val reqCancelable = List("GET /cancelable HTTP/1.0\r\n\r\n")
 
-        (for {
-          uncancelableStarted <- Deferred[IO, Unit]
-          uncancelableCanceled <- Deferred[IO, Unit]
-          cancelableStarted <- Deferred[IO, Unit]
-          cancelableCanceled <- Deferred[IO, Unit]
-          app = HttpApp[IO] {
-            case req if req.pathInfo === path"/uncancelable" =>
-              uncancelableStarted.complete(()) *>
-                IO.uncancelable { poll =>
-                  poll(uncancelableCanceled.complete(())) *>
-                    cancelableCanceled.get
-                }.as(Response[IO]())
-            case _ =>
-              cancelableStarted.complete(()) *> IO.never.guarantee(
-                cancelableCanceled.complete(()).void
-              )
-          }
-          head <- IO(runRequest(tw, reqUncancelable, app))
-          _ <- uncancelableStarted.get
-          _ <- uncancelableCanceled.get
-          _ <- IO(head.sendInboundCommand(Disconnected))
-          head2 <- IO(runRequest(tw, reqCancelable, app))
-          _ <- cancelableStarted.get
-          _ <- IO(head2.sendInboundCommand(Disconnected))
-          _ <- cancelableCanceled.get
-        } yield ()).assert
-    }
+      (for {
+        uncancelableStarted <- Deferred[IO, Unit]
+        uncancelableCanceled <- Deferred[IO, Unit]
+        cancelableStarted <- Deferred[IO, Unit]
+        cancelableCanceled <- Deferred[IO, Unit]
+        app = HttpApp[IO] {
+          case req if req.pathInfo === path"/uncancelable" =>
+            uncancelableStarted.complete(()) *>
+              IO.uncancelable { poll =>
+                poll(uncancelableCanceled.complete(())) *>
+                  cancelableCanceled.get
+              }.as(Response[IO]())
+          case _ =>
+            cancelableStarted.complete(()) *> IO.never.guarantee(
+              cancelableCanceled.complete(()).void
+            )
+        }
+        head <- IO(runRequest(tw, reqUncancelable, app))
+        _ <- uncancelableStarted.get
+        _ <- uncancelableCanceled.get
+        _ <- IO(head.sendInboundCommand(Disconnected))
+        head2 <- IO(runRequest(tw, reqCancelable, app))
+        _ <- cancelableStarted.get
+        _ <- IO(head2.sendInboundCommand(Disconnected))
+        _ <- cancelableCanceled.get
+      } yield ()).assert
   }
 }
