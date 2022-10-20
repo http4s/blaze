@@ -42,15 +42,6 @@ lazy val commonSettings = Seq(
   description := "NIO Framework for Scala",
   Test / scalacOptions ~= (_.filterNot(Set("-Ywarn-dead-code", "-Wdead-code"))), // because mockito
   Compile / doc / scalacOptions += "-no-link-warnings",
-  Compile / unmanagedSourceDirectories ++= {
-    (Compile / unmanagedSourceDirectories).value.map { dir =>
-      val sv = scalaVersion.value
-      CrossVersion.binaryScalaVersion(sv) match {
-        case "2.11" | "2.12" => file(dir.getPath ++ "-2.11-2.12")
-        case _ => file(dir.getPath ++ "-2.13")
-      }
-    }
-  },
   run / fork := true,
   scalafmtConfig := file(".scalafmt.blaze.conf"),
   scalafixConfig := Some(file(".scalafix.blaze.conf")),
