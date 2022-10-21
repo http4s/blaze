@@ -148,9 +148,7 @@ sealed abstract class BlazeClientBuilder[F[_]] private (
     customDnsResolver = customDnsResolver,
     retries = 0,
     maxIdleDuration = Duration.Inf,
-  )(
-    F
-  )
+  )(F)
 
   private def copy(
       responseHeaderTimeout: Duration = responseHeaderTimeout,

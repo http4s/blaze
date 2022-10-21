@@ -81,7 +81,7 @@ private final class FrameEncoder(remoteSettings: Http2Settings, headerEncoder: H
       streamId: Int,
       priority: Priority,
       endStream: Boolean,
-      headers: Headers,
+      headers: Headers
   ): collection.Seq[ByteBuffer] = {
     val rawHeaders = headerEncoder.encodeHeaders(headers)
 
@@ -96,7 +96,7 @@ private final class FrameEncoder(remoteSettings: Http2Settings, headerEncoder: H
         endHeaders = true,
         endStream,
         padding = 0,
-        rawHeaders,
+        rawHeaders
       )
     else {
       // need to fragment
@@ -110,7 +110,7 @@ private final class FrameEncoder(remoteSettings: Http2Settings, headerEncoder: H
         endHeaders = false,
         endStream,
         padding = 0,
-        headersBuf,
+        headersBuf
       )
 
       while (rawHeaders.hasRemaining) {

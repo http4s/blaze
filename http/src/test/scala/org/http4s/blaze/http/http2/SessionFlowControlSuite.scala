@@ -312,7 +312,7 @@ class SessionFlowControlSuite extends BlazeTestSuite {
 
     assertEquals(
       flow.outboundRequest(DefaultSettings.INITIAL_WINDOW_SIZE),
-      DefaultSettings.INITIAL_WINDOW_SIZE,
+      DefaultSettings.INITIAL_WINDOW_SIZE
     )
     assertEquals(flow.streamOutboundWindow, 0)
     assertEquals(session.sessionOutboundWindow, 0)
@@ -324,7 +324,7 @@ class SessionFlowControlSuite extends BlazeTestSuite {
 
     assertEquals(
       flow.outboundRequest(DefaultSettings.INITIAL_WINDOW_SIZE + 1),
-      DefaultSettings.INITIAL_WINDOW_SIZE,
+      DefaultSettings.INITIAL_WINDOW_SIZE
     )
     assertEquals(flow.streamOutboundWindow, 0)
     assertEquals(session.sessionOutboundWindow, 0)

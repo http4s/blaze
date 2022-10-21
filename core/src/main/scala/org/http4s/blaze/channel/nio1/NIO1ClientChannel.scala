@@ -25,7 +25,7 @@ import java.util.concurrent.atomic.AtomicBoolean
 
 private[blaze] final class NIO1ClientChannel(
     private[this] val underlying: SocketChannel,
-    private[this] val onClose: () => Unit,
+    private[this] val onClose: () => Unit
 ) extends NIO1Channel {
 
   private[this] val closed = new AtomicBoolean(false)
