@@ -26,7 +26,7 @@ class ChannelOptionsSuite extends FunSuite {
   test("A ChannelOptions should be set on a NetworkChannel") {
     val options = ChannelOptions(
       OptionValue[java.lang.Boolean](java.net.StandardSocketOptions.TCP_NODELAY, true),
-      OptionValue[java.lang.Boolean](java.net.StandardSocketOptions.SO_KEEPALIVE, false)
+      OptionValue[java.lang.Boolean](java.net.StandardSocketOptions.SO_KEEPALIVE, false),
     )
 
     val ch = new NetworkChannel {
@@ -62,11 +62,11 @@ class ChannelOptionsSuite extends FunSuite {
 
     assertEquals(
       ch.getOption[java.lang.Boolean](java.net.StandardSocketOptions.TCP_NODELAY),
-      java.lang.Boolean.TRUE
+      java.lang.Boolean.TRUE,
     )
     assertEquals(
       ch.getOption[java.lang.Boolean](java.net.StandardSocketOptions.SO_KEEPALIVE),
-      java.lang.Boolean.FALSE
+      java.lang.Boolean.FALSE,
     )
   }
 }

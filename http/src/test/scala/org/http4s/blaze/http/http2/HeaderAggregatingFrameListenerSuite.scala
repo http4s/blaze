@@ -38,7 +38,7 @@ class HeaderAggregatingFrameListenerSuite extends BlazeTestSuite {
           streamId: Int,
           priority: Priority,
           end_stream: Boolean,
-          headers: Headers
+          headers: Headers,
       ): Result = {
         assertEquals(sId, streamId)
         assertEquals(p, priority)
@@ -56,7 +56,7 @@ class HeaderAggregatingFrameListenerSuite extends BlazeTestSuite {
 
     assertEquals(
       mkDecoder(1, Priority.NoPriority, true, hs).decodeBuffer(BufferTools.joinBuffers(bs)),
-      Halt
+      Halt,
     )
   }
 
@@ -157,7 +157,7 @@ class HeaderAggregatingFrameListenerSuite extends BlazeTestSuite {
           streamId: Int,
           promisedId: Int,
           end_headers: Boolean,
-          data: ByteBuffer
+          data: ByteBuffer,
       ): Result = {
         assertEquals(sId, streamId)
         assertEquals(pId, promisedId)
@@ -198,7 +198,7 @@ class HeaderAggregatingFrameListenerSuite extends BlazeTestSuite {
       override def onCompletePushPromiseFrame(
           streamId: Int,
           promisedId: Int,
-          headers: Headers
+          headers: Headers,
       ): Result = {
         assertEquals(sId, streamId)
         assertEquals(pId, promisedId)

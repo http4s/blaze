@@ -23,7 +23,7 @@ final class DefaultFlowStrategy(localSettings: Http2Settings) extends FlowStrate
     check(
       localSettings.initialWindowSize,
       session.sessionInboundWindow,
-      session.sessionUnconsumedBytes
+      session.sessionUnconsumedBytes,
     )
 
   override def checkStream(stream: StreamFlowWindow): Increment = {
@@ -31,7 +31,7 @@ final class DefaultFlowStrategy(localSettings: Http2Settings) extends FlowStrate
     val streamAck = check(
       localSettings.initialWindowSize,
       stream.streamInboundWindow,
-      stream.streamUnconsumedBytes
+      stream.streamUnconsumedBytes,
     )
 
     FlowStrategy.increment(sessionAck, streamAck)

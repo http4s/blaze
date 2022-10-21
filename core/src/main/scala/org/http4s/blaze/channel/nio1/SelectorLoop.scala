@@ -47,7 +47,7 @@ import scala.util.control.{ControlThrowable, NonFatal}
 final class SelectorLoop(
     selector: Selector,
     bufferSize: Int,
-    threadFactory: ThreadFactory
+    threadFactory: ThreadFactory,
 ) extends Executor
     with ExecutionContext {
   require(bufferSize > 0, s"Invalid buffer size: $bufferSize")
@@ -126,7 +126,7 @@ final class SelectorLoop(
     */
   def initChannel(
       ch: NIO1Channel,
-      mkStage: SelectionKey => Selectable
+      mkStage: SelectionKey => Selectable,
   ): Unit =
     enqueueTask(new Runnable {
       override def run(): Unit =

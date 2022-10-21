@@ -212,7 +212,7 @@ private abstract class StreamStateImpl(session: SessionCore) extends StreamState
   override final def invokeInboundData(
       endStream: Boolean,
       data: ByteBuffer,
-      flowBytes: Int
+      flowBytes: Int,
   ): MaybeError =
     if (receivedEndStream)
       // https://tools.ietf.org/html/rfc7540#section-5.1 section 'half-closed'
@@ -237,7 +237,7 @@ private abstract class StreamStateImpl(session: SessionCore) extends StreamState
   override final def invokeInboundHeaders(
       priority: Priority,
       endStream: Boolean,
-      headers: Headers
+      headers: Headers,
   ): MaybeError =
     if (receivedEndStream)
       // https://tools.ietf.org/html/rfc7540#section-5.1 section 'half-closed'

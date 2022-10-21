@@ -72,7 +72,7 @@ private[nio1] object NIO1HeadStage {
   private def performWrite(
       ch: NIO1ClientChannel,
       scratch: ByteBuffer,
-      buffers: Array[ByteBuffer]
+      buffers: Array[ByteBuffer],
   ): WriteResult =
     try
       if (BufferTools.areDirectOrEmpty(buffers)) {
@@ -122,7 +122,7 @@ private[nio1] object NIO1HeadStage {
 private[nio1] final class NIO1HeadStage(
     ch: NIO1ClientChannel,
     selectorLoop: SelectorLoop,
-    key: SelectionKey
+    key: SelectionKey,
 ) extends ChannelHead
     with Selectable {
   import NIO1HeadStage._

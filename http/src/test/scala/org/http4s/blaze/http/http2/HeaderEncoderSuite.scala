@@ -27,7 +27,7 @@ class HeaderEncoderSuite extends BlazeTestSuite {
 
     assertEquals(
       HeaderCodecHelpers.decodeHeaders(bb, Http2Settings.DefaultSettings.HEADER_TABLE_SIZE),
-      headers
+      headers,
     )
   }
 }

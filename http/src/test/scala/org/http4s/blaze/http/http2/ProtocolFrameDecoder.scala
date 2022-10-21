@@ -47,7 +47,7 @@ private[http2] object ProtocolFrameDecoder {
   def decode(
       buffer: ByteBuffer,
       inHeadersSequence: Boolean = false,
-      maxFrameSize: Int = Http2Settings.default.maxFrameSize
+      maxFrameSize: Int = Http2Settings.default.maxFrameSize,
   ): ProtocolFrame = {
     val listener = new Listener(inHeadersSequence)
     val decoder = new FrameDecoder(toSettings(maxFrameSize), listener)

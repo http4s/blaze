@@ -23,7 +23,7 @@ private[http2] class ObservingSessionFlowControl(
     session: SessionCore
 ) extends SessionFlowControlImpl(
       session = session,
-      flowStrategy = null /* only used on two overridden methods */
+      flowStrategy = null, /* only used on two overridden methods */
     ) {
   override protected def onSessonBytesConsumed(consumed: Int): Unit = ()
   override protected def onStreamBytesConsumed(stream: StreamFlowWindow, consumed: Int): Unit = ()
