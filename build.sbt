@@ -1,11 +1,11 @@
 import com.typesafe.tools.mima.core._
 import Dependencies._
 
-val Scala212 = "2.12.16"
-val Scala213 = "2.13.8"
-val Scala3 = "3.1.2"
-val http4sVersion = "0.23.14"
-val munitCatsEffectVersion = "1.0.7"
+val Scala212 = "2.12.17"
+val Scala213 = "2.13.10"
+val Scala3 = "3.2.0"
+val http4sVersion = "0.23.16"
+val munitCatsEffectVersion = "2.0.0-M3"
 
 ThisBuild / resolvers +=
   "s01 snapshots".at("https://s01.oss.sonatype.org/content/repositories/snapshots/")
@@ -136,7 +136,7 @@ lazy val blazeCore = Project("http4s-blaze-core", file("blaze-core"))
     tlMimaPreviousVersions ++= (0 to 11).map(y => s"0.23.$y").toSet,
     libraryDependencies ++= Seq(
       "org.http4s" %% "http4s-core" % http4sVersion,
-      "org.typelevel" %% "munit-cats-effect-3" % munitCatsEffectVersion % Test,
+      "org.typelevel" %% "munit-cats-effect" % munitCatsEffectVersion % Test,
       logbackClassic % Test,
     ),
     mimaBinaryIssueFilters := {
@@ -324,7 +324,9 @@ lazy val blazeClient = Project("http4s-blaze-client", file("blaze-client"))
         Seq(
           ProblemFilters.exclude[IncompatibleResultTypeProblem](
             "org.http4s.blaze.client.ConnectionManager#NextConnection._1"
-          )
+          ),
+          ProblemFilters
+            .exclude[DirectMissingMethodProblem]("org.http4s.blaze.client.BlazeClient.makeClient"),
         )
       else Seq.empty
     },
@@ -340,7 +342,7 @@ lazy val examples = Project("blaze-examples", file("examples"))
     libraryDependencies ++= Seq(
       "org.http4s" %% "http4s-dsl" % http4sVersion,
       "org.http4s" %% "http4s-circe" % http4sVersion,
-      "io.circe" %% "circe-generic" % "0.14.2",
+      "io.circe" %% "circe-generic" % "0.14.3",
     ),
     Test / scalafixConfig := Some(file(".scalafix.test.conf")),
   )

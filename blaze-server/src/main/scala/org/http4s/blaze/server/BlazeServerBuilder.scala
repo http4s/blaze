@@ -30,7 +30,6 @@ import com.comcast.ip4s.Port
 import com.comcast.ip4s.SocketAddress
 import org.http4s.blaze.channel._
 import org.http4s.blaze.channel.nio1.NIO1SocketServerGroup
-import org.http4s.blaze.http.http2.server.ALPNServerSelector
 import org.http4s.blaze.pipeline.LeafBuilder
 import org.http4s.blaze.pipeline.stages.SSLStage
 import org.http4s.blaze.server.BlazeServerBuilder._
@@ -45,7 +44,6 @@ import org.http4s.internal.tls.getCertChain
 import org.http4s.server.SSLKeyStoreSupport.StoreInfo
 import org.http4s.server._
 import org.http4s.server.websocket.WebSocketBuilder2
-import org.http4s.websocket.WebSocketContext
 import org.http4s.{BuildInfo => Http4sBuildInfo}
 import org.log4s.getLogger
 import org.typelevel.vault._
@@ -321,65 +319,66 @@ class BlazeServerBuilder[F[_]] private (
         executionContext: ExecutionContext,
         secure: Boolean,
         engine: Option[SSLEngine],
-        webSocketKey: Key[WebSocketContext[F]],
     ) =
-      Http1ServerStage(
-        httpApp(WebSocketBuilder2(webSocketKey)),
-        requestAttributes(secure = secure, engine),
-        executionContext,
-        webSocketKey,
-        maxRequestLineLen,
-        maxHeadersLen,
-        chunkBufferMaxSize,
-        serviceErrorHandler,
-        responseHeaderTimeout,
-        idleTimeout,
-        scheduler,
-        dispatcher,
-        maxWebSocketBufferSize,
-      )
+      WebSocketBuilder2[F].map { builder =>
+        Http1ServerStage(
+          routes = httpApp(builder),
+          attributes = requestAttributes(secure = secure, engine),
+          executionContext = executionContext,
+          wsKey = builder.webSocketKey,
+          maxRequestLineLen = maxRequestLineLen,
+          maxHeadersLen = maxHeadersLen,
+          chunkBufferMaxSize = chunkBufferMaxSize,
+          serviceErrorHandler = serviceErrorHandler,
+          responseHeaderTimeout = responseHeaderTimeout,
+          idleTimeout = idleTimeout,
+          scheduler = scheduler,
+          dispatcher = dispatcher,
+          maxWebSocketBufferSize = maxWebSocketBufferSize,
+        )
+      }
 
     def http2Stage(
         executionContext: ExecutionContext,
         engine: SSLEngine,
-        webSocketKey: Key[WebSocketContext[F]],
-    ): ALPNServerSelector =
-      ProtocolSelector(
-        engine,
-        httpApp(WebSocketBuilder2(webSocketKey)),
-        maxRequestLineLen,
-        maxHeadersLen,
-        chunkBufferMaxSize,
-        requestAttributes(secure = true, engine.some),
-        executionContext,
-        serviceErrorHandler,
-        responseHeaderTimeout,
-        idleTimeout,
-        scheduler,
-        dispatcher,
-        webSocketKey,
-        maxWebSocketBufferSize,
-      )
+    ) =
+      WebSocketBuilder2[F].map { builder =>
+        ProtocolSelector(
+          engine = engine,
+          httpApp = httpApp(builder),
+          maxRequestLineLen = maxRequestLineLen,
+          maxHeadersLen = maxHeadersLen,
+          chunkBufferMaxSize = chunkBufferMaxSize,
+          requestAttributes = requestAttributes(secure = true, engine.some),
+          executionContext = executionContext,
+          serviceErrorHandler = serviceErrorHandler,
+          responseHeaderTimeout = responseHeaderTimeout,
+          idleTimeout = idleTimeout,
+          scheduler = scheduler,
+          dispatcher = dispatcher,
+          webSocketKey = builder.webSocketKey,
+          maxWebSocketBufferSize = maxWebSocketBufferSize,
+        )
+      }
 
     dispatcher.unsafeToFuture {
-      Key.newKey[F, WebSocketContext[F]].flatMap { wsKey =>
-        executionContextConfig.getExecutionContext[F].map { executionContext =>
-          engineConfig match {
-            case Some((ctx, configure)) =>
-              val engine = ctx.createSSLEngine()
-              engine.setUseClientMode(false)
-              configure(engine)
+      executionContextConfig.getExecutionContext[F].flatMap { executionContext =>
+        engineConfig match {
+          case Some((ctx, configure)) =>
+            val engine = ctx.createSSLEngine()
+            engine.setUseClientMode(false)
+            configure(engine)
 
-              LeafBuilder(
-                if (isHttp2Enabled) http2Stage(executionContext, engine, wsKey)
-                else http1Stage(executionContext, secure = true, engine.some, wsKey)
-              ).prepend(new SSLStage(engine))
+            val leafBuilder =
+              if (isHttp2Enabled) http2Stage(executionContext, engine).map(LeafBuilder(_))
+              else http1Stage(executionContext, secure = true, engine.some).map(LeafBuilder(_))
 
-            case None =>
-              if (isHttp2Enabled)
-                logger.warn("HTTP/2 support requires TLS. Falling back to HTTP/1.")
-              LeafBuilder(http1Stage(executionContext, secure = false, None, wsKey))
-          }
+            leafBuilder.map(_.prepend(new SSLStage(engine)))
+
+          case None =>
+            if (isHttp2Enabled)
+              logger.warn("HTTP/2 support requires TLS. Falling back to HTTP/1.")
+            http1Stage(executionContext, secure = false, None).map(LeafBuilder(_))
         }
       }
     }
