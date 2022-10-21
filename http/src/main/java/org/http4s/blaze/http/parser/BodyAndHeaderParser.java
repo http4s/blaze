@@ -17,7 +17,6 @@
 package org.http4s.blaze.http.parser;
 
 import java.nio.ByteBuffer;
-
 import org.http4s.blaze.http.parser.BaseExceptions.BadMessage;
 import org.http4s.blaze.http.parser.BaseExceptions.InvalidState;
 import org.http4s.blaze.util.BufferTools;
