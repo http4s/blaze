@@ -20,9 +20,10 @@ package http2.server
 import java.nio.ByteBuffer
 import javax.net.ssl.SSLEngine
 import java.util
-import org.http4s.blaze.internal.compat.CollectionConverters._
 import org.http4s.blaze.pipeline.{Command => Cmd, LeafBuilder, TailStage}
 import org.http4s.blaze.util.Execution.trampoline
+
+import scala.jdk.CollectionConverters._
 import scala.util.{Failure, Success}
 import scala.util.control.NonFatal
 

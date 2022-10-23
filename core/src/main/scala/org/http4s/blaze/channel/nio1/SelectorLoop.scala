@@ -25,11 +25,11 @@ import java.util.{Set => JSet}
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.{Executor, RejectedExecutionException, ThreadFactory}
 
-import org.http4s.blaze.internal.compat.CollectionConverters._
 import org.http4s.blaze.util.TaskQueue
 import org.log4s.getLogger
 
 import scala.concurrent.ExecutionContext
+import scala.jdk.CollectionConverters._
 import scala.util.control.{ControlThrowable, NonFatal}
 
 /** A special thread that listens for events on the provided selector.
