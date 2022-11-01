@@ -59,7 +59,7 @@ class FrameSerializerSuite extends BlazeTestSuite with ScalaCheckSuite {
           streamId: Int,
           isLast: Boolean,
           data: ByteBuffer,
-          flowSize: Int
+          flowSize: Int,
       ): org.http4s.blaze.http.http2.Result = {
         assertEquals(streamId, dataFrame.streamId)
         assertEquals(isLast, dataFrame.endStream)
@@ -78,7 +78,7 @@ class FrameSerializerSuite extends BlazeTestSuite with ScalaCheckSuite {
           dataFrame.streamId,
           dataFrame.endStream,
           dataFrame.padding,
-          dataFrame.data.duplicate()
+          dataFrame.data.duplicate(),
         )
       )
       dec(dataFrame).decodeBuffer(frame) == Continue
@@ -99,7 +99,7 @@ class FrameSerializerSuite extends BlazeTestSuite with ScalaCheckSuite {
       endHeaders: Boolean,
       endStream: Boolean,
       data: ByteBuffer,
-      padding: Int
+      padding: Int,
   ) {
     def flowSize: Int = data.remaining + padding
   }
@@ -127,7 +127,7 @@ class FrameSerializerSuite extends BlazeTestSuite with ScalaCheckSuite {
           priority: Priority,
           end_headers: Boolean,
           end_stream: Boolean,
-          buffer: ByteBuffer
+          buffer: ByteBuffer,
       ): org.http4s.blaze.http.http2.Result = {
         assertEquals(headerFrame.streamId, streamId)
         assertEquals(headerFrame.priority, priority)
@@ -149,7 +149,7 @@ class FrameSerializerSuite extends BlazeTestSuite with ScalaCheckSuite {
           headerFrame.endHeaders,
           headerFrame.endStream,
           headerFrame.padding,
-          headerFrame.data.duplicate
+          headerFrame.data.duplicate,
         )
       )
 
@@ -163,7 +163,7 @@ class FrameSerializerSuite extends BlazeTestSuite with ScalaCheckSuite {
     assertEquals(
       dec(HeadersFrame(1, Priority.NoPriority, true, true, dat, 0))
         .decodeBuffer(buff1),
-      Continue
+      Continue,
     )
     assertEquals(buff1.remaining(), 0)
 
@@ -181,7 +181,7 @@ class FrameSerializerSuite extends BlazeTestSuite with ScalaCheckSuite {
     assertEquals(
       dec(HeadersFrame(1, Priority.NoPriority, true, true, dat, paddingSize))
         .decodeBuffer(buff),
-      Continue
+      Continue,
     )
   }
 
@@ -205,7 +205,7 @@ class FrameSerializerSuite extends BlazeTestSuite with ScalaCheckSuite {
     decoder(new MockFrameListener(false) {
       override def onPriorityFrame(
           streamId: Int,
-          priority: Priority.Dependent
+          priority: Priority.Dependent,
       ): org.http4s.blaze.http.http2.Result = {
         assertEquals(priorityFrame.streamId, streamId)
         assertEquals(priorityFrame.priority, priority)
@@ -254,7 +254,7 @@ class FrameSerializerSuite extends BlazeTestSuite with ScalaCheckSuite {
     decoder(new MockFrameListener(false) {
       override def onRstStreamFrame(
           streamId: Int,
-          code: Long
+          code: Long,
       ): org.http4s.blaze.http.http2.Result = {
         assertEquals(rstFrame.streamId, streamId)
         assertEquals(rstFrame.code, code)
@@ -311,7 +311,7 @@ class FrameSerializerSuite extends BlazeTestSuite with ScalaCheckSuite {
     decoder(new MockHeaderAggregatingFrameListener {
       override def onPingFrame(
           ack: Boolean,
-          data: Array[Byte]
+          data: Array[Byte],
       ): org.http4s.blaze.http.http2.Result = {
         assertEquals(pingFrame.ack, ack)
         assert(util.Arrays.equals(pingFrame.data, data))
@@ -342,7 +342,7 @@ class FrameSerializerSuite extends BlazeTestSuite with ScalaCheckSuite {
       override def onGoAwayFrame(
           lastStream: Int,
           errorCode: Long,
-          debugData: Array[Byte]
+          debugData: Array[Byte],
       ): org.http4s.blaze.http.http2.Result = {
         assertEquals(goAway.lastStream, lastStream)
         assertEquals(goAway.err, errorCode)
@@ -371,7 +371,7 @@ class FrameSerializerSuite extends BlazeTestSuite with ScalaCheckSuite {
     decoder(new MockHeaderAggregatingFrameListener {
       override def onWindowUpdateFrame(
           streamId: Int,
-          sizeIncrement: Int
+          sizeIncrement: Int,
       ): org.http4s.blaze.http.http2.Result = {
         assertEquals(update.streamId, streamId)
         assertEquals(update.increment, sizeIncrement)

@@ -44,7 +44,7 @@ final class ClientChannelFactory(
     group: Option[AsynchronousChannelGroup] = None,
     channelOptions: ChannelOptions = ChannelOptions.DefaultOptions,
     scheduler: TickWheelExecutor = Execution.scheduler,
-    connectTimeout: Duration = Duration.Inf
+    connectTimeout: Duration = Duration.Inf,
 ) {
   private[this] val logger = getLogger
 
@@ -52,13 +52,13 @@ final class ClientChannelFactory(
   def this(
       bufferSize: Int,
       group: Option[AsynchronousChannelGroup],
-      channelOptions: ChannelOptions
+      channelOptions: ChannelOptions,
   ) =
     this(bufferSize, group, channelOptions, Execution.scheduler, Duration.Inf)
 
   def connect(
       remoteAddress: SocketAddress,
-      bufferSize: Int = bufferSize
+      bufferSize: Int = bufferSize,
   ): Future[HeadStage[ByteBuffer]] = {
     val p = Promise[HeadStage[ByteBuffer]]()
 
