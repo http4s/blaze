@@ -39,7 +39,7 @@ class HeaderNamesSuite extends BlazeTestSuite {
     assertEquals(HeaderNames.validH2HeaderKey("Date@"), false)
   }
 
-  test("A HeaderNames.validH2HeaderKey should acccept a header with numbers") {
+  test("A HeaderNames.validH2HeaderKey should accept a header with numbers") {
     assert(HeaderNames.validH2HeaderKey(('0' to '9').mkString))
   }
 
