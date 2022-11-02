@@ -16,7 +16,7 @@
 
 package org.http4s.blaze.http
 
-import org.http4s.blaze.http.HttpClientSession.{Closed, Ready, ReleaseableResponse, Status}
+import org.http4s.blaze.http.HttpClientSession.{Closed, Ready, ReleasableResponse, Status}
 
 import scala.concurrent.Future
 import scala.concurrent.duration.Duration
@@ -29,9 +29,9 @@ sealed trait HttpClientSession {
 
   /** Dispatch a [[HttpRequest]]
     *
-    * The resultant `ReleaseableResponse` contains a
+    * The resultant `ReleasableResponse` contains a
     */
-  def dispatch(request: HttpRequest): Future[ReleaseableResponse]
+  def dispatch(request: HttpRequest): Future[ReleasableResponse]
 
   /** Get the `Status` of session */
   def status: Status
@@ -76,7 +76,7 @@ trait Http2ClientSession extends HttpClientSession {
 object HttpClientSession {
 
   /** ClientResponse that can be released */
-  trait ReleaseableResponse extends ClientResponse {
+  trait ReleasableResponse extends ClientResponse {
 
     /** Releases the resources associated with this dispatch
       *
