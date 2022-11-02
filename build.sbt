@@ -20,7 +20,7 @@ ThisBuild / developers ++= List(
   Developer(
     "bryce-anderson",
     "Bryce L. Anderson",
-    "bryce.anderson22@gamil.com",
+    "bryce.anderson22@gmail.com",
     url("https://github.com/bryce-anderson"),
   ),
   Developer(
