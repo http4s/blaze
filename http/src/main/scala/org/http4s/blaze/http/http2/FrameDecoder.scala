@@ -351,7 +351,7 @@ private object FrameDecoder {
       Continue
     }
 
-  // TODO: most everwhere else stream id's are not in hex, so make this consistent
+  // TODO: most everywhere else stream id's are not in hex, so make this consistent
   /** Convert an integer into its hex representation with a preceding '0x' */
   def hexStr(i: Int): String = "0x" + Integer.toHexString(i)
 }
