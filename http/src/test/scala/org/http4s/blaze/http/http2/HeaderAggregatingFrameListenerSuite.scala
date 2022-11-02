@@ -237,7 +237,7 @@ class HeaderAggregatingFrameListenerSuite extends BlazeTestSuite {
   }
 
   test(
-    "PUSH_PROMISE frame with header decoder should make a round trip with a zero leanth HEADERS and a continuation frame"
+    "PUSH_PROMISE frame with header decoder should make a round trip with a zero length HEADERS and a continuation frame"
   ) {
     val hs = Seq("foo" -> "bar", "biz" -> "baz")
 
