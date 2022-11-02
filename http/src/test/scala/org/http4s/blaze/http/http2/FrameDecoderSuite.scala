@@ -58,7 +58,7 @@ class FrameDecoderSuite extends BlazeTestSuite {
   //  +---------------------------------------------------------------+
 
   test("DATA. Decode basic frame") {
-    // UNKONWN Frame:
+    // UNKNOWN Frame:
     // Length: 8, Type: 0x16, Flags: 0, R: 0, StreamID: 0
     val testData = buffer(0x00, 0x00, 0x08, // length
       0x00, // type
@@ -76,7 +76,7 @@ class FrameDecoderSuite extends BlazeTestSuite {
   }
 
   test("DATA. Decode basic frame without data") {
-    // UNKONWN Frame:
+    // UNKNOWN Frame:
     // Length: 8, Type: 0x16, Flags: 0, R: 0, StreamID: 0
     val testData = buffer(
       0x00, 0x00, 0x00, // length
@@ -95,7 +95,7 @@ class FrameDecoderSuite extends BlazeTestSuite {
   }
 
   test("DATA. Basic frame with end-stream") {
-    // UNKONWN Frame:
+    // UNKNOWN Frame:
     // Length: 8, Type: 0x16, Flags: 0, R: 0, StreamID: 0
     val testData = buffer(
       0x00,
@@ -124,7 +124,7 @@ class FrameDecoderSuite extends BlazeTestSuite {
   }
 
   test("DATA. Basic frame with padding of 0 length") {
-    // UNKONWN Frame:
+    // UNKNOWN Frame:
     // Length: 8, Type: 0x16, Flags: 0, R: 0, StreamID: 0
     val testData = buffer(
       0x00,
@@ -156,7 +156,7 @@ class FrameDecoderSuite extends BlazeTestSuite {
   }
 
   test("DATA. Basic frame with padding of length equal to the remaining body length") {
-    // UNKONWN Frame:
+    // UNKNOWN Frame:
     // Length: 8, Type: 0x16, Flags: 0, R: 0, StreamID: 0
     val testData = buffer(
       0x00,
@@ -188,7 +188,7 @@ class FrameDecoderSuite extends BlazeTestSuite {
   }
 
   test("DATA. Basic frame with padding of length equal to the body") {
-    // UNKONWN Frame:
+    // UNKNOWN Frame:
     // Length: 8, Type: 0x16, Flags: 0, R: 0, StreamID: 0
     val testData = buffer(
       0x00,
@@ -1437,7 +1437,7 @@ class FrameDecoderSuite extends BlazeTestSuite {
 //  case FrameTypes.CONTINUATION  => decodeContinuationFrame(buffer, streamId, flags)
 
   test("Unknown frame types pass the data to the extension frame method") {
-    // UNKONWN Frame:
+    // UNKNOWN Frame:
     // Length: 8, Type: 0x16, Flags: 0, R: 0, StreamID: 0
     val testData = buffer(0x00, 0x00, 0x08, // length
       0x16, // type
