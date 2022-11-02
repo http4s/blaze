@@ -61,7 +61,7 @@ class Http4sWSStageSpec extends CatsEffectSuite with DispatcherIOFixture {
       IO.race(backendInQ.take, IO.sleep(timeoutSeconds.seconds))
         .map(_.fold(Some(_), _ => None))
 
-    def pollBatchOutputbound(batchSize: Int, timeoutSeconds: Long = 4L): IO[List[WebSocketFrame]] =
+    def pollBatchOutputBound(batchSize: Int, timeoutSeconds: Long = 4L): IO[List[WebSocketFrame]] =
       head.pollBatch(batchSize, timeoutSeconds)
 
     val outStream: Stream[IO, WebSocketFrame] =
@@ -118,7 +118,7 @@ class Http4sWSStageSpec extends CatsEffectSuite with DispatcherIOFixture {
     for {
       socket <- TestWebsocketStage()
       _ <- socket.sendInbound(Close())
-      p1 <- socket.pollBatchOutputbound(2, 2).map(_ == List(Close()))
+      p1 <- socket.pollBatchOutputBound(2, 2).map(_ == List(Close()))
       p2 <- socket.wasCloseHookCalled().map(_ == true)
     } yield assert(p1 && p2)
   }
@@ -128,7 +128,7 @@ class Http4sWSStageSpec extends CatsEffectSuite with DispatcherIOFixture {
       socket <- TestWebsocketStage()
       _ <- socket.sendWSOutbound(Close())
       _ <- socket.sendInbound(Close())
-      p1 <- socket.pollBatchOutputbound(2).map(_ == List(Close()))
+      p1 <- socket.pollBatchOutputBound(2).map(_ == List(Close()))
       p2 <- socket.wasCloseHookCalled()
     } yield assert(p1 && p2)
   }
