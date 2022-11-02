@@ -69,16 +69,16 @@ class TaskQueueSuite extends FunSuite {
     val q = new TaskQueue
     val count = new AtomicInteger(0)
 
-    class SelfEqueuer(remaining: Int) extends Runnable {
+    class SelfEnqueuer(remaining: Int) extends Runnable {
       override def run(): Unit =
         if (0 < remaining) {
           count.incrementAndGet()
-          q.enqueueTask(new SelfEqueuer(remaining - 1))
+          q.enqueueTask(new SelfEnqueuer(remaining - 1))
           ()
         }
     }
 
-    q.enqueueTask(new SelfEqueuer(10))
+    q.enqueueTask(new SelfEnqueuer(10))
     q.executeTasks()
     assertEquals(count.get, 10)
   }
