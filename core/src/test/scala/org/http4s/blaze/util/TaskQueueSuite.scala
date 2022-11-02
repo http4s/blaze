@@ -48,18 +48,18 @@ class TaskQueueSuite extends FunSuite {
     assertEquals(q.enqueueTask(() => blockCloseLatch.await()), TaskQueue.Enqueued)
 
     // The closing thread will close shop, first ticking the `closingLatch`, then waiting for this thread
-    val closingThead = new Thread(() => q.close())
-    closingThead.start()
+    val closingThread = new Thread(() => q.close())
+    closingThread.start()
 
     // once this method call returns we know the closing thread is in the `close()` call
     assert(closingLatch.await(30, TimeUnit.SECONDS))
     assert(q.isClosed)
-    assert(closingThead.isAlive)
+    assert(closingThread.isAlive)
 
     assertEquals(q.enqueueTask(() => ()), TaskQueue.Closed)
     blockCloseLatch.countDown()
-    closingThead.join(30000) // wait at most 30 seconds
-    assertEquals(closingThead.isAlive, false)
+    closingThread.join(30000) // wait at most 30 seconds
+    assertEquals(closingThread.isAlive, false)
 
     assert(q.isClosed)
     assertEquals(q.enqueueTask(() => ()), TaskQueue.Closed)
