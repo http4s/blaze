@@ -20,13 +20,13 @@ import org.http4s.blaze.http.parser.BaseExceptions.BadMessage
 import org.http4s.blaze.testkit.BlazeTestSuite
 
 class HttpTokensSuite extends BlazeTestSuite {
-  private val smalChrs =
+  private val smallChrs =
     List('0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'a', 'b', 'c', 'd', 'e', 'f')
-  private val bigChrs = smalChrs.map(_.toTitleCase)
+  private val bigChrs = smallChrs.map(_.toTitleCase)
 
   test("An HttpTokens should parse hex chars to ints") {
 
-    assertEquals(smalChrs.map(c => HttpTokens.hexCharToInt(c)), (0 until 16).toList)
+    assertEquals(smallChrs.map(c => HttpTokens.hexCharToInt(c)), (0 until 16).toList)
 
     assertEquals(bigChrs.map(c => HttpTokens.hexCharToInt(c)), (0 until 16).toList)
 
@@ -38,7 +38,7 @@ class HttpTokensSuite extends BlazeTestSuite {
       (0 until 256)
         .forall { i =>
           HttpTokens
-            .isHexChar(i.toByte) == (smalChrs.contains(i.toChar) || bigChrs.contains(i.toChar))
+            .isHexChar(i.toByte) == (smallChrs.contains(i.toChar) || bigChrs.contains(i.toChar))
         }
     )
   }
