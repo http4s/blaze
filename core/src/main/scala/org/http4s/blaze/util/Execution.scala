@@ -40,7 +40,7 @@ object Execution {
       val r = new Runnable {
         def run(): Unit =
           if (p.tryComplete(fallback))
-            logger.debug(s"Future $f timed out after $d, yielding reesult $fallback")
+            logger.debug(s"Future $f timed out after $d, yielding result $fallback")
       }
       // Race the future vs a timeout
       Execution.scheduler.schedule(r, d)
