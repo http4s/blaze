@@ -50,7 +50,7 @@ abstract class StreamFlowWindow {
     * If an error is returned, the internal state _must not_ be modified.
     *
     * @param delta
-    *   change in intial window size. Maybe be positive or negative, but must not cause the window
+    *   change in initial window size. Maybe be positive or negative, but must not cause the window
     *   to overflow Int.MaxValue.
     */
   def remoteSettingsInitialWindowChange(delta: Int): Option[Http2Exception]
