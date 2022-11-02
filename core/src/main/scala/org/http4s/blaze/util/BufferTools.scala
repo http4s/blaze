@@ -80,7 +80,7 @@ object BufferTools {
     else if (!newbuff.hasRemaining) oldbuff
     else if (!oldbuff.isReadOnly && oldbuff
         .capacity() >= oldbuff.limit() + newbuff.remaining()) {
-      // Enough room to append newbuff to the end tof oldbuff
+      // Enough room to append newbuff to the end of oldbuff
       oldbuff
         .mark()
         .position(oldbuff.limit())
