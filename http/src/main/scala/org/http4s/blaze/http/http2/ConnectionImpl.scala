@@ -215,7 +215,7 @@ private final class ConnectionImpl(
         def run(): Unit =
           invokeShutdownWithError(None, s"drainSession($gracePeriod)")
       }
-      // We don't want to leave the timer set since we don't know know long it will live
+      // We don't want to leave the timer set since we don't know how long it will live
       val c = Execution.scheduler.schedule(work, serialExecutor, gracePeriod)
       onClose.onComplete(_ => c.cancel())(Execution.directec)
     }
