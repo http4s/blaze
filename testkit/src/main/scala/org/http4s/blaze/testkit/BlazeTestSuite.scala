@@ -25,6 +25,9 @@ import scala.util.control.NonFatal
 
 abstract class BlazeTestSuite extends FunSuite with BlazeAssertions {
   implicit val executionContext: ExecutionContext = ExecutionContext.Implicits.global
+
+  // allow flaky tests on ci
+  override def munitFlakyOK: Boolean = sys.env.contains("CI")
 }
 
 trait BlazeAssertions { self: Assertions =>
