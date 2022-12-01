@@ -61,7 +61,7 @@ class SSLStageSuite extends BlazeTestSuite {
       } yield ()
     }
 
-    test(testSuitePrefix + " should split large buffers".flaky) {
+    test((testSuitePrefix + " should split large buffers").flaky) {
       // See https://github.com/http4s/blaze/pull/771 for a deeper
       // analysis of the flake and possible solutions.
       val (headEng, stageEng) = mkClientServerEngines
