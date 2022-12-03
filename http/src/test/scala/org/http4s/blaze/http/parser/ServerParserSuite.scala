@@ -92,11 +92,11 @@ class ServerParserSuite extends BlazeTestSuite {
 
   private val body = "hello world"
 
-  private val lengthh = s"Content-Length: ${body.length}\r\n"
+  private val length = s"Content-Length: ${body.length}\r\n"
 
   private val chunked = "Transfer-Encoding: chunked\r\n"
 
-  private val mockFiniteLength = request + host + lengthh + headers + body
+  private val mockFiniteLength = request + host + length + headers + body
 
   private val mockChunked =
     request + host + chunked + headers + toChunk(body) + toChunk(

@@ -188,7 +188,7 @@ class PoolManagerSuite extends CatsEffectSuite with AllSyntax {
         .assert
         .timeout(200.millis)
       // After failing to allocate conn2, the pool should attempt to allocate the conn3,
-      // but it doesn't so we hit the timeoeut. Without the timeout it would be a deadlock.
+      // but it doesn't so we hit the timeout. Without the timeout it would be a deadlock.
     } yield ()
   }
 

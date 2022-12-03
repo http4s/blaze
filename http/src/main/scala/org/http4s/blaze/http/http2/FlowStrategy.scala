@@ -29,7 +29,7 @@ trait FlowStrategy {
     * @note
     *   This must not mutate the [[SessionFlowControl]] in any way.
     * @note
-    *   This verison should only be used in situations where the stream associated with the data
+    *   This version should only be used in situations where the stream associated with the data
     *   does not exist. For example, it may have already closed and sent a RST frame.
     *
     * @param session

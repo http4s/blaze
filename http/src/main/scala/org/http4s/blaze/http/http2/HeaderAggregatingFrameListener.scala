@@ -25,7 +25,7 @@ import Http2Exception.PROTOCOL_ERROR
 /** A [[FrameListener]] that decodes raw HEADERS, PUSH_PROMISE, and CONTINUATION frames from
   * ByteBuffer packets to a complete collections of headers.
   *
-  * If the size of the raw header blcok exceeds the MAX_HEADER_LIST_SIZE parameter we send a GOAWAY
+  * If the size of the raw header block exceeds the MAX_HEADER_LIST_SIZE parameter we send a GOAWAY
   * frame. This can legally be handled with a 431 response, but the headers must be processed to
   * keep the header decompressor in a valid state.
   * https://tools.ietf.org/html/rfc7540#section-10.5.1

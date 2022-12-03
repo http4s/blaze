@@ -128,14 +128,14 @@ class BlazeClient213Suite extends BlazeClientBase {
           client.expect[String](h)
         }.parSequence
 
-        val sucessRequests = (1 to Runtime.getRuntime.availableProcessors * 5).toList.map { _ =>
+        val successRequests = (1 to Runtime.getRuntime.availableProcessors * 5).toList.map { _ =>
           val h = successHosts(Random.nextInt(successHosts.length))
           client.expect[String](h).map(_.nonEmpty)
         }.parSequence
 
         val allRequests = for {
           _ <- failedRequests.handleErrorWith(_ => IO.unit).replicateA(5)
-          r <- sucessRequests
+          r <- successRequests
         } yield r
 
         allRequests

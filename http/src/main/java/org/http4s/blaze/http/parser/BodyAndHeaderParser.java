@@ -240,7 +240,7 @@ public abstract class BodyAndHeaderParser extends ParserBase {
               } else if (value.equalsIgnoreCase("identity")) {
                 // TODO: remove support for identity Transfer-Encoding.
                 // It  was removed from the specification before it was published
-                // (althoug some traces of it remained until errata was released:
+                // (although some traces of it remained until errata was released:
                 // http://lists.w3.org/Archives/Public/ietf-http-wg-old/2001SepDec/0018.html
                 // if (_endOfContent == EndOfContent.UNKNOWN_CONTENT) {
                 //     _endOfContent = EndOfContent.EOF_CONTENT;

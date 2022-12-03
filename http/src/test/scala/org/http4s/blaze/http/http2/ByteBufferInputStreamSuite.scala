@@ -47,7 +47,7 @@ class ByteBufferInputStreamSuite extends BlazeTestSuite {
     assertEquals(is.read(), -1)
   }
 
-  test("A ByteBufferInputStream should handle mark and reset apporpriately") {
+  test("A ByteBufferInputStream should handle mark and reset appropriately") {
     val is = fromBytes((0 until 10).map(_.toByte): _*)
 
     assert(is.markSupported())

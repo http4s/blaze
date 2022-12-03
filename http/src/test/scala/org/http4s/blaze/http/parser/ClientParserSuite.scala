@@ -114,8 +114,8 @@ class ClientParserSuite extends BlazeTestSuite {
   test("A client parser should throw BadResponse on invalid response lines") {
     val p = new TestParser
 
-    val badVerison = "HTTP/1.7 200 OK\r\n"
-    intercept[BadMessage](p.parseResponse(wrap(badVerison.getBytes(ISO_8859_1))))
+    val badVersion = "HTTP/1.7 200 OK\r\n"
+    intercept[BadMessage](p.parseResponse(wrap(badVersion.getBytes(ISO_8859_1))))
 
     p.reset()
     val weirdCode = "HTTP/1.1 200 OK\r\n"
