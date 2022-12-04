@@ -75,7 +75,7 @@ sealed abstract class Http2Settings {
       MAX_CONCURRENT_STREAMS(maxConcurrentStreams),
       INITIAL_WINDOW_SIZE(initialWindowSize),
       MAX_FRAME_SIZE(maxFrameSize),
-      MAX_HEADER_LIST_SIZE(maxHeaderListSize),
+      MAX_HEADER_LIST_SIZE(maxHeaderListSize)
     )
 
   override def toString: String = s"Http2Settings($toSeq)"
@@ -88,7 +88,7 @@ case class ImmutableHttp2Settings(
     pushEnabled: Boolean,
     maxConcurrentStreams: Int,
     maxFrameSize: Int,
-    maxHeaderListSize: Int,
+    maxHeaderListSize: Int
 ) extends Http2Settings
 
 object Http2Settings {
@@ -123,7 +123,7 @@ object Http2Settings {
     pushEnabled = DefaultSettings.ENABLE_PUSH, // initially enabled
     maxConcurrentStreams = DefaultSettings.MAX_CONCURRENT_STREAMS, // initially unbounded
     maxFrameSize = DefaultSettings.MAX_FRAME_SIZE,
-    maxHeaderListSize = DefaultSettings.MAX_HEADER_LIST_SIZE,
+    maxHeaderListSize = DefaultSettings.MAX_HEADER_LIST_SIZE
   )
 
   private def settingKey(id: Int): SettingKey =
@@ -198,7 +198,7 @@ private[blaze] final class MutableHttp2Settings private (
     var pushEnabled: Boolean,
     var maxConcurrentStreams: Int,
     var maxFrameSize: Int,
-    var maxHeaderListSize: Int,
+    var maxHeaderListSize: Int
 ) extends Http2Settings { // initially unbounded
   import MutableHttp2Settings._
 
@@ -240,7 +240,7 @@ private object MutableHttp2Settings {
       pushEnabled = settings.pushEnabled,
       maxConcurrentStreams = settings.maxConcurrentStreams,
       maxFrameSize = settings.maxFrameSize,
-      maxHeaderListSize = settings.maxHeaderListSize,
+      maxHeaderListSize = settings.maxHeaderListSize
     )
 
   /** Create a new [[MutableHttp2Settings]] using the HTTP2 defaults */

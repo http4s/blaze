@@ -77,7 +77,7 @@ private trait FrameListener {
       priority: Priority,
       endHeaders: Boolean,
       endStream: Boolean,
-      data: ByteBuffer,
+      data: ByteBuffer
   ): Result
 
   /** Called on successful receipt of a CONTINUATION frame
@@ -140,7 +140,7 @@ private trait FrameListener {
       streamId: Int,
       promisedId: Int,
       end_headers: Boolean,
-      data: ByteBuffer,
+      data: ByteBuffer
   ): Result
 
   /** Called on successful receipt of a PING frame

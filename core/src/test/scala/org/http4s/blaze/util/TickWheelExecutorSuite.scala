@@ -118,7 +118,7 @@ class TickWheelExecutorSuite extends FunSuite {
         case _: RuntimeException => ()
         case ex => fail(s"Unexpected exception found $ex")
       },
-      _ => fail("A TickWheelExecutor should shutdown"),
+      _ => fail("A TickWheelExecutor should shutdown")
     )
 
     val result2 = Try(ec.schedule(() => sys.error("Woops!"), Duration.Inf))
@@ -128,7 +128,7 @@ class TickWheelExecutorSuite extends FunSuite {
         case _: RuntimeException => ()
         case ex => fail(s"Unexpected exception found $ex")
       },
-      _ => fail("A TickWheelExecutor should shutdown"),
+      _ => fail("A TickWheelExecutor should shutdown")
     )
   }
 }

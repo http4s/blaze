@@ -25,18 +25,18 @@ import org.http4s.blaze.http.http2._
 private[http2] class MockHeaderAggregatingFrameListener
     extends HeaderAggregatingFrameListener(
       Http2Settings.default,
-      new HeaderDecoder(20 * 1024, true, 4096),
+      new HeaderDecoder(20 * 1024, true, 4096)
     ) {
   override def onCompletePushPromiseFrame(
       streamId: Int,
       promisedId: Int,
-      headers: Headers,
+      headers: Headers
   ): Result = ???
   override def onCompleteHeadersFrame(
       streamId: Int,
       priority: Priority,
       end_stream: Boolean,
-      headers: Headers,
+      headers: Headers
   ): Result = ???
   override def onGoAwayFrame(lastStream: Int, errorCode: Long, debugData: Array[Byte]): Result = ???
   override def onPingFrame(ack: Boolean, data: Array[Byte]): Result = ???
@@ -48,7 +48,7 @@ private[http2] class MockHeaderAggregatingFrameListener
       streamId: Int,
       isLast: Boolean,
       data: ByteBuffer,
-      flowSize: Int,
+      flowSize: Int
   ): Result = ???
   override def onPriorityFrame(streamId: Int, priority: Priority.Dependent): Result = ???
   override def onWindowUpdateFrame(streamId: Int, sizeIncrement: Int): Result = ???

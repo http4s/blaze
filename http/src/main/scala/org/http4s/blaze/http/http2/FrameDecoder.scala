@@ -174,7 +174,7 @@ private class FrameDecoder(localSettings: Http2Settings, listener: FrameListener
               priority,
               Flags.END_HEADERS(flags),
               Flags.END_STREAM(flags),
-              buffer.slice(),
+              buffer.slice()
             )
         }
     }
@@ -243,7 +243,7 @@ private class FrameDecoder(localSettings: Http2Settings, listener: FrameListener
             streamId,
             promisedId,
             Flags.END_HEADERS(flags),
-            buffer.slice(),
+            buffer.slice()
           )
       }
     }
@@ -301,7 +301,7 @@ private class FrameDecoder(localSettings: Http2Settings, listener: FrameListener
   private[this] def decodeContinuationFrame(
       buffer: ByteBuffer,
       streamId: Int,
-      flags: Byte,
+      flags: Byte
   ): Result =
     if (streamId == 0) {
       val msg = "CONTINUATION frame with invalid stream dependency on 0x0"

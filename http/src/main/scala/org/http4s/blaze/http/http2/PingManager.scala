@@ -64,11 +64,9 @@ private class PingManager(session: SessionCore) {
       case Pinging(sent, continuation) =>
         state = Idle
 
-        if (
-          ByteBuffer
+        if (ByteBuffer
             .wrap(data)
-            .getLong != sent
-        ) { // data guaranteed to be 8 bytes
+            .getLong != sent) { // data guaranteed to be 8 bytes
           val msg = "Received ping response with unknown data."
           val ex = new Exception(msg)
           logger.warn(ex)(msg)

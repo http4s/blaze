@@ -53,7 +53,7 @@ class ConnectionImplSuite extends BlazeTestSuite {
       remoteSettings = remoteSettings,
       flowStrategy = flowStrategy,
       inboundStreamBuilder = streamBuilder,
-      parentExecutor = Execution.trampoline,
+      parentExecutor = Execution.trampoline
     )
 
     def decodeGoAway(data: ByteBuffer): ProtocolFrame =

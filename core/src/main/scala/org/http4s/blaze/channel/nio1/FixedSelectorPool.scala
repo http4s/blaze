@@ -26,7 +26,7 @@ import scala.annotation.tailrec
 final class FixedSelectorPool(
     poolSize: Int,
     bufferSize: Int,
-    threadFactory: ThreadFactory,
+    threadFactory: ThreadFactory
 ) extends SelectorLoopPool {
   require(poolSize > 0, s"Invalid pool size: $poolSize")
 

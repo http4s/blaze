@@ -32,7 +32,7 @@ class FrameEncoderSuite extends BlazeTestSuite {
       onHeadersFrameMock: (Int, Priority, Boolean, Boolean, ByteBuffer) => Result =
         (_, _, _, _, _) => BufferUnderflow,
       inHeaderSequenceMock: Boolean = false,
-      onContinuationFrameMock: (Int, Boolean, ByteBuffer) => Result = (_, _, _) => BufferUnderflow,
+      onContinuationFrameMock: (Int, Boolean, ByteBuffer) => Result = (_, _, _) => BufferUnderflow
   ) = new FrameListener {
     def inHeaderSequence: Boolean = inHeaderSequenceMock
 
@@ -44,7 +44,7 @@ class FrameEncoderSuite extends BlazeTestSuite {
         priority: Priority,
         endHeaders: Boolean,
         endStream: Boolean,
-        data: ByteBuffer,
+        data: ByteBuffer
     ): Result =
       onHeadersFrameMock(streamId, priority, endHeaders, endStream, data)
 
@@ -61,7 +61,7 @@ class FrameEncoderSuite extends BlazeTestSuite {
         streamId: Int,
         promisedId: Int,
         end_headers: Boolean,
-        data: ByteBuffer,
+        data: ByteBuffer
     ): Result = ???
 
     def onPingFrame(ack: Boolean, data: Array[Byte]): Result = ???
@@ -199,7 +199,7 @@ class FrameEncoderSuite extends BlazeTestSuite {
         case (1, true, `zeroBuffer5`) => ReturnTag(2)
         case _ => throw new IllegalStateException("Unexpected arguments for onContinuationFrame")
       },
-      inHeaderSequenceMock = true,
+      inHeaderSequenceMock = true
     )
     val decoder2 = new FrameDecoder(tools.remoteSettings, listener2)
 
@@ -238,7 +238,7 @@ class FrameEncoderSuite extends BlazeTestSuite {
         case (1, true, `zeroBuffer5`) => ReturnTag(2)
         case _ => throw new IllegalStateException("Unexpected arguments for onHeadersFrame")
       },
-      inHeaderSequenceMock = true,
+      inHeaderSequenceMock = true
     )
     val decoder2 = new FrameDecoder(tools.remoteSettings, listener2)
 
