@@ -2,7 +2,7 @@ import Dependencies._
 
 val Scala213 = "2.13.10"
 val Scala3 = "3.2.1"
-val http4sVersion = "1.0.0-M37"
+val http4sVersion = "1.0.0-M38"
 val munitCatsEffectVersion = "2.0.0-M3"
 
 ThisBuild / resolvers +=
