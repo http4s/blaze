@@ -20,7 +20,6 @@ package client
 
 import cats.effect._
 import cats.effect.std._
-import cats.implicits._
 import com.comcast.ip4s._
 import fs2.Stream
 import munit.CatsEffectSuite
