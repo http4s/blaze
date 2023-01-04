@@ -17,7 +17,7 @@
 package org.http4s.blazecore.websocket
 
 import cats.effect.IO
-import cats.effect.std.Random
+import cats.effect.std.SecureRandom
 import munit.CatsEffectSuite
 
 class WebSocketHandshakeSuite extends CatsEffectSuite {
@@ -30,7 +30,7 @@ class WebSocketHandshakeSuite extends CatsEffectSuite {
 
   test("WebSocketHandshake should do a round trip") {
     for {
-      random <- Random.javaSecuritySecureRandom[IO]
+      random <- SecureRandom.javaSecuritySecureRandom[IO]
       client <- WebSocketHandshake.clientHandshaker[IO]("www.foo.com", random)
       hs = client.initHeaders
       valid = WebSocketHandshake.serverHandshake(hs)

@@ -428,7 +428,7 @@ class BlazeServerBuilder[F[_]] private (
     for {
       // blaze doesn't have graceful shutdowns, which means it may continue to submit effects,
       // ever after the server has acknowledged shutdown, so we just need to allocate
-      dispatcher <- Resource.eval(Dispatcher[F].allocated.map(_._1))
+      dispatcher <- Resource.eval(Dispatcher.parallel[F].allocated.map(_._1))
       scheduler <- tickWheelResource
 
       _ <- Resource.eval(verifyTimeoutRelations())

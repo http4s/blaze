@@ -59,7 +59,7 @@ class Http1ServerStageSpec extends CatsEffectSuite {
     def apply() = d
 
     override def beforeAll(): IO[Unit] =
-      Dispatcher[IO].allocated.map { case (dispatcher, cancelation) =>
+      Dispatcher.parallel[IO].allocated.map { case (dispatcher, cancelation) =>
         shutdown = cancelation
         d = dispatcher
       }

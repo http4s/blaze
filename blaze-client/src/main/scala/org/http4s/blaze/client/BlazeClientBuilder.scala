@@ -337,7 +337,7 @@ sealed abstract class BlazeClientBuilder[F[_]] private (
     */
   def resourceWithState: Resource[F, (Client[F], BlazeClientState[F])] =
     for {
-      dispatcher <- Dispatcher[F]
+      dispatcher <- Dispatcher.parallel[F]
       scheduler <- scheduler
       _ <- Resource.eval(verifyAllTimeoutsAccuracy(scheduler))
       _ <- Resource.eval(verifyTimeoutRelations())

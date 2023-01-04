@@ -56,7 +56,7 @@ class Http1ClientStageSuite extends CatsEffectSuite with DispatcherIOFixture {
   private val fooConnection =
     ResourceFunFixture[Http1Connection[IO]] {
       for {
-        dispatcher <- Dispatcher[IO]
+        dispatcher <- Dispatcher.parallel[IO]
         connection <- mkConnection(FooRequestKey, dispatcher)
       } yield connection
     }
