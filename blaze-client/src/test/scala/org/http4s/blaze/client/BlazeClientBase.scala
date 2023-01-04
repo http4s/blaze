@@ -81,7 +81,7 @@ trait BlazeClientBase extends CatsEffectSuite {
 
   private def makeScaffold(num: Int, secure: Boolean): Resource[IO, ServerScaffold[IO]] =
     for {
-      dispatcher <- Dispatcher[IO]
+      dispatcher <- Dispatcher.parallel[IO]
       getHandler <- Resource.eval(
         RoutesToHandlerAdapter(
           HttpRoutes.of[IO] {
