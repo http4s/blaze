@@ -28,7 +28,7 @@ import scala.util.Failure
 final class ServerPriorKnowledgeHandshaker(
     localSettings: ImmutableHttp2Settings,
     flowStrategy: FlowStrategy,
-    nodeBuilder: Int => LeafBuilder[StreamFrame]
+    nodeBuilder: Int => LeafBuilder[StreamFrame],
 ) extends PriorKnowledgeHandshaker[Unit](localSettings) {
   override protected def stageStartup(): Unit =
     synchronized {
@@ -43,7 +43,7 @@ final class ServerPriorKnowledgeHandshaker(
 
   override protected def handshakeComplete(
       remoteSettings: MutableHttp2Settings,
-      data: ByteBuffer
+      data: ByteBuffer,
   ): Future[Unit] =
     Future(installHttp2ServerStage(remoteSettings, data))
 
@@ -64,7 +64,7 @@ final class ServerPriorKnowledgeHandshaker(
   // Setup the pipeline with a new Http2ClientStage and start it up, then return it.
   private def installHttp2ServerStage(
       remoteSettings: MutableHttp2Settings,
-      remainder: ByteBuffer
+      remainder: ByteBuffer,
   ): Unit = {
     logger.debug(s"Installing pipeline with settings: $remoteSettings")
     val tail = new BasicTail[ByteBuffer]("http2ServerTail")
@@ -83,7 +83,7 @@ final class ServerPriorKnowledgeHandshaker(
       remoteSettings = remoteSettings,
       flowStrategy = flowStrategy,
       inboundStreamBuilder = Some(nodeBuilder),
-      parentExecutor = Execution.trampoline
+      parentExecutor = Execution.trampoline,
     )
     ()
   }

@@ -32,7 +32,7 @@ class ServerPriorKnowledgeHandshakerSuite extends BlazeTestSuite {
     new ServerPriorKnowledgeHandshaker(
       localSettings = localSettings,
       flowStrategy = flowStrategy,
-      nodeBuilder = _ => ???
+      nodeBuilder = _ => ???,
     )
   }
 

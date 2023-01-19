@@ -57,13 +57,14 @@ class ActorSuite extends FunSuite {
         flag.set(t)
         latch.countDown()
       },
-      global
+      global,
     )
 
     for (_ <- 0 until senders)
       global.execute(() =>
         for (_ <- 0 until messages)
-          a ! Continuation(_ => latch.countDown()))
+          a ! Continuation(_ => latch.countDown())
+      )
 
     assert(latch.await(15, TimeUnit.SECONDS))
 

@@ -41,7 +41,7 @@ import scala.util.control.NonFatal
 private final class HeaderDecoder(
     maxHeaderListSize: Int,
     discardOverflowHeaders: Boolean,
-    val maxTableSize: Int
+    val maxTableSize: Int,
 ) {
   require(maxTableSize >= DefaultSettings.HEADER_TABLE_SIZE)
 
@@ -92,7 +92,7 @@ private final class HeaderDecoder(
       buffer: ByteBuffer,
       streamId: Int,
       endHeaders: Boolean,
-      listener: HeaderListener
+      listener: HeaderListener,
   ): MaybeError = {
     if (sawEndHeaders)
       throw new IllegalStateException("called doDecode() after receiving an endHeaders flag")

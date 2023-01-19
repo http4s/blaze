@@ -35,7 +35,7 @@ import Http2Exception.PROTOCOL_ERROR
   */
 private abstract class HeaderAggregatingFrameListener(
     localSettings: Http2Settings,
-    headerDecoder: HeaderDecoder
+    headerDecoder: HeaderDecoder,
 ) extends FrameListener {
   private[this] sealed trait PartialFrame {
     def streamId: Int
@@ -46,7 +46,7 @@ private abstract class HeaderAggregatingFrameListener(
       streamId: Int,
       priority: Priority,
       endStream: Boolean,
-      var buffer: ByteBuffer
+      var buffer: ByteBuffer,
   ) extends PartialFrame
 
   private[this] case class PPromise(streamId: Int, promisedId: Int, var buffer: ByteBuffer)
@@ -71,7 +71,7 @@ private abstract class HeaderAggregatingFrameListener(
       streamId: Int,
       priority: Priority,
       endStream: Boolean,
-      headers: Headers
+      headers: Headers,
   ): Result
 
   /** Called on the successful receipt of a complete PUSH_PROMISE block
@@ -97,7 +97,7 @@ private abstract class HeaderAggregatingFrameListener(
       priority: Priority,
       endHeaders: Boolean,
       endStream: Boolean,
-      buffer: ByteBuffer
+      buffer: ByteBuffer,
   ): Result =
     if (inHeaderSequence)
       Error(
@@ -124,7 +124,7 @@ private abstract class HeaderAggregatingFrameListener(
       streamId: Int,
       promisedId: Int,
       endHeaders: Boolean,
-      buffer: ByteBuffer
+      buffer: ByteBuffer,
   ): Result =
     if (localSettings.maxHeaderListSize < buffer.remaining)
       headerSizeError(buffer.remaining, streamId)
@@ -143,7 +143,7 @@ private abstract class HeaderAggregatingFrameListener(
   override final def onContinuationFrame(
       streamId: Int,
       endHeaders: Boolean,
-      buffer: ByteBuffer
+      buffer: ByteBuffer,
   ): Result =
     if (hInfo.streamId != streamId) {
       val msg = "Invalid CONTINUATION frame: stream Id's don't match. " +

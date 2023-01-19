@@ -56,7 +56,7 @@ object LeafBuilder {
   */
 final class TrunkBuilder[I1, O] private[pipeline] (
     protected val head: MidStage[I1, _],
-    protected val tail: MidStage[_, O]
+    protected val tail: MidStage[_, O],
 ) {
   def append[N](stage: MidStage[O, N]): TrunkBuilder[I1, N] = {
     if (stage._prevStage != null) sys.error(s"Stage $stage must be fresh")

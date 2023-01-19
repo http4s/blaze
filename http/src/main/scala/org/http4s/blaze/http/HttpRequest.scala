@@ -34,7 +34,7 @@ case class HttpRequest(
     majorVersion: Int,
     minorVersion: Int,
     headers: Headers,
-    body: BodyReader
+    body: BodyReader,
 ) {
   private[this] def formatStr(headersString: String): String =
     s"HttpRequest($method, $url, $majorVersion, $minorVersion, $headersString, $body)"

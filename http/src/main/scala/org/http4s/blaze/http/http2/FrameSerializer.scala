@@ -48,7 +48,7 @@ private[http2] object FrameSerializer {
       streamId: Int,
       endStream: Boolean,
       padding: Int,
-      data: ByteBuffer
+      data: ByteBuffer,
   ): Seq[ByteBuffer] = {
     require(0 < streamId, "bad DATA frame stream id")
     require(0 <= padding && padding <= 256, "Invalid padding of DATA frame")
@@ -79,7 +79,7 @@ private[http2] object FrameSerializer {
       endHeaders: Boolean,
       endStream: Boolean,
       padding: Int,
-      headerData: ByteBuffer
+      headerData: ByteBuffer,
   ): Seq[ByteBuffer] = {
     require(0 < streamId, "bad HEADER frame stream id")
     require(0 <= padding, "Invalid padding of HEADER frame")
@@ -176,7 +176,7 @@ private[http2] object FrameSerializer {
       promiseId: Int,
       endHeaders: Boolean,
       padding: Int,
-      headerBuffer: ByteBuffer
+      headerBuffer: ByteBuffer,
   ): Seq[ByteBuffer] = {
     require(streamId != 0x0, "Invalid Stream id for PUSH_PROMISE frame")
     require(promiseId != 0x0 && promiseId % 2 == 0, "Invalid Stream id for PUSH_PROMISE frame")
@@ -199,7 +199,7 @@ private[http2] object FrameSerializer {
       FrameTypes.PUSH_PROMISE,
       flags.toByte,
       streamId,
-      buffer
+      buffer,
     )
 
     if (padded)
@@ -250,7 +250,7 @@ private[http2] object FrameSerializer {
     require(0 <= streamId, "Invalid stream id for WINDOW_UPDATE")
     require(
       0 < increment && increment <= Integer.MAX_VALUE,
-      "Invalid stream increment for WINDOW_UPDATE"
+      "Invalid stream increment for WINDOW_UPDATE",
     )
 
     val size = 4
@@ -266,7 +266,7 @@ private[http2] object FrameSerializer {
   def mkContinuationFrame(
       streamId: Int,
       endHeaders: Boolean,
-      headerBuffer: ByteBuffer
+      headerBuffer: ByteBuffer,
   ): Seq[ByteBuffer] = {
     require(0 < streamId, "Invalid stream id for CONTINUATION frame")
     val flags: Byte = if (endHeaders) Flags.END_HEADERS else 0x0
@@ -306,7 +306,7 @@ private[http2] object FrameSerializer {
       frameType: Byte,
       flags: Byte,
       streamdId: Int,
-      buffer: ByteBuffer
+      buffer: ByteBuffer,
   ): Unit = {
     buffer
       .put((length >>> 16 & 0xff).toByte)

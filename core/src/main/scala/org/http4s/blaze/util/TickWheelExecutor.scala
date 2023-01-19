@@ -243,7 +243,7 @@ class TickWheelExecutor(wheelSize: Int = DefaultWheelSize, val tick: Duration = 
       val expiration: Long,
       var prev: Node,
       var next: Node,
-      var canceled: Boolean = false
+      var canceled: Boolean = false,
   ) extends Cancelable {
 
     /** Remove this node from its linked list */

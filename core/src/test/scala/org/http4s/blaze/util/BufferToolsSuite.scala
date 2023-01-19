@@ -119,7 +119,7 @@ class BufferToolsSuite extends FunSuite {
       _ =>
         fail(
           "BufferTools.takeSlice should throw an `IllegalArgumentException` if you try to slice too many bytes"
-        )
+        ),
     )
   }
 
@@ -140,14 +140,14 @@ class BufferToolsSuite extends FunSuite {
       _ =>
         fail(
           "BufferTools.takeSlice should throw an `IllegalArgumentException` if you try to slice negative bytes"
-        )
+        ),
     )
   }
 
   test("BufferTools.checkEmpty should check if buffers are empty") {
     assertEquals(
       BufferTools.checkEmpty(Array(ByteBuffer.allocate(0), ByteBuffer.allocate(3))),
-      false
+      false,
     )
     assertEquals(BufferTools.checkEmpty(Seq(ByteBuffer.allocate(0), ByteBuffer.allocate(3))), false)
 
