@@ -30,7 +30,6 @@ private[blaze] class IdentityWriter[F[_]](size: Long, out: TailStage[ByteBuffer]
     protected val F: Async[F]
 ) extends Http1Writer[F] {
 
-  private[this] val logger = getLogger
   private[this] var headers: ByteBuffer = null
 
   private var bodyBytesWritten = 0L
@@ -50,7 +49,7 @@ private[blaze] class IdentityWriter[F[_]](size: Long, out: TailStage[ByteBuffer]
       val msg =
         s"Will not write more bytes than what was indicated by the Content-Length header ($size)"
 
-      logger.warn(msg)
+      IdentityWriter.logger.warn(msg)
 
       val reducedChunk = chunk.take((size - bodyBytesWritten).toInt)
       writeBodyChunk(reducedChunk, flush = true).flatMap(_ =>
@@ -78,11 +77,15 @@ private[blaze] class IdentityWriter[F[_]](size: Long, out: TailStage[ByteBuffer]
     else {
       val msg = s"Expected `Content-Length: $size` bytes, but only $total were written."
 
-      logger.warn(msg)
+      IdentityWriter.logger.warn(msg)
 
       writeBodyChunk(chunk, flush = true).flatMap(_ =>
         Future.failed(new IllegalStateException(msg))
       )(parasitic)
     }
   }
+}
+
+private[blaze] object IdentityWriter {
+  private lazy val logger = getLogger
 }
