@@ -179,6 +179,11 @@ private final class Http1Connection[F[_]](
 
   override protected def contentComplete(): Boolean = parser.contentComplete()
 
+  private[this] val shutdownCancelToken =
+    F.delay(shutdown())
+  private[this] val someShutdownCancelToken: Option[F[Unit]] =
+    Some(shutdownCancelToken)
+
   private def executeRequest(
       req: Request[F],
       cancellation: F[TimeoutException],
@@ -214,7 +219,10 @@ private final class Http1Connection[F[_]](
             }
 
           val idleTimeoutF: F[TimeoutException] = idleTimeoutStage match {
-            case Some(stage) => F.async_[TimeoutException](stage.setTimeout)
+            case Some(stage) =>
+              F.async[TimeoutException](cb =>
+                F.delay(stage.setTimeout(cb)).as(someShutdownCancelToken)
+              )
             case None => F.never[TimeoutException]
           }
 
@@ -240,7 +248,7 @@ private final class Http1Connection[F[_]](
               )
             ) {
               case (_, Outcome.Succeeded(_)) => F.unit
-              case (_, Outcome.Canceled()) => F.delay(shutdown())
+              case (_, Outcome.Canceled()) => shutdownCancelToken
               case (_, Outcome.Errored(e)) => F.delay(shutdownWithError(e))
             }.race(mergedTimeouts)
               .flatMap {
@@ -260,9 +268,11 @@ private final class Http1Connection[F[_]](
       idleTimeoutS: F[Either[Throwable, Unit]],
       idleRead: Option[Future[ByteBuffer]],
   ): F[Response[F]] =
-    F.async_[Response[F]] { cb =>
-      val read = idleRead.getOrElse(channelRead())
-      handleRead(read, cb, closeOnFinish, doesntHaveBody, "Initial Read", idleTimeoutS)
+    F.async[Response[F]] { cb =>
+      F.delay {
+        val read = idleRead.getOrElse(channelRead())
+        handleRead(read, cb, closeOnFinish, doesntHaveBody, "Initial Read", idleTimeoutS)
+      }.as(someShutdownCancelToken)
     }
 
   // this method will get some data, and try to continue parsing using the implicit ec
