@@ -4,7 +4,7 @@ import Dependencies._
 val Scala212 = "2.12.17"
 val Scala213 = "2.13.10"
 val Scala3 = "3.2.2"
-val http4sVersion = "0.23.18"
+val http4sVersion = "0.23.19-RC1"
 val munitCatsEffectVersion = "2.0.0-M3"
 
 ThisBuild / resolvers +=
@@ -136,7 +136,6 @@ lazy val blazeCore = Project("http4s-blaze-core", file("blaze-core"))
     tlMimaPreviousVersions ++= (0 to 11).map(y => s"0.23.$y").toSet,
     libraryDependencies ++= Seq(
       "org.http4s" %% "http4s-core" % http4sVersion,
-      "org.typelevel" %% "cats-effect-std" % "3.5.0-RC2",
       "org.typelevel" %% "munit-cats-effect" % munitCatsEffectVersion % Test,
       logbackClassic % Test,
     ),
