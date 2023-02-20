@@ -67,22 +67,26 @@ private[http4s] class Http4sWSStage[F[_]](
   def snkFun(frame: WebSocketFrame): F[Unit] = isClosed.ifM(F.unit, evalFrame(frame))
 
   private[this] def writeFrame(frame: WebSocketFrame, ec: ExecutionContext): F[Unit] =
-    writeSemaphore.permit.use { _ =>
-      F.async_[Unit] { cb =>
-        channelWrite(frame).onComplete {
-          case Success(res) => cb(Right(res))
-          case Failure(t) => cb(Left(t))
-        }(ec)
-      }
-    }
+    writeSemaphore.permit.surround(
+      F.async(cb =>
+        F.delay(
+          channelWrite(frame).onComplete {
+            case Success(res) => cb(Right(res))
+            case Failure(t) => cb(Left(t))
+          }(ec)
+        ).as(someShutdownCancelToken)
+      )
+    )
 
   private[this] def readFrameTrampoline: F[WebSocketFrame] =
-    F.async_[WebSocketFrame] { cb =>
-      channelRead().onComplete {
-        case Success(ws) => cb(Right(ws))
-        case Failure(exception) => cb(Left(exception))
-      }(trampoline)
-    }
+    F.async[WebSocketFrame](cb =>
+      F.delay(
+        channelRead().onComplete {
+          case Success(ws) => cb(Right(ws))
+          case Failure(exception) => cb(Left(exception))
+        }(trampoline)
+      ).as(someShutdownCancelToken)
+    )
 
   /** Read from our websocket.
     *
@@ -186,6 +190,9 @@ private[http4s] class Http4sWSStage[F[_]](
     dispatcher.unsafeRunAndForget(fa)
     super.stageShutdown()
   }
+
+  private[this] val someShutdownCancelToken: Option[F[Unit]] =
+    Some(F.delay(stageShutdown()))
 }
 
 object Http4sWSStage {
