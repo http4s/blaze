@@ -259,6 +259,9 @@ private class Http2NodeStage[F[_]](
     }
   }
 
+  private[this] val someShutdownCancelToken: Option[F[Unit]] =
+    Some(F.delay(stageShutdown()))
+
   private def renderResponse(resp: Response[F]): F[Unit] = {
     val hs = new ArrayBuffer[(String, String)](16)
     hs += PseudoHeaders.Status -> Integer.toString(resp.status.code)
@@ -275,7 +278,7 @@ private class Http2NodeStage[F[_]](
       }
     }
 
-    new Http2Writer(this, hs).writeEntityBody(resp.body).attempt.map {
+    new Http2Writer(this, hs).writeEntityBody(resp.body, someShutdownCancelToken).attempt.map {
       case Right(_) => closePipeline(None)
       case Left(Cmd.EOF) => stageShutdown()
       case Left(t) => closePipeline(Some(t))

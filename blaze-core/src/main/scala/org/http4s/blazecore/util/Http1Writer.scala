@@ -29,8 +29,16 @@ import java.nio.charset.StandardCharsets
 import scala.concurrent._
 
 private[http4s] trait Http1Writer[F[_]] extends EntityBodyWriter[F] {
+  @deprecated("Call overload with optional cancellation token", "0.23.14")
   final def write(headerWriter: StringWriter, body: EntityBody[F]): F[Boolean] =
-    fromFutureNoShift(F.delay(writeHeaders(headerWriter)))
+    write(headerWriter, body, None)
+
+  final def write(
+      headerWriter: StringWriter,
+      body: EntityBody[F],
+      cancelToken: Option[F[Unit]],
+  ): F[Boolean] =
+    fromFutureNoShift(F.delay(writeHeaders(headerWriter)), cancelToken)
       .guaranteeCase {
         case Outcome.Succeeded(_) =>
           F.unit
@@ -39,7 +47,7 @@ private[http4s] trait Http1Writer[F[_]] extends EntityBodyWriter[F] {
           body.compile.drain.handleError { t2 =>
             Http1Writer.logger.error(t2)("Error draining body")
           }
-      } >> writeEntityBody(body)
+      } >> writeEntityBody(body, cancelToken)
 
   /* Writes the header.  It is up to the writer whether to flush immediately or to
    * buffer the header with a subsequent chunk. */

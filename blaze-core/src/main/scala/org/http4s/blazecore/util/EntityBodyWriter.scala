@@ -48,6 +48,10 @@ private[http4s] trait EntityBodyWriter[F[_]] {
   /** Called in the event of an Await failure to alert the pipeline to cleanup */
   protected def exceptionFlush(): Future[Unit] = FutureUnit
 
+  @deprecated("Call overload with optional cancellation token", "0.23.14")
+  def writeEntityBody(p: EntityBody[F]): F[Boolean] =
+    writeEntityBody(p, None)
+
   /** Creates an effect that writes the contents of the EntityBody to the output.
     * The writeBodyEnd triggers if there are no exceptions, and the result will
     * be the result of the writeEnd call.
@@ -55,9 +59,9 @@ private[http4s] trait EntityBodyWriter[F[_]] {
     * @param p EntityBody to write out
     * @return the Task which when run will unwind the Process
     */
-  def writeEntityBody(p: EntityBody[F]): F[Boolean] = {
-    val writeBody: F[Unit] = writePipe(p).compile.drain
-    val writeBodyEnd: F[Boolean] = fromFutureNoShift(F.delay(writeEnd(Chunk.empty)))
+  def writeEntityBody(p: EntityBody[F], cancelToken: Option[F[Unit]]): F[Boolean] = {
+    val writeBody: F[Unit] = writePipe(p, cancelToken).compile.drain
+    val writeBodyEnd: F[Boolean] = fromFutureNoShift(F.delay(writeEnd(Chunk.empty)), cancelToken)
     writeBody *> writeBodyEnd
   }
 
@@ -66,9 +70,9 @@ private[http4s] trait EntityBodyWriter[F[_]] {
     * If it errors the error stream becomes the stream, which performs an
     * exception flush and then the stream fails.
     */
-  private def writePipe(s: Stream[F, Byte]): Stream[F, Nothing] = {
+  private def writePipe(s: Stream[F, Byte], cancelToken: Option[F[Unit]]): Stream[F, Nothing] = {
     def writeChunk(chunk: Chunk[Byte]): F[Unit] =
-      fromFutureNoShift(F.delay(writeBodyChunk(chunk, flush = false)))
+      fromFutureNoShift(F.delay(writeBodyChunk(chunk, flush = false)), cancelToken)
 
     val writeStream: Stream[F, Nothing] =
       s.repeatPull {
@@ -80,7 +84,7 @@ private[http4s] trait EntityBodyWriter[F[_]] {
 
     val errorStream: Throwable => Stream[F, Nothing] = e =>
       Stream
-        .eval(fromFutureNoShift(F.delay(exceptionFlush())))
+        .eval(fromFutureNoShift(F.delay(exceptionFlush()), cancelToken))
         .flatMap(_ => Stream.raiseError[F](e))
     writeStream.handleErrorWith(errorStream)
   }

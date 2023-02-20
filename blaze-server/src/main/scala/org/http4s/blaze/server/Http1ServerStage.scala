@@ -228,6 +228,9 @@ private[blaze] class Http1ServerStage[F[_]](
     }
   }
 
+  private[this] val someShutdownCancelToken: Option[F[Unit]] =
+    Some(F.delay(stageShutdown()))
+
   protected def renderResponse(
       req: Request[F],
       resp: Response[F],
@@ -294,7 +297,7 @@ private[blaze] class Http1ServerStage[F[_]](
 
     // TODO: pool shifting: https://github.com/http4s/http4s/blob/main/core/src/main/scala/org/http4s/internal/package.scala#L45
     val fa = bodyEncoder
-      .write(rr, resp.body)
+      .write(rr, resp.body, someShutdownCancelToken)
       .recover { case EOF => true }
       .attempt
       .flatMap {

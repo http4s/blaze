@@ -18,6 +18,7 @@ package org.http4s
 package blazecore
 
 import cats.effect.Async
+import cats.syntax.all._
 import org.http4s.blaze.util.Execution.directec
 
 import scala.concurrent.Future
@@ -36,18 +37,26 @@ package object util extends ParasiticExecutionContextCompat {
   /** Inferior to `Async[F].fromFuture` for general use because it doesn't shift, but
     * in blaze internals, we don't want to shift.
     */
+  @deprecated("Call overload with optional cancellation token", "0.23.14")
   private[http4s] def fromFutureNoShift[F[_], A](f: F[Future[A]])(implicit F: Async[F]): F[A] =
+    fromFutureNoShift(f, None)
+
+  private[http4s] def fromFutureNoShift[F[_], A](f: F[Future[A]], cancelToken: Option[F[Unit]])(
+      implicit F: Async[F]
+  ): F[A] =
     F.flatMap(f) { future =>
       future.value match {
         case Some(value) =>
           F.fromTry(value)
         case None =>
-          F.async_ { cb =>
-            future.onComplete {
-              case Success(a) => cb(Right(a))
-              case Failure(t) => cb(Left(t))
-            }(directec)
-          }
+          F.async(cb =>
+            F.delay(
+              future.onComplete {
+                case Success(a) => cb(Right(a))
+                case Failure(t) => cb(Left(t))
+              }(directec)
+            ).as(cancelToken)
+          )
       }
     }
 }

@@ -76,13 +76,17 @@ private final class Http1Support[F[_]](
     connectTimeout,
   )
 
+  /* This is an uncancelable operation, and it's the caller's
+   * responsibility to guarantee this connection gets closed.
+   */
   def makeClient(requestKey: RequestKey): F[BlazeConnection[F]] =
     getAddress(requestKey) match {
       case Right(a) =>
         fromFutureNoShift(
           executionContextConfig.getExecutionContext.flatMap(ec =>
             F.delay(buildPipeline(requestKey, a, ec))
-          )
+          ),
+          None,
         )
       case Left(t) => F.raiseError(t)
     }
