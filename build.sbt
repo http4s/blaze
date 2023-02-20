@@ -136,6 +136,7 @@ lazy val blazeCore = Project("http4s-blaze-core", file("blaze-core"))
     tlMimaPreviousVersions ++= (0 to 11).map(y => s"0.23.$y").toSet,
     libraryDependencies ++= Seq(
       "org.http4s" %% "http4s-core" % http4sVersion,
+      "org.typelevel" %% "cats-effect-std" % "3.5.0-RC2",
       "org.typelevel" %% "munit-cats-effect" % munitCatsEffectVersion % Test,
       logbackClassic % Test,
     ),
