@@ -87,6 +87,6 @@ private[http4s] class IdentityWriter[F[_]](size: Long, out: TailStage[ByteBuffer
   }
 }
 
-private[blaze] object IdentityWriter {
+private[blazecore] object IdentityWriter {
   private lazy val logger = getLogger
 }
