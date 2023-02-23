@@ -34,7 +34,7 @@ class SessionFrameListenerSuite extends BlazeTestSuite {
       new HeaderDecoder(
         localSettings.maxHeaderListSize,
         true, // discard overflow headers
-        localSettings.headerTableSize
+        localSettings.headerTableSize,
       )
 
     lazy val newInboundStream: Option[Int => LeafBuilder[StreamFrame]] = None
@@ -58,7 +58,7 @@ class SessionFrameListenerSuite extends BlazeTestSuite {
       streamId = os.streamId,
       priority = Priority.NoPriority,
       endStream = false,
-      headers = hs
+      headers = hs,
     )
 
     os.readRequest(1).value match {
@@ -83,7 +83,7 @@ class SessionFrameListenerSuite extends BlazeTestSuite {
       streamId = 1,
       priority = Priority.NoPriority,
       endStream = false,
-      headers = hs
+      headers = hs,
     )
 
     assert(tools.streamManager.get(1).isDefined)
@@ -128,7 +128,7 @@ class SessionFrameListenerSuite extends BlazeTestSuite {
         override def handlePushPromise(
             streamId: Int,
             promisedId: Int,
-            headers: Headers
+            headers: Headers,
         ) = {
           sId = streamId
           pId = promisedId
@@ -294,14 +294,14 @@ class SessionFrameListenerSuite extends BlazeTestSuite {
     val tools = new MockTools(true) {
       override def invokeGoAway(
           lastHandledOutboundStream: Int,
-          reason: Http2SessionException
+          reason: Http2SessionException,
       ): Unit =
         observedGoAway = Some(lastHandledOutboundStream -> reason)
     }
 
     assertEquals(
       tools.frameListener.onGoAwayFrame(1, NO_ERROR.code, "lol".getBytes(StandardCharsets.UTF_8)),
-      Continue
+      Continue,
     )
 
     observedGoAway match {

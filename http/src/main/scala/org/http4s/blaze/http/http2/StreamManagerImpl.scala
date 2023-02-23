@@ -24,7 +24,7 @@ import scala.concurrent.{Future, Promise}
 
 private final class StreamManagerImpl(
     session: SessionCore,
-    inboundStreamBuilder: Option[Int => LeafBuilder[StreamFrame]]
+    inboundStreamBuilder: Option[Int => LeafBuilder[StreamFrame]],
 ) extends StreamManager {
   private[this] val logger = org.log4s.getLogger
   private[this] val streams = new HashMap[Int, StreamState]
