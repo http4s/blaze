@@ -86,6 +86,6 @@ private[blaze] class IdentityWriter[F[_]](size: Long, out: TailStage[ByteBuffer]
   }
 }
 
-private[blazecore] object IdentityWriter {
+private[util] object IdentityWriter {
   private lazy val logger = getLogger
 }
