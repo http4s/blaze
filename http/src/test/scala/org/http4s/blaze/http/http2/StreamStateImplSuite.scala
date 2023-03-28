@@ -40,7 +40,7 @@ class StreamStateImplSuite extends BlazeTestSuite {
           }
           override protected def onStreamBytesConsumed(
               stream: StreamFlowWindow,
-              consumed: Int
+              consumed: Int,
           ): Unit = {
             streamConsumed += consumed
             ()
@@ -53,7 +53,7 @@ class StreamStateImplSuite extends BlazeTestSuite {
     lazy val streamState: StreamStateImpl = new InboundStreamStateImpl(
       session = tools,
       streamId = streamId,
-      flowWindow = tools.sessionFlowControl.newStreamFlowWindow(streamId)
+      flowWindow = tools.sessionFlowControl.newStreamFlowWindow(streamId),
     )
   }
 
@@ -202,7 +202,7 @@ class StreamStateImplSuite extends BlazeTestSuite {
     assertEquals(
       streamState
         .invokeInboundData(endStream = false, data = BufferTools.allocate(1), flowBytes = 1),
-      Continue
+      Continue,
     )
 
     assertEquals(streamConsumed.dequeue(), 1)
@@ -250,7 +250,7 @@ class StreamStateImplSuite extends BlazeTestSuite {
     streamState.invokeInboundData(
       endStream = false,
       data = BufferTools.emptyBuffer,
-      flowBytes = streamState.flowWindow.streamInboundWindow + 1
+      flowBytes = streamState.flowWindow.streamInboundWindow + 1,
     ) match {
       case Error(ex: Http2SessionException) =>
         assertEquals(ex.code, Http2Exception.FLOW_CONTROL_ERROR.code)
@@ -282,7 +282,7 @@ class StreamStateImplSuite extends BlazeTestSuite {
     streamState.invokeInboundData(
       endStream = false,
       data = BufferTools.emptyBuffer,
-      flowBytes = tools.sessionFlowControl.sessionInboundWindow + 1
+      flowBytes = tools.sessionFlowControl.sessionInboundWindow + 1,
     ) match {
       case Error(ex: Http2SessionException) =>
         assertEquals(ex.code, Http2Exception.FLOW_CONTROL_ERROR.code)

@@ -50,7 +50,7 @@ private[blaze] object HeaderTools {
   case class SpecialHeaders(
       transferEncoding: Option[String],
       contentLength: Option[String],
-      connection: Option[String]
+      connection: Option[String],
   )
 
   def isKeepAlive(connectionHeader: Option[String], minorVersion: Int): Boolean =
@@ -105,7 +105,7 @@ private[blaze] object HeaderTools {
     SpecialHeaders(
       transferEncoding,
       contentLength,
-      connection
+      connection,
     )
   }
 }
