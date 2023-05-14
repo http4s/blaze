@@ -27,6 +27,7 @@ import org.http4s.internal.CollectionCompat
 import org.log4s.getLogger
 
 import java.time.Instant
+import java.util.concurrent.CancellationException
 import scala.collection.mutable
 import scala.concurrent.ExecutionContext
 import scala.concurrent.duration._
@@ -203,6 +204,11 @@ private final class PoolManager[F[_], A <: Connection[F]](
     */
   def borrow(key: RequestKey): F[NextConnection] =
     F.async { callback =>
+      val cancel = Some(
+        F.delay(
+          callback(Left(new CancellationException(s"Borrow of connection to $key was canceled")))
+        )
+      )
       semaphore.permit.use { _ =>
         if (!isClosed) {
           def go(): F[Unit] =
@@ -268,9 +274,9 @@ private final class PoolManager[F[_], A <: Connection[F]](
                   addToWaitQueue(key, callback)
             }
 
-          F.delay(logger.debug(s"Requesting connection for $key: $stats")).productR(go()).as(None)
+          F.delay(logger.debug(s"Requesting connection for $key: $stats")).productR(go()).as(cancel)
         } else
-          F.delay(callback(Left(new IllegalStateException("Connection pool is closed")))).as(None)
+          F.delay(callback(Left(new IllegalStateException("Connection pool is closed")))).as(cancel)
       }
     }
 
