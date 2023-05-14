@@ -537,7 +537,7 @@ class Http1ServerStageSpec extends CatsEffectSuite {
     }
   }
 
-  fixture.test("Http1ServerStage: routes should cancels on stage shutdown".flaky) { tw =>
+  fixture.test("Http1ServerStage: routes should cancel on stage shutdown".flaky) { tw =>
     Deferred[IO, Unit]
       .flatMap { canceled =>
         Deferred[IO, Unit].flatMap { gate =>
