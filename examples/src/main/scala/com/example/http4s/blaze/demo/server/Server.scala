@@ -18,6 +18,8 @@ package com.example.http4s.blaze.demo.server
 
 import cats.effect._
 import fs2.Stream
+import fs2.compression.Compression
+import fs2.io.file.Files
 import org.http4s.HttpApp
 import org.http4s.blaze.client.BlazeClientBuilder
 import org.http4s.blaze.server.BlazeServerBuilder
@@ -37,7 +39,7 @@ object HttpServer {
       "/" -> ctx.httpServices
     ).orNotFound
 
-  def stream[F[_]: Async]: Stream[F, ExitCode] =
+  def stream[F[_]: Async: Compression: Files]: Stream[F, ExitCode] =
     for {
       client <- BlazeClientBuilder[F].stream
       ctx <- Stream(new Module[F](client))
