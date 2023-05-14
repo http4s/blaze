@@ -182,6 +182,8 @@ private final class PoolManager[F[_], A <: Connection[F]](
       idleQueues.update(key, q)
     }
 
+  private[this] val noopCancelToken = Some(F.unit)
+
   /** This generates a effect of Next Connection. The following calls are executed asynchronously
     * with respect to whenever the execution of this task can occur.
     *
@@ -203,75 +205,77 @@ private final class PoolManager[F[_], A <: Connection[F]](
     */
   def borrow(key: RequestKey): F[NextConnection] =
     F.async { callback =>
-      semaphore.permit.use { _ =>
-        if (!isClosed) {
-          def go(): F[Unit] =
-            getConnectionFromQueue(key).flatMap {
-              case Some(pooled) if pooled.conn.isClosed =>
-                F.delay(logger.debug(s"Evicting closed connection for $key: $stats")) *>
-                  decrConnection(key) *>
-                  go()
+      semaphore.permit
+        .use { _ =>
+          if (!isClosed) {
+            def go(): F[Unit] =
+              getConnectionFromQueue(key).flatMap {
+                case Some(pooled) if pooled.conn.isClosed =>
+                  F.delay(logger.debug(s"Evicting closed connection for $key: $stats")) *>
+                    decrConnection(key) *>
+                    go()
 
-              case Some(pooled) if pooled.borrowDeadline.exists(_.isOverdue()) =>
-                F.delay(
-                  logger.debug(s"Shutting down and evicting expired connection for $key: $stats")
-                ) *>
-                  decrConnection(key) *>
-                  F.delay(pooled.conn.shutdown()) *>
-                  go()
-
-              case Some(pooled) =>
-                F.delay(logger.debug(s"Recycling connection for $key: $stats")) *>
-                  F.delay(callback(Right(NextConnection(pooled.conn, fresh = false))))
-
-              case None if numConnectionsCheckHolds(key) =>
-                F.delay(
-                  logger.debug(s"Active connection not found for $key. Creating new one. $stats")
-                ) *>
-                  createConnection(key, callback)
-
-              case None if maxConnectionsPerRequestKey(key) <= 0 =>
-                F.delay(callback(Left(NoConnectionAllowedException(key))))
-
-              case None if curTotal == maxTotal =>
-                val keys = idleQueues.keys
-                if (keys.nonEmpty)
+                case Some(pooled) if pooled.borrowDeadline.exists(_.isOverdue()) =>
                   F.delay(
-                    logger.debug(
-                      s"No connections available for the desired key, $key. Evicting random and creating a new connection: $stats"
-                    )
+                    logger.debug(s"Shutting down and evicting expired connection for $key: $stats")
                   ) *>
-                    F.delay(keys.iterator.drop(Random.nextInt(keys.size)).next()).flatMap {
-                      randKey =>
-                        getConnectionFromQueue(randKey).map(
-                          _.fold(
-                            logger.warn(s"No connection to evict from the idleQueue for $randKey")
-                          )(_.conn.shutdown())
-                        ) *>
-                          decrConnection(randKey)
-                    } *>
+                    decrConnection(key) *>
+                    F.delay(pooled.conn.shutdown()) *>
+                    go()
+
+                case Some(pooled) =>
+                  F.delay(logger.debug(s"Recycling connection for $key: $stats")) *>
+                    F.delay(callback(Right(NextConnection(pooled.conn, fresh = false))))
+
+                case None if numConnectionsCheckHolds(key) =>
+                  F.delay(
+                    logger.debug(s"Active connection not found for $key. Creating new one. $stats")
+                  ) *>
                     createConnection(key, callback)
-                else
+
+                case None if maxConnectionsPerRequestKey(key) <= 0 =>
+                  F.delay(callback(Left(NoConnectionAllowedException(key))))
+
+                case None if curTotal == maxTotal =>
+                  val keys = idleQueues.keys
+                  if (keys.nonEmpty)
+                    F.delay(
+                      logger.debug(
+                        s"No connections available for the desired key, $key. Evicting random and creating a new connection: $stats"
+                      )
+                    ) *>
+                      F.delay(keys.iterator.drop(Random.nextInt(keys.size)).next()).flatMap {
+                        randKey =>
+                          getConnectionFromQueue(randKey).map(
+                            _.fold(
+                              logger.warn(s"No connection to evict from the idleQueue for $randKey")
+                            )(_.conn.shutdown())
+                          ) *>
+                            decrConnection(randKey)
+                      } *>
+                      createConnection(key, callback)
+                  else
+                    F.delay(
+                      logger.debug(
+                        s"No connections available for the desired key, $key. Adding to waitQueue: $stats"
+                      )
+                    ) *>
+                      addToWaitQueue(key, callback)
+
+                case None => // we're full up. Add to waiting queue.
                   F.delay(
                     logger.debug(
-                      s"No connections available for the desired key, $key. Adding to waitQueue: $stats"
+                      s"No connections available for $key.  Waiting on new connection: $stats"
                     )
                   ) *>
                     addToWaitQueue(key, callback)
+              }
 
-              case None => // we're full up. Add to waiting queue.
-                F.delay(
-                  logger.debug(
-                    s"No connections available for $key.  Waiting on new connection: $stats"
-                  )
-                ) *>
-                  addToWaitQueue(key, callback)
-            }
-
-          F.delay(logger.debug(s"Requesting connection for $key: $stats")).productR(go()).as(None)
-        } else
-          F.delay(callback(Left(new IllegalStateException("Connection pool is closed")))).as(None)
-      }
+            F.delay(logger.debug(s"Requesting connection for $key: $stats")).productR(go())
+          } else
+            F.delay(callback(Left(new IllegalStateException("Connection pool is closed"))))
+        }
+        .as(noopCancelToken)
     }
 
   private def releaseRecyclable(key: RequestKey, connection: A): F[Unit] =
