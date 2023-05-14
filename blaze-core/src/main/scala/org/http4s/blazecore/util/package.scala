@@ -42,6 +42,8 @@ package object util extends ParasiticExecutionContextCompat {
         case Some(value) =>
           F.fromTry(value)
         case None =>
+          // Scala futures are uncancelable.  There's not much we can
+          // do here other than async_.
           F.async_ { cb =>
             future.onComplete {
               case Success(a) => cb(Right(a))
