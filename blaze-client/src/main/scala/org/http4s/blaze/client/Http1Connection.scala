@@ -179,8 +179,6 @@ private final class Http1Connection[F[_]](
 
   override protected def contentComplete(): Boolean = parser.contentComplete()
 
-  private[this] val noopCancel = Some(F.unit)
-
   private def executeRequest(
       req: Request[F],
       cancellation: F[TimeoutException],
@@ -218,7 +216,7 @@ private final class Http1Connection[F[_]](
           val idleTimeoutF: F[TimeoutException] = idleTimeoutStage match {
             case Some(stage) =>
               F.async[TimeoutException] { cb =>
-                F.delay(stage.setTimeout(cb)).as(noopCancel)
+                F.delay(stage.setTimeout(cb)).as(Some(F.delay(stage.cancelTimeout())))
               }
             case None => F.never[TimeoutException]
           }
