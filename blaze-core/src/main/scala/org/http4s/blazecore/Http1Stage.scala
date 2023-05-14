@@ -197,6 +197,8 @@ private[http4s] trait Http1Stage[F[_]] { self: TailStage[ByteBuffer] =>
     // we are not finished and need more data.
     else streamingBody(buffer, eofCondition)
 
+  private[this] val shutdownCancelToken = Some(F.delay(stageShutdown()))
+
   // Streams the body off the wire
   private def streamingBody(
       buffer: ByteBuffer,
@@ -205,46 +207,48 @@ private[http4s] trait Http1Stage[F[_]] { self: TailStage[ByteBuffer] =>
     @volatile var currentBuffer = buffer
 
     // TODO: we need to work trailers into here somehow
-    val t = F.async_[Option[Chunk[Byte]]] { cb =>
-      if (!contentComplete()) {
-        def go(): Unit =
-          try {
-            val parseResult = doParseContent(currentBuffer)
-            logger.debug(s"Parse result: $parseResult, content complete: ${contentComplete()}")
-            parseResult match {
-              case Some(result) =>
-                cb(Either.right(Chunk.byteBuffer(result).some))
+    val t = F.async[Option[Chunk[Byte]]] { cb =>
+      F.delay {
+        if (!contentComplete()) {
+          def go(): Unit =
+            try {
+              val parseResult = doParseContent(currentBuffer)
+              logger.debug(s"Parse result: $parseResult, content complete: ${contentComplete()}")
+              parseResult match {
+                case Some(result) =>
+                  cb(Either.right(Chunk.byteBuffer(result).some))
 
-              case None if contentComplete() =>
-                cb(End)
+                case None if contentComplete() =>
+                  cb(End)
 
-              case None =>
-                channelRead().onComplete {
-                  case Success(b) =>
-                    currentBuffer = BufferTools.concatBuffers(currentBuffer, b)
-                    go()
+                case None =>
+                  channelRead().onComplete {
+                    case Success(b) =>
+                      currentBuffer = BufferTools.concatBuffers(currentBuffer, b)
+                      go()
 
-                  case Failure(Command.EOF) =>
-                    cb(eofCondition())
+                    case Failure(Command.EOF) =>
+                      cb(eofCondition())
 
-                  case Failure(t) =>
-                    logger.error(t)("Unexpected error reading body.")
-                    cb(Either.left(t))
-                }
+                    case Failure(t) =>
+                      logger.error(t)("Unexpected error reading body.")
+                      cb(Either.left(t))
+                  }
+              }
+            } catch {
+              case t: ParserException =>
+                fatalError(t, "Error parsing request body")
+                cb(Either.left(InvalidBodyException(t.getMessage())))
+
+              case t: Throwable =>
+                fatalError(t, "Error collecting body")
+                cb(Either.left(t))
             }
-          } catch {
-            case t: ParserException =>
-              fatalError(t, "Error parsing request body")
-              cb(Either.left(InvalidBodyException(t.getMessage())))
-
-            case t: Throwable =>
-              fatalError(t, "Error collecting body")
-              cb(Either.left(t))
-          }
-        go()
-      } else cb(End)
+          go()
+        } else cb(End)
+        shutdownCancelToken
+      }
     }
-
     (repeatEval(t).unNoneTerminate.flatMap(chunk(_)), () => drainBody(currentBuffer))
   }
 

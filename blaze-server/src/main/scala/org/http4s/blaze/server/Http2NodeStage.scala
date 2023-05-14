@@ -105,6 +105,8 @@ private class Http2NodeStage[F[_]](
         closePipeline(Some(e))
     }
 
+  private[this] val shutdownStageToken = Some(F.delay(stageShutdown()))
+
   /** collect the body: a maxlen < 0 is interpreted as undefined */
   private def getBody(maxlen: Long): EntityBody[F] = {
     var complete = false
@@ -156,7 +158,7 @@ private class Http2NodeStage[F[_]](
               closePipeline(Some(e))
           }
 
-        None
+        shutdownStageToken
       }
     }
 
