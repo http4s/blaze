@@ -40,6 +40,7 @@ import org.http4s.websocket.WebSocketSeparatePipe
 
 import java.net.ProtocolException
 import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.CancellationException
 import scala.concurrent.ExecutionContext
 import scala.util.Failure
 import scala.util.Success
@@ -67,22 +68,30 @@ private[http4s] class Http4sWSStage[F[_]](
   def snkFun(frame: WebSocketFrame): F[Unit] = isClosed.ifM(F.unit, evalFrame(frame))
 
   private[this] def writeFrame(frame: WebSocketFrame, ec: ExecutionContext): F[Unit] =
-    writeSemaphore.permit.use { _ =>
-      F.async_[Unit] { cb =>
-        channelWrite(frame).onComplete {
-          case Success(res) => cb(Right(res))
-          case Failure(t) => cb(Left(t))
-        }(ec)
-      }
-    }
+    writeSemaphore.permit.surround(
+      F.async[Unit](cb =>
+        F.delay(
+          channelWrite(frame).onComplete {
+            case Success(res) => cb(Right(res))
+            case Failure(t) => cb(Left(t))
+          }(ec)
+        ).as(
+          Some(F.delay(cb(Left(new CancellationException("Canceled writing of web socket frame")))))
+        )
+      )
+    )
 
   private[this] def readFrameTrampoline: F[WebSocketFrame] =
-    F.async_[WebSocketFrame] { cb =>
-      channelRead().onComplete {
-        case Success(ws) => cb(Right(ws))
-        case Failure(exception) => cb(Left(exception))
-      }(trampoline)
-    }
+    F.async[WebSocketFrame](cb =>
+      F.delay(
+        channelRead().onComplete {
+          case Success(ws) => cb(Right(ws))
+          case Failure(exception) => cb(Left(exception))
+        }(trampoline)
+      ).as(
+        Some(F.delay(cb(Left(new CancellationException("Canceled reading of web socket frame")))))
+      )
+    )
 
   /** Read from our websocket.
     *
