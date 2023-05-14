@@ -206,7 +206,7 @@ private final class PoolManager[F[_], A <: Connection[F]](
   def borrow(key: RequestKey): F[NextConnection] =
     F.async { callback =>
       semaphore.permit
-        .use { _ =>
+        .surround {
           if (!isClosed) {
             def go(): F[Unit] =
               getConnectionFromQueue(key).flatMap {
