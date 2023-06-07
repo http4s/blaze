@@ -163,12 +163,12 @@ jobs:
           tar xf targets.tar
           rm targets.tar
 
-      - name: Download target directories (2.12.17)
+      - name: Download target directories (2.12.18)
         uses: actions/download-artifact@v3
         with:
-          name: target-${{ matrix.os }}-${{ matrix.java }}-2.12.17
+          name: target-${{ matrix.os }}-${{ matrix.java }}-2.12.18
 
-      - name: Inflate target directories (2.12.17)
+      - name: Inflate target directories (2.12.18)
         run: |
           tar xf targets.tar
           rm targets.tar
