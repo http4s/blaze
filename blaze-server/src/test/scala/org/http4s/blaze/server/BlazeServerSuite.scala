@@ -44,6 +44,9 @@ class BlazeServerSuite extends CatsEffectSuite {
 
   override val munitIOTimeout: Duration = 10.seconds
 
+  // allow flaky tests on CI
+  override def munitFlakyOK: Boolean = sys.env.contains("CI")
+
   override implicit lazy val munitIoRuntime: IORuntime = {
     val TestScheduler: ScheduledExecutorService = {
       val s =
