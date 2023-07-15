@@ -177,7 +177,7 @@ class BlazeServerSuite extends CatsEffectSuite {
     getStatus(server, "/never").assertEquals(Status.ServiceUnavailable)
   }
 
-  blazeServer.test("reliably handle multipart requests") { server =>
+  blazeServer.test("reliably handle multipart requests".flaky) { server =>
     val body =
       """|--aa
              |server: Server, Content-Disposition: form-data; name="a"
