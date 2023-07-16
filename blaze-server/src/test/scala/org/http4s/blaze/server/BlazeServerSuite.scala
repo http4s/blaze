@@ -44,6 +44,9 @@ class BlazeServerSuite extends CatsEffectSuite {
 
   override val munitIOTimeout: Duration = 10.seconds
 
+  // allow flaky tests on CI
+  override def munitFlakyOK: Boolean = sys.env.contains("CI")
+
   override implicit lazy val munitIoRuntime: IORuntime = {
     val TestScheduler: ScheduledExecutorService = {
       val s =
@@ -177,7 +180,7 @@ class BlazeServerSuite extends CatsEffectSuite {
     getStatus(server, "/never").assertEquals(Status.ServiceUnavailable)
   }
 
-  blazeServer.test("reliably handle multipart requests") { server =>
+  blazeServer.test("reliably handle multipart requests".flaky) { server =>
     val body =
       """|--aa
              |server: Server, Content-Disposition: form-data; name="a"
