@@ -25,7 +25,7 @@ import org.http4s.multipart.Part
 
 import java.io.File
 
-class FileService[F[_]](implicit F: Async[F], S: StreamUtils[F]) {
+class FileService[F[_]](implicit F: Async[F], S: StreamUtils[F], files: Files[F]) {
   def homeDirectories(depth: Option[Int]): Stream[F, String] =
     S.env("HOME").flatMap { maybePath =>
       val ifEmpty = S.error("HOME environment variable not found!")
