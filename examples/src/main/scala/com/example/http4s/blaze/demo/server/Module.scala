@@ -24,6 +24,8 @@ import com.example.http4s.blaze.demo.server.endpoints.auth.BasicAuthHttpEndpoint
 import com.example.http4s.blaze.demo.server.endpoints.auth.GitHubHttpEndpoint
 import com.example.http4s.blaze.demo.server.service.FileService
 import com.example.http4s.blaze.demo.server.service.GitHubService
+import fs2.compression.Compression
+import fs2.io.file.Files
 import org.http4s.HttpRoutes
 import org.http4s.client.Client
 import org.http4s.server.HttpMiddleware
@@ -34,7 +36,7 @@ import org.http4s.server.middleware.Timeout
 
 import scala.concurrent.duration._
 
-class Module[F[_]: Async](client: Client[F]) {
+class Module[F[_]: Async: Compression: Files](client: Client[F]) {
   private val fileService = new FileService[F]
 
   private val gitHubService = new GitHubService[F](client)
