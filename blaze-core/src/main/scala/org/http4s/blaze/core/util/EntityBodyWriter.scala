@@ -52,7 +52,7 @@ private[blaze] trait EntityBodyWriter[F[_]] {
     */
   def writeEntityBody(entity: Entity[F]): F[Boolean] =
     entity match {
-      case Entity.Default(body, _) =>
+      case Entity.Streamed(body, _) =>
         val writeBody: F[Unit] = writePipe(body).compile.drain
         val writeBodyEnd: F[Boolean] = fromFutureNoShift(F.delay(writeEnd(Chunk.empty)))
         writeBody *> writeBodyEnd

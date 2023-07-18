@@ -44,7 +44,7 @@ private[blaze] class BodylessWriter[F[_]](pipe: TailStage[ByteBuffer], close: Bo
     */
   override def writeEntityBody(entity: Entity[F]): F[Boolean] =
     entity match {
-      case Entity.Default(body, _) =>
+      case Entity.Streamed(body, _) =>
         body.compile.drain.as(close)
 
       case Entity.Strict(_) | Entity.Empty =>

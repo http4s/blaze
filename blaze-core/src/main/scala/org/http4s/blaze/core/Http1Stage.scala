@@ -192,7 +192,7 @@ private[blaze] trait Http1Stage[F[_]] { self: TailStage[ByteBuffer] =>
 
       case Some(buff) =>
         val (rst, end) = streamingEntity(buffer, eofCondition)
-        Entity(Stream.chunk(Chunk.byteBuffer(buff)) ++ rst.body) -> end
+        Entity.stream(Stream.chunk(Chunk.byteBuffer(buff)) ++ rst.body) -> end
 
       case None if contentComplete() =>
         if (buffer.hasRemaining) Entity.Empty -> Http1Stage.futureBufferThunk(buffer)
@@ -256,7 +256,7 @@ private[blaze] trait Http1Stage[F[_]] { self: TailStage[ByteBuffer] =>
       }
     }
 
-    (Entity(repeatEval(t).unNoneTerminate.flatMap(chunk(_))), () => drainBody(currentBuffer))
+    (Entity.stream(repeatEval(t).unNoneTerminate.flatMap(chunk(_))), () => drainBody(currentBuffer))
   }
 
   /** Called when a fatal error has occurred
