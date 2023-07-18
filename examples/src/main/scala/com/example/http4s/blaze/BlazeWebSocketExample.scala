@@ -39,7 +39,8 @@ object BlazeWebSocketExample extends IOApp {
     BlazeWebSocketExampleApp[IO].stream.compile.drain.as(ExitCode.Success)
 }
 
-class BlazeWebSocketExampleApp[F[_]](implicit F: Async[F], lf: LoggerFactory[F]) extends Http4sDsl[F] {
+class BlazeWebSocketExampleApp[F[_]](implicit F: Async[F], lf: LoggerFactory[F])
+    extends Http4sDsl[F] {
   def routes(wsb: WebSocketBuilder[F]): HttpRoutes[F] =
     HttpRoutes.of[F] {
       case GET -> Root / "hello" =>

@@ -467,7 +467,9 @@ object BlazeServerBuilder {
       "If you have a specific reason to use a custom one, use `.withExecutionContext`",
     "0.23.5",
   )
-  def apply[F[_]](executionContext: ExecutionContext)(implicit F: Async[F], lf: LoggerFactory[F]): BlazeServerBuilder[F] =
+  def apply[F[_]](
+      executionContext: ExecutionContext
+  )(implicit F: Async[F], lf: LoggerFactory[F]): BlazeServerBuilder[F] =
     apply[F].withExecutionContext(executionContext)
 
   def apply[F[_]](implicit F: Async[F], lf: LoggerFactory[F]): BlazeServerBuilder[F] =

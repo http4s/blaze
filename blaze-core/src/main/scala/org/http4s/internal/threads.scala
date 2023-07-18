@@ -16,14 +16,14 @@ private[http4s] object threads {
   }
 
   def threadFactory(
-                     name: Long => String = { l =>
-                       s"http4s-$l"
-                     },
-                     daemon: Boolean = false,
-                     priority: ThreadPriority = ThreadPriority.Norm,
-                     uncaughtExceptionHandler: PartialFunction[(Thread, Throwable), Unit] = PartialFunction.empty,
-                     backingThreadFactory: ThreadFactory = Executors.defaultThreadFactory,
-                   ): ThreadFactory =
+      name: Long => String = { l =>
+        s"http4s-$l"
+      },
+      daemon: Boolean = false,
+      priority: ThreadPriority = ThreadPriority.Norm,
+      uncaughtExceptionHandler: PartialFunction[(Thread, Throwable), Unit] = PartialFunction.empty,
+      backingThreadFactory: ThreadFactory = Executors.defaultThreadFactory,
+  ): ThreadFactory =
     new ThreadFactory {
       val count = new AtomicLong(0)
 
@@ -48,11 +48,11 @@ private[http4s] object threads {
     }
 
   def newDaemonPool(
-                     name: String,
-                     min: Int = 4,
-                     cpuFactor: Double = 3.0,
-                     timeout: Boolean = false,
-                   ): ThreadPoolExecutor = {
+      name: String,
+      min: Int = 4,
+      cpuFactor: Double = 3.0,
+      timeout: Boolean = false,
+  ): ThreadPoolExecutor = {
     val cpus = Runtime.getRuntime.availableProcessors
     val exec = new ThreadPoolExecutor(
       math.max(min, cpus),
@@ -67,11 +67,11 @@ private[http4s] object threads {
   }
 
   def newDaemonPoolExecutionContext(
-                                     name: String,
-                                     min: Int = 4,
-                                     cpuFactor: Double = 3.0,
-                                     timeout: Boolean = false,
-                                   ): ExecutionContext =
+      name: String,
+      min: Int = 4,
+      cpuFactor: Double = 3.0,
+      timeout: Boolean = false,
+  ): ExecutionContext =
     ExecutionContext.fromExecutorService(newDaemonPool(name, min, cpuFactor, timeout))
 
   def newBlockingPool(name: String): ExecutorService = {
