@@ -381,7 +381,7 @@ private final class Http1Connection[F[_]](
         cleanUpAfterReceivingResponse(closeOnFinish, headers)
         attributes -> rawEntity
       } else
-        attributes -> Entity(rawEntity.body.onFinalizeCaseWeak {
+        attributes -> Entity.stream(rawEntity.body.onFinalizeCaseWeak {
           case ExitCase.Succeeded =>
             F.delay { trailerCleanup(); cleanUpAfterReceivingResponse(closeOnFinish, headers); }
               .evalOn(executionContext)

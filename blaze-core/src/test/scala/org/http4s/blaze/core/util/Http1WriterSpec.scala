@@ -59,7 +59,7 @@ class Http1WriterSpec extends CatsEffectSuite with DispatcherIOFixture {
 
     for {
       _ <- IO.fromFuture(IO(w.writeHeaders(new StringWriter << "Content-Type: text/plain\r\n")))
-      _ <- w.writeEntityBody(Entity(p)).attempt
+      _ <- w.writeEntityBody(Entity.stream(p)).attempt
       _ <- IO(head.stageShutdown())
       _ <- IO.fromFuture(IO(head.result))
     } yield new String(head.getBytes(), StandardCharsets.ISO_8859_1)
@@ -260,7 +260,7 @@ class Http1WriterSpec extends CatsEffectSuite with DispatcherIOFixture {
     val p = s.through(Compression[IO].deflate(DeflateParams.DEFAULT))
     (
       p.compile.toVector.map(_.toArray),
-      DumpingWriter.dump(Entity(s.through(Compression[IO].deflate(DeflateParams.DEFAULT)))),
+      DumpingWriter.dump(Entity.stream(s.through(Compression[IO].deflate(DeflateParams.DEFAULT)))),
     )
       .mapN(_ sameElements _)
       .assert
@@ -277,7 +277,9 @@ class Http1WriterSpec extends CatsEffectSuite with DispatcherIOFixture {
 
   test("FlushingChunkWriter should write a resource") {
     val p = resource
-    (p.compile.toVector.map(_.toArray), DumpingWriter.dump(Entity(p))).mapN(_ sameElements _).assert
+    (p.compile.toVector.map(_.toArray), DumpingWriter.dump(Entity.stream(p)))
+      .mapN(_ sameElements _)
+      .assert
   }
 
   test("FlushingChunkWriter should write a deflated resource") {
@@ -285,7 +287,9 @@ class Http1WriterSpec extends CatsEffectSuite with DispatcherIOFixture {
 
     (
       p.compile.toVector.map(_.toArray),
-      DumpingWriter.dump(Entity(resource.through(Compression[IO].deflate(DeflateParams.DEFAULT)))),
+      DumpingWriter.dump(
+        Entity.stream(resource.through(Compression[IO].deflate(DeflateParams.DEFAULT)))
+      ),
     )
       .mapN(_ sameElements _)
       .assert
@@ -295,14 +299,14 @@ class Http1WriterSpec extends CatsEffectSuite with DispatcherIOFixture {
     val p = repeatEval(IO.pure[Byte](0.toByte)).take(300000)
 
     // The dumping writer is stack safe when using a trampolining EC
-    (new DumpingWriter).writeEntityBody(Entity(p)).attempt.map(_.isRight).assert
+    (new DumpingWriter).writeEntityBody(Entity.stream(p)).attempt.map(_.isRight).assert
   }
 
   test("FlushingChunkWriter should Execute cleanup on a failing Http1Writer") {
     (for {
       clean <- Ref.of[IO, Boolean](false)
       p = chunk(messageBuffer).onFinalizeWeak(clean.set(true))
-      w <- new FailingWriter().writeEntityBody(Entity(p)).attempt
+      w <- new FailingWriter().writeEntityBody(Entity.stream(p)).attempt
       c <- clean.get
     } yield w.isLeft && c).assert
   }
@@ -313,7 +317,7 @@ class Http1WriterSpec extends CatsEffectSuite with DispatcherIOFixture {
     (for {
       clean <- Ref.of[IO, Boolean](false)
       p = eval(IO.raiseError(Failed)).onFinalizeWeak(clean.set(true))
-      w <- new FailingWriter().writeEntityBody(Entity(p)).attempt
+      w <- new FailingWriter().writeEntityBody(Entity.stream(p)).attempt
       c <- clean.get
     } yield w.isLeft && c).assert
   }
