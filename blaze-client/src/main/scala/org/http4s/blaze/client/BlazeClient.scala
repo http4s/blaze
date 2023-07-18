@@ -34,6 +34,7 @@ import org.http4s.client.RequestKey
 import org.http4s.client.UnexpectedStatus
 import org.http4s.client.middleware.Retry
 import org.http4s.client.middleware.RetryPolicy
+import org.typelevel.log4cats.LoggerFactory
 
 import java.net.SocketException
 import java.nio.ByteBuffer
@@ -51,7 +52,7 @@ object BlazeClient {
       ec: ExecutionContext,
       retries: Int,
       dispatcher: Dispatcher[F],
-  )(implicit F: Async[F]): Client[F] = {
+  )(implicit F: Async[F], lf: LoggerFactory[F]): Client[F] = {
     val base = new BlazeClient[F, A](
       manager,
       responseHeaderTimeout,

@@ -400,8 +400,8 @@ private final class Http1Connection[F[_]](
           httpVersion = httpVersion,
           headers = headers,
           entity = entity match {
-            case Entity.Default(body, length) =>
-              Entity[F](body.interruptWhen(idleTimeoutS), length)
+            case Entity.Streamed(body, length) =>
+              Entity.stream[F](body.interruptWhen(idleTimeoutS), length)
             case Entity.Strict(_) | Entity.Empty =>
               entity
           },
