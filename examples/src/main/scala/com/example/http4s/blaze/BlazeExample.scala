@@ -22,8 +22,12 @@ import org.http4s.HttpApp
 import org.http4s.blaze.server.BlazeServerBuilder
 import org.http4s.server.Router
 import org.http4s.server.Server
+import org.typelevel.log4cats.LoggerFactory
+import org.typelevel.log4cats.slf4j.Slf4jFactory
 
 object BlazeExample extends IOApp {
+  implicit val loggerFactory: LoggerFactory[IO] = Slf4jFactory.create[IO]
+
   override def run(args: List[String]): IO[ExitCode] =
     BlazeExampleApp.resource[IO].use(_ => IO.never).as(ExitCode.Success)
 }
@@ -34,7 +38,7 @@ object BlazeExampleApp {
       "/http4s" -> ExampleService[F].routes
     ).orNotFound
 
-  def resource[F[_]: Async]: Resource[F, Server] = {
+  def resource[F[_]: Async: LoggerFactory]: Resource[F, Server] = {
     val app = httpApp[F]
     BlazeServerBuilder[F]
       .bindHttp(8080)

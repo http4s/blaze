@@ -21,10 +21,14 @@ import cats.effect._
 import cats.syntax.all._
 import org.http4s.blaze.server.BlazeServerBuilder
 import org.http4s.server.Server
+import org.typelevel.log4cats.LoggerFactory
+import org.typelevel.log4cats.slf4j.Slf4jFactory
 
 import javax.net.ssl.SSLContext
 
 object BlazeSslExample extends IOApp {
+  implicit val loggerFactory: LoggerFactory[IO] = Slf4jFactory.create[IO]
+
   override def run(args: List[String]): IO[ExitCode] =
     BlazeSslExampleApp.resource[IO].use(_ => IO.never).as(ExitCode.Success)
 }
@@ -33,14 +37,14 @@ object BlazeSslExampleApp {
   def context[F[_]: Sync]: F[SSLContext] =
     ssl.loadContextFromClasspath(ssl.keystorePassword, ssl.keyManagerPassword)
 
-  def builder[F[_]: Async]: F[BlazeServerBuilder[F]] =
+  def builder[F[_]: Async: LoggerFactory]: F[BlazeServerBuilder[F]] =
     context.map { sslContext =>
       BlazeServerBuilder[F]
         .bindHttp(8443)
         .withSslContext(sslContext)
     }
 
-  def resource[F[_]: Async]: Resource[F, Server] =
+  def resource[F[_]: Async: LoggerFactory]: Resource[F, Server] =
     for {
       b <- Resource.eval(builder[F])
       server <- b.withHttpApp(BlazeExampleApp.httpApp).resource

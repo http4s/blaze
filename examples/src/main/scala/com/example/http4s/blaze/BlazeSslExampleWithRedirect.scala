@@ -20,9 +20,13 @@ package blaze
 import cats.effect._
 import fs2._
 import org.http4s.blaze.server.BlazeServerBuilder
+import org.typelevel.log4cats.LoggerFactory
+import org.typelevel.log4cats.slf4j.Slf4jFactory
 
 object BlazeSslExampleWithRedirect extends IOApp {
   import BlazeSslExampleWithRedirectApp._
+
+  implicit val loggerFactory: LoggerFactory[IO] = Slf4jFactory.create[IO]
 
   override def run(args: List[String]): IO[ExitCode] =
     sslStream[IO]
@@ -33,12 +37,12 @@ object BlazeSslExampleWithRedirect extends IOApp {
 }
 
 object BlazeSslExampleWithRedirectApp {
-  def redirectStream[F[_]: Async]: Stream[F, ExitCode] =
+  def redirectStream[F[_]: Async: LoggerFactory]: Stream[F, ExitCode] =
     BlazeServerBuilder[F]
       .bindHttp(8080)
       .withHttpApp(ssl.redirectApp(8443))
       .serve
 
-  def sslStream[F[_]: Async]: Stream[F, ExitCode] =
+  def sslStream[F[_]: Async: LoggerFactory]: Stream[F, ExitCode] =
     Stream.eval(BlazeSslExampleApp.builder[F]).flatMap(_.serve)
 }

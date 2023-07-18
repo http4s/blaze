@@ -24,8 +24,12 @@ import org.http4s.HttpApp
 import org.http4s.blaze.client.BlazeClientBuilder
 import org.http4s.blaze.server.BlazeServerBuilder
 import org.http4s.server.Router
+import org.typelevel.log4cats.LoggerFactory
+import org.typelevel.log4cats.slf4j.Slf4jFactory
 
 object Server extends IOApp {
+  implicit val loggerFactory: LoggerFactory[IO] = Slf4jFactory.create[IO]
+
   override def run(args: List[String]): IO[ExitCode] =
     HttpServer.stream[IO].compile.drain.as(ExitCode.Success)
 }
@@ -39,7 +43,7 @@ object HttpServer {
       "/" -> ctx.httpServices
     ).orNotFound
 
-  def stream[F[_]: Async: Compression: Files]: Stream[F, ExitCode] =
+  def stream[F[_]: Async: Compression: Files: LoggerFactory]: Stream[F, ExitCode] =
     for {
       client <- BlazeClientBuilder[F].stream
       ctx <- Stream(new Module[F](client))
