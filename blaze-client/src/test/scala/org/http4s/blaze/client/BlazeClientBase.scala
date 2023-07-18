@@ -35,6 +35,8 @@ import org.http4s.blaze.util.TickWheelExecutor
 import org.http4s.client.testkit.scaffold._
 import org.http4s.client.testkit.testroutes.GetRoutes
 import org.http4s.dsl.io._
+import org.typelevel.log4cats.LoggerFactory
+import org.typelevel.log4cats.slf4j.Slf4jFactory
 
 import java.security.SecureRandom
 import java.security.cert.X509Certificate
@@ -43,6 +45,9 @@ import javax.net.ssl.X509TrustManager
 import scala.concurrent.duration._
 
 trait BlazeClientBase extends CatsEffectSuite {
+
+  implicit val loggerFactory: LoggerFactory[IO] = Slf4jFactory.create[IO]
+
   val tickWheel: TickWheelExecutor = new TickWheelExecutor(tick = 50.millis)
 
   val TrustingSslContext: IO[SSLContext] = IO.blocking {

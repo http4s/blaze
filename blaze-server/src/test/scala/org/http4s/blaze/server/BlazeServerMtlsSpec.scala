@@ -24,6 +24,8 @@ import org.http4s.HttpApp
 import org.http4s.dsl.io._
 import org.http4s.server.Server
 import org.http4s.server.ServerRequestKeys
+import org.typelevel.log4cats.LoggerFactory
+import org.typelevel.log4cats.slf4j.Slf4jFactory
 
 import java.net.URL
 import java.nio.charset.StandardCharsets
@@ -36,6 +38,9 @@ import scala.util.Try
 /** Test cases for mTLS support in blaze server
   */
 class BlazeServerMtlsSpec extends CatsEffectSuite {
+
+  implicit val loggerFactory: LoggerFactory[IO] = Slf4jFactory.create[IO]
+
   {
     val hostnameVerifier: HostnameVerifier = new HostnameVerifier {
       override def verify(s: String, sslSession: SSLSession): Boolean = true

@@ -35,6 +35,8 @@ import org.http4s.blaze.util.TickWheelExecutor
 import org.http4s.client.Client
 import org.http4s.client.RequestKey
 import org.http4s.syntax.all._
+import org.typelevel.log4cats.LoggerFactory
+import org.typelevel.log4cats.slf4j.Slf4jFactory
 
 import java.io.IOException
 import java.nio.ByteBuffer
@@ -51,6 +53,8 @@ class ClientTimeoutSuite extends CatsEffectSuite with DispatcherIOFixture {
       IO(tickWheel.shutdown())
     )
   )
+
+  implicit val loggerFactory: LoggerFactory[IO] = Slf4jFactory.create[IO]
 
   private def fixture = (tickWheelFixture, dispatcher).mapN(FunFixture.map2(_, _))
 
@@ -141,7 +145,7 @@ class ClientTimeoutSuite extends CatsEffectSuite with DispatcherIOFixture {
     case (tickWheel, dispatcher) =>
       // Sending request body hangs so the idle timeout will kick-in after 1s and interrupt the request
       val body = Stream.emit[IO, Byte](1.toByte) ++ Stream.never[IO]
-      val req = Request(method = Method.POST, uri = www_foo_com, entity = Entity(body))
+      val req = Request(method = Method.POST, uri = www_foo_com, entity = Entity.stream(body))
       val h = new SlowTestHead(Seq(mkBuffer(resp)), 3.seconds, tickWheel)
       val c = mkClient(h, tickWheel, dispatcher)(idleTimeout = 1.second)
 
@@ -155,7 +159,7 @@ class ClientTimeoutSuite extends CatsEffectSuite with DispatcherIOFixture {
       (for {
         _ <- IO.unit
         body = Stream.emit[IO, Byte](1.toByte) ++ Stream.never[IO]
-        req = Request(method = Method.POST, uri = www_foo_com, entity = Entity(body))
+        req = Request(method = Method.POST, uri = www_foo_com, entity = Entity.stream(body))
         q <- Queue.unbounded[IO, Option[ByteBuffer]]
         h = new QueueTestHead(q)
         (f, b) = resp.splitAt(resp.length - 1)
@@ -176,7 +180,7 @@ class ClientTimeoutSuite extends CatsEffectSuite with DispatcherIOFixture {
         .fixedRate[IO](500.millis)
         .take(3)
         .mapChunks(_ => Chunk.array(Array.fill(chunkBufferMaxSize + 1)(1.toByte)))
-      val req = Request(method = Method.POST, uri = www_foo_com, entity = Entity(body))
+      val req = Request(method = Method.POST, uri = www_foo_com, entity = Entity.stream(body))
       val h = new SlowTestHead(Seq(mkBuffer(resp)), 2000.millis, tickWheel)
       val c = mkClient(h, tickWheel, dispatcher)(idleTimeout = 1.second)
 
