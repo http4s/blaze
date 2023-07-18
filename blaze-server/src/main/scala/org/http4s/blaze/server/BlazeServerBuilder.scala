@@ -46,6 +46,7 @@ import org.http4s.server._
 import org.http4s.server.websocket.WebSocketBuilder
 import org.http4s.{BuildInfo => Http4sBuildInfo}
 import org.log4s.getLogger
+import org.typelevel.log4cats.LoggerFactory
 import org.typelevel.vault._
 import scodec.bits.ByteVector
 
@@ -466,10 +467,10 @@ object BlazeServerBuilder {
       "If you have a specific reason to use a custom one, use `.withExecutionContext`",
     "0.23.5",
   )
-  def apply[F[_]](executionContext: ExecutionContext)(implicit F: Async[F]): BlazeServerBuilder[F] =
+  def apply[F[_]](executionContext: ExecutionContext)(implicit F: Async[F], lf: LoggerFactory[F]): BlazeServerBuilder[F] =
     apply[F].withExecutionContext(executionContext)
 
-  def apply[F[_]](implicit F: Async[F]): BlazeServerBuilder[F] =
+  def apply[F[_]](implicit F: Async[F], lf: LoggerFactory[F]): BlazeServerBuilder[F] =
     new BlazeServerBuilder(
       socketAddress = defaults.IPv4SocketAddress.toInetSocketAddress,
       executionContextConfig = ExecutionContextConfig.DefaultContext,
