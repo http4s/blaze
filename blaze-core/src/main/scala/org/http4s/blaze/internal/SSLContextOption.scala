@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package org.http4s.internal
+package org.http4s.blaze.internal
 
 import javax.net.ssl.SSLContext
 import scala.util.control.NonFatal

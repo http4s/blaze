@@ -14,11 +14,10 @@
  * limitations under the License.
  */
 
-package org.http4s.internal
+package org.http4s.blaze.internal
 
 import java.io.ByteArrayInputStream
-import java.security.cert.CertificateFactory
-import java.security.cert.X509Certificate
+import java.security.cert.{CertificateFactory, X509Certificate}
 import javax.net.ssl.SSLSession
 import scala.util.Try
 

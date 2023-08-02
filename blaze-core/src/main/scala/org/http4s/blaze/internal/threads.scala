@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package org.http4s.internal
+package org.http4s.blaze.internal
 
 import java.lang.Thread.UncaughtExceptionHandler
 import java.util.concurrent._

@@ -38,9 +38,9 @@ import org.http4s.blaze.pipeline.stages.SSLStage
 import org.http4s.blaze.server.BlazeServerBuilder._
 import org.http4s.blaze.util.TickWheelExecutor
 import org.http4s.blaze.{BuildInfo => BlazeBuildInfo}
-import org.http4s.internal.threads.threadFactory
-import org.http4s.internal.tls.deduceKeyLength
-import org.http4s.internal.tls.getCertChain
+import org.http4s.blaze.internal.threads.threadFactory
+import org.http4s.blaze.internal.tls.deduceKeyLength
+import org.http4s.blaze.internal.tls.getCertChain
 import org.http4s.server.SSLKeyStoreSupport.StoreInfo
 import org.http4s.server._
 import org.http4s.server.websocket.WebSocketBuilder

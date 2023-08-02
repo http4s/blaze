@@ -32,7 +32,7 @@ import org.http4s.client.RequestKey
 import org.http4s.client.defaults
 import org.http4s.headers.`User-Agent`
 import org.http4s.internal.BackendBuilder
-import org.http4s.internal.SSLContextOption
+import org.http4s.blaze.internal.SSLContextOption
 import org.log4s.Logger
 import org.log4s.getLogger
 import org.typelevel.log4cats.LoggerFactory

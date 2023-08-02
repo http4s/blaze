@@ -34,7 +34,7 @@ import org.http4s.blaze.util.TickWheelExecutor
 import org.http4s.client.ConnectionFailure
 import org.http4s.client.RequestKey
 import org.http4s.headers.`User-Agent`
-import org.http4s.internal.SSLContextOption
+import org.http4s.blaze.internal.SSLContextOption
 
 import java.net.InetSocketAddress
 import java.nio.ByteBuffer
