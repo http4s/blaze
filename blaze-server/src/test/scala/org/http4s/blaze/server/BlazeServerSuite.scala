@@ -25,8 +25,8 @@ import cats.effect.unsafe.Scheduler
 import cats.syntax.all._
 import munit.CatsEffectSuite
 import org.http4s.blaze.channel.ChannelOptions
-import org.http4s.dsl.io._
 import org.http4s.blaze.internal.threads._
+import org.http4s.dsl.io._
 import org.http4s.multipart.Multipart
 import org.http4s.server.Server
 import org.typelevel.log4cats.LoggerFactory

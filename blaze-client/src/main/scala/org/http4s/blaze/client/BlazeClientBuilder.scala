@@ -26,13 +26,13 @@ import org.http4s.blaze.channel.ChannelOptions
 import org.http4s.blaze.core.BlazeBackendBuilder
 import org.http4s.blaze.core.ExecutionContextConfig
 import org.http4s.blaze.core.tickWheelResource
+import org.http4s.blaze.internal.SSLContextOption
 import org.http4s.blaze.util.TickWheelExecutor
 import org.http4s.client.Client
 import org.http4s.client.RequestKey
 import org.http4s.client.defaults
 import org.http4s.headers.`User-Agent`
 import org.http4s.internal.BackendBuilder
-import org.http4s.blaze.internal.SSLContextOption
 import org.log4s.Logger
 import org.log4s.getLogger
 import org.typelevel.log4cats.LoggerFactory
