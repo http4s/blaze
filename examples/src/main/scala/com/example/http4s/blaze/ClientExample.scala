@@ -24,6 +24,8 @@ import org.http4s.blaze.client.BlazeClientBuilder
 import org.http4s.circe._
 import org.http4s.client.Client
 import org.http4s.syntax.all._
+import org.typelevel.log4cats.LoggerFactory
+import org.typelevel.log4cats.slf4j.Slf4jFactory
 
 object ClientExample extends IOApp {
   def printGooglePage(client: Client[IO]): IO[Unit] = {
@@ -61,6 +63,8 @@ object ClientExample extends IOApp {
       // after matching based on the response status code?
       _ <- matchOnResponseCode(client)
     } yield ()
+
+  implicit val loggerFactory: LoggerFactory[IO] = Slf4jFactory.create[IO]
 
   def run(args: List[String]): IO[ExitCode] =
     BlazeClientBuilder[IO].resource

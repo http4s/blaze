@@ -26,13 +26,17 @@ import org.http4s.Request
 import org.http4s.blaze.client.BlazeClientBuilder
 import org.http4s.syntax.literals._
 import org.typelevel.jawn.Facade
+import org.typelevel.log4cats.LoggerFactory
+import org.typelevel.log4cats.slf4j.Slf4jFactory
 
 object StreamClient extends IOApp {
+  implicit val loggerFactory: LoggerFactory[IO] = Slf4jFactory.create[IO]
+
   def run(args: List[String]): IO[ExitCode] =
     new HttpClient[IO].run.as(ExitCode.Success)
 }
 
-class HttpClient[F[_]](implicit F: Async[F], S: StreamUtils[F]) {
+class HttpClient[F[_]](implicit F: Async[F], S: StreamUtils[F], lf: LoggerFactory[F]) {
   implicit val jsonFacade: Facade[Json] =
     new io.circe.jawn.CirceSupportParser(None, false).facade
 

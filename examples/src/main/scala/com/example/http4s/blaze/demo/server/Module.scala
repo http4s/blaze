@@ -33,10 +33,11 @@ import org.http4s.server.middleware.AutoSlash
 import org.http4s.server.middleware.ChunkAggregator
 import org.http4s.server.middleware.GZip
 import org.http4s.server.middleware.Timeout
+import org.typelevel.log4cats.LoggerFactory
 
 import scala.concurrent.duration._
 
-class Module[F[_]: Async: Compression: Files](client: Client[F]) {
+class Module[F[_]: Async: Compression: Files: LoggerFactory](client: Client[F]) {
   private val fileService = new FileService[F]
 
   private val gitHubService = new GitHubService[F](client)

@@ -27,6 +27,8 @@ import org.http4s.client.dsl.Http4sClientDsl
 import org.http4s.headers._
 import org.http4s.multipart._
 import org.http4s.syntax.literals._
+import org.typelevel.log4cats.LoggerFactory
+import org.typelevel.log4cats.slf4j.Slf4jFactory
 
 import java.net.URL
 
@@ -52,6 +54,8 @@ object ClientMultipartPostExample extends IOApp with Http4sClientDsl[IO] {
         client.expect[String](request)
       }
   }
+
+  implicit val loggerFactory: LoggerFactory[IO] = Slf4jFactory.create[IO]
 
   def run(args: List[String]): IO[ExitCode] =
     Multiparts.forSync[IO].flatMap { multiparts =>

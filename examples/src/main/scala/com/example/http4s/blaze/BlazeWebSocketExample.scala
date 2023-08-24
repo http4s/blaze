@@ -27,15 +27,20 @@ import org.http4s.implicits._
 import org.http4s.server.websocket._
 import org.http4s.websocket.WebSocketFrame
 import org.http4s.websocket.WebSocketFrame._
+import org.typelevel.log4cats.LoggerFactory
+import org.typelevel.log4cats.slf4j.Slf4jFactory
 
 import scala.concurrent.duration._
 
 object BlazeWebSocketExample extends IOApp {
+  implicit val loggerFactory: LoggerFactory[IO] = Slf4jFactory.create[IO]
+
   override def run(args: List[String]): IO[ExitCode] =
     BlazeWebSocketExampleApp[IO].stream.compile.drain.as(ExitCode.Success)
 }
 
-class BlazeWebSocketExampleApp[F[_]](implicit F: Async[F]) extends Http4sDsl[F] {
+class BlazeWebSocketExampleApp[F[_]](implicit F: Async[F], lf: LoggerFactory[F])
+    extends Http4sDsl[F] {
   def routes(wsb: WebSocketBuilder[F]): HttpRoutes[F] =
     HttpRoutes.of[F] {
       case GET -> Root / "hello" =>
@@ -86,6 +91,6 @@ class BlazeWebSocketExampleApp[F[_]](implicit F: Async[F]) extends Http4sDsl[F] 
 }
 
 object BlazeWebSocketExampleApp {
-  def apply[F[_]: Async]: BlazeWebSocketExampleApp[F] =
+  def apply[F[_]: Async: LoggerFactory]: BlazeWebSocketExampleApp[F] =
     new BlazeWebSocketExampleApp[F]
 }

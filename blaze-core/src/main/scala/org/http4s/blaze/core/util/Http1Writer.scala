@@ -36,7 +36,7 @@ private[blaze] trait Http1Writer[F[_]] extends EntityBodyWriter[F] {
 
         case Outcome.Errored(_) | Outcome.Canceled() =>
           entity match {
-            case Entity.Default(body, _) =>
+            case Entity.Streamed(body, _) =>
               body.compile.drain.handleError { t2 =>
                 Http1Writer.logger.error(t2)("Error draining body")
               }

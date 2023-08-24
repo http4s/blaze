@@ -25,10 +25,12 @@ import cats.effect.unsafe.Scheduler
 import cats.syntax.all._
 import munit.CatsEffectSuite
 import org.http4s.blaze.channel.ChannelOptions
+import org.http4s.blaze.internal.threads._
 import org.http4s.dsl.io._
-import org.http4s.internal.threads._
 import org.http4s.multipart.Multipart
 import org.http4s.server.Server
+import org.typelevel.log4cats.LoggerFactory
+import org.typelevel.log4cats.slf4j.Slf4jFactory
 
 import java.net.HttpURLConnection
 import java.net.URL
@@ -46,6 +48,8 @@ class BlazeServerSuite extends CatsEffectSuite {
 
   // allow flaky tests on CI
   override def munitFlakyOK: Boolean = sys.env.contains("CI")
+
+  implicit val loggerFactory: LoggerFactory[IO] = Slf4jFactory.create[IO]
 
   override implicit lazy val munitIoRuntime: IORuntime = {
     val TestScheduler: ScheduledExecutorService = {

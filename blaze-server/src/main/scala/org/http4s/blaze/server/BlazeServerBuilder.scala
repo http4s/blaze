@@ -33,19 +33,20 @@ import org.http4s.blaze.channel.nio1.NIO1SocketServerGroup
 import org.http4s.blaze.core.BlazeBackendBuilder
 import org.http4s.blaze.core.ExecutionContextConfig
 import org.http4s.blaze.core.tickWheelResource
+import org.http4s.blaze.internal.threads.threadFactory
+import org.http4s.blaze.internal.tls.deduceKeyLength
+import org.http4s.blaze.internal.tls.getCertChain
 import org.http4s.blaze.pipeline.LeafBuilder
 import org.http4s.blaze.pipeline.stages.SSLStage
 import org.http4s.blaze.server.BlazeServerBuilder._
 import org.http4s.blaze.util.TickWheelExecutor
 import org.http4s.blaze.{BuildInfo => BlazeBuildInfo}
-import org.http4s.internal.threads.threadFactory
-import org.http4s.internal.tls.deduceKeyLength
-import org.http4s.internal.tls.getCertChain
 import org.http4s.server.SSLKeyStoreSupport.StoreInfo
 import org.http4s.server._
 import org.http4s.server.websocket.WebSocketBuilder
 import org.http4s.{BuildInfo => Http4sBuildInfo}
 import org.log4s.getLogger
+import org.typelevel.log4cats.LoggerFactory
 import org.typelevel.vault._
 import scodec.bits.ByteVector
 
@@ -466,10 +467,12 @@ object BlazeServerBuilder {
       "If you have a specific reason to use a custom one, use `.withExecutionContext`",
     "0.23.5",
   )
-  def apply[F[_]](executionContext: ExecutionContext)(implicit F: Async[F]): BlazeServerBuilder[F] =
+  def apply[F[_]](
+      executionContext: ExecutionContext
+  )(implicit F: Async[F], lf: LoggerFactory[F]): BlazeServerBuilder[F] =
     apply[F].withExecutionContext(executionContext)
 
-  def apply[F[_]](implicit F: Async[F]): BlazeServerBuilder[F] =
+  def apply[F[_]](implicit F: Async[F], lf: LoggerFactory[F]): BlazeServerBuilder[F] =
     new BlazeServerBuilder(
       socketAddress = defaults.IPv4SocketAddress.toInetSocketAddress,
       executionContextConfig = ExecutionContextConfig.DefaultContext,

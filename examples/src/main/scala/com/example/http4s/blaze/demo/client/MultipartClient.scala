@@ -31,6 +31,8 @@ import org.http4s.headers.`Content-Type`
 import org.http4s.implicits._
 import org.http4s.multipart.Multiparts
 import org.http4s.multipart.Part
+import org.typelevel.log4cats.LoggerFactory
+import org.typelevel.log4cats.slf4j.Slf4jFactory
 
 import java.net.URL
 
@@ -49,6 +51,8 @@ class MultipartHttpClient(implicit S: StreamUtils[IO]) extends IOApp with Http4s
         )
       )
     } yield POST(body, uri"http://localhost:8080/v1/multipart").withHeaders(body.headers)
+
+  implicit val loggerFactory: LoggerFactory[IO] = Slf4jFactory.create[IO]
 
   private val resources: Resource[IO, (Client[IO], Multiparts[IO])] =
     for {

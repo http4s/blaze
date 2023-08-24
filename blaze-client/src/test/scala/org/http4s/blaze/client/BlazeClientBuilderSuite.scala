@@ -21,8 +21,13 @@ package client
 import cats.effect.IO
 import munit.CatsEffectSuite
 import org.http4s.blaze.channel.ChannelOptions
+import org.typelevel.log4cats.LoggerFactory
+import org.typelevel.log4cats.slf4j.Slf4jFactory
 
 class BlazeClientBuilderSuite extends CatsEffectSuite {
+
+  implicit val loggerFactory: LoggerFactory[IO] = Slf4jFactory.create[IO]
+
   private def builder = BlazeClientBuilder[IO]
 
   test("default to empty") {

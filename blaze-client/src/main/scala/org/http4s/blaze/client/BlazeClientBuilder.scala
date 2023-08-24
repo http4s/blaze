@@ -26,15 +26,16 @@ import org.http4s.blaze.channel.ChannelOptions
 import org.http4s.blaze.core.BlazeBackendBuilder
 import org.http4s.blaze.core.ExecutionContextConfig
 import org.http4s.blaze.core.tickWheelResource
+import org.http4s.blaze.internal.SSLContextOption
 import org.http4s.blaze.util.TickWheelExecutor
 import org.http4s.client.Client
 import org.http4s.client.RequestKey
 import org.http4s.client.defaults
 import org.http4s.headers.`User-Agent`
 import org.http4s.internal.BackendBuilder
-import org.http4s.internal.SSLContextOption
 import org.log4s.Logger
 import org.log4s.getLogger
+import org.typelevel.log4cats.LoggerFactory
 
 import java.net.InetSocketAddress
 import java.nio.channels.AsynchronousChannelGroup
@@ -93,7 +94,7 @@ final class BlazeClientBuilder[F[_]] private (
     val customDnsResolver: Option[RequestKey => Either[Throwable, InetSocketAddress]],
     val retries: Int,
     val maxIdleDuration: Duration,
-)(implicit protected val F: Async[F])
+)(implicit protected val F: Async[F], lf: LoggerFactory[F])
     extends BlazeBackendBuilder[Client[F]]
     with BackendBuilder[F, Client[F]] {
   type Self = BlazeClientBuilder[F]
@@ -392,7 +393,7 @@ final class BlazeClientBuilder[F[_]] private (
 
 object BlazeClientBuilder {
 
-  def apply[F[_]: Async]: BlazeClientBuilder[F] =
+  def apply[F[_]: Async: LoggerFactory]: BlazeClientBuilder[F] =
     new BlazeClientBuilder[F](
       responseHeaderTimeout = Duration.Inf,
       idleTimeout = 1.minute,
@@ -424,7 +425,7 @@ object BlazeClientBuilder {
       "If you have a specific reason to use a custom one, use `.withExecutionContext`",
     "0.23.5",
   )
-  def apply[F[_]: Async](executionContext: ExecutionContext): BlazeClientBuilder[F] =
+  def apply[F[_]: Async: LoggerFactory](executionContext: ExecutionContext): BlazeClientBuilder[F] =
     BlazeClientBuilder[F].withExecutionContext(executionContext)
 
   def getAddress(requestKey: RequestKey): Either[Throwable, InetSocketAddress] =

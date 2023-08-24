@@ -22,8 +22,12 @@ import org.http4s.blaze.client.BlazeClientBuilder
 import org.http4s.client.dsl.Http4sClientDsl
 import org.http4s.dsl.io._
 import org.http4s.syntax.all._
+import org.typelevel.log4cats.LoggerFactory
+import org.typelevel.log4cats.slf4j.Slf4jFactory
 
 object ClientPostExample extends IOApp with Http4sClientDsl[IO] {
+  implicit val loggerFactory: LoggerFactory[IO] = Slf4jFactory.create[IO]
+
   def run(args: List[String]): IO[ExitCode] = {
     val req = POST(UrlForm("q" -> "http4s"), uri"https://duckduckgo.com/")
     val responseBody = BlazeClientBuilder[IO].resource.use(_.expect[String](req))
