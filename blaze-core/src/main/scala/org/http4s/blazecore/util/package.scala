@@ -19,8 +19,8 @@ package blazecore
 package util
 
 import cats.effect.Async
-import org.typelevel.scalaccompat.annotation._
 import org.http4s.blaze.util.Execution.directec
+import org.typelevel.scalaccompat.annotation._
 
 import scala.concurrent.Future
 import scala.util.Failure
