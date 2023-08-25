@@ -64,7 +64,7 @@ object FlowStrategy {
   }
 
   /** Representation of the flow window increments to send to the remote peer */
-  final case class Increment private (session: Int, stream: Int)
+  final case class Increment private[FlowStrategy] (session: Int, stream: Int)
 
   // Cached version for avoiding allocations in the common case
 
