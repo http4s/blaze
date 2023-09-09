@@ -66,7 +66,7 @@ private final class ConnectionImpl(
   private[this] var currentState: Connection.State = Connection.Running
   private[this] var sentGoAway = false
 
-  override val serialExecutor = new SerialExecutionContext(parentExecutor) {
+  override val serialExecutor: SerialExecutionContext = new SerialExecutionContext(parentExecutor) {
     override def reportFailure(cause: Throwable): Unit =
       invokeShutdownWithError(Some(cause), "SerialExecutor")
   }
@@ -75,7 +75,7 @@ private final class ConnectionImpl(
     new FrameEncoder(remoteSettings, new HeaderEncoder(remoteSettings.maxHeaderListSize))
 
   override val idManager: StreamIdManager = StreamIdManager(isClient)
-  override val writeController =
+  override val writeController: WriteControllerImpl =
     new WriteControllerImpl(this, 64 * 1024, tailStage)
   override val pingManager: PingManager = new PingManager(this)
   override val sessionFlowControl: SessionFlowControl =

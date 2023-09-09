@@ -43,8 +43,8 @@ class Module[F[_]: Async: Compression: Files: LoggerFactory](client: Client[F]) 
   private val gitHubService = new GitHubService[F](client)
 
   def middleware: HttpMiddleware[F] = { (routes: HttpRoutes[F]) =>
-    GZip(routes)
-  }.compose(routes => AutoSlash(routes))
+    AutoSlash(GZip(routes))
+  }
 
   val fileHttpEndpoint: HttpRoutes[F] =
     new FileHttpEndpoint[F](fileService).service

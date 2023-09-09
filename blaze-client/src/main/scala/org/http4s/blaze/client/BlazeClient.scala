@@ -62,7 +62,7 @@ object BlazeClient {
       dispatcher,
     )
     if (retries > 0)
-      Retry(retryPolicy(retries))(base)
+      Retry(retryPolicy[F](retries))(base)
     else
       base
   }

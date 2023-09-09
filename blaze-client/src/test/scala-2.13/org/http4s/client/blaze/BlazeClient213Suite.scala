@@ -97,7 +97,7 @@ class BlazeClient213Suite extends BlazeClientBase {
           }
 
         val allRequests = for {
-          _ <- failedRequests.handleErrorWith(_ => IO.unit).replicateA(5)
+          _ <- failedRequests.recoverWith(_ => IO.pure(List.empty[String])).replicateA(5)
           r <- successfulRequests
         } yield r
 
@@ -134,7 +134,7 @@ class BlazeClient213Suite extends BlazeClientBase {
         }.parSequence
 
         val allRequests = for {
-          _ <- failedRequests.handleErrorWith(_ => IO.unit).replicateA(5)
+          _ <- failedRequests.recoverWith(_ => IO.pure(List.empty[String])).replicateA(5)
           r <- successRequests
         } yield r
 

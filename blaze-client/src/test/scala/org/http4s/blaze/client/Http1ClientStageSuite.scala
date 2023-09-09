@@ -160,7 +160,7 @@ class Http1ClientStageSuite extends CatsEffectSuite with DispatcherIOFixture {
 
   dispatcher.test("Submit a request line with a query".flaky) { dispatcher =>
     val uri = "/huh?foo=bar"
-    val Right(parsed) = Uri.fromString("http://www.foo.test" + uri)
+    val Right(parsed) = Uri.fromString("http://www.foo.test" + uri): @unchecked
     val req = Request[IO](uri = parsed)
 
     getSubmission(req, resp, dispatcher).map { case (request, response) =>

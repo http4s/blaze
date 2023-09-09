@@ -1,7 +1,7 @@
 import Dependencies._
 
 val Scala213 = "2.13.11"
-val Scala3 = "3.3.0"
+val Scala3 = "3.3.1"
 val http4sVersion = "1.0.0-M40"
 val munitCatsEffectVersion = "2.0.0-M3"
 
@@ -11,7 +11,7 @@ ThisBuild / resolvers +=
 ThisBuild / crossScalaVersions := Seq(Scala3, Scala213)
 ThisBuild / scalaVersion := crossScalaVersions.value.filter(_.startsWith("2.")).last
 ThisBuild / tlBaseVersion := "1.0"
-ThisBuild / tlFatalWarningsInCi := !tlIsScala3.value // See SSLStage
+ThisBuild / tlFatalWarnings := !tlIsScala3.value // See SSLStage
 
 // 11 and 17 blocked by https://github.com/http4s/blaze/issues/376
 ThisBuild / githubWorkflowJavaVersions := Seq(JavaSpec.temurin("8"))
@@ -145,7 +145,7 @@ lazy val examples = Project("blaze-examples", file("examples"))
     libraryDependencies ++= Seq(
       "org.http4s" %% "http4s-dsl" % http4sVersion,
       "org.http4s" %% "http4s-circe" % http4sVersion,
-      "io.circe" %% "circe-generic" % "0.14.5",
+      "io.circe" %% "circe-generic" % "0.14.6",
     ),
     Test / scalafixConfig := Some(file(".scalafix.test.conf")),
   )
