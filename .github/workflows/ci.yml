@@ -29,7 +29,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest]
-        scala: [3.3.0, 2.13.11]
+        scala: [3, 2.13]
         java: [temurin@8]
     runs-on: ${{ matrix.os }}
     timeout-minutes: 60
@@ -134,7 +134,7 @@ jobs:
           tar xf targets.tar
           rm targets.tar
 
-      - name: Download target directories (2.13.11)
+      - name: Download target directories (2.13)
         uses: actions/download-artifact@v3
         with:
           name: target-${{ matrix.os }}-${{ matrix.java }}-2.13
@@ -198,7 +198,7 @@ jobs:
       - name: Submit Dependencies
         uses: scalacenter/sbt-dependency-submission@v2
         with:
-          modules-ignore: blaze_3 blaze_2.12 blaze_2.13 blaze-examples_3 blaze-examples_2.12 blaze-examples_2.13 sbt-http4s-org-scalafix-internal_3 sbt-http4s-org-scalafix-internal_2.12 sbt-http4s-org-scalafix-internal_2.13 blaze-testkit_3 blaze-testkit_2.12 blaze-testkit_2.13
+          modules-ignore: blaze_3 blaze_2.13 blaze-examples_3 blaze-examples_2.13 sbt-http4s-org-scalafix-internal_3 sbt-http4s-org-scalafix-internal_2.13 blaze-testkit_3 blaze-testkit_2.13
           configs-ignore: test scala-tool scala-doc-tool test-internal
 
   validate-steward:
