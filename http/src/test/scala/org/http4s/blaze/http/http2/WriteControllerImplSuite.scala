@@ -70,7 +70,7 @@ class WriteControllerImplSuite extends BlazeTestSuite {
 
     assert(writeController.write(mockData(0)))
 
-    val Write(collection.Seq(d1), p1) = tail.written.dequeue()
+    val Write(collection.Seq(d1), p1) = tail.written.dequeue(): @unchecked
     assertEquals(d1, mockData(0))
 
     // write it again, twice, but it won't flush until p1 is finished
@@ -129,7 +129,7 @@ class WriteControllerImplSuite extends BlazeTestSuite {
 
     assertEquals(interest.calls, 1)
 
-    val Write(collection.Seq(d1), p1) = tail.written.dequeue()
+    val Write(collection.Seq(d1), p1) = tail.written.dequeue(): @unchecked
     assertEquals(d1, mockData(0))
 
     p1.trySuccess(())
@@ -150,7 +150,7 @@ class WriteControllerImplSuite extends BlazeTestSuite {
 
     assertEquals(interest1.calls, 1)
 
-    val Write(collection.Seq(data), p) = tail.written.dequeue()
+    val Write(collection.Seq(data), p) = tail.written.dequeue(): @unchecked
     assertEquals(data, mockData(0))
 
     p.trySuccess(())
