@@ -30,7 +30,7 @@ class StreamIdManagerSuite extends BlazeTestSuite {
     val manager = newClientManager()
 
     assert((0 until 100).forall { _ =>
-      val Some(id) = manager.takeOutboundId()
+      val Some(id) = manager.takeOutboundId(): @unchecked
       id % 2 == 1
     })
   }
@@ -93,7 +93,7 @@ class StreamIdManagerSuite extends BlazeTestSuite {
   test("A StreamIdManager server mode yield even number streams") {
     val manager = newServerManager()
     assert((0 until 100).forall { _ =>
-      val Some(id) = manager.takeOutboundId()
+      val Some(id) = manager.takeOutboundId(): @unchecked
       id % 2 == 0
     })
   }

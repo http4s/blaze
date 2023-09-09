@@ -48,7 +48,7 @@ object BufferTools {
   def joinBuffers(buffers: collection.Seq[ByteBuffer]): ByteBuffer =
     buffers match {
       case Seq() => emptyBuffer
-      case Seq(b) => b
+      case Seq(b: ByteBuffer) => b
       case _ =>
         val sz = buffers.foldLeft(0)((sz, o) => sz + o.remaining())
         val b = allocate(sz)

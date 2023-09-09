@@ -45,8 +45,8 @@ class StreamManagerImplSuite extends BlazeTestSuite {
     val tools = new MockTools(isClient = false)
 
     // inbound stream for the client are even numbered
-    val Right(s1) = tools.streamManager.newInboundStream(1)
-    val Right(s3) = tools.streamManager.newInboundStream(3)
+    val Right(s1) = tools.streamManager.newInboundStream(1): @unchecked
+    val Right(s3) = tools.streamManager.newInboundStream(3): @unchecked
 
     assertEquals(tools.connects, 2)
 
@@ -129,8 +129,8 @@ class StreamManagerImplSuite extends BlazeTestSuite {
 
     // inbound stream for the client are even numbered
     // https://tools.ietf.org/html/rfc7540#section-5.1.1
-    val Right(s1) = tools.streamManager.newInboundStream(1)
-    val Right(s3) = tools.streamManager.newInboundStream(3)
+    val Right(s1) = tools.streamManager.newInboundStream(1): @unchecked
+    val Right(s3) = tools.streamManager.newInboundStream(3): @unchecked
 
     assertEquals(tools.streamManager.get(1), Some(s1))
     assertEquals(tools.streamManager.get(3), Some(s3))
@@ -172,7 +172,7 @@ class StreamManagerImplSuite extends BlazeTestSuite {
     val tools = new MockTools(isClient = false)
 
     tools.localSettings.maxConcurrentStreams = 1
-    val Right(s) = tools.streamManager.newInboundStream(1) // should work
+    val Right(s) = tools.streamManager.newInboundStream(1): @unchecked // should work
 
     // Too many streams!
     tools.streamManager.newInboundStream(3) match {
@@ -220,7 +220,7 @@ class StreamManagerImplSuite extends BlazeTestSuite {
     // https://tools.ietf.org/html/rfc7540#section-6.9.2
     val tools = new MockTools(isClient = false)
 
-    val Right(s) = tools.streamManager.newInboundStream(1)
+    val Right(s) = tools.streamManager.newInboundStream(1): @unchecked
     val startFlowWindow = s.flowWindow.outboundWindow
     assertEquals(tools.streamManager.initialFlowWindowChange(1), Continue)
     assertEquals(s.flowWindow.streamOutboundWindow, startFlowWindow + 1)
@@ -232,7 +232,7 @@ class StreamManagerImplSuite extends BlazeTestSuite {
     // https://tools.ietf.org/html/rfc7540#section-6.9.2
     val tools = new MockTools(isClient = false)
 
-    val Right(s) = tools.streamManager.newInboundStream(1)
+    val Right(s) = tools.streamManager.newInboundStream(1): @unchecked
     val delta = Int.MaxValue - s.flowWindow.outboundWindow
     assert(s.flowWindow.streamOutboundAcked(delta).isEmpty)
     assertEquals(s.flowWindow.streamOutboundWindow, Int.MaxValue)
@@ -262,7 +262,7 @@ class StreamManagerImplSuite extends BlazeTestSuite {
   ) {
     val tools = new MockTools(isClient = false)
 
-    val Right(s) = tools.streamManager.newInboundStream(1)
+    val Right(s) = tools.streamManager.newInboundStream(1): @unchecked
     val initFlowWindow = s.flowWindow.outboundWindow
     assertEquals(tools.streamManager.flowWindowUpdate(streamId = 1, sizeIncrement = 1), Continue)
     assertEquals(s.flowWindow.streamOutboundWindow, initFlowWindow + 1)
@@ -271,7 +271,7 @@ class StreamManagerImplSuite extends BlazeTestSuite {
   test("A StreamManagerImpl flow windows should handle failed flow window updates for streams") {
     val tools = new MockTools(isClient = false)
 
-    val Right(s) = tools.streamManager.newInboundStream(1)
+    val Right(s) = tools.streamManager.newInboundStream(1): @unchecked
     assert(
       s.flowWindow.streamOutboundAcked(Int.MaxValue - s.flowWindow.streamOutboundWindow).isEmpty
     )
