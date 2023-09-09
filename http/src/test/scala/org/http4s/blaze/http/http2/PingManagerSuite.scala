@@ -33,7 +33,7 @@ class PingManagerSuite extends BlazeTestSuite {
     val buffer1 = BufferTools.joinBuffers(tools.writeController.observedWrites.toList)
     tools.writeController.observedWrites.clear()
 
-    val ProtocolFrame.Ping(false, pingData1) = ProtocolFrameDecoder.decode(buffer1)
+    val ProtocolFrame.Ping(false, pingData1) = ProtocolFrameDecoder.decode(buffer1): @unchecked
     tools.pingManager.pingAckReceived(pingData1)
 
     f1.value match {
@@ -45,7 +45,7 @@ class PingManagerSuite extends BlazeTestSuite {
     val f2 = tools.pingManager.ping()
     val buffer2 = BufferTools.joinBuffers(tools.writeController.observedWrites.toList)
 
-    val ProtocolFrame.Ping(false, pingData2) = ProtocolFrameDecoder.decode(buffer2)
+    val ProtocolFrame.Ping(false, pingData2) = ProtocolFrameDecoder.decode(buffer2): @unchecked
     tools.pingManager.pingAckReceived(pingData2)
 
     f2.value match {
@@ -72,7 +72,7 @@ class PingManagerSuite extends BlazeTestSuite {
     val buffer1 = BufferTools.joinBuffers(tools.writeController.observedWrites.toList)
     tools.writeController.observedWrites.clear()
 
-    val ProtocolFrame.Ping(false, pingData) = ProtocolFrameDecoder.decode(buffer1)
+    val ProtocolFrame.Ping(false, pingData) = ProtocolFrameDecoder.decode(buffer1): @unchecked
     tools.pingManager.pingAckReceived(pingData)
 
     f1.value match {

@@ -13,7 +13,7 @@ ThisBuild / resolvers +=
 ThisBuild / crossScalaVersions := Seq(Scala3, Scala212, Scala213)
 ThisBuild / scalaVersion := crossScalaVersions.value.filter(_.startsWith("2.")).last
 ThisBuild / tlBaseVersion := "0.23"
-ThisBuild / tlFatalWarningsInCi := !tlIsScala3.value // See SSLStage
+ThisBuild / tlFatalWarnings := !tlIsScala3.value // See SSLStage
 
 // 11 and 17 blocked by https://github.com/http4s/blaze/issues/376
 ThisBuild / githubWorkflowJavaVersions := Seq(JavaSpec.temurin("8"))

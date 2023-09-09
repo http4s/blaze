@@ -16,15 +16,18 @@
 
 package org.http4s
 package blazecore
+package util
 
 import cats.effect.Async
 import org.http4s.blaze.util.Execution.directec
+import org.typelevel.scalaccompat.annotation._
 
 import scala.concurrent.Future
 import scala.util.Failure
 import scala.util.Success
 
-package object util extends ParasiticExecutionContextCompat {
+@nowarn213("msg=package object inheritance is deprecated")
+object `package` extends ParasiticExecutionContextCompat {
 
   /** Used as a terminator for streams built from repeatEval */
   private[http4s] val End = Right(None)
