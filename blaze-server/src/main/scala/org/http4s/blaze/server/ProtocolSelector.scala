@@ -29,12 +29,13 @@ import org.http4s.blaze.pipeline.TailStage
 import org.http4s.blaze.util.TickWheelExecutor
 import org.http4s.server.ServiceErrorHandler
 import org.http4s.websocket.WebSocketContext
+import org.http4s.websocket.WebSocketFrame
 import org.typelevel.vault._
 
 import java.nio.ByteBuffer
 import javax.net.ssl.SSLEngine
 import scala.concurrent.ExecutionContext
-import scala.concurrent.duration.Duration
+import scala.concurrent.duration.{Duration, FiniteDuration}
 
 /** Facilitates the use of ALPN when using blaze http2 support */
 private[http4s] object ProtocolSelector {
@@ -53,6 +54,7 @@ private[http4s] object ProtocolSelector {
       dispatcher: Dispatcher[F],
       webSocketKey: Key[WebSocketContext[F]],
       maxWebSocketBufferSize: Option[Int],
+      webSocketAutoPing: Option[(FiniteDuration, WebSocketFrame.Ping)],
   )(implicit F: Async[F]): ALPNServerSelector = {
     def http2Stage(): TailStage[ByteBuffer] = {
       val newNode = { (streamId: Int) =>
@@ -100,6 +102,7 @@ private[http4s] object ProtocolSelector {
         scheduler,
         dispatcher,
         maxWebSocketBufferSize,
+        webSocketAutoPing,
       )
 
     def preference(protos: Set[String]): String =

@@ -41,6 +41,7 @@ import org.http4s.headers.`Transfer-Encoding`
 import org.http4s.server.ServiceErrorHandler
 import org.http4s.util.StringWriter
 import org.http4s.websocket.WebSocketContext
+import org.http4s.websocket.WebSocketFrame
 import org.typelevel.vault._
 
 import java.nio.ByteBuffer
@@ -71,6 +72,7 @@ private[http4s] object Http1ServerStage {
       scheduler: TickWheelExecutor,
       dispatcher: Dispatcher[F],
       maxWebSocketBufferSize: Option[Int],
+      webSocketAutoPing: Option[(FiniteDuration, WebSocketFrame.Ping)],
   )(implicit F: Async[F]): Http1ServerStage[F] =
     new Http1ServerStage(
       routes,
@@ -87,6 +89,8 @@ private[http4s] object Http1ServerStage {
     ) with WebSocketSupport[F] {
       val webSocketKey = wsKey
       override protected def maxBufferSize: Option[Int] = maxWebSocketBufferSize
+      override protected def autoPing: Option[(FiniteDuration, WebSocketFrame.Ping)] =
+        webSocketAutoPing
     }
 }
 

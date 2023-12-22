@@ -45,6 +45,7 @@ import org.http4s.server.SSLKeyStoreSupport.StoreInfo
 import org.http4s.server._
 import org.http4s.server.websocket.WebSocketBuilder2
 import org.http4s.{BuildInfo => Http4sBuildInfo}
+import org.http4s.websocket.WebSocketFrame
 import org.log4s.getLogger
 import org.typelevel.vault._
 import scodec.bits.ByteVector
@@ -87,6 +88,7 @@ import scala.concurrent.duration._
   *    such as Nil disables this
   * @param maxConnections: The maximum number of client connections that may be active at any time.
   * @param maxWebSocketBufferSize: The maximum Websocket buffer length. 'None' means unbounded.
+  * @param webSocketAutoPing If `Some`, send the given Websocket `Ping` frame at the given interval. If `None`, do not automatically send pings
   */
 class BlazeServerBuilder[F[_]] private (
     socketAddress: InetSocketAddress,
@@ -107,6 +109,7 @@ class BlazeServerBuilder[F[_]] private (
     maxConnections: Int,
     val channelOptions: ChannelOptions,
     maxWebSocketBufferSize: Option[Int],
+    webSocketAutoPing: Option[(FiniteDuration, WebSocketFrame.Ping)],
 )(implicit protected val F: Async[F])
     extends ServerBuilder[F]
     with BlazeBackendBuilder[Server] {
@@ -133,6 +136,7 @@ class BlazeServerBuilder[F[_]] private (
       maxConnections: Int = maxConnections,
       channelOptions: ChannelOptions = channelOptions,
       maxWebSocketBufferSize: Option[Int] = maxWebSocketBufferSize,
+      webSocketAutoPing: Option[(FiniteDuration, WebSocketFrame.Ping)] = webSocketAutoPing,
   ): Self =
     new BlazeServerBuilder(
       socketAddress,
@@ -153,6 +157,7 @@ class BlazeServerBuilder[F[_]] private (
       maxConnections,
       channelOptions,
       maxWebSocketBufferSize,
+      webSocketAutoPing,
     )
 
   /** Configure HTTP parser length limits
@@ -275,6 +280,11 @@ class BlazeServerBuilder[F[_]] private (
   def withMaxWebSocketBufferSize(maxWebSocketBufferSize: Option[Int]): BlazeServerBuilder[F] =
     copy(maxWebSocketBufferSize = maxWebSocketBufferSize)
 
+  def withWebSocketAutoPing(
+      webSocketAutoPing: Option[(FiniteDuration, WebSocketFrame.Ping)]
+  ): BlazeServerBuilder[F] =
+    copy(webSocketAutoPing = webSocketAutoPing)
+
   private def pipelineFactory(
       scheduler: TickWheelExecutor,
       engineConfig: Option[(SSLContext, SSLEngine => Unit)],
@@ -335,6 +345,7 @@ class BlazeServerBuilder[F[_]] private (
           scheduler = scheduler,
           dispatcher = dispatcher,
           maxWebSocketBufferSize = maxWebSocketBufferSize,
+          webSocketAutoPing = webSocketAutoPing,
         )
       }
 
@@ -358,6 +369,7 @@ class BlazeServerBuilder[F[_]] private (
           dispatcher = dispatcher,
           webSocketKey = builder.webSocketKey,
           maxWebSocketBufferSize = maxWebSocketBufferSize,
+          webSocketAutoPing = webSocketAutoPing,
         )
       }
 
@@ -489,6 +501,7 @@ object BlazeServerBuilder {
       maxConnections = defaults.MaxConnections,
       channelOptions = ChannelOptions(Vector.empty),
       maxWebSocketBufferSize = None,
+      webSocketAutoPing = Some((42.seconds, WebSocketFrame.Ping())),
     )
 
   private def defaultApp[F[_]: Applicative]: HttpApp[F] =
