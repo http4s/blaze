@@ -54,9 +54,29 @@ private object SSLStage {
   private case class SSLFailure(t: Throwable) extends SSLResult
 }
 
-final class SSLStage(engine: SSLEngine, maxWrite: Int = 1024 * 1024)
-    extends MidStage[ByteBuffer, ByteBuffer] {
+/** Default values for the [[SSLStage]] constructors.
+  *
+  * A separate `object` because the [[SSLStage]] `object` is `private`.
+  */
+object SSLStageDefaults {
+
+  /** Default value for [[SSLStage.maxWrite]] */
+  final val MaxWrite = 1024 * 1024
+}
+
+/** @param maxWrite
+  *   \@see [[SSLStageDefaults.MaxWrite]].
+  */
+final class SSLStage(
+    engine: SSLEngine,
+    maxWrite: Int,
+    sslHandshakeExceptionHandler: PartialFunction[Throwable, Unit]
+) extends MidStage[ByteBuffer, ByteBuffer] {
   import SSLStage._
+
+  /** Constructor to keep backwards compatibility with old versions. */
+  def this(engine: SSLEngine, maxWrite: Int = SSLStageDefaults.MaxWrite) =
+    this(engine, maxWrite, PartialFunction.empty)
 
   def name: String = "SSLStage"
 
@@ -248,13 +268,15 @@ final class SSLStage(engine: SSLEngine, maxWrite: Int = 1024 * 1024)
     val start = System.nanoTime
     try sslHandshakeLoop(data, r)
     catch {
-      case t: SSLException =>
-        logger.warn(t)("SSLException in SSL handshake")
-        handshakeFailure(t)
-
       case NonFatal(t) =>
-        logger.error(t)("Error in SSL handshake")
-        handshakeFailure(t)
+        try
+          if (sslHandshakeExceptionHandler.isDefinedAt(t)) sslHandshakeExceptionHandler(t)
+          else
+            t match {
+              case t: SSLException => logger.warn(t)("SSLException in SSL handshake")
+              case _ => logger.error(t)("Error in SSL handshake")
+            }
+        finally handshakeFailure(t)
     }
     logger.trace(s"${engine.##}: sslHandshake completed in ${System.nanoTime - start}ns")
   }
