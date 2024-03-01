@@ -100,7 +100,7 @@ class ConnectionImplSuite extends BlazeTestSuite {
     val stream = connection.newOutboundStream()
     val tail = new BasicTail[StreamFrame]("tail")
     LeafBuilder(tail).base(stream)
-    tail.channelWrite(HeadersFrame(Priority.NoPriority, true, Seq.empty))
+    tail.channelWrite(HeadersFrame(Priority.NoPriority, endStream = true, Seq.empty))
 
     assertEquals(connection.quality, 0.5)
   }
@@ -242,7 +242,7 @@ class ConnectionImplSuite extends BlazeTestSuite {
     connection.invokeGoAway(connection.idManager.lastOutboundStream, err)
     head.consumeOutboundByteBuf() // need to consume the GOAWAY
 
-    val w2 = basicStage.channelWrite(DataFrame(true, BufferTools.emptyBuffer))
+    val w2 = basicStage.channelWrite(DataFrame(endStream = true, BufferTools.emptyBuffer))
     assertEquals(w2.value, Some(Success(())))
   }
 
@@ -255,7 +255,7 @@ class ConnectionImplSuite extends BlazeTestSuite {
     val stage = connection.newOutboundStream()
     val basicStage = new BasicTail[StreamFrame]("")
     LeafBuilder(basicStage).base(stage)
-    val f = basicStage.channelWrite(HeadersFrame(Priority.NoPriority, true, Seq.empty))
+    val f = basicStage.channelWrite(HeadersFrame(Priority.NoPriority, endStream = true, Seq.empty))
 
     f.value match {
       case Some(Failure(t: Http2StreamException)) =>
@@ -299,7 +299,7 @@ class ConnectionImplSuite extends BlazeTestSuite {
     connection.invokeDrain(4.seconds)
     head.consumeOutboundByteBuf() // need to consume the GOAWAY
 
-    val w2 = basicStage.channelWrite(DataFrame(true, BufferTools.emptyBuffer))
+    val w2 = basicStage.channelWrite(DataFrame(endStream = true, BufferTools.emptyBuffer))
     assertEquals(w2.value, Some(Success(())))
   }
 
@@ -312,7 +312,7 @@ class ConnectionImplSuite extends BlazeTestSuite {
     val stage = connection.newOutboundStream()
     val basicStage = new BasicTail[StreamFrame]("")
     LeafBuilder(basicStage).base(stage)
-    val f = basicStage.channelWrite(HeadersFrame(Priority.NoPriority, true, Seq.empty))
+    val f = basicStage.channelWrite(HeadersFrame(Priority.NoPriority, endStream = true, Seq.empty))
     f.value match {
       case Some(Failure(t: Http2StreamException)) =>
         assertEquals(t.code, Http2Exception.REFUSED_STREAM.code)

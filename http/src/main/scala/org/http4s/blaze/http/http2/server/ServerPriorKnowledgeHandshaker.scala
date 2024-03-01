@@ -74,7 +74,7 @@ final class ServerPriorKnowledgeHandshaker(
       // We may have some extra data that we need to inject into the pipeline
       newTail = newTail.prepend(new OneMessageStage[ByteBuffer](remainder))
 
-    this.replaceTail(newTail, true)
+    this.replaceTail(newTail, startup = true)
 
     // The session starts itself up and drives the pipeline
     new ConnectionImpl(

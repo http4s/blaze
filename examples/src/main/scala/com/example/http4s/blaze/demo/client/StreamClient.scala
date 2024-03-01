@@ -34,7 +34,7 @@ object StreamClient extends IOApp {
 
 class HttpClient[F[_]](implicit F: Async[F], S: StreamUtils[F]) {
   implicit val jsonFacade: Facade[Json] =
-    new io.circe.jawn.CirceSupportParser(None, false).facade
+    new io.circe.jawn.CirceSupportParser(None, allowDuplicateKeys = false).facade
 
   def run: F[Unit] =
     BlazeClientBuilder[F].stream

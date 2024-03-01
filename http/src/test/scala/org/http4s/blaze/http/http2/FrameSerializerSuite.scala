@@ -54,7 +54,7 @@ class FrameSerializerSuite extends BlazeTestSuite with ScalaCheckSuite {
   )
 
   def dec(dataFrame: DataFrame): TestFrameDecoder =
-    decoder(new MockFrameListener(false) {
+    decoder(new MockFrameListener(inHeaders = false) {
       override def onDataFrame(
           streamId: Int,
           isLast: Boolean,
@@ -88,8 +88,8 @@ class FrameSerializerSuite extends BlazeTestSuite with ScalaCheckSuite {
   test("DATA frame should decode padded buffers") {
     assert((0 to 256).forall { (i: Int) =>
       def dat = mkData(20)
-      val frame = joinBuffers(FrameSerializer.mkDataFrame(3, false, i, dat))
-      dec(DataFrame(3, false, dat, i)).decodeBuffer(frame) == Continue
+      val frame = joinBuffers(FrameSerializer.mkDataFrame(3, endStream = false, i, dat))
+      dec(DataFrame(3, endStream = false, dat, i)).decodeBuffer(frame) == Continue
     })
   }
 
@@ -121,7 +121,7 @@ class FrameSerializerSuite extends BlazeTestSuite with ScalaCheckSuite {
   def dat = mkData(20)
 
   def dec(headerFrame: HeadersFrame) =
-    decoder(new MockFrameListener(false) {
+    decoder(new MockFrameListener(inHeaders = false) {
       override def onHeadersFrame(
           streamId: Int,
           priority: Priority,
@@ -159,27 +159,40 @@ class FrameSerializerSuite extends BlazeTestSuite with ScalaCheckSuite {
 
   test("HEADERS frame should make round trip") {
     val buff1 =
-      joinBuffers(FrameSerializer.mkHeaderFrame(1, Priority.NoPriority, true, true, 0, dat))
+      joinBuffers(
+        FrameSerializer
+          .mkHeaderFrame(1, Priority.NoPriority, endHeaders = true, endStream = true, 0, dat))
     assertEquals(
-      dec(HeadersFrame(1, Priority.NoPriority, true, true, dat, 0))
+      dec(HeadersFrame(1, Priority.NoPriority, endHeaders = true, endStream = true, dat, 0))
         .decodeBuffer(buff1),
       Continue
     )
     assertEquals(buff1.remaining(), 0)
 
-    val priority = Priority.Dependent(3, false, 6)
-    val buff2 = joinBuffers(FrameSerializer.mkHeaderFrame(2, priority, true, false, 0, dat))
-    assertEquals(dec(HeadersFrame(2, priority, true, false, dat, 0)).decodeBuffer(buff2), Continue)
+    val priority = Priority.Dependent(3, exclusive = false, 6)
+    val buff2 = joinBuffers(
+      FrameSerializer.mkHeaderFrame(2, priority, endHeaders = true, endStream = false, 0, dat))
+    assertEquals(
+      dec(HeadersFrame(2, priority, endHeaders = true, endStream = false, dat, 0))
+        .decodeBuffer(buff2),
+      Continue)
     assertEquals(buff2.remaining(), 0)
   }
 
   test("HEADERS frame should handle padding") {
     val paddingSize = 10
     val buff = joinBuffers(
-      FrameSerializer.mkHeaderFrame(1, Priority.NoPriority, true, true, paddingSize, dat)
+      FrameSerializer.mkHeaderFrame(
+        1,
+        Priority.NoPriority,
+        endHeaders = true,
+        endStream = true,
+        paddingSize,
+        dat)
     )
     assertEquals(
-      dec(HeadersFrame(1, Priority.NoPriority, true, true, dat, paddingSize))
+      dec(
+        HeadersFrame(1, Priority.NoPriority, endHeaders = true, endStream = true, dat, paddingSize))
         .decodeBuffer(buff),
       Continue
     )
@@ -188,21 +201,21 @@ class FrameSerializerSuite extends BlazeTestSuite with ScalaCheckSuite {
   test("HEADERS frame should fail on bad stream ID") {
     intercept[Throwable](
       FrameSerializer
-        .mkHeaderFrame(0, Priority.NoPriority, true, true, 0, dat)
+        .mkHeaderFrame(0, Priority.NoPriority, endHeaders = true, endStream = true, 0, dat)
     )
   }
 
   test("HEADERS frame should fail on bad padding") {
     intercept[Throwable](
       FrameSerializer
-        .mkHeaderFrame(1, Priority.NoPriority, true, true, -10, dat)
+        .mkHeaderFrame(1, Priority.NoPriority, endHeaders = true, endStream = true, -10, dat)
     )
   }
 
   case class PriorityFrame(streamId: Int, priority: Priority.Dependent)
 
   def dec(priorityFrame: PriorityFrame) =
-    decoder(new MockFrameListener(false) {
+    decoder(new MockFrameListener(inHeaders = false) {
       override def onPriorityFrame(
           streamId: Int,
           priority: Priority.Dependent
@@ -229,16 +242,17 @@ class FrameSerializerSuite extends BlazeTestSuite with ScalaCheckSuite {
   }
 
   test("PRIORITY frame should fail to make a bad dependent Priority") {
-    intercept[Throwable](Priority.Dependent(1, true, 500))
-    intercept[Throwable](Priority.Dependent(1, true, -500))
+    intercept[Throwable](Priority.Dependent(1, exclusive = true, 500))
+    intercept[Throwable](Priority.Dependent(1, exclusive = true, -500))
   }
 
   test("PRIORITY frame should fail on bad streamId") {
-    intercept[Throwable](FrameSerializer.mkPriorityFrame(0, Priority.Dependent(1, true, 0)))
+    intercept[Throwable](
+      FrameSerializer.mkPriorityFrame(0, Priority.Dependent(1, exclusive = true, 0)))
   }
 
   test("PRIORITY frame should fail on bad stream dependency") {
-    intercept[Throwable](Priority.Dependent(0, true, 0))
+    intercept[Throwable](Priority.Dependent(0, exclusive = true, 0))
   }
 
   case class RstFrame(streamId: Int, code: Long)
@@ -251,7 +265,7 @@ class FrameSerializerSuite extends BlazeTestSuite with ScalaCheckSuite {
   )
 
   def dec(rstFrame: RstFrame) =
-    decoder(new MockFrameListener(false) {
+    decoder(new MockFrameListener(inHeaders = false) {
       override def onRstStreamFrame(
           streamId: Int,
           code: Long
@@ -275,7 +289,7 @@ class FrameSerializerSuite extends BlazeTestSuite with ScalaCheckSuite {
   }
 
   def dec(settingsFrame: SettingsFrame) =
-    decoder(new MockFrameListener(false) {
+    decoder(new MockFrameListener(inHeaders = false) {
       override def onSettingsFrame(
           settings: Option[Seq[Setting]]
       ): org.http4s.blaze.http.http2.Result = {

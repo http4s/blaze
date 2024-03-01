@@ -317,7 +317,7 @@ class BlazeClientSuite extends BlazeClientBase {
         }
         override def onRequestEnd(ctx: ChannelHandlerContext, request: HttpRequest): Unit = ()
       })
-      ServerScaffold[IO](1, false, HandlersToNettyAdapter[IO](handlers)).use { server =>
+      ServerScaffold[IO](1, secure = false, HandlersToNettyAdapter[IO](handlers)).use { server =>
         val address = server.addresses.head
         val name = address.host
         val port = address.port
@@ -343,7 +343,7 @@ class BlazeClientSuite extends BlazeClientBase {
         }
         override def onRequestEnd(ctx: ChannelHandlerContext, request: HttpRequest): Unit = ()
       })
-      ServerScaffold[IO](1, false, HandlersToNettyAdapter[IO](handlers)).use { server =>
+      ServerScaffold[IO](1, secure = false, HandlersToNettyAdapter[IO](handlers)).use { server =>
         val address = server.addresses.head
         val name = address.host
         val port = address.port
@@ -366,7 +366,7 @@ class BlazeClientSuite extends BlazeClientBase {
         }
         override def onRequestEnd(ctx: ChannelHandlerContext, request: HttpRequest): Unit = ()
       })
-      ServerScaffold[IO](1, false, HandlersToNettyAdapter[IO](handlers)).use { server =>
+      ServerScaffold[IO](1, secure = false, HandlersToNettyAdapter[IO](handlers)).use { server =>
         val address = server.addresses.head
         val name = address.host
         val port = address.port

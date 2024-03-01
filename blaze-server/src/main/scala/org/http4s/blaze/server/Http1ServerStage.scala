@@ -289,7 +289,7 @@ private[blaze] class Http1ServerStage[F[_]](
           rr,
           parser.minorVersion(),
           closeOnFinish,
-          false,
+          omitEmptyContentLength = false,
         )
 
     // TODO: pool shifting: https://github.com/http4s/http4s/blob/main/core/src/main/scala/org/http4s/internal/package.scala#L45
