@@ -61,7 +61,7 @@ class StreamStateImplSuite extends BlazeTestSuite {
     val ctx = new Ctx
     import ctx._
 
-    val f = streamState.writeRequest(DataFrame(true, BufferTools.emptyBuffer))
+    val f = streamState.writeRequest(DataFrame(endStream = true, BufferTools.emptyBuffer))
 
     assertEquals(tools.writeController.observedInterests.result(), streamState :: Nil)
     tools.writeController.observedInterests.clear()
@@ -72,7 +72,7 @@ class StreamStateImplSuite extends BlazeTestSuite {
     val ctx = new Ctx
     import ctx._
 
-    val f = streamState.writeRequest(DataFrame(true, BufferTools.emptyBuffer))
+    val f = streamState.writeRequest(DataFrame(endStream = true, BufferTools.emptyBuffer))
 
     assertEquals(tools.writeController.observedInterests.result(), streamState :: Nil)
     tools.writeController.observedInterests.clear()
@@ -86,13 +86,13 @@ class StreamStateImplSuite extends BlazeTestSuite {
     val ctx = new Ctx
     import ctx._
 
-    val f1 = streamState.writeRequest(DataFrame(true, BufferTools.emptyBuffer))
+    val f1 = streamState.writeRequest(DataFrame(endStream = true, BufferTools.emptyBuffer))
     assertEquals(f1.isCompleted, false)
     assertEquals(tools.writeController.observedInterests.result(), streamState :: Nil)
 
     val currentSize = tools.writeController.observedWrites.length
 
-    val f2 = streamState.writeRequest(DataFrame(true, BufferTools.emptyBuffer))
+    val f2 = streamState.writeRequest(DataFrame(endStream = true, BufferTools.emptyBuffer))
 
     assert(Seq(f1, f2).forall { f =>
       f.value match {
@@ -146,8 +146,14 @@ class StreamStateImplSuite extends BlazeTestSuite {
     val ctx = new Ctx
     import ctx._
 
-    streamState.invokeInboundHeaders(Priority.NoPriority, true, Seq.empty) // remote closed
-    streamState.writeRequest(HeadersFrame(Priority.NoPriority, true, Seq.empty)) // local closed
+    streamState.invokeInboundHeaders(
+      Priority.NoPriority,
+      endStream = true,
+      Seq.empty
+    ) // remote closed
+    streamState.writeRequest(
+      HeadersFrame(Priority.NoPriority, endStream = true, Seq.empty)
+    ) // local closed
     streamState.closePipeline(None)
 
     assertEquals(tools.streamManager.finishedStreams.dequeue(), streamState)
@@ -190,7 +196,9 @@ class StreamStateImplSuite extends BlazeTestSuite {
     import ctx._
 
     // Need to open the stream
-    assertEquals(streamState.invokeInboundHeaders(Priority.NoPriority, false, Seq.empty), Continue)
+    assertEquals(
+      streamState.invokeInboundHeaders(Priority.NoPriority, endStream = false, Seq.empty),
+      Continue)
     assert(streamState.readRequest(1).isCompleted) // headers
 
     val f1 = streamState.readRequest(1)
@@ -215,7 +223,9 @@ class StreamStateImplSuite extends BlazeTestSuite {
     import ctx._
 
     // Need to open the stream
-    assertEquals(streamState.invokeInboundHeaders(Priority.NoPriority, false, Seq.empty), Continue)
+    assertEquals(
+      streamState.invokeInboundHeaders(Priority.NoPriority, endStream = false, Seq.empty),
+      Continue)
     assert(streamState.readRequest(1).isCompleted) // headers
 
     // We should count the flow bytes size, not the actual buffer size
@@ -244,7 +254,9 @@ class StreamStateImplSuite extends BlazeTestSuite {
     )
 
     // Need to open the stream
-    assertEquals(streamState.invokeInboundHeaders(Priority.NoPriority, false, Seq.empty), Continue)
+    assertEquals(
+      streamState.invokeInboundHeaders(Priority.NoPriority, endStream = false, Seq.empty),
+      Continue)
 
     // We should count the flow bytes size, not the actual buffer size
     streamState.invokeInboundData(
@@ -276,7 +288,9 @@ class StreamStateImplSuite extends BlazeTestSuite {
     )
 
     // Need to open the stream
-    assertEquals(streamState.invokeInboundHeaders(Priority.NoPriority, false, Seq.empty), Continue)
+    assertEquals(
+      streamState.invokeInboundHeaders(Priority.NoPriority, endStream = false, Seq.empty),
+      Continue)
 
     // We should count the flow bytes size, not the actual buffer size
     streamState.invokeInboundData(
@@ -300,7 +314,9 @@ class StreamStateImplSuite extends BlazeTestSuite {
 
     val hs = Seq("foo" -> "bar")
 
-    assertEquals(streamState.invokeInboundHeaders(Priority.NoPriority, false, hs), Continue)
+    assertEquals(
+      streamState.invokeInboundHeaders(Priority.NoPriority, endStream = false, hs),
+      Continue)
 
     f1.value match {
       case Some(Success(HeadersFrame(Priority.NoPriority, false, hss))) =>
@@ -317,7 +333,9 @@ class StreamStateImplSuite extends BlazeTestSuite {
     val f1 = streamState.readRequest(1)
     assertEquals(f1.isCompleted, false)
 
-    assertEquals(streamState.invokeInboundData(false, BufferTools.allocate(1), 1), Continue)
+    assertEquals(
+      streamState.invokeInboundData(endStream = false, BufferTools.allocate(1), 1),
+      Continue)
 
     f1.value match {
       case Some(Success(DataFrame(false, data))) =>

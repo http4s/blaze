@@ -40,7 +40,7 @@ private[http4s] class FlushingChunkWriter[F[_]](pipe: TailStage[ByteBuffer], tra
     else pipe.channelWrite(encodeChunk(chunk, Nil))
 
   protected def writeEnd(chunk: Chunk[Byte]): Future[Boolean] = {
-    if (!chunk.isEmpty) writeBodyChunk(chunk, true).flatMap { _ =>
+    if (!chunk.isEmpty) writeBodyChunk(chunk, flush = true).flatMap { _ =>
       writeTrailer(pipe, trailer)
     }
     else writeTrailer(pipe, trailer)

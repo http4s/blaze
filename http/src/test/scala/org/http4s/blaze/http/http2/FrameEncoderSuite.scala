@@ -76,7 +76,7 @@ class FrameEncoderSuite extends BlazeTestSuite {
     Error(Http2Exception.errorGenerator(id.toLong + 25L).goaway())
 
   test("An Http2FrameEncoder should not fragment data frames if they fit into a single frame") {
-    val tools = new MockTools(true)
+    val tools = new MockTools(isClient = true)
     val zeroBuffer15 = zeroBuffer(15)
 
     val listener = mockListener {
@@ -89,18 +89,20 @@ class FrameEncoderSuite extends BlazeTestSuite {
     tools.remoteSettings.maxFrameSize = 15 // technically an illegal size...
 
     // Frame 1 `endStream = true`
-    val data1 = BufferTools.joinBuffers(tools.frameEncoder.dataFrame(1, true, zeroBuffer(15)))
+    val data1 =
+      BufferTools.joinBuffers(tools.frameEncoder.dataFrame(1, endStream = true, zeroBuffer(15)))
     assertEquals(decoder.decodeBuffer(data1), ReturnTag(1))
 
     // Frame 2 `endStream = false`
-    val data2 = BufferTools.joinBuffers(tools.frameEncoder.dataFrame(1, false, zeroBuffer(15)))
+    val data2 =
+      BufferTools.joinBuffers(tools.frameEncoder.dataFrame(1, endStream = false, zeroBuffer(15)))
     assertEquals(decoder.decodeBuffer(data2), ReturnTag(2))
   }
 
   test(
     "An Http2FrameEncoder should fragments data frames if they exceed the localSettings.maxFrameSize"
   ) {
-    val tools = new MockTools(true)
+    val tools = new MockTools(isClient = true)
     val zeroBuffer5 = zeroBuffer(5)
     val zeroBuffer10 = zeroBuffer(10)
     val listener = mockListener(onDataFrameMock = {
@@ -113,7 +115,8 @@ class FrameEncoderSuite extends BlazeTestSuite {
     tools.remoteSettings.maxFrameSize = 10 // technically an illegal size...
 
     // `endStream = true`
-    val data1 = BufferTools.joinBuffers(tools.frameEncoder.dataFrame(1, true, zeroBuffer(15)))
+    val data1 =
+      BufferTools.joinBuffers(tools.frameEncoder.dataFrame(1, endStream = true, zeroBuffer(15)))
 
     // Frame 1
     assertEquals(remoteDecoder.decodeBuffer(data1), ReturnTag(1))
@@ -122,7 +125,8 @@ class FrameEncoderSuite extends BlazeTestSuite {
     assertEquals(remoteDecoder.decodeBuffer(data1), ReturnTag(2))
 
     // `endStream = false`
-    val data2 = BufferTools.joinBuffers(tools.frameEncoder.dataFrame(1, false, zeroBuffer(15)))
+    val data2 =
+      BufferTools.joinBuffers(tools.frameEncoder.dataFrame(1, endStream = false, zeroBuffer(15)))
 
     val listener2 = mockListener(onDataFrameMock = {
       case (1, false, `zeroBuffer10`, 10) => ReturnTag(3)
@@ -139,7 +143,7 @@ class FrameEncoderSuite extends BlazeTestSuite {
   }
 
   test("An Http2FrameEncoder should not fragment headers if they fit into a single frame") {
-    val tools = new MockTools(true) {
+    val tools = new MockTools(isClient = true) {
       override lazy val headerEncoder: HeaderEncoder = new HeaderEncoder(100) {
         override def encodeHeaders(hs: Headers): ByteBuffer = zeroBuffer(15)
       }
@@ -156,19 +160,21 @@ class FrameEncoderSuite extends BlazeTestSuite {
     tools.remoteSettings.maxFrameSize = 15 // technically an illegal size...
     // `endStream = true`
     val data1 =
-      BufferTools.joinBuffers(tools.frameEncoder.headerFrame(1, Priority.NoPriority, true, Nil))
+      BufferTools.joinBuffers(
+        tools.frameEncoder.headerFrame(1, Priority.NoPriority, endStream = true, Nil))
 
     assertEquals(decoder.decodeBuffer(data1), ReturnTag(1))
 
     // `endStream = false`
     val data2 =
-      BufferTools.joinBuffers(tools.frameEncoder.headerFrame(1, Priority.NoPriority, false, Nil))
+      BufferTools.joinBuffers(
+        tools.frameEncoder.headerFrame(1, Priority.NoPriority, endStream = false, Nil))
 
     assertEquals(decoder.decodeBuffer(data2), ReturnTag(2))
   }
 
   test("An Http2FrameEncoder should fragment headers if they don't fit into one frame") {
-    val tools = new MockTools(true) {
+    val tools = new MockTools(isClient = true) {
       override lazy val headerEncoder: HeaderEncoder = new HeaderEncoder(100) {
         override def encodeHeaders(hs: Headers): ByteBuffer = zeroBuffer(15)
       }
@@ -186,7 +192,8 @@ class FrameEncoderSuite extends BlazeTestSuite {
 
     tools.remoteSettings.maxFrameSize = 10 // technically an illegal size...
     val data =
-      BufferTools.joinBuffers(tools.frameEncoder.headerFrame(1, Priority.NoPriority, true, Nil))
+      BufferTools.joinBuffers(
+        tools.frameEncoder.headerFrame(1, Priority.NoPriority, endStream = true, Nil))
 
     assertEquals(decoder1.decodeBuffer(data), ReturnTag(1))
 
@@ -207,14 +214,14 @@ class FrameEncoderSuite extends BlazeTestSuite {
   }
 
   test("An Http2FrameEncoder should fragmenting HEADERS frames considers priority info size") {
-    val tools = new MockTools(true) {
+    val tools = new MockTools(isClient = true) {
       override lazy val headerEncoder: HeaderEncoder = new HeaderEncoder(100) {
         override def encodeHeaders(hs: Headers): ByteBuffer = zeroBuffer(10)
       }
     }
 
     val zeroBuffer5 = zeroBuffer(5)
-    val p = Priority.Dependent(2, true, 12)
+    val p = Priority.Dependent(2, exclusive = true, 12)
 
     val listener1 = mockListener(
       onHeadersFrameMock = {
@@ -226,7 +233,7 @@ class FrameEncoderSuite extends BlazeTestSuite {
 
     tools.remoteSettings.maxFrameSize = 10 // technically an illegal size...
 
-    val data = BufferTools.joinBuffers(tools.frameEncoder.headerFrame(1, p, true, Nil))
+    val data = BufferTools.joinBuffers(tools.frameEncoder.headerFrame(1, p, endStream = true, Nil))
 
     assertEquals(decoder1.decodeBuffer(data), ReturnTag(1))
 

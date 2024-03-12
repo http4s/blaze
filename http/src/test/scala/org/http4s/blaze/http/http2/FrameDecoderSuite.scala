@@ -28,7 +28,7 @@ class FrameDecoderSuite extends BlazeTestSuite {
   def buffer(data: Byte*): ByteBuffer =
     ByteBuffer.wrap(data.toArray)
 
-  private class DataListener extends MockFrameListener(false) {
+  private class DataListener extends MockFrameListener(inHeaders = false) {
     var streamId: Option[Int] = None
     var endStream: Option[Boolean] = None
     var data: ByteBuffer = null
@@ -232,7 +232,7 @@ class FrameDecoderSuite extends BlazeTestSuite {
     }
   }
 
-  private class HeadersListener extends MockFrameListener(false) {
+  private class HeadersListener extends MockFrameListener(inHeaders = false) {
     // For handling unknown stream frames
     var streamId: Option[Int] = None
     var priority: Option[Priority] = None
@@ -312,7 +312,7 @@ class FrameDecoderSuite extends BlazeTestSuite {
 
     assertEquals(dec.decodeBuffer(testData), Continue)
     assertEquals(listener.streamId, Some(1))
-    assertEquals(listener.priority, Some(Priority.Dependent(2, true, 256)))
+    assertEquals(listener.priority, Some(Priority.Dependent(2, exclusive = true, 256)))
     assertEquals(listener.endHeaders, Some(false))
     assertEquals(listener.endStream, Some(false))
     assertEquals(listener.buffer, ByteBuffer.wrap(new Array(3)))
@@ -376,7 +376,7 @@ class FrameDecoderSuite extends BlazeTestSuite {
 
     assertEquals(dec.decodeBuffer(testData), Continue)
     assertEquals(listener.streamId, Some(1))
-    assertEquals(listener.priority, Some(Priority.Dependent(2, false, 3)))
+    assertEquals(listener.priority, Some(Priority.Dependent(2, exclusive = false, 3)))
     assertEquals(listener.endHeaders, Some(false))
     assertEquals(listener.endStream, Some(false))
     assertEquals(listener.buffer, buffer(0x00))
@@ -487,7 +487,7 @@ class FrameDecoderSuite extends BlazeTestSuite {
     assertEquals(dec.decodeBuffer(testData), Continue)
   }
 
-  private class PriorityListener extends MockFrameListener(false) {
+  private class PriorityListener extends MockFrameListener(inHeaders = false) {
     var streamId: Option[Int] = None
     var priority: Option[Dependent] = None
     override def onPriorityFrame(streamId: Int, priority: Dependent): Result = {
@@ -515,7 +515,7 @@ class FrameDecoderSuite extends BlazeTestSuite {
 
     assertEquals(dec.decodeBuffer(testData), Continue)
     assertEquals(listener.streamId, Some(1))
-    assertEquals(listener.priority, Some(Priority.Dependent(2, false, 1)))
+    assertEquals(listener.priority, Some(Priority.Dependent(2, exclusive = false, 1)))
   }
 
   test("PRIORITY. Simple PRIORITY frame with exclusive") {
@@ -541,7 +541,7 @@ class FrameDecoderSuite extends BlazeTestSuite {
 
     assertEquals(dec.decodeBuffer(testData), Continue)
     assertEquals(listener.streamId, Some(1))
-    assertEquals(listener.priority, Some(Priority.Dependent(2, true, 1)))
+    assertEquals(listener.priority, Some(Priority.Dependent(2, exclusive = true, 1)))
   }
 
   test("PRIORITY. Frame with dependent stream being itself") {
@@ -597,7 +597,7 @@ class FrameDecoderSuite extends BlazeTestSuite {
     }
   }
 
-  private class RstListener extends MockFrameListener(false) {
+  private class RstListener extends MockFrameListener(inHeaders = false) {
     var streamId: Option[Int] = None
     var code: Option[Long] = None
     override def onRstStreamFrame(streamId: Int, code: Long): Result = {
@@ -682,7 +682,7 @@ class FrameDecoderSuite extends BlazeTestSuite {
     }
   }
 
-  private class SettingsListener extends MockFrameListener(false) {
+  private class SettingsListener extends MockFrameListener(inHeaders = false) {
     var settings: Option[Option[Seq[Setting]]] = None
     override def onSettingsFrame(settings: Option[Seq[Setting]]): Result = {
       this.settings = Some(settings)
@@ -817,7 +817,7 @@ class FrameDecoderSuite extends BlazeTestSuite {
     }
   }
 
-  private class PushListener extends MockFrameListener(false) {
+  private class PushListener extends MockFrameListener(inHeaders = false) {
     var streamId: Option[Int] = None
     var promisedId: Option[Int] = None
     var endHeaders: Option[Boolean] = None
@@ -1011,7 +1011,7 @@ class FrameDecoderSuite extends BlazeTestSuite {
     }
   }
 
-  private class PingListener extends MockFrameListener(false) {
+  private class PingListener extends MockFrameListener(inHeaders = false) {
     var ack: Option[Boolean] = None
     var data: Option[Array[Byte]] = None
 
@@ -1137,7 +1137,7 @@ class FrameDecoderSuite extends BlazeTestSuite {
     }
   }
 
-  private class GoAwayListener extends MockFrameListener(false) {
+  private class GoAwayListener extends MockFrameListener(inHeaders = false) {
     var lastStream: Option[Int] = None
     var errorCode: Option[Long] = None
     var debugData: Option[Array[Byte]] = None
@@ -1219,7 +1219,7 @@ class FrameDecoderSuite extends BlazeTestSuite {
     }
   }
 
-  private class WindowListener extends MockFrameListener(false) {
+  private class WindowListener extends MockFrameListener(inHeaders = false) {
     var streamId: Option[Int] = None
     var sizeIncrement: Option[Int] = None
     override def onWindowUpdateFrame(streamId: Int, sizeIncrement: Int): Result = {
@@ -1358,7 +1358,7 @@ class FrameDecoderSuite extends BlazeTestSuite {
       // body
       0x01 // increment
     )
-    val listener = new ContinuationListener(true)
+    val listener = new ContinuationListener(inseq = true)
     val dec = new FrameDecoder(Http2Settings.default, listener)
 
     assertEquals(dec.decodeBuffer(testData), Continue)
@@ -1377,7 +1377,7 @@ class FrameDecoderSuite extends BlazeTestSuite {
       // body
       0x01 // increment
     )
-    val listener = new ContinuationListener(true)
+    val listener = new ContinuationListener(inseq = true)
     val dec = new FrameDecoder(Http2Settings.default, listener)
 
     dec.decodeBuffer(testData) match {
@@ -1401,7 +1401,7 @@ class FrameDecoderSuite extends BlazeTestSuite {
       // body
       0x01 // increment
     )
-    val listener = new ContinuationListener(true)
+    val listener = new ContinuationListener(inseq = true)
     val dec = new FrameDecoder(Http2Settings.default, listener)
 
     assertEquals(dec.decodeBuffer(testData), Continue)
@@ -1425,7 +1425,7 @@ class FrameDecoderSuite extends BlazeTestSuite {
       // body
       0x01 // increment
     )
-    val listener = new ContinuationListener(false)
+    val listener = new ContinuationListener(inseq = false)
     val dec = new FrameDecoder(Http2Settings.default, listener)
 
     dec.decodeBuffer(testData) match {
@@ -1445,7 +1445,7 @@ class FrameDecoderSuite extends BlazeTestSuite {
       0x00, 0x00, 0x00, 0x00, // streamId
       0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00)
 
-    val listener = new MockFrameListener(false)
+    val listener = new MockFrameListener(inHeaders = false)
     var data: ByteBuffer = null
     var code: Option[Byte] = None
     var flags: Option[Byte] = None

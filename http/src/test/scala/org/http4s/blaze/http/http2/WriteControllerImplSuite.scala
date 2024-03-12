@@ -59,7 +59,7 @@ class WriteControllerImplSuite extends BlazeTestSuite {
 
   private class Ctx {
     def highWaterMark = Int.MaxValue
-    val tools = new MockTools(true)
+    val tools = new MockTools(isClient = true)
     val tail = new MockTail
     val writeController = new WriteControllerImpl(tools, highWaterMark, tail)
   }

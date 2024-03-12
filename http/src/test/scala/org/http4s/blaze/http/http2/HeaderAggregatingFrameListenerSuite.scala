@@ -52,10 +52,16 @@ class HeaderAggregatingFrameListenerSuite extends BlazeTestSuite {
     val hs = Seq("foo" -> "bar", "biz" -> "baz")
     val hsBuf = encodeHeaders(hs)
 
-    val bs = FrameSerializer.mkHeaderFrame(1, Priority.NoPriority, true, true, 0, hsBuf)
+    val bs = FrameSerializer.mkHeaderFrame(
+      1,
+      Priority.NoPriority,
+      endHeaders = true,
+      endStream = true,
+      0,
+      hsBuf)
 
     assertEquals(
-      mkDecoder(1, Priority.NoPriority, true, hs).decodeBuffer(BufferTools.joinBuffers(bs)),
+      mkDecoder(1, Priority.NoPriority, es = true, hs).decodeBuffer(BufferTools.joinBuffers(bs)),
       Halt
     )
   }
@@ -64,16 +70,22 @@ class HeaderAggregatingFrameListenerSuite extends BlazeTestSuite {
     val hs = Seq("foo" -> "bar", "biz" -> "baz")
     val hsBuf = encodeHeaders(hs)
     val first = BufferTools.takeSlice(hsBuf, hsBuf.remaining() - 1)
-    val bs = FrameSerializer.mkHeaderFrame(1, Priority.NoPriority, false, true, 0, first)
+    val bs = FrameSerializer.mkHeaderFrame(
+      1,
+      Priority.NoPriority,
+      endHeaders = false,
+      endStream = true,
+      0,
+      first)
 
-    val decoder = mkDecoder(1, Priority.NoPriority, true, hs)
+    val decoder = mkDecoder(1, Priority.NoPriority, es = true, hs)
 
     assertEquals(decoder.listener.inHeaderSequence, false)
     assertEquals(decoder.decodeBuffer(BufferTools.joinBuffers(bs)), Continue)
 
     assert(decoder.listener.inHeaderSequence)
 
-    val bs2 = FrameSerializer.mkContinuationFrame(1, true, hsBuf)
+    val bs2 = FrameSerializer.mkContinuationFrame(1, endHeaders = true, hsBuf)
     assertEquals(decoder.decodeBuffer(BufferTools.joinBuffers(bs2)), Halt)
     assertEquals(decoder.listener.inHeaderSequence, false)
   }
@@ -81,16 +93,22 @@ class HeaderAggregatingFrameListenerSuite extends BlazeTestSuite {
   test("HEADERS frame with compressors should make a round trip with a continuation frame") {
     val hs = Seq("foo" -> "bar", "biz" -> "baz")
     val bs =
-      FrameSerializer.mkHeaderFrame(1, Priority.NoPriority, false, true, 0, BufferTools.emptyBuffer)
+      FrameSerializer.mkHeaderFrame(
+        1,
+        Priority.NoPriority,
+        endHeaders = false,
+        endStream = true,
+        0,
+        BufferTools.emptyBuffer)
 
-    val decoder = mkDecoder(1, Priority.NoPriority, true, hs)
+    val decoder = mkDecoder(1, Priority.NoPriority, es = true, hs)
 
     assertEquals(decoder.listener.inHeaderSequence, false)
     assertEquals(decoder.decodeBuffer(BufferTools.joinBuffers(bs)), Continue)
 
     assert(decoder.listener.inHeaderSequence)
 
-    val bs2 = FrameSerializer.mkContinuationFrame(1, true, encodeHeaders(hs))
+    val bs2 = FrameSerializer.mkContinuationFrame(1, endHeaders = true, encodeHeaders(hs))
     assertEquals(decoder.decodeBuffer(BufferTools.joinBuffers(bs2)), Halt)
     assertEquals(decoder.listener.inHeaderSequence, false)
   }
@@ -99,32 +117,44 @@ class HeaderAggregatingFrameListenerSuite extends BlazeTestSuite {
     val hs1 = Seq("foo" -> "bar")
     val hs2 = Seq("biz" -> "baz")
     val bs =
-      FrameSerializer.mkHeaderFrame(1, Priority.NoPriority, false, true, 0, encodeHeaders(hs1))
+      FrameSerializer.mkHeaderFrame(
+        1,
+        Priority.NoPriority,
+        endHeaders = false,
+        endStream = true,
+        0,
+        encodeHeaders(hs1))
 
-    val decoder = mkDecoder(1, Priority.NoPriority, true, hs1 ++ hs2)
+    val decoder = mkDecoder(1, Priority.NoPriority, es = true, hs1 ++ hs2)
 
     assertEquals(decoder.listener.inHeaderSequence, false)
     assertEquals(decoder.decodeBuffer(BufferTools.joinBuffers(bs)), Continue)
 
     assert(decoder.listener.inHeaderSequence)
 
-    val bs2 = FrameSerializer.mkContinuationFrame(1, true, encodeHeaders(hs2))
+    val bs2 = FrameSerializer.mkContinuationFrame(1, endHeaders = true, encodeHeaders(hs2))
     assertEquals(decoder.decodeBuffer(BufferTools.joinBuffers(bs2)), Halt)
     assertEquals(decoder.listener.inHeaderSequence, false)
   }
 
   test("HEADERS frame with compressors should fail on invalid frame sequence (bad streamId)") {
     val bs =
-      FrameSerializer.mkHeaderFrame(1, Priority.NoPriority, false, true, 0, BufferTools.emptyBuffer)
+      FrameSerializer.mkHeaderFrame(
+        1,
+        Priority.NoPriority,
+        endHeaders = false,
+        endStream = true,
+        0,
+        BufferTools.emptyBuffer)
 
-    val decoder = mkDecoder(1, Priority.NoPriority, true, Seq())
+    val decoder = mkDecoder(1, Priority.NoPriority, es = true, Seq())
 
     assertEquals(decoder.listener.inHeaderSequence, false)
     assertEquals(decoder.decodeBuffer(BufferTools.joinBuffers(bs)), Continue)
 
     assert(decoder.listener.inHeaderSequence)
 
-    val bs2 = FrameSerializer.mkContinuationFrame(2, true, BufferTools.emptyBuffer)
+    val bs2 = FrameSerializer.mkContinuationFrame(2, endHeaders = true, BufferTools.emptyBuffer)
     decoder.decodeBuffer(BufferTools.joinBuffers(bs2)) match {
       case _: Error => ()
       case _ => fail("Unexpected decodeBuffer result")
@@ -133,9 +163,15 @@ class HeaderAggregatingFrameListenerSuite extends BlazeTestSuite {
 
   test("HEADERS frame with compressors should fail on invalid frame sequence (wrong frame type)") {
     val bs =
-      FrameSerializer.mkHeaderFrame(1, Priority.NoPriority, false, true, 0, BufferTools.emptyBuffer)
+      FrameSerializer.mkHeaderFrame(
+        1,
+        Priority.NoPriority,
+        endHeaders = false,
+        endStream = true,
+        0,
+        BufferTools.emptyBuffer)
 
-    val decoder = mkDecoder(1, Priority.NoPriority, true, Seq())
+    val decoder = mkDecoder(1, Priority.NoPriority, es = true, Seq())
 
     assertEquals(decoder.listener.inHeaderSequence, false)
     assertEquals(decoder.decodeBuffer(BufferTools.joinBuffers(bs)), Continue)
@@ -152,7 +188,7 @@ class HeaderAggregatingFrameListenerSuite extends BlazeTestSuite {
   private def dat = mkData(20)
 
   private def dec(sId: Int, pId: Int, end_h: Boolean) =
-    decoder(new MockFrameListener(false) {
+    decoder(new MockFrameListener(inHeaders = false) {
       override def onPushPromiseFrame(
           streamId: Int,
           promisedId: Int,
@@ -168,29 +204,31 @@ class HeaderAggregatingFrameListenerSuite extends BlazeTestSuite {
     })
 
   test("PUSH_PROMISE frame should make round trip") {
-    val buff1 = BufferTools.joinBuffers(FrameSerializer.mkPushPromiseFrame(1, 2, true, 0, dat))
-    assertEquals(dec(1, 2, true).decodeBuffer(buff1), Continue)
+    val buff1 =
+      BufferTools.joinBuffers(FrameSerializer.mkPushPromiseFrame(1, 2, endHeaders = true, 0, dat))
+    assertEquals(dec(1, 2, end_h = true).decodeBuffer(buff1), Continue)
     assertEquals(buff1.remaining(), 0)
   }
 
   test("PUSH_PROMISE frame should handle padding") {
     val paddingSize = 10
-    val buff = joinBuffers(FrameSerializer.mkPushPromiseFrame(1, 2, true, paddingSize, dat))
-    assertEquals(dec(1, 2, true).decodeBuffer(buff), Continue)
+    val buff =
+      joinBuffers(FrameSerializer.mkPushPromiseFrame(1, 2, endHeaders = true, paddingSize, dat))
+    assertEquals(dec(1, 2, end_h = true).decodeBuffer(buff), Continue)
   }
 
   test("PUSH_PROMISE frame should fail on bad stream ID") {
-    intercept[Throwable](FrameSerializer.mkPushPromiseFrame(0, 2, true, -10, dat))
+    intercept[Throwable](FrameSerializer.mkPushPromiseFrame(0, 2, endHeaders = true, -10, dat))
   }
 
   test("PUSH_PROMISE frame should fail on bad promised stream ID") {
-    intercept[Throwable](FrameSerializer.mkPushPromiseFrame(1, 0, true, -10, dat))
-    intercept[Throwable](FrameSerializer.mkPushPromiseFrame(1, 3, true, -10, dat))
+    intercept[Throwable](FrameSerializer.mkPushPromiseFrame(1, 0, endHeaders = true, -10, dat))
+    intercept[Throwable](FrameSerializer.mkPushPromiseFrame(1, 3, endHeaders = true, -10, dat))
   }
 
   test("PUSH_PROMISE frame should fail on bad padding") {
-    intercept[Throwable](FrameSerializer.mkPushPromiseFrame(1, 2, true, -10, dat))
-    intercept[Throwable](FrameSerializer.mkPushPromiseFrame(1, 2, true, 500, dat))
+    intercept[Throwable](FrameSerializer.mkPushPromiseFrame(1, 2, endHeaders = true, -10, dat))
+    intercept[Throwable](FrameSerializer.mkPushPromiseFrame(1, 2, endHeaders = true, 500, dat))
   }
 
   private def mkDec(sId: Int, pId: Int, hs: Headers) =
@@ -210,7 +248,7 @@ class HeaderAggregatingFrameListenerSuite extends BlazeTestSuite {
   test("PUSH_PROMISE frame with header decoder should make a simple round trip") {
     val hs = Seq("foo" -> "bar", "biz" -> "baz")
     val hsBuf = encodeHeaders(hs)
-    val bs = FrameSerializer.mkPushPromiseFrame(1, 2, true, 0, hsBuf)
+    val bs = FrameSerializer.mkPushPromiseFrame(1, 2, endHeaders = true, 0, hsBuf)
 
     val decoder = mkDec(1, 2, hs)
     assertEquals(decoder.decodeBuffer(BufferTools.joinBuffers(bs)), Halt)
@@ -222,7 +260,7 @@ class HeaderAggregatingFrameListenerSuite extends BlazeTestSuite {
   ) {
     val hs = Seq("foo" -> "bar", "biz" -> "baz")
     val hsBuf = encodeHeaders(hs)
-    val bs = FrameSerializer.mkPushPromiseFrame(1, 2, false, 0, hsBuf)
+    val bs = FrameSerializer.mkPushPromiseFrame(1, 2, endHeaders = false, 0, hsBuf)
 
     val decoder = mkDec(1, 2, hs)
 
@@ -231,7 +269,7 @@ class HeaderAggregatingFrameListenerSuite extends BlazeTestSuite {
 
     assert(decoder.listener.inHeaderSequence)
 
-    val bs2 = FrameSerializer.mkContinuationFrame(1, true, BufferTools.emptyBuffer)
+    val bs2 = FrameSerializer.mkContinuationFrame(1, endHeaders = true, BufferTools.emptyBuffer)
     assertEquals(decoder.decodeBuffer(BufferTools.joinBuffers(bs2)), Halt)
     assertEquals(decoder.listener.inHeaderSequence, false)
   }
@@ -241,7 +279,8 @@ class HeaderAggregatingFrameListenerSuite extends BlazeTestSuite {
   ) {
     val hs = Seq("foo" -> "bar", "biz" -> "baz")
 
-    val bs = FrameSerializer.mkPushPromiseFrame(1, 2, false, 0, BufferTools.emptyBuffer)
+    val bs =
+      FrameSerializer.mkPushPromiseFrame(1, 2, endHeaders = false, 0, BufferTools.emptyBuffer)
 
     val decoder = mkDec(1, 2, hs)
 
@@ -250,7 +289,7 @@ class HeaderAggregatingFrameListenerSuite extends BlazeTestSuite {
 
     assert(decoder.listener.inHeaderSequence)
 
-    val bs2 = FrameSerializer.mkContinuationFrame(1, true, encodeHeaders(hs))
+    val bs2 = FrameSerializer.mkContinuationFrame(1, endHeaders = true, encodeHeaders(hs))
     assertEquals(decoder.decodeBuffer(BufferTools.joinBuffers(bs2)), Halt)
     assertEquals(decoder.listener.inHeaderSequence, false)
   }
@@ -260,7 +299,7 @@ class HeaderAggregatingFrameListenerSuite extends BlazeTestSuite {
   ) {
     val hs1 = Seq("foo" -> "bar")
     val hs2 = Seq("biz" -> "baz")
-    val bs = FrameSerializer.mkPushPromiseFrame(1, 2, false, 0, encodeHeaders(hs1))
+    val bs = FrameSerializer.mkPushPromiseFrame(1, 2, endHeaders = false, 0, encodeHeaders(hs1))
 
     val decoder = mkDec(1, 2, hs1 ++ hs2)
 
@@ -269,7 +308,7 @@ class HeaderAggregatingFrameListenerSuite extends BlazeTestSuite {
 
     assert(decoder.listener.inHeaderSequence)
 
-    val bs2 = FrameSerializer.mkContinuationFrame(1, true, encodeHeaders(hs2))
+    val bs2 = FrameSerializer.mkContinuationFrame(1, endHeaders = true, encodeHeaders(hs2))
     assertEquals(decoder.decodeBuffer(BufferTools.joinBuffers(bs2)), Halt)
     assertEquals(decoder.listener.inHeaderSequence, false)
   }
@@ -279,13 +318,13 @@ class HeaderAggregatingFrameListenerSuite extends BlazeTestSuite {
   ) {
     val hs1 = Seq("foo" -> "bar")
     val hs2 = Seq("biz" -> "baz")
-    val bs = FrameSerializer.mkPushPromiseFrame(1, 2, false, 0, encodeHeaders(hs1))
+    val bs = FrameSerializer.mkPushPromiseFrame(1, 2, endHeaders = false, 0, encodeHeaders(hs1))
 
     val decoder = mkDec(1, 2, hs1 ++ hs2)
 
     assertEquals(decoder.decodeBuffer(BufferTools.joinBuffers(bs)), Continue)
 
-    val bs2 = FrameSerializer.mkContinuationFrame(2, true, encodeHeaders(hs2))
+    val bs2 = FrameSerializer.mkContinuationFrame(2, endHeaders = true, encodeHeaders(hs2))
     decoder.decodeBuffer(BufferTools.joinBuffers(bs2)) match {
       case _: Error => ()
       case _ => fail("Unexpected decodeBuffer result")
@@ -296,7 +335,7 @@ class HeaderAggregatingFrameListenerSuite extends BlazeTestSuite {
     "PUSH_PROMISE frame with header decoder should fail on invalid frame sequence (wrong frame type)"
   ) {
     val hs1 = Seq("foo" -> "bar")
-    val bs = FrameSerializer.mkPushPromiseFrame(1, 2, false, 0, encodeHeaders(hs1))
+    val bs = FrameSerializer.mkPushPromiseFrame(1, 2, endHeaders = false, 0, encodeHeaders(hs1))
 
     val decoder = mkDec(1, 2, hs1)
 
