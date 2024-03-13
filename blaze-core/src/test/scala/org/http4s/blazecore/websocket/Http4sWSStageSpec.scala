@@ -82,9 +82,10 @@ class Http4sWSStageSpec extends CatsEffectSuite with DispatcherIOFixture {
           _.evalMap(backendInQ.offer),
           IO(closeHook.set(true)),
         )
+        autoPing = None
         deadSignal <- SignallingRef[IO, Boolean](false)
         wsHead <- WSTestHead()
-        http4sWSStage <- Http4sWSStage[IO](ws, closeHook, deadSignal, dispatcher)
+        http4sWSStage <- Http4sWSStage[IO](ws, closeHook, deadSignal, dispatcher, autoPing)
         head = LeafBuilder(http4sWSStage).base(wsHead)
         _ <- IO(head.sendInboundCommand(Command.Connected))
       } yield new TestWebsocketStage(outQ, head, closeHook, backendInQ)
