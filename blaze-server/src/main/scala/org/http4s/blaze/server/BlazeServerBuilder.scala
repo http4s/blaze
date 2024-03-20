@@ -31,7 +31,7 @@ import com.comcast.ip4s.SocketAddress
 import org.http4s.blaze.channel._
 import org.http4s.blaze.channel.nio1.NIO1SocketServerGroup
 import org.http4s.blaze.pipeline.LeafBuilder
-import org.http4s.blaze.pipeline.stages.SSLStage
+import org.http4s.blaze.pipeline.stages.{SSLStage, SSLStageDefaults}
 import org.http4s.blaze.server.BlazeServerBuilder._
 import org.http4s.blaze.util.TickWheelExecutor
 import org.http4s.blaze.{BuildInfo => BlazeBuildInfo}
@@ -196,13 +196,35 @@ class BlazeServerBuilder[F[_]] private (
 
   /** Configures the server with TLS, using the provided `SSLContext` and its
     * default `SSLParameters`
+    *
+    * @param sslErrorHandler function that runs if an error occurs during the TLS handshake. Default behavior is to log the error.
+    */
+  def withSslContext(
+      sslContext: SSLContext,
+      sslErrorHandler: PartialFunction[Throwable, Unit] = PartialFunction.empty,
+  ): Self =
+    copy(sslConfig = new ContextOnly[F](sslContext, sslErrorHandler))
+
+  /** Configures the server with TLS, using the provided `SSLContext` and its
+    * default `SSLParameters`
     */
   def withSslContext(sslContext: SSLContext): Self =
-    copy(sslConfig = new ContextOnly[F](sslContext))
+    withSslContext(sslContext, PartialFunction.empty)
+
+  /** Configures the server with TLS, using the provided `SSLContext` and `SSLParameters`.
+    *
+    * @param sslErrorHandler function that runs if an error occurs during the TLS handshake. Default behavior is to log the error.
+    */
+  def withSslContextAndParameters(
+      sslContext: SSLContext,
+      sslParameters: SSLParameters,
+      sslErrorHandler: PartialFunction[Throwable, Unit] = PartialFunction.empty,
+  ): Self =
+    copy(sslConfig = new ContextWithParameters[F](sslContext, sslParameters, sslErrorHandler))
 
   /** Configures the server with TLS, using the provided `SSLContext` and `SSLParameters`. */
   def withSslContextAndParameters(sslContext: SSLContext, sslParameters: SSLParameters): Self =
-    copy(sslConfig = new ContextWithParameters[F](sslContext, sslParameters))
+    withSslContextAndParameters(sslContext, sslParameters, PartialFunction.empty)
 
   def withoutSsl: Self =
     copy(sslConfig = new NoSsl[F]())
@@ -277,7 +299,7 @@ class BlazeServerBuilder[F[_]] private (
 
   private def pipelineFactory(
       scheduler: TickWheelExecutor,
-      engineConfig: Option[(SSLContext, SSLEngine => Unit)],
+      engineConfig: Option[(SSLContextWithExtras, SSLEngine => Unit)],
       dispatcher: Dispatcher[F],
   )(conn: SocketConnection): Future[LeafBuilder[ByteBuffer]] = {
     def requestAttributes(secure: Boolean, optionalSslEngine: Option[SSLEngine]): () => Vault =
@@ -365,7 +387,7 @@ class BlazeServerBuilder[F[_]] private (
       executionContextConfig.getExecutionContext[F].flatMap { executionContext =>
         engineConfig match {
           case Some((ctx, configure)) =>
-            val engine = ctx.createSSLEngine()
+            val engine = ctx.context.createSSLEngine()
             engine.setUseClientMode(false)
             configure(engine)
 
@@ -373,7 +395,8 @@ class BlazeServerBuilder[F[_]] private (
               if (isHttp2Enabled) http2Stage(executionContext, engine).map(LeafBuilder(_))
               else http1Stage(executionContext, secure = true, engine.some).map(LeafBuilder(_))
 
-            leafBuilder.map(_.prepend(new SSLStage(engine)))
+            leafBuilder
+              .map(_.prepend(new SSLStage(engine, SSLStageDefaults.MaxWrite, ctx.errorHandler)))
 
           case None =>
             if (isHttp2Enabled)
@@ -497,8 +520,17 @@ object BlazeServerBuilder {
   private def defaultThreadSelectorFactory: ThreadFactory =
     threadFactory(name = n => s"blaze-selector-${n}", daemon = false)
 
+  private case class SSLContextWithExtras(
+      context: SSLContext,
+      errorHandler: PartialFunction[Throwable, Unit],
+  )
+  private object SSLContextWithExtras {
+    def onlyContext(context: SSLContext): SSLContextWithExtras =
+      apply(context, PartialFunction.empty)
+  }
+
   private sealed trait SslConfig[F[_]] {
-    def makeContext: F[Option[SSLContext]]
+    def makeContext: F[Option[SSLContextWithExtras]]
     def configureEngine(sslEngine: SSLEngine): Unit
     def isSecure: Boolean
   }
@@ -511,7 +543,7 @@ object BlazeServerBuilder {
       clientAuth: SSLClientAuthMode,
   )(implicit F: Sync[F])
       extends SslConfig[F] {
-    def makeContext: F[Option[SSLContext]] =
+    def makeContext: F[Option[SSLContextWithExtras]] =
       F.delay {
         val ksStream = new FileInputStream(keyStore.path)
         val ks = KeyStore.getInstance("JKS")
@@ -540,24 +572,43 @@ object BlazeServerBuilder {
 
         val context = SSLContext.getInstance(protocol)
         context.init(kmf.getKeyManagers, tmf.orNull, null)
-        context.some
+        SSLContextWithExtras(context, PartialFunction.empty).some
       }
     def configureEngine(engine: SSLEngine): Unit =
       configureEngineFromSslClientAuthMode(engine, clientAuth)
     def isSecure: Boolean = true
   }
 
-  private class ContextOnly[F[_]](sslContext: SSLContext)(implicit F: Applicative[F])
+  private class ContextOnly[F[_]](
+      sslContext: SSLContext,
+      sslErrorHandler: PartialFunction[Throwable, Unit],
+  )(implicit F: Applicative[F])
       extends SslConfig[F] {
-    def makeContext: F[Option[SSLContext]] = F.pure(sslContext.some)
+
+    /** Constructor for backwards compatibility */
+    def this(sslContext: SSLContext)(implicit F: Applicative[F]) =
+      this(sslContext, PartialFunction.empty)
+
+    def makeContext: F[Option[SSLContextWithExtras]] =
+      F.pure(SSLContextWithExtras(sslContext, sslErrorHandler).some)
     def configureEngine(engine: SSLEngine): Unit = ()
     def isSecure: Boolean = true
   }
 
-  private class ContextWithParameters[F[_]](sslContext: SSLContext, sslParameters: SSLParameters)(
-      implicit F: Applicative[F]
+  private class ContextWithParameters[F[_]](
+      sslContext: SSLContext,
+      sslParameters: SSLParameters,
+      sslErrorHandler: PartialFunction[Throwable, Unit],
+  )(implicit
+      F: Applicative[F]
   ) extends SslConfig[F] {
-    def makeContext: F[Option[SSLContext]] = F.pure(sslContext.some)
+
+    /** Constructor for backwards compatibility */
+    def this(sslContext: SSLContext, sslParameters: SSLParameters)(implicit F: Applicative[F]) =
+      this(sslContext, sslParameters, PartialFunction.empty)
+
+    def makeContext: F[Option[SSLContextWithExtras]] =
+      F.pure(SSLContextWithExtras(sslContext, sslErrorHandler).some)
     def configureEngine(engine: SSLEngine): Unit = engine.setSSLParameters(sslParameters)
     def isSecure: Boolean = true
   }
@@ -565,14 +616,15 @@ object BlazeServerBuilder {
   private class ContextWithClientAuth[F[_]](sslContext: SSLContext, clientAuth: SSLClientAuthMode)(
       implicit F: Applicative[F]
   ) extends SslConfig[F] {
-    def makeContext: F[Option[SSLContext]] = F.pure(sslContext.some)
+    def makeContext: F[Option[SSLContextWithExtras]] =
+      F.pure(SSLContextWithExtras.onlyContext(sslContext).some)
     def configureEngine(engine: SSLEngine): Unit =
       configureEngineFromSslClientAuthMode(engine, clientAuth)
     def isSecure: Boolean = true
   }
 
   private class NoSsl[F[_]]()(implicit F: Applicative[F]) extends SslConfig[F] {
-    def makeContext: F[Option[SSLContext]] = F.pure(None)
+    def makeContext: F[Option[SSLContextWithExtras]] = F.pure(None)
     def configureEngine(engine: SSLEngine): Unit = ()
     def isSecure: Boolean = false
   }
