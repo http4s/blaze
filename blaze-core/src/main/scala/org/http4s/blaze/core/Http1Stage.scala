@@ -26,6 +26,7 @@ import org.http4s.Entity.Empty
 import org.http4s.Header
 import org.http4s.Header.Raw
 import org.http4s.Headers
+import org.http4s.HttpVersion
 import org.http4s.InvalidBodyException
 import org.http4s.Method
 import org.http4s.Request
@@ -67,6 +68,7 @@ private[blaze] trait Http1Stage[F[_]] { self: TailStage[ByteBuffer] =>
   protected def contentComplete(): Boolean
 
   /** Check Connection header and add applicable headers to response */
+  @deprecated("Use checkRequestCloseConnection(Request) instead", "0.23.17")
   protected final def checkCloseConnection(conn: Connection, rr: StringWriter): Boolean =
     if (conn.hasKeepAlive) { // connection, look to the request
       logger.trace("Found Keep-Alive header")
@@ -82,6 +84,32 @@ private[blaze] trait Http1Stage[F[_]] { self: TailStage[ByteBuffer] =>
       rr << "Connection:close\r\n"
       true
     }
+
+  private[http4s] final def checkRequestCloseConnection(req: Request[F]): Boolean = {
+    val conn = req.headers.get[Connection]
+    if (conn.fold(false)(_.hasClose)) {
+      logger.trace(s"Closing ${conn} due to explicit close option in request's Connection header")
+      true
+    } else if (req.httpVersion >= HttpVersion.`HTTP/1.1`) {
+      logger.trace(s"Keeping ${conn} alive per default behavior of HTTP >= 1.1")
+      false
+    } else if (req.httpVersion == HttpVersion.`HTTP/1.0`) {
+      if (conn.fold(false)(_.hasKeepAlive)) {
+        logger.trace(
+          s"Keeping ${conn} alive due to explicit keep-alive option in request's Connection header"
+        )
+        false
+      } else {
+        logger.trace(s"Closing ${conn} per default behavior of HTTP/1.0")
+        true
+      }
+    } else {
+      // It would be strange to serve HTTP/0.x, but we need a value and
+      // this is the rule.
+      logger.trace(s"Closing ${conn} for HTTP < 1.0")
+      true
+    }
+  }
 
   /** Get the proper body encoder based on the request */
   protected final def getEncoder(

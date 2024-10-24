@@ -245,12 +245,7 @@ private[blaze] class Http1ServerStage[F[_]](
     // Need to decide which encoder and if to close on finish
     val closeOnFinish = respConn
       .map(_.hasClose)
-      .orElse {
-        req.headers.get[Connection].map(checkCloseConnection(_, rr))
-      }
-      .getOrElse(
-        parser.minorVersion() == 0
-      ) // Finally, if nobody specifies, http 1.0 defaults to close
+      .getOrElse(checkRequestCloseConnection(req))
 
     // choose a body encoder. Will add a Transfer-Encoding header if necessary
     val bodyEncoder: Http1Writer[F] =
@@ -274,10 +269,14 @@ private[blaze] class Http1ServerStage[F[_]](
             case _ => // nop
           }
 
-        // add KeepAlive to Http 1.0 responses if the header isn't already present
-        rr << (if (!closeOnFinish && parser.minorVersion() == 0 && respConn.isEmpty)
-                 "Connection: keep-alive\r\n\r\n"
-               else "\r\n")
+        closeOnFinish match {
+          case true if respConn.isEmpty =>
+            rr << "Connection: close\r\n\r\n"
+          case false if parser.minorVersion() == 0 && respConn.isEmpty =>
+            rr << "Connection: keep-alive\r\n\r\n"
+          case _ =>
+            rr << "\r\n"
+        }
 
         new BodylessWriter[F](this, closeOnFinish)
       } else
