@@ -200,10 +200,9 @@ private final class Http1Connection[F[_]](
           if (userAgent.nonEmpty && !req.headers.contains[`User-Agent`])
             rr << userAgent.get << "\r\n"
 
-          val mustClose: Boolean = req.headers.get[HConnection] match {
-            case Some(conn) => checkCloseConnection(conn, rr)
-            case None => getHttpMinor(req) == 0
-          }
+          val mustClose: Boolean = checkRequestCloseConnection(req)
+          if (mustClose)
+            rr << "Connection: close\r\n"
 
           val writeRequest: F[Boolean] = getChunkEncoder(req, mustClose, rr)
             .write(rr, req.entity)
