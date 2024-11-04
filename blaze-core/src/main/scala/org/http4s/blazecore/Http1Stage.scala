@@ -60,6 +60,7 @@ private[http4s] trait Http1Stage[F[_]] { self: TailStage[ByteBuffer] =>
   protected def contentComplete(): Boolean
 
   /** Check Connection header and add applicable headers to response */
+  @deprecated("Use checkConnectionPersistence(Option[Connection], Int, Writer) instead", "0.23.17")
   protected final def checkCloseConnection(conn: Connection, rr: StringWriter): Boolean =
     if (conn.hasKeepAlive) { // connection, look to the request
       logger.trace("Found Keep-Alive header")
@@ -73,6 +74,42 @@ private[http4s] trait Http1Stage[F[_]] { self: TailStage[ByteBuffer] =>
         s"Unknown connection header: '${conn.value}'. Closing connection upon completion."
       )
       rr << "Connection:close\r\n"
+      true
+    }
+
+  /** Checks whether the connection should be closed per the request's Connection header
+    * and the HTTP version.
+    *
+    * As a side effect, writes a "Connection: close" header to the StringWriter if
+    * the request explicitly requests the connection is closed.
+    *
+    * @see [[https://datatracker.ietf.org/doc/html/rfc9112#name-persistence RFC 9112, Section 9.3, Persistence]]
+    */
+  private[http4s] final def checkRequestCloseConnection(
+      conn: Option[Connection],
+      minorVersion: Int,
+      rr: Writer,
+  ): Boolean =
+    if (conn.fold(false)(_.hasClose)) {
+      logger.trace(s"Closing ${conn} due to explicit close option in request's Connection header")
+      // This side effect doesn't really belong here, but is relied
+      // upon in multiple places as we look for the encoder.  The
+      // related problem of writing the keep-alive header in HTTP/1.0
+      // is handled elsewhere.
+      if (minorVersion >= 1) {
+        rr << "Connection: close\r\n"
+      }
+      true
+    } else if (minorVersion >= 1) {
+      logger.trace(s"Keeping ${conn} alive per default behavior of HTTP >= 1.1")
+      false
+    } else if (conn.fold(false)(_.hasKeepAlive)) {
+      logger.trace(
+        s"Keeping ${conn} alive due to explicit keep-alive option in request's Connection header"
+      )
+      false
+    } else {
+      logger.trace(s"Closing ${conn} per default behavior of HTTP/1.0")
       true
     }
 
