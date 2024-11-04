@@ -31,6 +31,7 @@ import org.http4s.Uri.RegName
 import org.http4s.blaze.core.Http1Stage
 import org.http4s.blaze.core.IdleTimeoutStage
 import org.http4s.blaze.core.util.Http1Writer
+import org.http4s.blaze.core.util.NullWriter
 import org.http4s.blaze.pipeline.Command.EOF
 import org.http4s.client.RequestKey
 import org.http4s.headers.Host
@@ -200,10 +201,8 @@ private final class Http1Connection[F[_]](
           if (userAgent.nonEmpty && !req.headers.contains[`User-Agent`])
             rr << userAgent.get << "\r\n"
 
-          val mustClose: Boolean = req.headers.get[HConnection] match {
-            case Some(conn) => checkCloseConnection(conn, rr)
-            case None => getHttpMinor(req) == 0
-          }
+          val mustClose: Boolean =
+            checkRequestCloseConnection(req.headers.get[HConnection], getHttpMinor(req), NullWriter)
 
           val writeRequest: F[Boolean] = getChunkEncoder(req, mustClose, rr)
             .write(rr, req.entity)

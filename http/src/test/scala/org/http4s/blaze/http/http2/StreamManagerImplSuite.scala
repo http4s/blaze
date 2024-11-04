@@ -61,7 +61,7 @@ class StreamManagerImplSuite extends BlazeTestSuite {
     )
 
     // Since the streams are closed stream operations should fail
-    val hs = HeadersFrame(Priority.NoPriority, false, Seq.empty)
+    val hs = HeadersFrame(Priority.NoPriority, endStream = false, Seq.empty)
     s1.writeRequest(hs).value match {
       case Some(Failure(`ex`)) => ()
       case _ => fail("Unexpected writeRequest result found")
@@ -80,8 +80,8 @@ class StreamManagerImplSuite extends BlazeTestSuite {
     val os4 = tools.streamManager.newOutboundStream()
 
     // each needs to write some data to initialize
-    os2.writeRequest(HeadersFrame(Priority.NoPriority, false, Seq.empty))
-    val f4 = os4.writeRequest(HeadersFrame(Priority.NoPriority, false, Seq.empty))
+    os2.writeRequest(HeadersFrame(Priority.NoPriority, endStream = false, Seq.empty))
+    val f4 = os4.writeRequest(HeadersFrame(Priority.NoPriority, endStream = false, Seq.empty))
 
     val f = tools.streamManager.drain(2, Http2Exception.NO_ERROR.goaway("bye-bye"))
     assertEquals(f.isCompleted, false)
@@ -115,7 +115,7 @@ class StreamManagerImplSuite extends BlazeTestSuite {
 
     tools.streamManager
       .newOutboundStream()
-      .writeRequest(HeadersFrame(Priority.NoPriority, false, Seq.empty))
+      .writeRequest(HeadersFrame(Priority.NoPriority, endStream = false, Seq.empty))
       .value match {
       case Some(Failure(ex: Http2StreamException)) =>
         assertEquals(ex.code, REFUSED_STREAM.code)
@@ -205,7 +205,7 @@ class StreamManagerImplSuite extends BlazeTestSuite {
     assert(tools.streamManager.get(1).isEmpty)
     assert(tools.streamManager.get(3).isEmpty)
 
-    val hs = HeadersFrame(Priority.NoPriority, false, Seq.empty)
+    val hs = HeadersFrame(Priority.NoPriority, endStream = false, Seq.empty)
     oss1.writeRequest(hs)
     oss3.writeRequest(hs)
 
@@ -288,7 +288,7 @@ class StreamManagerImplSuite extends BlazeTestSuite {
     "A StreamManagerImpl flow windows should handle successful flow window updates for the session"
   ) {
     var sessionAcked: Option[Int] = None
-    val tools = new MockTools(true) {
+    val tools = new MockTools(isClient = true) {
       override lazy val sessionFlowControl: SessionFlowControl = new MockSessionFlowControl {
         override def sessionOutboundAcked(count: Int): Option[Http2Exception] = {
           sessionAcked = Some(count)
@@ -305,7 +305,7 @@ class StreamManagerImplSuite extends BlazeTestSuite {
     "A StreamManagerImpl flow windows should handle failed flow window updates for the session"
   ) {
     var sessionAcked: Option[Int] = None
-    val tools = new MockTools(true) {
+    val tools = new MockTools(isClient = true) {
       override lazy val sessionFlowControl: SessionFlowControl = new MockSessionFlowControl {
         override def sessionOutboundAcked(count: Int): Option[Http2Exception] = {
           sessionAcked = Some(count)
@@ -330,7 +330,7 @@ class StreamManagerImplSuite extends BlazeTestSuite {
 
     tools.streamManager
       .newOutboundStream()
-      .writeRequest(HeadersFrame(Priority.NoPriority, true, Seq.empty))
+      .writeRequest(HeadersFrame(Priority.NoPriority, endStream = true, Seq.empty))
 
     tools.streamManager.handlePushPromise(streamId = 1, promisedId = 2, headers = Seq.empty) match {
       case Error(ex: Http2StreamException) =>

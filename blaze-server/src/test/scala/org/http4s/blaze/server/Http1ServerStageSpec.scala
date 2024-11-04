@@ -279,8 +279,8 @@ class Http1ServerStageSpec extends CatsEffectSuite {
 
   fixture.test("Http1ServerStage: routes should Add a date header") { tw =>
     val routes = HttpRoutes
-      .of[IO] { case req =>
-        IO.pure(Response(entity = req.entity))
+      .of[IO] { case r =>
+        IO.pure(Response(entity = r.entity))
       }
       .orNotFound
 
@@ -297,8 +297,8 @@ class Http1ServerStageSpec extends CatsEffectSuite {
   fixture.test("Http1ServerStage: routes should Honor an explicitly added date header") { tw =>
     val dateHeader = Date(HttpDate.Epoch)
     val routes = HttpRoutes
-      .of[IO] { case req =>
-        IO.pure(Response(entity = req.entity).withHeaders(dateHeader))
+      .of[IO] { case r =>
+        IO.pure(Response(entity = r.entity).withHeaders(dateHeader))
       }
       .orNotFound
 
@@ -318,8 +318,8 @@ class Http1ServerStageSpec extends CatsEffectSuite {
     "Http1ServerStage: routes should Handle routes that echos full request body for non-chunked"
   ) { tw =>
     val routes = HttpRoutes
-      .of[IO] { case req =>
-        IO.pure(Response(entity = req.entity))
+      .of[IO] { case r =>
+        IO.pure(Response(entity = r.entity))
       }
       .orNotFound
 
@@ -340,8 +340,8 @@ class Http1ServerStageSpec extends CatsEffectSuite {
     "Http1ServerStage: routes should Handle routes that consumes the full request body for non-chunked"
   ) { tw =>
     val routes = HttpRoutes
-      .of[IO] { case req =>
-        req.as[String].map { s =>
+      .of[IO] { case r =>
+        r.as[String].map { s =>
           Response().withEntity("Result: " + s)
         }
       }
@@ -421,8 +421,8 @@ class Http1ServerStageSpec extends CatsEffectSuite {
     "Http1ServerStage: routes should Handle routes that runs the request body for non-chunked"
   ) { tw =>
     val routes = HttpRoutes
-      .of[IO] { case req =>
-        req.body.compile.drain *> IO.pure(Response().withEntity("foo"))
+      .of[IO] { case r =>
+        r.body.compile.drain *> IO.pure(Response().withEntity("foo"))
       }
       .orNotFound
 
@@ -446,8 +446,8 @@ class Http1ServerStageSpec extends CatsEffectSuite {
   fixture.test("Http1ServerStage: routes should Not die when two requests come in back to back") {
     tw =>
       val routes = HttpRoutes
-        .of[IO] { case req =>
-          IO.pure(Response(entity = req.entity))
+        .of[IO] { case r =>
+          IO.pure(Response(entity = r.entity))
         }
         .orNotFound
 
@@ -472,8 +472,8 @@ class Http1ServerStageSpec extends CatsEffectSuite {
     "Http1ServerStage: routes should Handle using the request body as the response body"
   ) { tw =>
     val routes = HttpRoutes
-      .of[IO] { case req =>
-        IO.pure(Response(entity = req.entity))
+      .of[IO] { case r =>
+        IO.pure(Response(entity = r.entity))
       }
       .orNotFound
 
@@ -503,17 +503,17 @@ class Http1ServerStageSpec extends CatsEffectSuite {
 
   private val routes2 = HttpRoutes
     .of[IO] {
-      case req if req.pathInfo === path"/foo" =>
+      case r if r.pathInfo === path"/foo" =>
         for {
-          _ <- req.body.compile.drain
-          hs <- req.trailerHeaders
+          _ <- r.body.compile.drain
+          hs <- r.trailerHeaders
           resp <- Ok(hs.headers.mkString)
         } yield resp
 
-      case req if req.pathInfo === path"/bar" =>
+      case r if r.pathInfo === path"/bar" =>
         for {
           // Don't run the body
-          hs <- req.trailerHeaders
+          hs <- r.trailerHeaders
           resp <- Ok(hs.headers.mkString)
         } yield resp
     }

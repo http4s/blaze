@@ -153,23 +153,26 @@ class BlazeServerMtlsSpec extends CatsEffectSuite {
     */
   blazeServer(TLSParameters(needClientAuth = true).toSSLParameters)
     .test("Server should send mTLS request correctly") { server =>
-      assertEquals(get(server, "/dummy", true), "CN=Test,OU=Test,O=Test,L=CA,ST=CA,C=US")
+      assertEquals(get(server, "/dummy"), "CN=Test,OU=Test,O=Test,L=CA,ST=CA,C=US")
     }
   blazeServer(TLSParameters(needClientAuth = true).toSSLParameters)
     .test("Server should fail for invalid client auth") { server =>
-      assertNotEquals(get(server, "/dummy", false), "CN=Test,OU=Test,O=Test,L=CA,ST=CA,C=US")
+      assertNotEquals(
+        get(server, "/dummy", clientAuth = false),
+        "CN=Test,OU=Test,O=Test,L=CA,ST=CA,C=US",
+      )
     }
 
   /** Test "requested" auth mode
     */
   blazeServer(TLSParameters(wantClientAuth = true).toSSLParameters)
     .test("Server should send mTLS request correctly with optional auth") { server =>
-      assertEquals(get(server, "/dummy", true), "CN=Test,OU=Test,O=Test,L=CA,ST=CA,C=US")
+      assertEquals(get(server, "/dummy"), "CN=Test,OU=Test,O=Test,L=CA,ST=CA,C=US")
     }
 
   blazeServer(TLSParameters(wantClientAuth = true).toSSLParameters)
     .test("Server should send mTLS request correctly without clientAuth") { server =>
-      assertEquals(get(server, "/noauth", false), "success")
+      assertEquals(get(server, "/noauth", clientAuth = false), "success")
     }
 
 }

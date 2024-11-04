@@ -245,12 +245,9 @@ private[blaze] class Http1ServerStage[F[_]](
     // Need to decide which encoder and if to close on finish
     val closeOnFinish = respConn
       .map(_.hasClose)
-      .orElse {
-        req.headers.get[Connection].map(checkCloseConnection(_, rr))
-      }
       .getOrElse(
-        parser.minorVersion() == 0
-      ) // Finally, if nobody specifies, http 1.0 defaults to close
+        checkRequestCloseConnection(req.headers.get[Connection], parser.minorVersion(), rr)
+      )
 
     // choose a body encoder. Will add a Transfer-Encoding header if necessary
     val bodyEncoder: Http1Writer[F] =
@@ -289,7 +286,7 @@ private[blaze] class Http1ServerStage[F[_]](
           rr,
           parser.minorVersion(),
           closeOnFinish,
-          false,
+          omitEmptyContentLength = false,
         )
 
     // TODO: pool shifting: https://github.com/http4s/http4s/blob/main/core/src/main/scala/org/http4s/internal/package.scala#L45

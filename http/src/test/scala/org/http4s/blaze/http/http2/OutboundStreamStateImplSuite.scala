@@ -52,7 +52,7 @@ class OutboundStreamStateImplSuite extends BlazeTestSuite {
     import ctx._
 
     intercept[IllegalStateException](streamState.streamId)
-    streamState.writeRequest(HeadersFrame(Priority.NoPriority, true, Seq.empty))
+    streamState.writeRequest(HeadersFrame(Priority.NoPriority, endStream = true, Seq.empty))
     assertEquals(streamManager.get(streamState.streamId), Some(streamState))
     assertEquals(streamState.streamId, 1) // it's hard coded to 1
   }
@@ -60,12 +60,13 @@ class OutboundStreamStateImplSuite extends BlazeTestSuite {
   test("An OutboundStreamState should fail write requests if we fail to acquire a stream ID") {
     val ctx = new Ctx(Connection.Running) {
       override lazy val tools = new MockTools {
-        override lazy val idManager = StreamIdManager.create(true, -10) // should be depleted
+        override lazy val idManager =
+          StreamIdManager.create(isClient = true, -10) // should be depleted
       }
     }
     import ctx._
 
-    val f = streamState.writeRequest(HeadersFrame(Priority.NoPriority, true, Seq.empty))
+    val f = streamState.writeRequest(HeadersFrame(Priority.NoPriority, endStream = true, Seq.empty))
 
     assertEquals(tools.drainGracePeriod, Some(Duration.Inf))
     assertEquals(streamManager.size, 0)
@@ -82,7 +83,7 @@ class OutboundStreamStateImplSuite extends BlazeTestSuite {
     val ctx = new Ctx(Connection.Closed)
     import ctx._
 
-    val f = streamState.writeRequest(HeadersFrame(Priority.NoPriority, true, Seq.empty))
+    val f = streamState.writeRequest(HeadersFrame(Priority.NoPriority, endStream = true, Seq.empty))
 
     assertEquals(streamManager.size, 0)
     f.value match {

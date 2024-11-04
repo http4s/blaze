@@ -14,20 +14,14 @@
  * limitations under the License.
  */
 
-package org.http4s.blaze.http.http2
+package org.http4s
+package blaze.core.util
 
-import java.nio.ByteBuffer
+import org.http4s.util.Writer
 
-object HeaderCodecHelpers {
-  def encodeHeaders(hs: Seq[(String, String)], maxTableSize: Int): ByteBuffer = {
-    val enc = new HeaderEncoder(maxTableSize)
-    enc.encodeHeaders(hs)
-  }
-
-  def decodeHeaders(bb: ByteBuffer, maxTableSize: Int): Seq[(String, String)] = {
-    val dec =
-      new HeaderDecoder(Int.MaxValue, discardOverflowHeaders = false, maxTableSize = maxTableSize)
-    dec.decode(bb, -1, endHeaders = true)
-    dec.finish()
-  }
+/** A writer that does not write.  Not to be confused with an
+  * [[EntityBodyWriter]].
+  */
+private[blaze] object NullWriter extends Writer {
+  def append(s: String): NullWriter.type = NullWriter
 }

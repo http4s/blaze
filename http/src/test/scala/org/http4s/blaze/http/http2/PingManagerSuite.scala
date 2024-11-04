@@ -26,7 +26,7 @@ import scala.util.{Failure, Success}
 
 class PingManagerSuite extends BlazeTestSuite {
   test("A PingManager should write a ping") {
-    val tools = new MockTools(false)
+    val tools = new MockTools(isClient = false)
 
     // send one ping
     val f1 = tools.pingManager.ping()
@@ -55,7 +55,7 @@ class PingManagerSuite extends BlazeTestSuite {
   }
 
   test("A PingManager should fail for a ping already in progress") {
-    val tools = new MockTools(false)
+    val tools = new MockTools(isClient = false)
 
     // send one ping
     val f1 = tools.pingManager.ping()
@@ -82,7 +82,7 @@ class PingManagerSuite extends BlazeTestSuite {
   }
 
   test("A PingManager should fail if the write fails") {
-    val tools = new MockTools(true) {
+    val tools = new MockTools(isClient = true) {
       override val writeController: MockWriteController = new MockWriteController {
         override def write(data: Seq[ByteBuffer]): Boolean = false
       }
@@ -96,7 +96,7 @@ class PingManagerSuite extends BlazeTestSuite {
   }
 
   test("A PingManager should closing fails pending ping") {
-    val tools = new MockTools(true)
+    val tools = new MockTools(isClient = true)
 
     // ping should fail
     val f = tools.pingManager.ping()

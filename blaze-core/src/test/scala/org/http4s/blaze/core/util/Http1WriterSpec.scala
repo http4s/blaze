@@ -133,13 +133,25 @@ class Http1WriterSpec extends CatsEffectSuite with DispatcherIOFixture {
   runNonChunkedTests(
     "CachingChunkWriter",
     implicit dispatcher =>
-      tail => new CachingChunkWriter[IO](tail, IO.pure(Headers.empty), 1024 * 1024, false),
+      tail =>
+        new CachingChunkWriter[IO](
+          tail,
+          IO.pure(Headers.empty),
+          1024 * 1024,
+          omitEmptyContentLength = false,
+        ),
   )
 
   runNonChunkedTests(
     "CachingStaticWriter",
     implicit dispatcher =>
-      tail => new CachingChunkWriter[IO](tail, IO.pure(Headers.empty), 1024 * 1024, false),
+      tail =>
+        new CachingChunkWriter[IO](
+          tail,
+          IO.pure(Headers.empty),
+          1024 * 1024,
+          omitEmptyContentLength = false,
+        ),
   )
 
   def builder(tail: TailStage[ByteBuffer])(implicit D: Dispatcher[IO]): FlushingChunkWriter[IO] =

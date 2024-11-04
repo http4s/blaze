@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package org.http4s.blaze.core
+package org.http4s.blaze.core.util
 
 import cats.effect.Async
 import org.http4s.blaze.util.Execution.directec
@@ -23,7 +23,7 @@ import scala.concurrent.Future
 import scala.util.Failure
 import scala.util.Success
 
-package object util {
+object `package` {
 
   /** Used as a terminator for streams built from repeatEval */
   private[blaze] val End = Right(None)

@@ -69,7 +69,7 @@ final class ALPNServerSelector(
     try {
       val protocol = Option(engine.getApplicationProtocol()).getOrElse(selector(Set.empty))
       val b = builder(protocol)
-      this.replaceTail(b, true)
+      this.replaceTail(b, startup = true)
       ()
     } catch {
       case NonFatal(t) =>
