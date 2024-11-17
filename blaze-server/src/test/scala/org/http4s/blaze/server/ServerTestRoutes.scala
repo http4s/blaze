@@ -57,12 +57,18 @@ object ServerTestRoutes extends Http4sDsl[IO] {
       // ///////////////////////////////
       (
         "GET /get HTTP/1.0\r\nConnection:close\r\n\r\n",
-        (Status.Ok, Set(length(3), textPlain, connClose), "get"),
+        (Status.Ok, Set(length(3), textPlain), "get"),
       ),
       // ///////////////////////////////
       (
         "GET /get HTTP/1.1\r\nConnection:close\r\n\r\n",
         (Status.Ok, Set(length(3), textPlain, connClose), "get"),
+      ),
+      // ///////////////////////////////
+      // Don't close connection on an unrecognized Connection header
+      (
+        "GET /get HTTP/1.1\r\nConnection: fiddle-faddle\r\n\r\n",
+        (Status.Ok, Set(length(3), textPlain), "get"),
       ),
       ("GET /chunked HTTP/1.1\r\n\r\n", (Status.Ok, Set(textPlain, chunked), "chunk")),
       // ///////////////////////////////
@@ -75,7 +81,7 @@ object ServerTestRoutes extends Http4sDsl[IO] {
       // ///////////////////////////////
       (
         "GET /chunked HTTP/1.0\r\nConnection:Close\r\n\r\n",
-        (Status.Ok, Set(textPlain, connClose), "chunk"),
+        (Status.Ok, Set(textPlain), "chunk"),
       ),
       // ////////////////////////////// Requests with a body //////////////////////////////////////
       (
@@ -90,7 +96,7 @@ object ServerTestRoutes extends Http4sDsl[IO] {
       // ///////////////////////////////
       (
         "POST /post HTTP/1.0\r\nConnection:close\r\nContent-Length:3\r\n\r\nfoo",
-        (Status.Ok, Set(textPlain, length(4), connClose), "post"),
+        (Status.Ok, Set(textPlain, length(4)), "post"),
       ),
       // ///////////////////////////////
       (
@@ -119,7 +125,7 @@ object ServerTestRoutes extends Http4sDsl[IO] {
       // /////////////////////////////// Check corner cases //////////////////
       (
         "GET /twocodings HTTP/1.0\r\nConnection:Close\r\n\r\n",
-        (Status.Ok, Set(textPlain, length(3), connClose), "Foo"),
+        (Status.Ok, Set(textPlain, length(3)), "Foo"),
       ),
       // /////////////// Work with examples that don't have a body //////////////////////
       ("GET /notmodified HTTP/1.1\r\n\r\n", (Status.NotModified, Set(), "")),

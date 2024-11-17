@@ -56,7 +56,7 @@ class BlazeServerSuite extends CatsEffectSuite {
       val s =
         new ScheduledThreadPoolExecutor(
           2,
-          threadFactory(i => s"blaze-server-suite-scheduler-$i", true),
+          threadFactory(i => s"blaze-server-suite-scheduler-$i", daemon = true),
         )
       s.setKeepAliveTime(10L, TimeUnit.SECONDS)
       s.allowCoreThreadTimeOut(true)

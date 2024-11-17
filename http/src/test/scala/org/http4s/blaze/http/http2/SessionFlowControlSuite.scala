@@ -43,7 +43,7 @@ class SessionFlowControlSuite extends BlazeTestSuite {
   }
 
   private def flowControl(local: Http2Settings, remote: Http2Settings): TestSessionFlowControl = {
-    val core = new MockTools(true /* doesn't matter */ ) {
+    val core = new MockTools(isClient = true /* doesn't matter */ ) {
       override lazy val remoteSettings: MutableHttp2Settings = MutableHttp2Settings(remote)
       override lazy val localSettings: MutableHttp2Settings = MutableHttp2Settings(local)
     }

@@ -30,8 +30,11 @@ class HeaderDecoderSuite extends BlazeTestSuite {
     val bb =
       HeaderCodecHelpers.encodeHeaders(testHeaders, Http2Settings.DefaultSettings.HEADER_TABLE_SIZE)
     val dec =
-      new HeaderDecoder(Int.MaxValue, false, Http2Settings.DefaultSettings.HEADER_TABLE_SIZE)
-    assertEquals(dec.decode(bb, -1, true), Continue)
+      new HeaderDecoder(
+        Int.MaxValue,
+        discardOverflowHeaders = false,
+        maxTableSize = Http2Settings.DefaultSettings.HEADER_TABLE_SIZE)
+    assertEquals(dec.decode(bb, -1, endHeaders = true), Continue)
     assertEquals(dec.finish(), testHeaders)
 
     // Decode another block to make sure we don't contaminate the first
@@ -39,7 +42,7 @@ class HeaderDecoderSuite extends BlazeTestSuite {
     val nextEncodedHs =
       HeaderCodecHelpers.encodeHeaders(nextHs, Http2Settings.DefaultSettings.HEADER_TABLE_SIZE)
 
-    assertEquals(dec.decode(nextEncodedHs, -1, true), Continue)
+    assertEquals(dec.decode(nextEncodedHs, -1, endHeaders = true), Continue)
     assertEquals(dec.finish(), nextHs)
   }
 
@@ -47,12 +50,15 @@ class HeaderDecoderSuite extends BlazeTestSuite {
     val bb =
       HeaderCodecHelpers.encodeHeaders(testHeaders, Http2Settings.DefaultSettings.HEADER_TABLE_SIZE)
     val dec =
-      new HeaderDecoder(Int.MaxValue, false, Http2Settings.DefaultSettings.HEADER_TABLE_SIZE)
+      new HeaderDecoder(
+        Int.MaxValue,
+        discardOverflowHeaders = false,
+        maxTableSize = Http2Settings.DefaultSettings.HEADER_TABLE_SIZE)
 
     val b1 = BufferTools.takeSlice(bb, bb.remaining() / 2)
 
-    assertEquals(dec.decode(b1, -1, false), Continue)
-    assertEquals(dec.decode(bb, -1, true), Continue)
+    assertEquals(dec.decode(b1, -1, endHeaders = false), Continue)
+    assertEquals(dec.decode(bb, -1, endHeaders = true), Continue)
     assertEquals(dec.finish(), testHeaders)
   }
 
@@ -60,10 +66,13 @@ class HeaderDecoderSuite extends BlazeTestSuite {
     val bb =
       HeaderCodecHelpers.encodeHeaders(testHeaders, Http2Settings.DefaultSettings.HEADER_TABLE_SIZE)
     val dec =
-      new HeaderDecoder(Int.MaxValue, false, Http2Settings.DefaultSettings.HEADER_TABLE_SIZE)
+      new HeaderDecoder(
+        Int.MaxValue,
+        discardOverflowHeaders = false,
+        maxTableSize = Http2Settings.DefaultSettings.HEADER_TABLE_SIZE)
 
     assertEquals(dec.currentHeaderBlockSize, 0)
-    assertEquals(dec.decode(bb, -1, true), Continue)
+    assertEquals(dec.decode(bb, -1, endHeaders = true), Continue)
     assertEquals(dec.currentHeaderBlockSize, headersBlockSize)
     assertEquals(dec.headerListSizeOverflow, false)
 
@@ -77,11 +86,12 @@ class HeaderDecoderSuite extends BlazeTestSuite {
       Http2Settings.DefaultSettings.HEADER_TABLE_SIZE
     )
     val dec = new HeaderDecoder(
-      headersBlockSize, /*discardOnOverflow*/ true,
-      Http2Settings.DefaultSettings.HEADER_TABLE_SIZE
+      headersBlockSize,
+      discardOverflowHeaders = true,
+      maxTableSize = Http2Settings.DefaultSettings.HEADER_TABLE_SIZE
     )
 
-    assertEquals(dec.decode(bb, -1, true), Continue)
+    assertEquals(dec.decode(bb, -1, endHeaders = true), Continue)
     assert(dec.headerListSizeOverflow)
     assertEquals(dec.finish(), testHeaders) // didn't get the second round
     assertEquals(dec.headerListSizeOverflow, false)
