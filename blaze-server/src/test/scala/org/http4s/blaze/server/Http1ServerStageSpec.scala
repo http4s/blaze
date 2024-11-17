@@ -279,8 +279,8 @@ class Http1ServerStageSpec extends CatsEffectSuite {
 
   fixture.test("Http1ServerStage: routes should Add a date header") { tw =>
     val routes = HttpRoutes
-      .of[IO] { case req =>
-        IO.pure(Response(entity = req.entity))
+      .of[IO] { case r =>
+        IO.pure(Response(entity = r.entity))
       }
       .orNotFound
 
@@ -297,8 +297,8 @@ class Http1ServerStageSpec extends CatsEffectSuite {
   fixture.test("Http1ServerStage: routes should Honor an explicitly added date header") { tw =>
     val dateHeader = Date(HttpDate.Epoch)
     val routes = HttpRoutes
-      .of[IO] { case req =>
-        IO.pure(Response(entity = req.entity).withHeaders(dateHeader))
+      .of[IO] { case r =>
+        IO.pure(Response(entity = r.entity).withHeaders(dateHeader))
       }
       .orNotFound
 
@@ -318,8 +318,8 @@ class Http1ServerStageSpec extends CatsEffectSuite {
     "Http1ServerStage: routes should Handle routes that echos full request body for non-chunked"
   ) { tw =>
     val routes = HttpRoutes
-      .of[IO] { case req =>
-        IO.pure(Response(entity = req.entity))
+      .of[IO] { case r =>
+        IO.pure(Response(entity = r.entity))
       }
       .orNotFound
 
@@ -446,8 +446,8 @@ class Http1ServerStageSpec extends CatsEffectSuite {
   fixture.test("Http1ServerStage: routes should Not die when two requests come in back to back") {
     tw =>
       val routes = HttpRoutes
-        .of[IO] { case req =>
-          IO.pure(Response(entity = req.entity))
+        .of[IO] { case r =>
+          IO.pure(Response(entity = r.entity))
         }
         .orNotFound
 
@@ -472,8 +472,8 @@ class Http1ServerStageSpec extends CatsEffectSuite {
     "Http1ServerStage: routes should Handle using the request body as the response body"
   ) { tw =>
     val routes = HttpRoutes
-      .of[IO] { case req =>
-        IO.pure(Response(entity = req.entity))
+      .of[IO] { case r =>
+        IO.pure(Response(entity = r.entity))
       }
       .orNotFound
 
@@ -605,7 +605,7 @@ class Http1ServerStageSpec extends CatsEffectSuite {
         cancelableStarted <- Deferred[IO, Unit]
         cancelableCanceled <- Deferred[IO, Unit]
         app = HttpApp[IO] {
-          case req if req.pathInfo === path"/uncancelable" =>
+          case r if r.pathInfo === path"/uncancelable" =>
             uncancelableStarted.complete(()) *>
               IO.uncancelable { poll =>
                 poll(uncancelableCanceled.complete(())) *>
