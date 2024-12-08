@@ -116,7 +116,7 @@ private[http4s] trait WebSocketSupport[F[_]] extends Http1ServerStage[F] {
                       .prepend(new WSFrameAggregator)
                       .prepend(new WebSocketDecoder(maxBufferSize.getOrElse(0)))
 
-                  this.replaceTail(segment, true)
+                  this.replaceTail(segment, startup = true)
 
                 case Failure(t) => fatalError(t, "Error writing Websocket upgrade response")
               }(executionContext)

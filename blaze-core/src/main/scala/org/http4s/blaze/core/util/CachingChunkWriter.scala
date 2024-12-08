@@ -103,7 +103,7 @@ private[blaze] class CachingChunkWriter[F[_]](
           pipe.channelWrite(hbuff)
         }
       } else if (!chunk.isEmpty) {
-        writeBodyChunk(chunk, true).flatMap { _ =>
+        writeBodyChunk(chunk, flush = true).flatMap { _ =>
           writeTrailer(pipe, trailer)
         }
       } else {

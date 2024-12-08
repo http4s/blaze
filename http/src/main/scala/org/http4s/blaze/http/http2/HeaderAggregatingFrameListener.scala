@@ -109,7 +109,7 @@ private abstract class HeaderAggregatingFrameListener(
     else if (buffer.remaining > localSettings.maxHeaderListSize)
       headerSizeError(buffer.remaining, streamId)
     else if (endHeaders) {
-      val r = headerDecoder.decode(buffer, streamId, true)
+      val r = headerDecoder.decode(buffer, streamId, endHeaders = true)
       if (!r.success) r
       else {
         val hs = headerDecoder.finish()
@@ -129,7 +129,7 @@ private abstract class HeaderAggregatingFrameListener(
     if (localSettings.maxHeaderListSize < buffer.remaining)
       headerSizeError(buffer.remaining, streamId)
     else if (endHeaders) {
-      val r = headerDecoder.decode(buffer, streamId, true)
+      val r = headerDecoder.decode(buffer, streamId, endHeaders = true)
       if (!r.success) r
       else {
         val hs = headerDecoder.finish()
@@ -157,7 +157,7 @@ private abstract class HeaderAggregatingFrameListener(
         val newBuffer = BufferTools.concatBuffers(hInfo.buffer, buffer)
 
         if (endHeaders) {
-          val r = headerDecoder.decode(newBuffer, streamId, true)
+          val r = headerDecoder.decode(newBuffer, streamId, endHeaders = true)
           if (!r.success) r
           else {
             val hs = headerDecoder.finish()

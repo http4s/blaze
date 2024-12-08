@@ -22,7 +22,6 @@ import cats.effect._
 import cats.effect.kernel.Deferred
 import cats.effect.std.Dispatcher
 import cats.effect.std.Queue
-import cats.syntax.all._
 import fs2.Stream
 import munit.CatsEffectSuite
 import org.http4s.BuildInfo

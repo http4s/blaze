@@ -20,7 +20,6 @@ package client
 import cats.effect._
 import cats.effect.kernel.Resource
 import cats.effect.std.Dispatcher
-import cats.implicits.catsSyntaxApplicativeId
 import cats.syntax.all._
 import fs2.Stream
 import io.netty.channel.ChannelHandlerContext
@@ -141,9 +140,9 @@ trait BlazeClientBase extends CatsEffectSuite {
     )
 
   val server: IOFixture[ServerScaffold[IO]] =
-    ResourceSuiteLocalFixture("http", makeScaffold(2, false))
+    ResourceSuiteLocalFixture("http", makeScaffold(2, secure = false))
   val secureServer: IOFixture[ServerScaffold[IO]] =
-    ResourceSuiteLocalFixture("https", makeScaffold(1, true))
+    ResourceSuiteLocalFixture("https", makeScaffold(1, secure = true))
 
   override val munitFixtures = List(
     server,

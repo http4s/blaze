@@ -325,9 +325,9 @@ class BufferToolsSuite extends FunSuite {
     assert(BufferTools.areDirectOrEmpty(buffs))
   }
 
-  private def getBuffers(count: Int): Array[ByteBuffer] = getBuffersBase(count, false)
+  private def getBuffers(count: Int): Array[ByteBuffer] = getBuffersBase(count, direct = false)
 
-  private def getDirect(count: Int): Array[ByteBuffer] = getBuffersBase(count, true)
+  private def getDirect(count: Int): Array[ByteBuffer] = getBuffersBase(count, direct = true)
 
   private def getBuffersBase(count: Int, direct: Boolean): Array[ByteBuffer] =
     (0 until count).map { _ =>
