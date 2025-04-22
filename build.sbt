@@ -342,7 +342,7 @@ lazy val examples = Project("blaze-examples", file("examples"))
     libraryDependencies ++= Seq(
       "org.http4s" %% "http4s-dsl" % http4sVersion,
       "org.http4s" %% "http4s-circe" % http4sVersion,
-      "io.circe" %% "circe-generic" % "0.14.10",
+      "io.circe" %% "circe-generic" % "0.14.13",
     ),
     Test / scalafixConfig := Some(file(".scalafix.test.conf")),
   )
