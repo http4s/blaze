@@ -28,7 +28,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest]
+        os: [ubuntu-22.04]
         scala: [3, 2.13]
         java: [temurin@8]
     runs-on: ${{ matrix.os }}
