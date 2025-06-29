@@ -1,7 +1,7 @@
 import Dependencies._
 
-val Scala213 = "2.13.15"
-val Scala3 = "3.3.4"
+val Scala213 = "2.13.16"
+val Scala3 = "3.3.6"
 val http4sVersion = "1.0.0-M44"
 val log4catsVersion = "2.7.1"
 val munitCatsEffectVersion = "2.1.0"
@@ -147,7 +147,7 @@ lazy val examples = Project("blaze-examples", file("examples"))
     libraryDependencies ++= Seq(
       "org.http4s" %% "http4s-dsl" % http4sVersion,
       "org.http4s" %% "http4s-circe" % http4sVersion,
-      "io.circe" %% "circe-generic" % "0.14.10",
+      "io.circe" %% "circe-generic" % "0.14.13",
       "org.typelevel" %% "log4cats-slf4j" % log4catsVersion,
     ),
     Test / scalafixConfig := Some(file(".scalafix.test.conf")),
