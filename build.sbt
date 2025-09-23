@@ -2,7 +2,7 @@ import Dependencies._
 
 val Scala213 = "2.13.16"
 val Scala3 = "3.3.6"
-val http4sVersion = "1.0.0-M44"
+val http4sVersion = "1.0.0-M45"
 val log4catsVersion = "2.7.1"
 val munitCatsEffectVersion = "2.1.0"
 
