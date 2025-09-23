@@ -198,7 +198,7 @@ class Http1ServerStageSpec extends CatsEffectSuite {
     val path = "GET /sync/422 HTTP/1.1\r\nConnection:keep-alive\r\n\r\n"
     runError(tw, path).map { case (s, c, _) =>
       assert(!c)
-      assertEquals(s, UnprocessableEntity)
+      assertEquals(s, UnprocessableContent)
     }
   }
 
@@ -214,7 +214,7 @@ class Http1ServerStageSpec extends CatsEffectSuite {
     val path = "GET /async/422 HTTP/1.1\r\nConnection:keep-alive\r\n\r\n"
     runError(tw, path).map { case (s, c, _) =>
       assert(!c)
-      assertEquals(s, UnprocessableEntity)
+      assertEquals(s, UnprocessableContent)
     }
   }
 
