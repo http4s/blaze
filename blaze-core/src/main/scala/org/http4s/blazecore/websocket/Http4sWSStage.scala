@@ -41,8 +41,10 @@ import org.http4s.websocket.WebSocketSeparatePipe
 import java.net.ProtocolException
 import java.util.concurrent.atomic.AtomicBoolean
 import scala.concurrent.ExecutionContext
+import scala.concurrent.duration.FiniteDuration
 import scala.util.Failure
 import scala.util.Success
+import cats.effect.syntax.all._
 
 private[http4s] class Http4sWSStage[F[_]](
     ws: WebSocket[F],
@@ -50,6 +52,7 @@ private[http4s] class Http4sWSStage[F[_]](
     deadSignal: SignallingRef[F, Boolean],
     writeSemaphore: Semaphore[F],
     dispatcher: Dispatcher[F],
+    autoPing: Option[(FiniteDuration, WebSocketFrame.Ping)],
 )(implicit F: Async[F])
     extends TailStage[WebSocketFrame] {
 
@@ -164,8 +167,8 @@ private[http4s] class Http4sWSStage[F[_]](
           receiveSend(inputstream)
       }
 
-    val wsStream =
-      receiveSent
+    val wsStream = {
+      val s = receiveSent
         .evalMap(snkFun)
         .drain
         .interruptWhen(deadSignal)
@@ -175,6 +178,17 @@ private[http4s] class Http4sWSStage[F[_]](
         .onFinalizeWeak(sendClose)
         .compile
         .drain
+
+      autoPing match {
+        case None => s
+        case Some((delay, f)) =>
+          snkFun(f)
+            .delayBy(delay)
+            .foreverM
+            .background
+            .use((_: F[Outcome[F, Throwable, Nothing]]) => s)
+      }
+    }
 
     val result = F.handleErrorWith(wsStream) {
       case EOF =>
@@ -203,6 +217,7 @@ object Http4sWSStage {
       sentClose: AtomicBoolean,
       deadSignal: SignallingRef[F, Boolean],
       dispatcher: Dispatcher[F],
+      autoPing: Option[(FiniteDuration, WebSocketFrame.Ping)],
   )(implicit F: Async[F]): F[Http4sWSStage[F]] =
-    Semaphore[F](1L).map(t => new Http4sWSStage(ws, sentClose, deadSignal, t, dispatcher))
+    Semaphore[F](1L).map(t => new Http4sWSStage(ws, sentClose, deadSignal, t, dispatcher, autoPing))
 }
