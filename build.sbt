@@ -5,7 +5,7 @@ val Scala212 = "2.12.21"
 val Scala213 = "2.13.18"
 val Scala3 = "3.3.7"
 val http4sVersion = "0.23.33"
-val munitCatsEffectVersion = "2.1.0"
+val munitCatsEffectVersion = "2.2.0"
 
 ThisBuild / resolvers +=
   "s01 snapshots".at("https://s01.oss.sonatype.org/content/repositories/snapshots/")
