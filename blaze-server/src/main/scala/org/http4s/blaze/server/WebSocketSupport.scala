@@ -27,12 +27,14 @@ import org.http4s.blazecore.websocket.Http4sWSStage
 import org.http4s.blazecore.websocket.WebSocketHandshake
 import org.http4s.headers._
 import org.http4s.websocket.WebSocketContext
+import org.http4s.websocket.WebSocketFrame
 import org.typelevel.vault.Key
 
 import java.nio.ByteBuffer
 import java.nio.charset.StandardCharsets._
 import java.util.concurrent.atomic.AtomicBoolean
 import scala.concurrent.Future
+import scala.concurrent.duration.FiniteDuration
 import scala.util.Failure
 import scala.util.Success
 
@@ -44,6 +46,8 @@ private[http4s] trait WebSocketSupport[F[_]] extends Http1ServerStage[F] {
   implicit val dispatcher: Dispatcher[F]
 
   protected def maxBufferSize: Option[Int]
+
+  protected def autoPing: Option[(FiniteDuration, WebSocketFrame.Ping)]
 
   override protected def renderResponse(
       req: Request[F],
@@ -111,6 +115,7 @@ private[http4s] trait WebSocketSupport[F[_]] extends Http1ServerStage[F] {
                         deadSignal,
                         writeSemaphore,
                         dispatcher,
+                        autoPing,
                       )
                     ) // TODO: there is a constructor
                       .prepend(new WSFrameAggregator)
