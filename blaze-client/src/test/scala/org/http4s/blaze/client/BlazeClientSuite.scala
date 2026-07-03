@@ -264,22 +264,21 @@ class BlazeClientSuite extends BlazeClientBase {
 
   test("Blaze HTTP/1 client should raise a ResponseException when it receives an unexpected EOF") {
     Network[IO]
-      .bind()
-      .map { socket =>
-        val addr = socket.address.asIpUnsafe
+      .serverResource(address = None, port = None, options = Nil)
+      .map { case (addr, sockets) =>
         val uri =
           Uri.fromString(s"http://[${addr.host.toString()}]:${addr.port.toString()}/eof").yolo
         val req = Request[IO](uri = uri)
-        (req, socket)
+        (req, sockets)
       }
-      .use { case (req, socket) =>
+      .use { case (req, sockets) =>
         Stream
           .eval(builder(1).resource.use { client =>
             interceptMessageIO[SocketException](
               s"HTTP connection closed: ${RequestKey.fromRequest(req)}"
             )(client.expect[String](req))
           })
-          .concurrently(socket.accept.evalMap(s => s.endOfInput *> s.endOfOutput))
+          .concurrently(sockets.evalMap(s => s.endOfInput *> s.endOfOutput))
           .compile
           .drain
       }
