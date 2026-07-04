@@ -266,7 +266,8 @@ class BlazeClientSuite extends BlazeClientBase {
     Network[IO]
       .serverResource(address = None, port = None, options = Nil)
       .map { case (addr, sockets) =>
-        val uri = Uri.fromString(s"http://[${addr.host}]:${addr.port}/eof").yolo
+        val uri =
+          Uri.fromString(s"http://[${addr.host.toString()}]:${addr.port.toString()}/eof").yolo
         val req = Request[IO](uri = uri)
         (req, sockets)
       }
