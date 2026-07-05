@@ -25,7 +25,7 @@ import java.net.ProtocolException
 import java.nio.ByteBuffer
 
 private class WebSocketDecoder(val maxBufferSize: Int = 0) // unbounded
-    extends FrameTranscoder(isClient = false)
+    extends FrameTranscoder(isClient = false, maxFrameSize = maxBufferSize)
     with ByteToObjectStage[WebSocketFrame] {
 
   val name = "Websocket Decoder"
