@@ -39,6 +39,7 @@ private[http4s] final class Http1ServerParser[F[_]](
   private val headers = new ListBuffer[Header.ToRaw]
   private val trailers = new ListBuffer[Header.ToRaw]
   private var isChunkedMessage = false
+  private var sawContentLength = false
   private var sawTransferEncoding = false
 
   def minorVersion(): Int = minor
@@ -131,6 +132,14 @@ private[http4s] final class Http1ServerParser[F[_]](
           throw new BadMessage("Unsupported Transfer-Encoding")
         }
         sawTransferEncoding = true
+      } else if (name.equalsIgnoreCase("Content-Length")) {
+        // RFC 9112 §6.3: reject a repeated Content-Length header. The single
+        // field-value is validated as 1*DIGIT by the underlying parser.
+        if (sawContentLength) {
+          shutdownParser()
+          throw new BadMessage("Duplicate Content-Length")
+        }
+        sawContentLength = true
       }
       headers += name -> value
     }
@@ -144,6 +153,7 @@ private[http4s] final class Http1ServerParser[F[_]](
     headers.clear()
     trailers.clear()
     isChunkedMessage = false
+    sawContentLength = false
     sawTransferEncoding = false
     super.reset()
   }
