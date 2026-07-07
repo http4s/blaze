@@ -36,12 +36,20 @@ private[http4s] final class Http1ServerParser[F[_]](
   private var method: String = _
   private var minor: Int = -1
   private val headers = new ListBuffer[Header.ToRaw]
+  private val trailers = new ListBuffer[Header.ToRaw]
+  private var isChunkedMessage = false
 
   def minorVersion(): Int = minor
 
   def doParseRequestLine(buff: ByteBuffer): Boolean = parseRequestLine(buff)
 
-  def doParseHeaders(buff: ByteBuffer): Boolean = parseHeaders(buff)
+  def doParseHeaders(buff: ByteBuffer): Boolean = {
+    val done = parseHeaders(buff)
+    // Capture whether the message declared chunked transfer-coding before any
+    // body/trailer parsing may flip the underlying parser state to END.
+    if (done) isChunkedMessage = isChunked
+    done
+  }
 
   def doParseContent(buff: ByteBuffer): Option[ByteBuffer] = Option(parseContent(buff))
 
@@ -54,7 +62,7 @@ private[http4s] final class Http1ServerParser[F[_]](
     val protocol = if (minorVersion() == 1) HttpVersion.`HTTP/1.1` else HttpVersion.`HTTP/1.0`
 
     val attrsWithTrailers =
-      if (minorVersion() == 1 && isChunked)
+      if (minorVersion() == 1 && isChunkedMessage)
         attrs.insert(
           Message.Keys.TrailerHeaders[F],
           F.defer[Headers] {
@@ -64,7 +72,7 @@ private[http4s] final class Http1ServerParser[F[_]](
                   "Attempted to collect trailers before the body was complete."
                 )
               )
-            else F.pure(Headers(headers.result()))
+            else F.pure(Headers(trailers.result()))
           },
         )
       else attrs // Won't have trailers without a chunked body
@@ -96,7 +104,14 @@ private[http4s] final class Http1ServerParser[F[_]](
   // ///////////////// Stateful methods for the HTTP parser ///////////////////
   override protected def headerComplete(name: String, value: String): Boolean = {
     logger.trace(s"Received header '$name: $value'")
-    headers += name -> value
+    // RFC 7230 §4.1.2 / RFC 9112 §7.1.2: trailer fields MUST NOT be merged into
+    // the request header section. Route them to a separate buffer regardless of
+    // the order in which the caller invokes body parsing vs. collectMessage.
+    if (inChunkedHeaders()) {
+      trailers += name -> value
+    } else {
+      headers += name -> value
+    }
     false
   }
 
@@ -105,6 +120,8 @@ private[http4s] final class Http1ServerParser[F[_]](
     method = null
     minor = -1
     headers.clear()
+    trailers.clear()
+    isChunkedMessage = false
     super.reset()
   }
 }
