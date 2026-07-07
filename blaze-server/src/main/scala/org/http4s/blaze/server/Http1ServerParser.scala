@@ -141,6 +141,12 @@ private[http4s] final class Http1ServerParser[F[_]](
         }
         sawContentLength = true
       }
+      // §6.3 – a request with both Transfer-Encoding and Content-Length is
+      // malformed and MUST be rejected.
+      if (sawTransferEncoding && sawContentLength) {
+        shutdownParser()
+        throw new BadMessage("Both Content-Length and Transfer-Encoding present")
+      }
       headers += name -> value
     }
     false
