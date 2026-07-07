@@ -19,6 +19,7 @@ package blaze.server
 
 import cats.effect._
 import cats.syntax.all._
+import org.http4s.blaze.http.parser.BaseExceptions.BadMessage
 import org.log4s.Logger
 import org.typelevel.vault._
 
@@ -110,6 +111,16 @@ private[http4s] final class Http1ServerParser[F[_]](
     if (inChunkedHeaders()) {
       trailers += name -> value
     } else {
+      // Enforce request-header framing rules (RFC 9112 §5 / §6.1 / §6.3) at the
+      // point each field is first interpreted.
+      //
+      // §5.2 – a field-line that begins with SP/HTAB is obs-fold; the
+      // low-level parser does not implement folding and surfaces it as a
+      // field-name with leading whitespace. Servers MUST reject it.
+      if (name.isEmpty || name.charAt(0) == ' ' || name.charAt(0) == '\t') {
+        shutdownParser()
+        throw new BadMessage("Illegal header field-line (obs-fold)")
+      }
       headers += name -> value
     }
     false
