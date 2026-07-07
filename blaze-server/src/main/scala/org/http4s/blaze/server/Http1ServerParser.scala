@@ -39,6 +39,7 @@ private[http4s] final class Http1ServerParser[F[_]](
   private val headers = new ListBuffer[Header.ToRaw]
   private val trailers = new ListBuffer[Header.ToRaw]
   private var isChunkedMessage = false
+  private var sawTransferEncoding = false
 
   def minorVersion(): Int = minor
 
@@ -121,6 +122,16 @@ private[http4s] final class Http1ServerParser[F[_]](
         shutdownParser()
         throw new BadMessage("Illegal header field-line (obs-fold)")
       }
+      if (name.equalsIgnoreCase("Transfer-Encoding")) {
+        // §6.1 – only "chunked" is understood; the "identity" token was
+        // removed from the specification and any other coding is not
+        // supported.
+        if (!value.equalsIgnoreCase("chunked")) {
+          shutdownParser()
+          throw new BadMessage("Unsupported Transfer-Encoding")
+        }
+        sawTransferEncoding = true
+      }
       headers += name -> value
     }
     false
@@ -133,6 +144,7 @@ private[http4s] final class Http1ServerParser[F[_]](
     headers.clear()
     trailers.clear()
     isChunkedMessage = false
+    sawTransferEncoding = false
     super.reset()
   }
 }
