@@ -124,21 +124,8 @@ private[http4s] final class Http1ServerParser[F[_]](
         throw new BadMessage("Illegal header field-line (obs-fold)")
       }
       if (name.equalsIgnoreCase("Transfer-Encoding")) {
-        // §6.1 – only "chunked" is understood; the "identity" token was
-        // removed from the specification and any other coding is not
-        // supported.
-        if (!value.equalsIgnoreCase("chunked")) {
-          shutdownParser()
-          throw new BadMessage("Unsupported Transfer-Encoding")
-        }
         sawTransferEncoding = true
       } else if (name.equalsIgnoreCase("Content-Length")) {
-        // RFC 9112 §6.3: reject a repeated Content-Length header. The single
-        // field-value is validated as 1*DIGIT by the underlying parser.
-        if (sawContentLength) {
-          shutdownParser()
-          throw new BadMessage("Duplicate Content-Length")
-        }
         sawContentLength = true
       }
       // §6.3 – a request with both Transfer-Encoding and Content-Length is

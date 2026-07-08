@@ -237,18 +237,9 @@ public abstract class BodyAndHeaderParser extends ParserBase {
                 if (_endOfContent != EndOfContent.END) {
                   _endOfContent = EndOfContent.CHUNKED_CONTENT;
                 }
-              } else if (value.equalsIgnoreCase("identity")) {
-                // TODO: remove support for identity Transfer-Encoding.
-                // It  was removed from the specification before it was published
-                // (althoug some traces of it remained until errata was released:
-                // http://lists.w3.org/Archives/Public/ietf-http-wg-old/2001SepDec/0018.html
-                // if (_endOfContent == EndOfContent.UNKNOWN_CONTENT) {
-                //     _endOfContent = EndOfContent.EOF_CONTENT;
-                // }
               } else {
                 shutdownParser();
-                // TODO: server should return 501 - https://tools.ietf.org/html/rfc7230#page-30
-                throw new BadMessage("Unknown Transfer-Encoding: " + value);
+                throw new BadMessage("Unsupported Transfer-Encoding");
               }
             } else if (_endOfContent != EndOfContent.CHUNKED_CONTENT
                 && _headerName.equalsIgnoreCase("Content-Length")) {
