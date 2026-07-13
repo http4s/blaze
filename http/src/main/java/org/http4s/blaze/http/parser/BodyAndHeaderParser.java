@@ -180,6 +180,10 @@ public abstract class BodyAndHeaderParser extends ParserBase {
         case HEADER_IN_NAME:
           for (ch = next(in, false); ch != ':' && ch != HttpTokens.LF; ch = next(in, false)) {
             if (ch == HttpTokens.EMPTY_BUFF) return false;
+            if (!HttpTokens.isTchar(ch)) {
+              shutdownParser();
+              throw new BadMessage("Invalid header name");
+            }
             putChar(ch);
           }
 
@@ -198,15 +202,9 @@ public abstract class BodyAndHeaderParser extends ParserBase {
             return true;
           }
 
-          if (ch == HttpTokens.LF) { // Valueless header
-            String name = getString();
-            clearBuffer();
-
-            if (headerComplete(name, "")) {
-              return true;
-            }
-
-            continue headerLoop; // Still parsing Header name
+          if (ch == HttpTokens.LF) {
+            shutdownParser();
+            throw new BadMessage("Invalid header");
           }
 
           _headerName = getString();

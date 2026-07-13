@@ -66,4 +66,31 @@ public final class HttpTokens {
   public static boolean isWhiteSpace(char ch) {
     return ch == HttpTokens.SPACE || ch == HttpTokens.TAB;
   }
+
+  public static boolean isTchar(char ch) {
+    if ((ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z') || (ch >= '0' && ch <= '9')) {
+      return true;
+    }
+    // https://www.rfc-editor.org/info/rfc9110/#name-tokens
+    switch (ch) {
+      case '!':
+      case '#':
+      case '$':
+      case '%':
+      case '&':
+      case '\'':
+      case '*':
+      case '+':
+      case '-':
+      case '.':
+      case '^':
+      case '_':
+      case '`':
+      case '|':
+      case '~':
+        return true;
+      default:
+        return false;
+    }
+  }
 }
