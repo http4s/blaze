@@ -103,6 +103,8 @@ private[http4s] trait WebSocketSupport[F[_]] extends Http1ServerStage[F] {
                   val deadSignal = dispatcher.unsafeRunSync(SignallingRef[F, Boolean](false))
                   val writeSemaphore = dispatcher.unsafeRunSync(Semaphore[F](1L))
                   val sentClose = new AtomicBoolean(false)
+                  val wsMaxMessageSize =
+                    maxBufferSize.getOrElse(WSFrameAggregator.DefaultMaxMessageSize)
                   val segment =
                     LeafBuilder(
                       new Http4sWSStage[F](
@@ -113,12 +115,8 @@ private[http4s] trait WebSocketSupport[F[_]] extends Http1ServerStage[F] {
                         dispatcher,
                       )
                     ) // TODO: there is a constructor
-                      .prepend(
-                        new WSFrameAggregator(
-                          maxBufferSize.getOrElse(WSFrameAggregator.DefaultMaxMessageSize)
-                        )
-                      )
-                      .prepend(new WebSocketDecoder(maxBufferSize.getOrElse(0)))
+                      .prepend(new WSFrameAggregator(wsMaxMessageSize))
+                      .prepend(new WebSocketDecoder(wsMaxMessageSize))
 
                   this.replaceTail(segment, startup = true)
 
