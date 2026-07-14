@@ -119,6 +119,9 @@ private[http4s] class Http4sWSStage[F[_]](
         case t: UnknownOpcodeException =>
           F.delay(logger.error(t)("Decoded a websocket frame with an unknown opcode")) *>
             F.fromEither(Close(1002))
+        case t: WebSocketMessageTooLargeException =>
+          F.delay(logger.error(t)("Aggregated websocket message exceeds size limit")) *>
+            F.fromEither(Close(1009))
         case t: ProtocolException =>
           F.delay(logger.error(t)("Websocket protocol violation")) *> F.fromEither(Close(1002))
       }

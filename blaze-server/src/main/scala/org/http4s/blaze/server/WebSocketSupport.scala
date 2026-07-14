@@ -113,7 +113,11 @@ private[http4s] trait WebSocketSupport[F[_]] extends Http1ServerStage[F] {
                         dispatcher,
                       )
                     ) // TODO: there is a constructor
-                      .prepend(new WSFrameAggregator)
+                      .prepend(
+                        new WSFrameAggregator(
+                          maxBufferSize.getOrElse(WSFrameAggregator.DefaultMaxMessageSize)
+                        )
+                      )
                       .prepend(new WebSocketDecoder(maxBufferSize.getOrElse(0)))
 
                   this.replaceTail(segment, startup = true)
