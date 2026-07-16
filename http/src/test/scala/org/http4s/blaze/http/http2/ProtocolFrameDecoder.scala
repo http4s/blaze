@@ -22,6 +22,7 @@ import java.nio.ByteBuffer
 import org.http4s.blaze.http.http2.Http2Settings.Setting
 import org.http4s.blaze.http.http2.mocks.MockFrameListener
 
+@deprecated("HTTP/2 support is unmaintained and will be removed in a future version.", "0.23.18")
 private[http2] object ProtocolFrameDecoder {
   private[this] class Listener(inHeaderSequence: Boolean)
       extends MockFrameListener(inHeaderSequence) {

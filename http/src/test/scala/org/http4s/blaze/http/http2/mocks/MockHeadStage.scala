@@ -20,6 +20,7 @@ import org.http4s.blaze.pipeline.HeadStage
 import scala.collection.mutable
 import scala.concurrent.{Future, Promise}
 
+@deprecated("HTTP/2 support is unmaintained and will be removed in a future version.", "0.23.18")
 private[http2] class MockHeadStage[T] extends HeadStage[T] {
   override def name: String = "Head"
 

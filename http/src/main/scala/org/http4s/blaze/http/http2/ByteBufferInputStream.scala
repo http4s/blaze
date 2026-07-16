@@ -22,6 +22,7 @@ import java.nio.ByteBuffer
 /** Wrap a `ByteBuffer` in an `InputStream` interface. This is just an adapter to work with the
   * twitter hpack implementation. I would really like to get rid of it.
   */
+@deprecated("HTTP/2 support is unmaintained and will be removed in a future version.", "0.23.18")
 private final class ByteBufferInputStream(buffer: ByteBuffer) extends InputStream {
   private[this] var markSize = -1
 

@@ -24,6 +24,7 @@ import org.http4s.blaze.util.BufferTools
 
 import scala.util.{Failure, Success}
 
+@deprecated("HTTP/2 support is unmaintained and will be removed in a future version.", "0.23.18")
 class ServerPriorKnowledgeHandshakerSuite extends BlazeTestSuite {
   private def makeHandshaker(
       localSettings: ImmutableHttp2Settings

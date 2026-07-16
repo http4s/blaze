@@ -18,6 +18,7 @@ package org.http4s.blaze.http.http2
 
 import java.nio.ByteBuffer
 
+@deprecated("HTTP/2 support is unmaintained and will be removed in a future version.", "0.23.18")
 object HeaderCodecHelpers {
   def encodeHeaders(hs: Seq[(String, String)], maxTableSize: Int): ByteBuffer = {
     val enc = new HeaderEncoder(maxTableSize)

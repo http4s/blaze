@@ -24,6 +24,7 @@ import org.http4s.blaze.http.http2.bits.{Flags, Masks}
 
 /* The job of the Http2FrameDecoder is to slice the ByteBuffers. It does
    not attempt to decode headers or perform any size limiting operations */
+@deprecated("HTTP/2 support is unmaintained and will be removed in a future version.", "0.23.18")
 private class FrameDecoder(localSettings: Http2Settings, listener: FrameListener) {
   import bits._
   import FrameDecoder._
@@ -310,6 +311,7 @@ private class FrameDecoder(localSettings: Http2Settings, listener: FrameListener
       listener.onContinuationFrame(streamId, Flags.END_HEADERS(flags), buffer.slice())
 }
 
+@deprecated("HTTP/2 support is unmaintained and will be removed in a future version.", "0.23.18")
 private object FrameDecoder {
 
   /** Get the length field of the frame, consuming the bytes from the buffer.

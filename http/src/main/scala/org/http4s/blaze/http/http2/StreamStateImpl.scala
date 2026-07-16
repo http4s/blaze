@@ -36,6 +36,7 @@ import scala.concurrent.{Future, Promise}
   *   attempt to enforce the semantics of the HTTP dispatch, specifically it doesn't enforce that
   *   HEADERS come before DATA, etc, and that duty belongs to the streams dispatcher.
   */
+@deprecated("HTTP/2 support is unmaintained and will be removed in a future version.", "0.23.18")
 private abstract class StreamStateImpl(session: SessionCore) extends StreamState {
   // State associated with the streams inbound data flow
   private[this] val pendingInboundMessages = new util.ArrayDeque[StreamFrame](1)
@@ -346,6 +347,7 @@ private abstract class StreamStateImpl(session: SessionCore) extends StreamState
   }
 }
 
+@deprecated("HTTP/2 support is unmaintained and will be removed in a future version.", "0.23.18")
 private object StreamStateImpl {
   // Cache this since it will be a common value
   private val SomeEOF: Some[Throwable] = Some(EOF)

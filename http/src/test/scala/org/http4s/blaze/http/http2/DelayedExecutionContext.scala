@@ -19,6 +19,7 @@ package org.http4s.blaze.http.http2
 import scala.collection.mutable
 import scala.concurrent.ExecutionContext
 
+@deprecated("HTTP/2 support is unmaintained and will be removed in a future version.", "0.23.18")
 class DelayedExecutionContext extends ExecutionContext {
   private[this] val pending = new mutable.Queue[Runnable]()
 

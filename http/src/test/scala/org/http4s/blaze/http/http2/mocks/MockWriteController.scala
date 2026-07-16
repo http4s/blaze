@@ -25,6 +25,7 @@ import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
 import scala.concurrent.Future
 
+@deprecated("HTTP/2 support is unmaintained and will be removed in a future version.", "0.23.18")
 private[http2] class MockWriteController extends WriteController {
   var closeCalled = false
   val observedInterests = new ListBuffer[WriteInterest]

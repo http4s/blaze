@@ -28,6 +28,7 @@ import org.http4s.blaze.http.http2.Http2Settings.Setting
   * Concurrency is not controlled by this type; it is expected that thread safety will be managed by
   * the [[ConnectionImpl]].
   */
+@deprecated("HTTP/2 support is unmaintained and will be removed in a future version.", "0.23.18")
 private class SessionFrameListener(
     session: SessionCore,
     isClient: Boolean,

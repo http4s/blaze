@@ -21,4 +21,5 @@ package org.http4s.blaze.http.http2
   * @note
   *   this is only a marker trait
   */
+@deprecated("HTTP/2 support is unmaintained and will be removed in a future version.", "0.23.18")
 private trait InboundStreamState extends StreamState

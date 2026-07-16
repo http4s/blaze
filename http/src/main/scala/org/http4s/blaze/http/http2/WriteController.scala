@@ -25,6 +25,7 @@ import scala.concurrent.Future
 // the boundaries of where one message starts and another begins.
 // This would allow us to prioritize messages (like PING responses).
 /** Generic interface used by HTTP2 types to write data */
+@deprecated("HTTP/2 support is unmaintained and will be removed in a future version.", "0.23.18")
 private trait WriteController {
 
   /** Register a [[WriteInterest]] with this listener to be invoked later once it is possible to

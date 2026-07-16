@@ -25,6 +25,7 @@ import org.http4s.blaze.testkit.BlazeTestSuite
 import scala.collection.mutable
 import scala.concurrent.{Future, Promise}
 
+@deprecated("HTTP/2 support is unmaintained and will be removed in a future version.", "0.23.18")
 class WriteControllerImplSuite extends BlazeTestSuite {
   private def mockData(i: Int): ByteBuffer =
     ByteBuffer.wrap {

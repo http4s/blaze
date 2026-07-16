@@ -19,8 +19,10 @@ package org.http4s.blaze.http.http2
 import org.http4s.blaze.http.http2.Http2Settings.Setting
 
 // TODO: these may form the basis of what gets written to the WriteListener
+@deprecated("HTTP/2 support is unmaintained and will be removed in a future version.", "0.23.18")
 sealed abstract class ProtocolFrame private extends Product with Serializable
 
+@deprecated("HTTP/2 support is unmaintained and will be removed in a future version.", "0.23.18")
 object ProtocolFrame {
   case class GoAway(lastHandleStream: Int, cause: Http2Exception) extends ProtocolFrame
 

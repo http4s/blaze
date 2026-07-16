@@ -22,6 +22,7 @@ import org.http4s.blaze.util.Execution
 import scala.concurrent.ExecutionContext
 import scala.concurrent.duration.Duration
 
+@deprecated("HTTP/2 support is unmaintained and will be removed in a future version.", "0.23.18")
 private[http2] class MockTools(isClient: Boolean) extends SessionCore {
   def flowStrategy: FlowStrategy = new DefaultFlowStrategy(localSettings)
 

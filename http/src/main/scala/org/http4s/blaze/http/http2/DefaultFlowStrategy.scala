@@ -18,6 +18,7 @@ package org.http4s.blaze.http.http2
 
 import org.http4s.blaze.http.http2.FlowStrategy.Increment
 
+@deprecated("HTTP/2 support is unmaintained and will be removed in a future version.", "0.23.18")
 final class DefaultFlowStrategy(localSettings: Http2Settings) extends FlowStrategy {
   override def checkSession(session: SessionFlowControl): Int =
     check(

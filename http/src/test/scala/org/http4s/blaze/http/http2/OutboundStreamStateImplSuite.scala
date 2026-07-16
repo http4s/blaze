@@ -22,6 +22,7 @@ import org.http4s.blaze.testkit.BlazeTestSuite
 import scala.concurrent.duration.Duration
 import scala.util.Failure
 
+@deprecated("HTTP/2 support is unmaintained and will be removed in a future version.", "0.23.18")
 class OutboundStreamStateImplSuite extends BlazeTestSuite {
 
   private class Ctx(connectionState: Connection.State) {

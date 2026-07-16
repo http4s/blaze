@@ -30,6 +30,7 @@ import Http2Settings.Setting
   * is 4 bytes long and the [[FrameListener]] would be expected to signal an error if the window
   * increment was 0 or the update was for an idle stream.
   */
+@deprecated("HTTP/2 support is unmaintained and will be removed in a future version.", "0.23.18")
 private trait FrameListener {
 
   /** Determine whether we are in the midst of a sequence of header and header continuation frames

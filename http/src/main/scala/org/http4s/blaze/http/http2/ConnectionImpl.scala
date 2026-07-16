@@ -35,6 +35,7 @@ import scala.util.{Failure, Success}
   *   the TailStage needs to be ready to go as this session will start reading from the channel
   *   immediately.
   */
+@deprecated("HTTP/2 support is unmaintained and will be removed in a future version.", "0.23.18")
 private final class ConnectionImpl(
     tailStage: TailStage[ByteBuffer],
     val localSettings: Http2Settings,

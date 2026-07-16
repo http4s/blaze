@@ -23,6 +23,7 @@ import org.http4s.blaze.util.BufferTools
 import scala.collection.mutable.ArrayBuffer
 
 /** A more humane interface for writing HTTP messages. */
+@deprecated("HTTP/2 support is unmaintained and will be removed in a future version.", "0.23.18")
 private final class FrameEncoder(remoteSettings: Http2Settings, headerEncoder: HeaderEncoder) {
   // Just a shortcut
   private[this] def maxFrameSize: Int = remoteSettings.maxFrameSize

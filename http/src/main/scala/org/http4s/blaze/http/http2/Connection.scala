@@ -23,6 +23,7 @@ import scala.concurrent.Future
 import scala.concurrent.duration.Duration
 
 /** Representation of the HTTP connection or session */
+@deprecated("HTTP/2 support is unmaintained and will be removed in a future version.", "0.23.18")
 private trait Connection {
 
   /** An estimate for the current quality of the connection
@@ -78,6 +79,7 @@ private trait Connection {
   def onClose: Future[Unit]
 }
 
+@deprecated("HTTP/2 support is unmaintained and will be removed in a future version.", "0.23.18")
 private[blaze] object Connection {
   sealed abstract class State extends Product with Serializable {
     final def closing: Boolean = !running

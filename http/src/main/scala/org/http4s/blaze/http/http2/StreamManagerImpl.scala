@@ -22,6 +22,7 @@ import org.http4s.blaze.pipeline.{Command, LeafBuilder}
 import scala.collection.mutable.HashMap
 import scala.concurrent.{Future, Promise}
 
+@deprecated("HTTP/2 support is unmaintained and will be removed in a future version.", "0.23.18")
 private final class StreamManagerImpl(
     session: SessionCore,
     inboundStreamBuilder: Option[Int => LeafBuilder[StreamFrame]]
