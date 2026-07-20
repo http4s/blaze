@@ -22,6 +22,7 @@ import org.http4s.blaze.http.http2.FlowStrategy.Increment
   *
   * A `FlowStrategy` will be shared among many sessions.
   */
+@deprecated("HTTP/2 support is unmaintained and will be removed in a future version.", "0.23.18")
 trait FlowStrategy {
 
   /** Decide if the session window needs to send a WINDOW_UPDATE frame
@@ -52,6 +53,7 @@ trait FlowStrategy {
   def checkStream(stream: StreamFlowWindow): Increment
 }
 
+@deprecated("HTTP/2 support is unmaintained and will be removed in a future version.", "0.23.18")
 object FlowStrategy {
   // Make the object private to restrict construction of
   // `Increment`s to the `makeIncrement` method

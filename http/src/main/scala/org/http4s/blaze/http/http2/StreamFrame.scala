@@ -21,6 +21,7 @@ package http2
 import java.nio.ByteBuffer
 
 /** Types that will be sent down to the Nodes of the Http2 session */
+@deprecated("HTTP/2 support is unmaintained and will be removed in a future version.", "0.23.18")
 sealed trait StreamFrame {
   def endStream: Boolean
   def flowBytes: Int
@@ -34,6 +35,7 @@ sealed trait StreamFrame {
   *   actual stream data. The `ByteBuffer` indexes may be modified by the receiver. The `ByteBuffer`
   *   indexes are considered owned by this DataFrame, but its data must not be modified.
   */
+@deprecated("HTTP/2 support is unmaintained and will be removed in a future version.", "0.23.18")
 case class DataFrame(endStream: Boolean, data: ByteBuffer) extends StreamFrame {
   def flowBytes: Int = data.remaining()
 }
@@ -47,6 +49,7 @@ case class DataFrame(endStream: Boolean, data: ByteBuffer) extends StreamFrame {
   * @param headers
   *   attached headers
   */
+@deprecated("HTTP/2 support is unmaintained and will be removed in a future version.", "0.23.18")
 case class HeadersFrame(priority: Priority, endStream: Boolean, headers: Headers)
     extends StreamFrame {
   override def flowBytes: Int = 0

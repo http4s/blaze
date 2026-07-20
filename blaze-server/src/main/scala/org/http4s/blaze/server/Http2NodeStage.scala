@@ -46,6 +46,7 @@ import scala.concurrent.duration.Duration
 import scala.concurrent.duration.FiniteDuration
 import scala.util._
 
+@deprecated("HTTP/2 support is unmaintained and will be removed in a future version.", "0.23.18")
 private class Http2NodeStage[F[_]](
     streamId: Int,
     timeout: Duration,

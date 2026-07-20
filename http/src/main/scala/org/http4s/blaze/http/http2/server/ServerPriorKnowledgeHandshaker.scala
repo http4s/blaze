@@ -25,6 +25,7 @@ import org.http4s.blaze.util.{BufferTools, Execution, StageTools}
 import scala.concurrent.Future
 import scala.util.Failure
 
+@deprecated("HTTP/2 support is unmaintained and will be removed in a future version.", "0.23.18")
 final class ServerPriorKnowledgeHandshaker(
     localSettings: ImmutableHttp2Settings,
     flowStrategy: FlowStrategy,

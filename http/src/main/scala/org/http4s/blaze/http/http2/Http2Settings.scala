@@ -27,6 +27,7 @@ import scala.collection.mutable
   * @see
   *   https://tools.ietf.org/html/rfc7540#section-6.5.2, where the doc strings were obtained.
   */
+@deprecated("HTTP/2 support is unmaintained and will be removed in a future version.", "0.23.18")
 sealed abstract class Http2Settings {
 
   /** Allows the sender to inform the remote endpoint of the maximum size of the header compression
@@ -82,6 +83,7 @@ sealed abstract class Http2Settings {
 }
 
 /** Immutable representation of [[Http2Settings]] for configuring clients and servers */
+@deprecated("HTTP/2 support is unmaintained and will be removed in a future version.", "0.23.18")
 case class ImmutableHttp2Settings(
     headerTableSize: Int,
     initialWindowSize: Int,
@@ -91,6 +93,7 @@ case class ImmutableHttp2Settings(
     maxHeaderListSize: Int
 ) extends Http2Settings
 
+@deprecated("HTTP/2 support is unmaintained and will be removed in a future version.", "0.23.18")
 object Http2Settings {
   type SettingValue = Int
 
@@ -192,6 +195,7 @@ object Http2Settings {
 }
 
 /** Internal mutable representation of the [[Http2Settings]] */
+@deprecated("HTTP/2 support is unmaintained and will be removed in a future version.", "0.23.18")
 private[blaze] final class MutableHttp2Settings private (
     var headerTableSize: Int,
     var initialWindowSize: Int,
@@ -229,6 +233,7 @@ private[blaze] final class MutableHttp2Settings private (
     s"MutableHttp2Settings(${toSeq.mkString(", ")})"
 }
 
+@deprecated("HTTP/2 support is unmaintained and will be removed in a future version.", "0.23.18")
 private object MutableHttp2Settings {
   private val logger = getLogger
 

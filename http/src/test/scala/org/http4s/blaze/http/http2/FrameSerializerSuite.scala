@@ -29,6 +29,7 @@ import org.http4s.blaze.util.BufferTools._
 import org.scalacheck.Prop._
 import org.scalacheck.{Arbitrary, Gen}
 
+@deprecated("HTTP/2 support is unmaintained and will be removed in a future version.", "0.23.18")
 class FrameSerializerSuite extends BlazeTestSuite with ScalaCheckSuite {
   import CodecUtils._
 

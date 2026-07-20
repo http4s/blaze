@@ -24,6 +24,7 @@ import org.http4s.blaze.util.{BufferTools, Execution}
 import scala.concurrent.{ExecutionContext, Future}
 
 /** Base type for performing the HTTP/2 prior knowledge handshake */
+@deprecated("HTTP/2 support is unmaintained and will be removed in a future version.", "0.23.18")
 abstract class PriorKnowledgeHandshaker[T](localSettings: ImmutableHttp2Settings)
     extends TailStage[ByteBuffer] {
   implicit protected final def ec: ExecutionContext = Execution.trampoline

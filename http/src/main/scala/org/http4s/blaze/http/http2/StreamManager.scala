@@ -24,6 +24,7 @@ import scala.concurrent.Future
   * The `StreamManager` can be thought of as the collection of active streams and some associated
   * helper methods for performing operations relevant to the HTTP/2 protocol.
   */
+@deprecated("HTTP/2 support is unmaintained and will be removed in a future version.", "0.23.18")
 private trait StreamManager {
 
   /** Number of active streams */

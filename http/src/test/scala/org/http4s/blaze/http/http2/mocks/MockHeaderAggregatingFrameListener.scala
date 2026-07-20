@@ -22,6 +22,7 @@ import org.http4s.blaze.http._
 import org.http4s.blaze.http.http2.Http2Settings.Setting
 import org.http4s.blaze.http.http2._
 
+@deprecated("HTTP/2 support is unmaintained and will be removed in a future version.", "0.23.18")
 private[http2] class MockHeaderAggregatingFrameListener
     extends HeaderAggregatingFrameListener(
       Http2Settings.default,

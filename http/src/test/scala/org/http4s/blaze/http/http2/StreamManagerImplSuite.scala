@@ -22,6 +22,7 @@ import org.http4s.blaze.testkit.BlazeTestSuite
 
 import scala.util.Failure
 
+@deprecated("HTTP/2 support is unmaintained and will be removed in a future version.", "0.23.18")
 class StreamManagerImplSuite extends BlazeTestSuite {
   private class MockTools(isClient: Boolean) extends mocks.MockTools(isClient) {
     override lazy val streamManager: StreamManager =

@@ -19,6 +19,7 @@ package org.http4s.blaze.http.http2
 import java.nio.ByteBuffer
 import java.nio.charset.StandardCharsets
 
+@deprecated("HTTP/2 support is unmaintained and will be removed in a future version.", "0.23.18")
 private[http2] object bits {
   val LengthFieldSize: Int = 3
   val HeaderSize: Int = 9

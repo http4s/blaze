@@ -16,10 +16,12 @@
 
 package org.http4s.blaze.http.http2
 
+@deprecated("HTTP/2 support is unmaintained and will be removed in a future version.", "0.23.18")
 sealed trait Priority {
   def isDefined: Boolean
 }
 
+@deprecated("HTTP/2 support is unmaintained and will be removed in a future version.", "0.23.18")
 object Priority {
 
   /** object representing the contents of a PRIORITY frame

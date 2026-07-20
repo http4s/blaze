@@ -17,16 +17,20 @@
 package org.http4s.blaze.http.http2
 
 /** Result type of many of the codec methods */
+@deprecated("HTTP/2 support is unmaintained and will be removed in a future version.", "0.23.18")
 private sealed trait Result extends Product with Serializable
 
 /** Didn't get enough data to decode a full HTTP/2 frame */
+@deprecated("HTTP/2 support is unmaintained and will be removed in a future version.", "0.23.18")
 private case object BufferUnderflow extends Result
 
 /** Represents the possibility of failure */
+@deprecated("HTTP/2 support is unmaintained and will be removed in a future version.", "0.23.18")
 private sealed abstract class MaybeError extends Result {
   final def success: Boolean = this == Continue
 }
 
+@deprecated("HTTP/2 support is unmaintained and will be removed in a future version.", "0.23.18")
 private object MaybeError {
   def apply(option: Option[Http2Exception]): MaybeError =
     option match {
@@ -35,5 +39,8 @@ private object MaybeError {
     }
 }
 
+@deprecated("HTTP/2 support is unmaintained and will be removed in a future version.", "0.23.18")
 private case object Continue extends MaybeError
+
+@deprecated("HTTP/2 support is unmaintained and will be removed in a future version.", "0.23.18")
 private final case class Error(err: Http2Exception) extends MaybeError

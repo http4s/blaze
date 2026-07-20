@@ -21,6 +21,7 @@ import org.http4s.blaze.http.http2.Http2Exception.{FLOW_CONTROL_ERROR, PROTOCOL_
 import org.log4s.getLogger
 
 /** Flow control representation of a Http2 Session */
+@deprecated("HTTP/2 support is unmaintained and will be removed in a future version.", "0.23.18")
 private class SessionFlowControlImpl(
     session: SessionCore,
     flowStrategy: FlowStrategy

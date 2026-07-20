@@ -17,6 +17,7 @@
 package org.http4s.blaze.http.http2
 
 /** Flow control representation of a Http2 Session */
+@deprecated("HTTP/2 support is unmaintained and will be removed in a future version.", "0.23.18")
 abstract class SessionFlowControl {
 
   /** Create a new [[StreamFlowWindow]] for a stream which will update and check the bounds of the

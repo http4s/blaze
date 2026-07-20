@@ -21,7 +21,9 @@ import java.nio.charset.StandardCharsets
 
 import org.http4s.blaze.util.BufferTools._
 
-private[http2] object CodecUtils {
+@deprecated(
+  "HTTP/2 support is unmaintained and will be removed in a future version.",
+  "0.23.18") private[http2] object CodecUtils {
   def byteData: Array[Byte] =
     "The quick brown fox jumps over the lazy dog".getBytes(StandardCharsets.UTF_8)
 

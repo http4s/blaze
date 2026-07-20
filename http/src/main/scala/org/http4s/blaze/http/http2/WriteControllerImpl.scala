@@ -37,6 +37,7 @@ import scala.util.control.NonFatal
   * @param highWaterMark
   *   number of bytes that will trigger a flush.
   */
+@deprecated("HTTP/2 support is unmaintained and will be removed in a future version.", "0.23.18")
 private final class WriteControllerImpl(
     session: SessionCore,
     highWaterMark: Int,
@@ -170,6 +171,7 @@ private final class WriteControllerImpl(
   }
 }
 
+@deprecated("HTTP/2 support is unmaintained and will be removed in a future version.", "0.23.18")
 private object WriteControllerImpl {
   private sealed trait State
   private case object Idle extends State
