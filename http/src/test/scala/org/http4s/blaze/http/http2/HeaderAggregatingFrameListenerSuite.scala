@@ -23,6 +23,7 @@ import org.http4s.blaze.http.http2.mocks.{MockFrameListener, MockHeaderAggregati
 import org.http4s.blaze.testkit.BlazeTestSuite
 import org.http4s.blaze.util.BufferTools
 
+@deprecated("HTTP/2 support is unmaintained and will be removed in a future version.", "0.23.18")
 class HeaderAggregatingFrameListenerSuite extends BlazeTestSuite {
   import BufferTools._
   import CodecUtils._

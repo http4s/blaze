@@ -33,11 +33,13 @@ import org.typelevel.vault._
 
 import java.nio.ByteBuffer
 import javax.net.ssl.SSLEngine
+import scala.annotation.nowarn
 import scala.concurrent.ExecutionContext
 import scala.concurrent.duration.Duration
 
 /** Facilitates the use of ALPN when using blaze http2 support */
 private[http4s] object ProtocolSelector {
+  @nowarn("cat=deprecation")
   def apply[F[_]](
       engine: SSLEngine,
       httpApp: HttpApp[F],

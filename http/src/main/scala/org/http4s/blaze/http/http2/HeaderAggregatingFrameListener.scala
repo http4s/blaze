@@ -33,6 +33,7 @@ import Http2Exception.PROTOCOL_ERROR
   * @note
   *   This class is not 'thread safe' and should be treated accordingly.
   */
+@deprecated("HTTP/2 support is unmaintained and will be removed in a future version.", "0.23.18")
 private abstract class HeaderAggregatingFrameListener(
     localSettings: Http2Settings,
     headerDecoder: HeaderDecoder

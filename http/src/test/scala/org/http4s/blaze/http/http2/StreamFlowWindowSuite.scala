@@ -19,6 +19,7 @@ package org.http4s.blaze.http.http2
 import org.http4s.blaze.http.http2.mocks.{MockTools, ObservingSessionFlowControl}
 import org.http4s.blaze.testkit.BlazeTestSuite
 
+@deprecated("HTTP/2 support is unmaintained and will be removed in a future version.", "0.23.18")
 class StreamFlowWindowSuite extends BlazeTestSuite {
   private class Tools extends MockTools(isClient = true) {
     override lazy val sessionFlowControl: SessionFlowControl =

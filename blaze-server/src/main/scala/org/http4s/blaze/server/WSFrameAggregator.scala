@@ -19,6 +19,7 @@ package org.http4s.blaze.server
 import org.http4s.blaze.pipeline.MidStage
 import org.http4s.blaze.server.WSFrameAggregator.Accumulator
 import org.http4s.blaze.util.Execution._
+import org.http4s.blaze.core.websocket.WebSocketMessageTooLargeException
 import org.http4s.internal.bug
 import org.http4s.websocket.WebSocketFrame
 import org.http4s.websocket.WebSocketFrame._
@@ -32,10 +33,21 @@ import scala.concurrent.Promise
 import scala.util.Failure
 import scala.util.Success
 
-private class WSFrameAggregator extends MidStage[WebSocketFrame, WebSocketFrame] {
+private class WSFrameAggregator(maxMessageSize: Int = WSFrameAggregator.DefaultMaxMessageSize)
+    extends MidStage[WebSocketFrame, WebSocketFrame] {
   def name: String = "WebSocket Frame Aggregator"
 
   private[this] val accumulator = new Accumulator
+
+  // Each buffered fragment also costs per-object heap (queue node, frame,
+  // ByteVector wrapper), so many small fragments can add up well before
+  // their payload bytes do. Charge every fragment a fixed footprint
+  // against the same budget, which bounds the fragment count too.
+  private[this] def messageTooLarge(next: WebSocketFrame): Boolean = {
+    val charged = accumulator.length.toLong + next.length.toLong +
+      (accumulator.frames.toLong + 1L) * WSFrameAggregator.FragmentOverheadBytes
+    maxMessageSize > 0 && charged > maxMessageSize.toLong
+  }
 
   def readRequest(size: Int): Future[WebSocketFrame] = {
     val p = Promise[WebSocketFrame]()
@@ -58,6 +70,10 @@ private class WSFrameAggregator extends MidStage[WebSocketFrame, WebSocketFrame]
           )
           logger.error(e)("Invalid state")
           p.failure(e)
+          ()
+        } else if (messageTooLarge(frame)) {
+          accumulator.clear()
+          p.failure(new WebSocketMessageTooLargeException)
           ()
         } else {
           accumulator.append(frame)
@@ -91,6 +107,9 @@ private class WSFrameAggregator extends MidStage[WebSocketFrame, WebSocketFrame]
       // Head frame that is complete
       p.success(frame)
       ()
+    } else if (messageTooLarge(frame)) {
+      p.failure(new WebSocketMessageTooLargeException)
+      ()
     } else {
       // Need to start aggregating
       accumulator.append(frame)
@@ -109,11 +128,26 @@ private class WSFrameAggregator extends MidStage[WebSocketFrame, WebSocketFrame]
 }
 
 private object WSFrameAggregator {
+
+  /** Default cap on the total payload size of a fragmented WebSocket message. */
+  val DefaultMaxMessageSize: Int = 4 * 1024 * 1024
+
+  /** Estimated per-fragment JVM heap footprint (frame object + ByteVector
+    * wrapper + queue node) charged against the message-size budget, so that
+    * many small fragments are bounded by the same limit as payload bytes.
+    * At the 4 MiB default this caps a message at ~65k fragments.
+    */
+  val FragmentOverheadBytes: Long = 64L
+
   private final class Accumulator {
     private[this] val queue = new mutable.Queue[WebSocketFrame]
     private[this] var size = 0
 
     def isEmpty: Boolean = queue.isEmpty
+
+    def length: Int = size
+
+    def frames: Int = queue.size
 
     def append(frame: WebSocketFrame): Unit = {
       // The first frame needs to not be a continuation

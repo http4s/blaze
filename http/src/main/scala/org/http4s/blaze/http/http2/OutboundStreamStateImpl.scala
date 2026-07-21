@@ -19,6 +19,7 @@ package org.http4s.blaze.http.http2
 import scala.concurrent.Promise
 import scala.concurrent.duration.Duration
 
+@deprecated("HTTP/2 support is unmaintained and will be removed in a future version.", "0.23.18")
 private abstract class OutboundStreamStateImpl(session: SessionCore)
     extends StreamStateImpl(session)
     with OutboundStreamState {

@@ -57,7 +57,7 @@ private[blaze] class CachingStaticWriter[F[_]](
 
     if (innerWriter == null) { // We haven't written anything yet
       writer << "\r\n"
-      new InnerWriter().writeBodyChunk(c, flush = true)
+      out.channelWrite(Http1Writer.headersToByteBuffer(writer.result) :: c.toByteBuffer :: Nil)
     } else writeBodyChunk(c, flush = true) // we are already proceeding
   }
 
@@ -69,7 +69,9 @@ private[blaze] class CachingStaticWriter[F[_]](
       clear()
       writer << "Content-Length: " << c.size << "\r\nConnection: keep-alive\r\n\r\n"
 
-      new InnerWriter().writeEnd(c).map(_ || _forceClose)(parasitic)
+      out
+        .channelWrite(Http1Writer.headersToByteBuffer(writer.result) :: c.toByteBuffer :: Nil)
+        .map(_ => _forceClose)(parasitic)
     }
 
   override protected def writeBodyChunk(chunk: Chunk[Byte], flush: Boolean): Future[Unit] =
@@ -80,8 +82,9 @@ private[blaze] class CachingStaticWriter[F[_]](
       if (flush || c.size >= bufferSize) { // time to just abort and stream it
         _forceClose = true
         writer << "\r\n"
+        clear()
         innerWriter = new InnerWriter
-        innerWriter.writeBodyChunk(chunk, flush)
+        out.channelWrite(Http1Writer.headersToByteBuffer(writer.result) :: c.toByteBuffer :: Nil)
       } else FutureUnit
     }
 

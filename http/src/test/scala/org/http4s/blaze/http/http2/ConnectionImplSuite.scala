@@ -31,6 +31,7 @@ import scala.concurrent.duration.Duration
 import scala.concurrent.Future
 import scala.util.{Failure, Success}
 
+@deprecated("HTTP/2 support is unmaintained and will be removed in a future version.", "0.23.18")
 class ConnectionImplSuite extends BlazeTestSuite {
   private class Ctx {
     lazy val head = new MockByteBufferHeadStage

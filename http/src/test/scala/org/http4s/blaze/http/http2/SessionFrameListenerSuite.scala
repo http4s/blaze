@@ -28,6 +28,7 @@ import org.http4s.blaze.util.BufferTools
 
 import scala.util.Success
 
+@deprecated("HTTP/2 support is unmaintained and will be removed in a future version.", "0.23.18")
 class SessionFrameListenerSuite extends BlazeTestSuite {
   private class MockTools(isClient: Boolean) extends mocks.MockTools(isClient) {
     lazy val headerDecoder: HeaderDecoder =

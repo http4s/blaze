@@ -21,6 +21,7 @@ import java.nio.charset.StandardCharsets.UTF_8
 import scala.collection.mutable
 import scala.util.control.NoStackTrace
 
+@deprecated("HTTP/2 support is unmaintained and will be removed in a future version.", "0.23.18")
 sealed abstract class Http2Exception(msg: String)
     extends Exception(msg)
     with NoStackTrace
@@ -61,12 +62,15 @@ sealed abstract class Http2Exception(msg: String)
   final def msgBuffer(): ByteBuffer = ByteBuffer.wrap(msg.getBytes(UTF_8))
 }
 
+@deprecated("HTTP/2 support is unmaintained and will be removed in a future version.", "0.23.18")
 final case class Http2StreamException(stream: Int, code: Long, msg: String)
     extends Http2Exception(msg)
 
+@deprecated("HTTP/2 support is unmaintained and will be removed in a future version.", "0.23.18")
 final case class Http2SessionException(code: Long, msg: String) extends Http2Exception(msg)
 
 ///////////////////// HTTP/2.0 Errors //////////////////////////////
+@deprecated("HTTP/2 support is unmaintained and will be removed in a future version.", "0.23.18")
 object Http2Exception {
   final class ErrorGenerator private[http2] (val code: Long, val name: String) {
 

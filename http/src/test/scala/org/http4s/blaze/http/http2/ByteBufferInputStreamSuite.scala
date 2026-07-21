@@ -20,6 +20,7 @@ import java.nio.ByteBuffer
 
 import org.http4s.blaze.testkit.BlazeTestSuite
 
+@deprecated("HTTP/2 support is unmaintained and will be removed in a future version.", "0.23.18")
 class ByteBufferInputStreamSuite extends BlazeTestSuite {
   private def fromByteBuffer(buffer: ByteBuffer): ByteBufferInputStream =
     new ByteBufferInputStream(buffer)

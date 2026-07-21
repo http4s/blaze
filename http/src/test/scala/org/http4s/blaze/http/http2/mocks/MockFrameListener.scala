@@ -21,6 +21,7 @@ import java.nio.ByteBuffer
 import org.http4s.blaze.http.http2.Http2Settings.Setting
 import org.http4s.blaze.http.http2.{FrameListener, Priority, Result}
 
+@deprecated("HTTP/2 support is unmaintained and will be removed in a future version.", "0.23.18")
 private[http2] class MockFrameListener(inHeaders: Boolean) extends FrameListener {
   override def inHeaderSequence: Boolean = inHeaders
   override def onGoAwayFrame(lastStream: Int, errorCode: Long, debugData: Array[Byte]): Result = ???

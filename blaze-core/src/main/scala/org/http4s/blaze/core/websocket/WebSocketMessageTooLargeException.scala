@@ -14,16 +14,11 @@
  * limitations under the License.
  */
 
-package com.example.http4s
-package blaze
+package org.http4s.blaze.core.websocket
 
-import cats.effect._
-import org.typelevel.log4cats.LoggerFactory
-import org.typelevel.log4cats.slf4j.Slf4jFactory
-
-object BlazeHttp2Example extends IOApp {
-  implicit val loggerFactory: LoggerFactory[IO] = Slf4jFactory.create[IO]
-
-  override def run(args: List[String]): IO[ExitCode] =
-    BlazeSslExampleApp.builder[IO].flatMap(_.enableHttp2(true).serve.compile.lastOrError)
-}
+/** Raised by the WebSocket frame aggregator when the total payload of a
+  * fragmented message would exceed the configured limit. Mapped to a
+  * `Close(1009)` ("Message Too Big") frame by [[Http4sWSStage]].
+  */
+private[http4s] final class WebSocketMessageTooLargeException
+    extends Exception("Aggregated WebSocket message exceeds configured size limit")

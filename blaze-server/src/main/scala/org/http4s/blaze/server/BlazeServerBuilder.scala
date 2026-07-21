@@ -244,6 +244,7 @@ class BlazeServerBuilder[F[_]] private (
   def withWebSockets(enableWebsockets: Boolean): Self =
     this
 
+  @deprecated("HTTP/2 support is unmaintained and will be removed in a future version.", "0.23.18")
   def enableHttp2(enabled: Boolean): Self = copy(http2Support = enabled)
 
   def withHttpApp(httpApp: HttpApp[F]): Self =

@@ -25,6 +25,7 @@ import org.http4s.blaze.http.http2.bits.{Flags, FrameTypes}
   * @see
   *   https://tools.ietf.org/html/rfc7540#section-6.5
   */
+@deprecated("HTTP/2 support is unmaintained and will be removed in a future version.", "0.23.18")
 private[blaze] object SettingsDecoder {
 
   /** Representation of a settings frame

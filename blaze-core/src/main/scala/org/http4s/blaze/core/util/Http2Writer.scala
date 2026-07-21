@@ -28,6 +28,7 @@ import org.http4s.blaze.pipeline.TailStage
 import scala.concurrent.ExecutionContext.parasitic
 import scala.concurrent._
 
+@deprecated("HTTP/2 support is unmaintained and will be removed in a future version.", "0.23.18")
 private[blaze] class Http2Writer[F[_]](
     tail: TailStage[StreamFrame],
     private var headers: Headers,

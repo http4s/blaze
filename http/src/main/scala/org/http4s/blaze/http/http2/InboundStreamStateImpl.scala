@@ -16,6 +16,7 @@
 
 package org.http4s.blaze.http.http2
 
+@deprecated("HTTP/2 support is unmaintained and will be removed in a future version.", "0.23.18")
 private final class InboundStreamStateImpl(
     session: SessionCore,
     val streamId: Int,

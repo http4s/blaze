@@ -21,6 +21,7 @@ package org.http4s.blaze.http.http2
   * The `StreamFlowWindow` provides the tools for tracking the flow window for both the individual
   * stream and the session that it belongs to.
   */
+@deprecated("HTTP/2 support is unmaintained and will be removed in a future version.", "0.23.18")
 abstract class StreamFlowWindow {
 
   /** The flow control manager of the session this stream belongs to */

@@ -19,6 +19,7 @@ package org.http4s.blaze.http.http2
 import java.util.Locale
 import scala.collection.mutable.{ArrayBuffer, Builder}
 
+@deprecated("HTTP/2 support is unmaintained and will be removed in a future version.", "0.23.18")
 private[http2] object StageTools {
   // There are two copies of this because `Growable` moved in Scala
   // 2.13 and we're stuck with the deprecation warning.  It's private

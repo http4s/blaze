@@ -19,6 +19,7 @@ package org.http4s.blaze.http.http2
 import java.nio.ByteBuffer
 
 /** Type that can be polled for the ability to write bytes */
+@deprecated("HTTP/2 support is unmaintained and will be removed in a future version.", "0.23.18")
 private trait WriteInterest {
 
   /** Invoked by the [[WriteController]] that this `WriteInterest` is registered with.

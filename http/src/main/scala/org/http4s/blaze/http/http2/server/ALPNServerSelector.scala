@@ -37,6 +37,7 @@ import scala.util.control.NonFatal
   * @param builder
   *   builds the appropriate pipeline based on the negotiated protocol
   */
+@deprecated("HTTP/2 support is unmaintained and will be removed in a future version.", "0.23.18")
 final class ALPNServerSelector(
     engine: SSLEngine,
     selector: Set[String] => String,

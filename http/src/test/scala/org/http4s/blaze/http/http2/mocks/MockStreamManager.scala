@@ -22,6 +22,7 @@ import org.http4s.blaze.http.http2.{MaybeError, Result, _}
 import scala.collection.mutable
 import scala.concurrent.Future
 
+@deprecated("HTTP/2 support is unmaintained and will be removed in a future version.", "0.23.18")
 private[http2] class MockStreamManager() extends StreamManager {
   override def size: Int = 0
 

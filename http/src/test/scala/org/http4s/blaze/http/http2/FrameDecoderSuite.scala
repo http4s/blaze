@@ -24,6 +24,7 @@ import org.http4s.blaze.http.http2.mocks.MockFrameListener
 import org.http4s.blaze.http.http2.Priority.Dependent
 import org.http4s.blaze.testkit.BlazeTestSuite
 
+@deprecated("HTTP/2 support is unmaintained and will be removed in a future version.", "0.23.18")
 class FrameDecoderSuite extends BlazeTestSuite {
   def buffer(data: Byte*): ByteBuffer =
     ByteBuffer.wrap(data.toArray)

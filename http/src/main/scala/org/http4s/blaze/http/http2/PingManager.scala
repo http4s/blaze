@@ -24,6 +24,7 @@ import org.log4s.getLogger
 import scala.concurrent.{Future, Promise}
 import scala.concurrent.duration.Duration
 
+@deprecated("HTTP/2 support is unmaintained and will be removed in a future version.", "0.23.18")
 private class PingManager(session: SessionCore) {
   import PingManager._
 
@@ -99,6 +100,7 @@ private class PingManager(session: SessionCore) {
     }
 }
 
+@deprecated("HTTP/2 support is unmaintained and will be removed in a future version.", "0.23.18")
 private object PingManager {
   private sealed trait State
 

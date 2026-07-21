@@ -23,6 +23,7 @@ import scala.concurrent.duration.Duration
   * 'bag-o-references' so that each component can reference each other. This helps to avoid
   * construction order conflicts.
   */
+@deprecated("HTTP/2 support is unmaintained and will be removed in a future version.", "0.23.18")
 private abstract class SessionCore {
   // Fields
   def serialExecutor: ExecutionContext
