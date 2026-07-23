@@ -84,6 +84,7 @@ class ServerParserSuite extends BlazeTestSuite {
     hs.foldLeft(new StringBuilder) { (sb, h) =>
       sb.append(h._1)
       if (h._2.length > 0) sb.append(": " + h._2)
+      else sb.append(':')
       sb.append("\r\n")
     }.append("\r\n")
       .result()
@@ -224,16 +225,16 @@ class ServerParserSuite extends BlazeTestSuite {
     }
   }
 
-  test("An Http1ServerParser should accept headers without values") {
+  test("An Http1ServerParser should accept headers without values as long as it has a colon") {
     val hsStr =
-      "If-Modified-Since\r\nIf-Modified-Since:\r\nIf-Modified-Since: \r\nIf-Modified-Since:\t\r\n\r\n"
+      "If-Modified-Since:\r\nIf-Modified-Since: \r\nIf-Modified-Since:\t\r\n\r\n"
     val p = new Parser()
     assert(p.parseheaders(hsStr))
     assertEquals(
       p.getContentType,
       EndOfContent.END
     ) // since the headers didn't indicate any content
-    assertEquals(p.h.result(), List.fill(4)(("If-Modified-Since", "")))
+    assertEquals(p.h.result(), List.fill(3)(("If-Modified-Since", "")))
   }
 
   test("An Http1ServerParser should need input on partial headers") {
@@ -304,7 +305,7 @@ class ServerParserSuite extends BlazeTestSuite {
 
   test("An Http1ServerParser should parse a chunked request with trailers") {
     val p = new Parser()
-    val req = mockChunked.substring(0, mockChunked.length - 2) + "Foo\r\n\r\n"
+    val req = mockChunked.substring(0, mockChunked.length - 2) + "Foo:\r\n\r\n"
     val b = strToBuffer(req)
 
     // println(mockChunked)
@@ -354,7 +355,7 @@ class ServerParserSuite extends BlazeTestSuite {
 
   test("An Http1ServerParser should give parse a chunked request in fragments with a trailer") {
     val p = new Parser()
-    val req = mockChunked.substring(0, mockChunked.length - 2) + "Foo\r\n\r\n"
+    val req = mockChunked.substring(0, mockChunked.length - 2) + "Foo:\r\n\r\n"
     val b = strToBuffer(req)
     val blim = b.limit()
 
