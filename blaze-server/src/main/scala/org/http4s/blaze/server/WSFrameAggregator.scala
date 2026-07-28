@@ -40,7 +40,7 @@ private class WSFrameAggregator(maxMessageSize: Int)
   @deprecated("Preserved for binary compatibility", "0.23.18")
   private[WSFrameAggregator] def this() =
     this(WSFrameAggregator.DefaultMaxMessageSize)
-  
+
   private[this] val accumulator = new Accumulator
 
   // Each buffered fragment also costs per-object heap (queue node, frame,

@@ -36,7 +36,7 @@ class ClientParserSuite extends BlazeTestSuite {
     .map { case (a, b) =>
       a + (if (b.length > 0)
              ": " + b
-           else "")
+           else ":")
     }
     .mkString("\r\n") + "\r\n\r\n"
 
@@ -253,22 +253,11 @@ class ClientParserSuite extends BlazeTestSuite {
   }
 
   test(
-    "A client parser should parse a body with a Content-Length and `Transfer-Encoding: identity` header"
+    "A client parser should not parse a body with a Content-Length and `Transfer-Encoding: identity` header"
   ) {
     val p = new TestParser
     val full = resp + content_length + "Transfer-Encoding: identity\r\n" + l_headersstr + body
     val bts = wrap(full.getBytes(ISO_8859_1))
-
-    assert(p.parseResponse(bts))
-    assert(p.parseheaders(bts))
-
-    assertEquals(p.contentComplete(), false)
-
-    val out = p.parsebody(bts)
-    assertEquals(out.remaining(), body.length)
-
-    assert(p.contentComplete())
-
-    assertEquals(ISO_8859_1.decode(out).toString, body)
+    intercept[BadMessage](p.parseheaders(bts))
   }
 }

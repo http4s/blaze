@@ -28,7 +28,7 @@ class Benchmarks extends BlazeTestSuite {
   val headers = "From: someuser@jmarshall.com  \r\n" +
     "HOST: www.foo.com\r\n" +
     "User-Agent: HTTPTool/1.0  \r\n" +
-    "Some-Header\r\n" +
+    "Some-Header:\r\n" +
     "\r\n"
 
   val body = "hello world"
