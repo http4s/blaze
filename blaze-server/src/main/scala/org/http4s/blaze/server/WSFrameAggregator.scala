@@ -16,10 +16,10 @@
 
 package org.http4s.blaze.server
 
+import org.http4s.blaze.core.websocket.WebSocketMessageTooLargeException
 import org.http4s.blaze.pipeline.MidStage
 import org.http4s.blaze.server.WSFrameAggregator.Accumulator
 import org.http4s.blaze.util.Execution._
-import org.http4s.blaze.core.websocket.WebSocketMessageTooLargeException
 import org.http4s.internal.bug
 import org.http4s.websocket.WebSocketFrame
 import org.http4s.websocket.WebSocketFrame._
@@ -40,7 +40,7 @@ private class WSFrameAggregator(maxMessageSize: Int)
   @deprecated("Preserved for binary compatibility", "0.23.18")
   private[WSFrameAggregator] def this() =
     this(WSFrameAggregator.DefaultMaxMessageSize)
-  
+
   private[this] val accumulator = new Accumulator
 
   // Each buffered fragment also costs per-object heap (queue node, frame,
