@@ -2,7 +2,7 @@ import com.typesafe.tools.mima.core._
 import Dependencies._
 
 val Scala212 = "2.12.21"
-val Scala213 = "2.13.18"
+val Scala213 = "3.9.0"
 val Scala3 = "3.3.8"
 val http4sVersion = "0.23.36"
 val munitCatsEffectVersion = "2.2.0"
