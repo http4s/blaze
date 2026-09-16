@@ -3,6 +3,14 @@ target/
 
 *~
 /.bsp/
+# Ignore Scala Metals configuration and logs.
+/.metals/
+# Ignore the Bloop build server directories.
+.bloop/
+# Ignore the auto-generated metals configuration file
+**/metals.sbt
+# Ignore settings for Visual Studio Code
+/.vscode
 /.ensime
 /.idea/
 /.idea_modules/
