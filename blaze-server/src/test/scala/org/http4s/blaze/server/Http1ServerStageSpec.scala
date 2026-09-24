@@ -108,6 +108,7 @@ class Http1ServerStageSpec extends CatsEffectSuite {
       tw,
       dispatcher(),
       None,
+      None,
     )
 
     pipeline.LeafBuilder(httpStage).base(head)
