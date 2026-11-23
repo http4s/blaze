@@ -65,7 +65,7 @@ class SSLStageSuite extends BlazeTestSuite {
       // See https://github.com/http4s/blaze/pull/771 for a deeper
       // analysis of the flake and possible solutions.
       val (headEng, stageEng) = mkClientServerEngines
-      val s = "Fo" * (stageEng.getSession.getPacketBufferSize * 0.75).toInt
+      val s = "Fo" * (stageEng.getSession.getPacketBufferSize * 0.45).toInt
 
       /* The detection of splitting the buffer is seen by checking the write
        * output: if its flushing, the output should only be single buffers for
@@ -89,14 +89,16 @@ class SSLStageSuite extends BlazeTestSuite {
 
       head.sendInboundCommand(Connected)
 
-      assertFuture_(tail.startLoop()).flatMap(_ =>
-        assertFuture(
+      for {
+        _ <- tail.startLoop()
+        _ <- assertFuture(
           for {
             r <- Future(BufferTools.mkString(head.results))
             h <- Future(head.multipleWrite)
           } yield r -> h,
           s + s -> false
-        ))
+        )
+      } yield ()
     }
 
     test(testSuitePrefix + " should transcode multiple single byte buffers") {
